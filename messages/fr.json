@@ -327,6 +327,114 @@
         "amount": "Montant invalide (au plus deux décimales).",
         "skuTaken": "Cette référence est déjà utilisée par un autre article."
       }
+    },
+    "settingsNav": {
+      "label": "Sections des réglages",
+      "company": "Entreprise",
+      "accounts": "Plan comptable",
+      "fiscalYears": "Exercices"
+    },
+    "accounts": {
+      "title": "Plan comptable",
+      "subtitle": "Plan comptable PME suisse, classes 1 à 9. Les comptes système sont utilisés par les écritures automatiques.",
+      "new": "Nouveau compte",
+      "edit": "Modifier le compte",
+      "save": "Enregistrer",
+      "saved": "Compte enregistré.",
+      "installed": "Plan comptable installé.",
+      "invalid": "Certains champs sont à corriger.",
+      "readOnly": "Seuls les administrateurs et les managers peuvent modifier le plan comptable.",
+      "empty": "Aucun plan comptable pour l'instant. Choisissez le modèle qui correspond à votre forme juridique.",
+      "install": "Installer le plan comptable",
+      "template": "Modèle",
+      "templates": {
+        "sole_proprietorship": "Entreprise individuelle ou société de personnes",
+        "corporation": "Société de capitaux (Sàrl, SA)"
+      },
+      "system": "Système",
+      "inactive": "Inactif",
+      "columns": {
+        "number": "N°",
+        "name": "Nom",
+        "type": "Type"
+      },
+      "classes": {
+        "1": "1 Actifs",
+        "2": "2 Passifs",
+        "3": "3 Chiffre d'affaires",
+        "4": "4 Charges de matériel et marchandises",
+        "5": "5 Charges de personnel",
+        "6": "6 Autres charges d'exploitation et résultat financier",
+        "7": "7 Activités annexes",
+        "8": "8 Hors exploitation, exceptionnel et impôts",
+        "9": "9 Clôture"
+      },
+      "types": {
+        "asset": "Actif",
+        "liability": "Dette",
+        "equity": "Capital propre",
+        "revenue": "Produit",
+        "expense": "Charge",
+        "closing": "Clôture"
+      },
+      "sections": {
+        "account": "Compte",
+        "options": "Options"
+      },
+      "fields": {
+        "number": "Numéro",
+        "nameDe": "Nom en allemand",
+        "nameFr": "Nom en français",
+        "type": "Type",
+        "vatCode": "Code TVA par défaut",
+        "active": "Compte actif"
+      },
+      "hints": {
+        "number": "Quatre chiffres ; le premier donne la classe.",
+        "nameDe": "Si une seule langue est remplie, l'autre reprend le même nom."
+      },
+      "noVat": "Aucun",
+      "vatCodes": {
+        "normal": "Taux normal",
+        "reduced": "Taux réduit",
+        "lodging": "Hébergement",
+        "exempt": "Exclu du champ de l'impôt",
+        "export": "Exonéré (exportation)"
+      },
+      "errors": {
+        "required": "Champ obligatoire.",
+        "tooLong": "Texte trop long.",
+        "number": "Quatre chiffres, sans 0 au début.",
+        "typeForClass": "Ce type ne convient pas à la classe du compte.",
+        "numberTaken": "Ce numéro est déjà utilisé.",
+        "systemInactive": "Un compte système reste actif."
+      }
+    },
+    "fiscalYears": {
+      "title": "Exercices comptables",
+      "subtitle": "Les exercices se suivent sans interruption. Le mois de début se règle dans les données de l'entreprise.",
+      "readOnly": "Seuls les administrateurs et les managers peuvent ouvrir un exercice.",
+      "empty": "Aucun exercice pour l'instant. Ouvrez le premier pour commencer la comptabilité.",
+      "first": "Premier exercice",
+      "start": "Date de début",
+      "startHint": "Le premier exercice peut commencer n'importe quel jour, par exemple à la création de l'entreprise.",
+      "extended": "Prolonger le premier exercice jusqu'à la fin de l'exercice suivant",
+      "extendedHint": "Possible quand l'entreprise démarre en cours d'année.",
+      "openFirst": "Ouvrir le premier exercice",
+      "openNext": "Ouvrir l'exercice suivant",
+      "nextPeriod": "Prochain exercice : {start} au {end}",
+      "opened": "Exercice ouvert.",
+      "invalidDate": "Date invalide.",
+      "columns": {
+        "period": "Période",
+        "status": "Statut"
+      },
+      "period": "{start} au {end}",
+      "status": {
+        "open": "Ouvert",
+        "closed": "Clôturé"
+      },
+      "closingLater": "La clôture d'un exercice arrivera avec la comptabilité."
     }
   },
   "footer": {

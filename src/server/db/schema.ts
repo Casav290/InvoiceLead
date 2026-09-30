@@ -3,6 +3,8 @@ import {
   bigint,
   bigserial,
   boolean,
+  check,
+  date,
   index,
   integer,
   jsonb,
@@ -194,3 +196,57 @@ export const products = pgTable(
 );
 
 export type Product = typeof products.$inferSelect;
+
+/**
+ * Compte du plan comptable d'une organisation (plan PME suisse, classes 1 à 9). Les comptes « système »
+ * portent un rôle (débiteurs, TVA due, banque...) que les écritures automatiques retrouvent sans
+ * dépendre du numéro, que l'entreprise peut adapter.
+ */
+export const accounts = pgTable(
+  "accounts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    number: text("number").notNull(), // 4 chiffres, la classe est le premier
+    nameDe: text("name_de").notNull(),
+    nameFr: text("name_fr").notNull(),
+    type: text("type").notNull(), // asset | liability | equity | revenue | expense | closing
+    role: text("role"),
+    vatCode: text("vat_code"), // code TVA proposé par défaut à la saisie
+    active: boolean("active").notNull().default(true),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    uniqueIndex("accounts_org_number_idx").on(t.organizationId, t.number),
+    uniqueIndex("accounts_org_role_idx")
+      .on(t.organizationId, t.role)
+      .where(sql`${t.role} is not null`),
+  ],
+);
+
+export type Account = typeof accounts.$inferSelect;
+
+/** Exercice comptable. Les exercices se suivent sans trou ni chevauchement. */
+export const fiscalYears = pgTable(
+  "fiscal_years",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    startDate: date("start_date", { mode: "string" }).notNull(),
+    endDate: date("end_date", { mode: "string" }).notNull(),
+    status: text("status").notNull().default("open"), // open | closed
+    closedAt: timestamp("closed_at", { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    uniqueIndex("fiscal_years_org_start_idx").on(t.organizationId, t.startDate),
+    check("fiscal_years_dates_check", sql`${t.endDate} >= ${t.startDate}`),
+  ],
+);
+
+export type FiscalYear = typeof fiscalYears.$inferSelect;

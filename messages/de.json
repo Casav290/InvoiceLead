@@ -327,6 +327,114 @@
         "amount": "Ungültiger Betrag (höchstens zwei Dezimalstellen).",
         "skuTaken": "Diese Artikelnummer wird bereits verwendet."
       }
+    },
+    "settingsNav": {
+      "label": "Bereiche der Einstellungen",
+      "company": "Unternehmen",
+      "accounts": "Kontenplan",
+      "fiscalYears": "Geschäftsjahre"
+    },
+    "accounts": {
+      "title": "Kontenplan",
+      "subtitle": "Schweizer KMU-Kontenrahmen, Klassen 1 bis 9. Systemkonten werden von automatischen Buchungen verwendet.",
+      "new": "Neues Konto",
+      "edit": "Konto bearbeiten",
+      "save": "Speichern",
+      "saved": "Konto gespeichert.",
+      "installed": "Kontenplan eingerichtet.",
+      "invalid": "Einige Felder sind zu korrigieren.",
+      "readOnly": "Nur Administratoren und Manager können den Kontenplan ändern.",
+      "empty": "Noch kein Kontenplan. Wählen Sie die Vorlage, die zu Ihrer Rechtsform passt.",
+      "install": "Kontenplan einrichten",
+      "template": "Vorlage",
+      "templates": {
+        "sole_proprietorship": "Einzelunternehmen oder Personengesellschaft",
+        "corporation": "Kapitalgesellschaft (GmbH, AG)"
+      },
+      "system": "System",
+      "inactive": "Inaktiv",
+      "columns": {
+        "number": "Nr.",
+        "name": "Name",
+        "type": "Typ"
+      },
+      "classes": {
+        "1": "1 Aktiven",
+        "2": "2 Passiven",
+        "3": "3 Betriebsertrag",
+        "4": "4 Aufwand für Material und Handelswaren",
+        "5": "5 Personalaufwand",
+        "6": "6 Übriger Betriebsaufwand und Finanzerfolg",
+        "7": "7 Nebenbetriebe",
+        "8": "8 Betriebsfremder, ausserordentlicher Erfolg und Steuern",
+        "9": "9 Abschluss"
+      },
+      "types": {
+        "asset": "Aktivum",
+        "liability": "Verbindlichkeit",
+        "equity": "Eigenkapital",
+        "revenue": "Ertrag",
+        "expense": "Aufwand",
+        "closing": "Abschluss"
+      },
+      "sections": {
+        "account": "Konto",
+        "options": "Optionen"
+      },
+      "fields": {
+        "number": "Nummer",
+        "nameDe": "Name auf Deutsch",
+        "nameFr": "Name auf Französisch",
+        "type": "Typ",
+        "vatCode": "Standard-MWST-Code",
+        "active": "Konto aktiv"
+      },
+      "hints": {
+        "number": "Vier Ziffern; die erste bestimmt die Klasse.",
+        "nameDe": "Ist nur eine Sprache ausgefüllt, wird derselbe Name übernommen."
+      },
+      "noVat": "Keiner",
+      "vatCodes": {
+        "normal": "Normalsatz",
+        "reduced": "Reduzierter Satz",
+        "lodging": "Beherbergung",
+        "exempt": "Von der Steuer ausgenommen",
+        "export": "Befreit (Export)"
+      },
+      "errors": {
+        "required": "Pflichtfeld.",
+        "tooLong": "Text zu lang.",
+        "number": "Vier Ziffern, ohne 0 am Anfang.",
+        "typeForClass": "Dieser Typ passt nicht zur Kontoklasse.",
+        "numberTaken": "Diese Nummer ist bereits vergeben.",
+        "systemInactive": "Ein Systemkonto bleibt aktiv."
+      }
+    },
+    "fiscalYears": {
+      "title": "Geschäftsjahre",
+      "subtitle": "Die Geschäftsjahre folgen lückenlos aufeinander. Der Startmonat wird in den Unternehmensdaten festgelegt.",
+      "readOnly": "Nur Administratoren und Manager können ein Geschäftsjahr eröffnen.",
+      "empty": "Noch kein Geschäftsjahr. Eröffnen Sie das erste, um mit der Buchhaltung zu beginnen.",
+      "first": "Erstes Geschäftsjahr",
+      "start": "Startdatum",
+      "startHint": "Das erste Geschäftsjahr kann an jedem Tag beginnen, zum Beispiel bei der Gründung.",
+      "extended": "Erstes Geschäftsjahr bis zum Ende des folgenden verlängern",
+      "extendedHint": "Möglich, wenn das Unternehmen im Laufe des Jahres startet.",
+      "openFirst": "Erstes Geschäftsjahr eröffnen",
+      "openNext": "Nächstes Geschäftsjahr eröffnen",
+      "nextPeriod": "Nächstes Geschäftsjahr: {start} bis {end}",
+      "opened": "Geschäftsjahr eröffnet.",
+      "invalidDate": "Ungültiges Datum.",
+      "columns": {
+        "period": "Zeitraum",
+        "status": "Status"
+      },
+      "period": "{start} bis {end}",
+      "status": {
+        "open": "Offen",
+        "closed": "Abgeschlossen"
+      },
+      "closingLater": "Der Abschluss eines Geschäftsjahres folgt mit der Buchhaltung."
     }
   },
   "footer": {

@@ -56,6 +56,18 @@ for (const size of WIDTHS) {
       expect(await traitNetIssues(page)).toEqual([]);
       await page.goto("/fr/app/products/new");
       expect(await traitNetIssues(page)).toEqual([]);
+      await page.goto("/fr/app/settings/accounts");
+      expect(await traitNetIssues(page)).toEqual([]);
+      // Le même compte sert aux quatre largeurs : le plan n'est installé qu'au premier passage.
+      if (await page.getByTestId("chart-install").count()) {
+        await page.getByTestId("chart-install").click();
+        await page.waitForURL("**/fr/app/settings/accounts?installed=1");
+      }
+      expect(await traitNetIssues(page)).toEqual([]);
+      await page.goto("/fr/app/settings/accounts/new");
+      expect(await traitNetIssues(page)).toEqual([]);
+      await page.goto("/fr/app/settings/fiscal-years");
+      expect(await traitNetIssues(page)).toEqual([]);
     });
 
     test("écran sans accès", async ({ page }) => {

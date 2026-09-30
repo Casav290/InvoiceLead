@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { CompanyForm } from "@/components/settings/CompanyForm";
+import { SettingsNav } from "@/components/settings/SettingsNav";
 import { formatIban, formatUid } from "@/lib/swiss-ids";
 import { requireAppSession } from "@/server/auth/guard";
 import { canEditSettings } from "@/server/company";
@@ -39,6 +40,7 @@ export default async function CompanySettingsPage({ params }: Params) {
   };
   return (
     <div className="mx-auto max-w-3xl px-4 py-10 sm:px-8">
+      <SettingsNav />
       <h1 className="text-[28px] leading-tight">{t("title")}</h1>
       <p className="mt-2 text-[15px] text-ink-muted">{t("subtitle")}</p>
       {editable ? null : (
