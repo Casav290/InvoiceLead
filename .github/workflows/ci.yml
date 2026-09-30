@@ -43,7 +43,7 @@ jobs:
       - name: Types
         run: npx tsc --noEmit
       - name: Migrations
-        run: npx drizzle-kit migrate
+        run: npm run db:migrate
       - name: Tests unitaires et d'intégration
         run: npx vitest run
       - name: Build
