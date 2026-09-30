@@ -74,3 +74,36 @@ export async function sendDocument(
   });
   return "sent";
 }
+
+/** Envoi sans intervention (factures récurrentes) : objet et message par défaut, au contact de la facture. */
+export async function sendWithDefaults(
+  database: Db,
+  who: Who,
+  invoiceId: string,
+): Promise<SendResult> {
+  const found = await getInvoice(database, who.organizationId, invoiceId);
+  if (!found?.contact.email) return "notFound";
+  const { invoice } = found;
+  const { getTranslations } = await import("next-intl/server");
+  const { formatAmount } = await import("@/lib/money");
+  const { formatDate } = await import("@/lib/fiscal-year");
+  const te = await getTranslations({ locale: invoice.language, namespace: "app.invoices.email" });
+  const values = {
+    number: invoice.number ?? "",
+    company: invoice.sender?.name ?? "",
+    amount: formatAmount(invoice.totalCents),
+    currency: invoice.currency,
+    due: formatDate(invoice.dueDate),
+  };
+  return sendDocument(
+    database,
+    who,
+    invoiceId,
+    {
+      to: found.contact.email,
+      subject: te(`subjects.${invoice.kind}`, values),
+      message: te(`bodies.${invoice.kind}`, values),
+    },
+    te("linkLabel"),
+  );
+}

@@ -9,6 +9,8 @@ import {
   issueInvoiceAction,
   quoteOutcomeAction,
 } from "@/app/[locale]/app/invoices/actions";
+import { createRecurringAction } from "@/app/[locale]/app/invoices/recurring/actions";
+import { fieldClass } from "@/components/forms/fields";
 import { InvoiceDocument } from "@/components/invoices/InvoiceDocument";
 import { InvoiceForm } from "@/components/invoices/InvoiceForm";
 import { PaymentForm } from "@/components/invoices/PaymentForm";
@@ -24,6 +26,7 @@ import { emailConfigured } from "@/server/email";
 import { invoiceOptions } from "@/server/invoice-options";
 import { type DocumentKind, getInvoice, listInvoices } from "@/server/invoices";
 import { invoiceBalance, listPayments, paymentState } from "@/server/payments";
+import { addMonths } from "@/server/recurring";
 import { listReminders } from "@/server/reminders";
 
 /**
@@ -102,6 +105,14 @@ export async function DocumentListPage({
               data-testid="reminders-link"
             >
               {t("remindersLink")}
+            </Link>
+          ) : null}
+          {kind === "invoice" ? (
+            <Link
+              href="/app/invoices/recurring"
+              className="text-[13px] font-semibold text-accent-dark hover:underline"
+            >
+              {t("recurringLink")}
             </Link>
           ) : null}
           {kind === "invoice" ? (
@@ -510,6 +521,57 @@ export async function DocumentDetailPage({
                 />
               ) : null}
             </section>
+          ) : null}
+          {kind === "invoice" ? (
+            <details
+              className="mb-6 border border-line-strong bg-panel px-5 py-3"
+              data-testid="recurring-panel"
+            >
+              <summary className="cursor-pointer text-[13px] font-semibold text-accent-dark">
+                {t("recurring.title")}
+              </summary>
+              <form action={createRecurringAction} className="mt-3 grid gap-3 sm:grid-cols-3">
+                {hidden}
+                <label className="text-[12px] font-semibold">
+                  {t("recurring.interval")}
+                  <select name="intervalMonths" defaultValue="1" className={`${fieldClass} mt-1`}>
+                    {[1, 3, 6, 12].map((m) => (
+                      <option key={m} value={m}>
+                        {t("recurring.every", { months: m })}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="text-[12px] font-semibold">
+                  {t("recurring.next")}
+                  <input
+                    type="date"
+                    name="nextDate"
+                    required
+                    defaultValue={addMonths(invoice.issueDate, 1)}
+                    className={`${fieldClass} mt-1`}
+                  />
+                </label>
+                <label className="flex items-start gap-2 self-end pb-2 text-[12px]">
+                  <input
+                    type="checkbox"
+                    name="autoSend"
+                    className="mt-0.5 h-4 w-4 shrink-0 accent-accent"
+                  />
+                  <span>{t("recurring.autoSend")}</span>
+                </label>
+                <div className="sm:col-span-3">
+                  <Button
+                    type="submit"
+                    variant="secondary"
+                    size="sm"
+                    data-testid="recurring-create"
+                  >
+                    {t("recurring.create")}
+                  </Button>
+                </div>
+              </form>
+            </details>
           ) : null}
           {invoice.sourceQuoteId ? (
             <p className="mb-4 text-[13px] text-ink-2">

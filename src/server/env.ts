@@ -26,6 +26,8 @@ const schema = z.object({
   AWS_ACCESS_KEY_ID: z.string().min(1).optional(),
   AWS_SECRET_ACCESS_KEY: z.string().min(1).optional(),
   RECEIPTS_BUCKET: z.string().min(1).default("receipts"),
+  /** Secret des tâches planifiées Vercel (en-tête Authorization: Bearer …). */
+  CRON_SECRET: z.string().min(16).optional(),
 });
 
 export type Env = z.infer<typeof schema>;

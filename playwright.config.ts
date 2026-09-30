@@ -17,6 +17,7 @@ const appEnv = {
   RESEND_API_KEY: "re_test",
   RESEND_API_URL: `http://localhost:${LEAD_PORT}/resend`,
   AI_API_KEY: "ai_test",
+  CRON_SECRET: "cron-secret-for-tests-only",
   AI_BASE_URL: `http://localhost:${LEAD_PORT}/ai`,
   NEXT_TELEMETRY_DISABLED: "1",
 };

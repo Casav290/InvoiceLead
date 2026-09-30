@@ -666,7 +666,16 @@
         }
       },
       "remindersLink": "Relances",
-      "reminderLine": "{level, select, 1 {1re relance} 2 {2e relance} other {Dernière relance}} le {date} ({channel, select, email {e-mail} other {courrier}})"
+      "reminderLine": "{level, select, 1 {1re relance} 2 {2e relance} other {Dernière relance}} le {date} ({channel, select, email {e-mail} other {courrier}})",
+      "recurringLink": "Récurrentes",
+      "recurring": {
+        "title": "Rendre récurrente",
+        "interval": "Rythme",
+        "every": "{months, plural, one {Chaque mois} other {Tous les # mois}}",
+        "next": "Prochaine facture le",
+        "autoSend": "Émettre et envoyer automatiquement (sinon : brouillon à vérifier)",
+        "create": "Enregistrer la récurrence"
+      }
     },
     "quotes": {
       "title": "Devis",
@@ -966,6 +975,22 @@
         "body2": "Bonjour,\n\nMalgré notre premier rappel, notre facture {number} échue le {due} reste impayée. Nous vous prions de régler le montant ouvert de {currency} {amount} dans les 10 jours.\n\nMeilleures salutations\n{company}",
         "body3": "Bonjour,\n\nNotre facture {number} échue le {due} est toujours impayée malgré nos rappels. Nous vous prions de régler le montant ouvert de {currency} {amount} sous 10 jours. Sans paiement, nous serons contraints d'engager d'autres démarches.\n\nMeilleures salutations\n{company}"
       }
+    },
+    "recurring": {
+      "title": "Factures récurrentes",
+      "back": "Toutes les factures",
+      "subtitle": "Chaque échéance crée une nouvelle facture à partir du modèle. Avec l'envoi automatique, elle est émise, comptabilisée et envoyée au client chaque matin où elle est due.",
+      "created": "Récurrence enregistrée.",
+      "empty": "Aucune facture récurrente. Ouvrez une facture et choisissez « Rendre récurrente ».",
+      "line": "Tous les {interval, plural, one {mois} other {# mois}} · prochaine le {next} · modèle {model}",
+      "draftModel": "brouillon",
+      "autoSend": "émise et envoyée automatiquement",
+      "draftOnly": "créée en brouillon",
+      "paused": "en pause",
+      "model": "Voir le modèle",
+      "pause": "Mettre en pause",
+      "resume": "Reprendre",
+      "delete": "Supprimer"
     }
   },
   "footer": {

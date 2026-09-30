@@ -671,3 +671,31 @@ export const invoiceReminders = pgTable(
 );
 
 export type InvoiceReminder = typeof invoiceReminders.$inferSelect;
+
+/**
+ * Facture récurrente : modèle (une facture existante dont on reprend client, textes et lignes) et
+ * rythme. Chaque échéance crée une nouvelle facture ; avec l'envoi automatique, elle est émise,
+ * comptabilisée et envoyée sans intervention.
+ */
+export const recurringInvoices = pgTable(
+  "recurring_invoices",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    sourceInvoiceId: uuid("source_invoice_id")
+      .notNull()
+      .references(() => invoices.id, { onDelete: "cascade" }),
+    intervalMonths: integer("interval_months").notNull(),
+    nextDate: date("next_date", { mode: "string" }).notNull(),
+    autoSend: boolean("auto_send").notNull().default(false),
+    active: boolean("active").notNull().default(true),
+    lastInvoiceId: uuid("last_invoice_id"),
+    createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+  },
+  (t) => [index("recurring_invoices_due_idx").on(t.active, t.nextDate)],
+);
+
+export type RecurringInvoice = typeof recurringInvoices.$inferSelect;

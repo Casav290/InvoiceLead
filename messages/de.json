@@ -666,7 +666,16 @@
         }
       },
       "remindersLink": "Mahnungen",
-      "reminderLine": "{level, select, 1 {1. Mahnung} 2 {2. Mahnung} other {Letzte Mahnung}} am {date} ({channel, select, email {E-Mail} other {Post}})"
+      "reminderLine": "{level, select, 1 {1. Mahnung} 2 {2. Mahnung} other {Letzte Mahnung}} am {date} ({channel, select, email {E-Mail} other {Post}})",
+      "recurringLink": "Wiederkehrend",
+      "recurring": {
+        "title": "Wiederkehrend machen",
+        "interval": "Rhythmus",
+        "every": "{months, plural, one {Jeden Monat} other {Alle # Monate}}",
+        "next": "Nächste Rechnung am",
+        "autoSend": "Automatisch ausstellen und senden (sonst: Entwurf zur Prüfung)",
+        "create": "Wiederholung speichern"
+      }
     },
     "quotes": {
       "title": "Offerten",
@@ -966,6 +975,22 @@
         "body2": "Guten Tag\n\nTrotz unserer Zahlungserinnerung ist unsere Rechnung {number}, fällig am {due}, weiterhin offen. Wir bitten Sie, den offenen Betrag von {currency} {amount} innert 10 Tagen zu begleichen.\n\nFreundliche Grüsse\n{company}",
         "body3": "Guten Tag\n\nUnsere Rechnung {number}, fällig am {due}, ist trotz unserer Mahnungen noch offen. Bitte begleichen Sie den offenen Betrag von {currency} {amount} innert 10 Tagen. Andernfalls sehen wir uns gezwungen, weitere Schritte einzuleiten.\n\nFreundliche Grüsse\n{company}"
       }
+    },
+    "recurring": {
+      "title": "Wiederkehrende Rechnungen",
+      "back": "Alle Rechnungen",
+      "subtitle": "Jede Fälligkeit erstellt eine neue Rechnung nach der Vorlage. Mit automatischem Versand wird sie an jedem fälligen Morgen ausgestellt, verbucht und dem Kunden gesendet.",
+      "created": "Wiederholung gespeichert.",
+      "empty": "Keine wiederkehrenden Rechnungen. Öffnen Sie eine Rechnung und wählen Sie «Wiederkehrend machen».",
+      "line": "Alle {interval, plural, one {Monate} other {# Monate}} · nächste am {next} · Vorlage {model}",
+      "draftModel": "Entwurf",
+      "autoSend": "automatisch ausgestellt und gesendet",
+      "draftOnly": "als Entwurf erstellt",
+      "paused": "pausiert",
+      "model": "Vorlage anzeigen",
+      "pause": "Pausieren",
+      "resume": "Fortsetzen",
+      "delete": "Löschen"
     }
   },
   "footer": {

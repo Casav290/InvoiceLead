@@ -127,6 +127,13 @@
       "when": 1790770476016,
       "tag": "0017_reminders",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1790770957503,
+      "tag": "0018_recurring",
+      "breakpoints": true
     }
   ]
 }
