@@ -9,6 +9,7 @@ const ITEMS = [
   { href: "/app/accounting/receipts", key: "receipts" },
   { href: "/app/accounting", key: "journal" },
   { href: "/app/accounting/reports", key: "reports" },
+  { href: "/app/accounting/vat", key: "vat" },
 ] as const;
 
 /** Onglets de la comptabilité : banque (à valider), journal. */

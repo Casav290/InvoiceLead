@@ -117,6 +117,22 @@ test("comptabilité : pièce en attente, puis journal en partie double après mi
   await expect(page.getByTestId("balance-check")).toHaveText("Le bilan est équilibré.");
   await page.getByTestId("trial-balance").getByRole("link", { name: /6940/ }).click();
   await expect(page.getByTestId("ledger")).toContainText("5.00");
+
+  // Décompte TVA du trimestre : relu par l'assistant, validé, période close.
+  const month = Number(today.slice(5, 7));
+  const quarterStart = `${today.slice(0, 4)}-${String(month - ((month - 1) % 3)).padStart(2, "0")}-01`;
+  await page.goto(`/fr/app/accounting/vat?period=${quarterStart}`);
+  await expect(page.getByTestId("figure-303")).toContainText("150.00");
+  await expect(page.getByTestId("figure-399")).toContainText("12.15");
+  await expect(page.getByTestId("figure-500")).toContainText("12.15");
+  await page.getByTestId("vat-review-run").click();
+  await expect(page.getByTestId("vat-review-result")).toHaveText(
+    "L'assistant n'a rien relevé d'inhabituel.",
+  );
+  await page.getByTestId("vat-validate").click();
+  await expect(page.getByText(/Décompte validé/)).toBeVisible();
+  await expect(page.getByTestId("vat-status")).toContainText("Validé le");
+  await expect(page.getByTestId("vat-validate")).toHaveCount(0);
 });
 
 /** Référence SCOR de la facture émise, recalculée depuis son numéro (IBAN ordinaire, pas de QR-IBAN). */

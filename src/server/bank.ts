@@ -368,7 +368,8 @@ export type ValidateResult =
   | "noProposal"
   | "tooHigh"
   | "noChart"
-  | "noFiscalYear";
+  | "noFiscalYear"
+  | "vatPeriodClosed";
 
 /**
  * Validation humaine d'un mouvement : la proposition (ou le choix corrigé) devient une écriture.
@@ -460,6 +461,7 @@ export async function validateTransaction(
   } catch (e) {
     if (e instanceof LedgerError) {
       if (e.message === "noFiscalYear") return "noFiscalYear";
+      if (e.message === "vatPeriodClosed") return "vatPeriodClosed";
       if (e.message === "already") return "notFound";
       return "noChart";
     }

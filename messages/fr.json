@@ -711,7 +711,8 @@
       "unposted": "{count, plural, one {# pièce attend d'être comptabilisée.} other {# pièces attendent d'être comptabilisées.}}",
       "reasons": {
         "noChart": "Installez d'abord le plan comptable.",
-        "noFiscalYear": "Ouvrez l'exercice qui couvre la date de ces pièces."
+        "noFiscalYear": "Ouvrez l'exercice qui couvre la date de ces pièces.",
+        "vatPeriodClosed": "Cette date tombe dans une période TVA déjà validée : l'écriture ne peut plus y entrer."
       },
       "postNow": "Comptabiliser maintenant",
       "journal": "Journal",
@@ -732,7 +733,8 @@
         "bank": "Banque",
         "journal": "Journal",
         "receipts": "Justificatifs",
-        "reports": "Rapports"
+        "reports": "Rapports",
+        "vat": "TVA"
       }
     },
     "bank": {
@@ -747,7 +749,8 @@
         "noChart": "Installez d'abord le plan comptable.",
         "noFiscalYear": "Aucun exercice ouvert ne couvre la date de ce mouvement.",
         "noProposal": "Choisissez d'abord un compte.",
-        "notFound": "Mouvement introuvable ou déjà traité."
+        "notFound": "Mouvement introuvable ou déjà traité.",
+        "vatPeriodClosed": "Cette date tombe dans une période TVA déjà validée : l'écriture ne peut plus y entrer."
       },
       "aiError": "L'assistant n'a pas pu répondre. Les mouvements restent à proposer ; réessayez plus tard.",
       "aiOff": "L'assistant comptable n'est pas encore activé : seuls les paiements de factures reconnus par leur référence QR sont proposés automatiquement.",
@@ -851,6 +854,63 @@
       "entry": "N°",
       "text": "Libellé",
       "balance": "Solde"
+    },
+    "vat": {
+      "title": "TVA",
+      "subtitle": "Décompte trimestriel préparé à partir du journal (méthode effective). Vérifiez, faites relire par l'assistant si vous le souhaitez, puis validez : les chiffres se reportent tels quels sur le formulaire de l'AFC.",
+      "validatedNotice": "Décompte validé. La période est close au journal, et la TVA est virée sur le compte de décompte 2201.",
+      "errors": {
+        "blocked": "Le décompte ne peut pas être validé tant que des points bloquants subsistent.",
+        "noFiscalYear": "Aucun exercice ouvert ne couvre la fin de cette période.",
+        "noChart": "Le plan comptable n'a pas les comptes TVA nécessaires."
+      },
+      "periods": "Périodes",
+      "quarter": "T{q} {year}",
+      "done": "validé",
+      "period": "Du {start} au {end}",
+      "validatedOn": "Validé le {date}",
+      "draft": "À valider",
+      "figure": "Chiffre",
+      "label": "Libellé",
+      "amount": "CHF",
+      "anomalies": {
+        "notRegistered": "L'entreprise n'est pas inscrite au registre TVA (réglages de l'entreprise).",
+        "netTaxRate": "La méthode des taux de la dette fiscale nette n'est pas encore prise en charge.",
+        "received": "Le décompte selon les contre-prestations reçues n'est pas encore pris en charge.",
+        "baseMismatch": "Le chiffre d'affaires imposable ne correspond pas exactement aux bases des taux : vérifiez les écritures de produits sans TVA.",
+        "pendingBank": "{count, plural, one {# mouvement bancaire de la période n'est pas encore validé.} other {# mouvements bancaires de la période ne sont pas encore validés.}}",
+        "unposted": "{count, plural, one {# facture de la période n'est pas encore comptabilisée.} other {# factures de la période ne sont pas encore comptabilisées.}}",
+        "inputWithoutReceipt": "{count, plural, one {# dépense déduit de l'impôt préalable sans justificatif rattaché.} other {# dépenses déduisent de l'impôt préalable sans justificatif rattaché.}}",
+        "alreadyValidated": "Cette période chevauche un décompte déjà validé."
+      },
+      "figures": {
+        "200": "Total des contre-prestations convenues",
+        "220": "Prestations exonérées (exportations)",
+        "230": "Prestations exclues du champ de l'impôt",
+        "289": "Total des déductions",
+        "299": "Chiffre d'affaires imposable",
+        "303": "Prestations au taux normal 8,1 %",
+        "313": "Prestations au taux réduit 2,6 %",
+        "343": "Prestations d'hébergement 3,8 %",
+        "302": "Prestations au taux normal 7,7 % (avant 2024)",
+        "312": "Prestations au taux réduit 2,5 % (avant 2024)",
+        "342": "Prestations d'hébergement 3,7 % (avant 2024)",
+        "399": "Total de l'impôt dû",
+        "400": "Impôt préalable sur le matériel et les prestations de services",
+        "405": "Impôt préalable sur les investissements et autres charges",
+        "479": "Total de l'impôt préalable",
+        "500": "Montant à payer à l'AFC",
+        "510": "Solde en votre faveur"
+      },
+      "payBy": "À payer à l'AFC d'ici le {date}.",
+      "reviewIntro": "L'assistant peut relire la période et signaler ce qui mérite votre attention.",
+      "review": "Faire relire",
+      "reviewing": "Relecture…",
+      "reviewFailed": "L'assistant n'a pas pu répondre. Réessayez plus tard.",
+      "reviewNothing": "L'assistant n'a rien relevé d'inhabituel.",
+      "cannotValidate": "Réglez d'abord les points en rouge.",
+      "validateHint": "En validant, les chiffres sont figés et plus aucune écriture ne pourra être datée dans cette période.",
+      "validate": "Valider le décompte"
     }
   },
   "footer": {

@@ -14,6 +14,7 @@ import {
   journalEntries,
   journalLines,
   organizations,
+  vatReturns,
 } from "./db/schema";
 
 type Who = { organizationId: string; userId: string };
@@ -29,7 +30,14 @@ export type Posting = {
 export type EntryInput = {
   entryDate: string;
   description: string;
-  sourceType: "invoice" | "credit_note" | "payment" | "payment_reversal" | "bank" | "manual";
+  sourceType:
+    | "invoice"
+    | "credit_note"
+    | "payment"
+    | "payment_reversal"
+    | "bank"
+    | "vat"
+    | "manual";
   sourceId?: string | null;
   reversalOf?: string | null;
   postings: Posting[];
@@ -75,6 +83,10 @@ export function entryHash(e: HashInput): string {
 
 export class LedgerError extends Error {}
 
+function reasonOf(e: LedgerError): NonNullable<PostingSummary["reason"]> {
+  return e.message === "noChart" || e.message === "vatPeriodClosed" ? e.message : "noFiscalYear";
+}
+
 /** Exercice ouvert qui contient la date, ou null. */
 export async function openYearFor(database: Db, organizationId: string, date: string) {
   const [year] = await database
@@ -112,6 +124,19 @@ export async function appendEntry(tx: Db, who: Who, input: EntryInput) {
   if (postings.reduce((s, p) => s + p.amountCents, 0) !== 0) throw new LedgerError("unbalanced");
   const year = await openYearFor(tx, who.organizationId, input.entryDate);
   if (!year) throw new LedgerError("noFiscalYear");
+  // Une période TVA validée est close : plus aucune écriture n'y entre (le décompte est figé).
+  const [closed] = await tx
+    .select({ id: vatReturns.id })
+    .from(vatReturns)
+    .where(
+      and(
+        eq(vatReturns.organizationId, who.organizationId),
+        lte(vatReturns.periodStart, input.entryDate),
+        gte(vatReturns.periodEnd, input.entryDate),
+      ),
+    )
+    .limit(1);
+  if (closed) throw new LedgerError("vatPeriodClosed");
 
   await tx
     .select({ id: organizations.id })
@@ -207,7 +232,7 @@ async function documentPostings(
 export type PostingSummary = {
   posted: number;
   waiting: number;
-  reason: "noChart" | "noFiscalYear" | null;
+  reason: "noChart" | "noFiscalYear" | "vatPeriodClosed" | null;
 };
 
 /**
@@ -257,7 +282,7 @@ export async function postPending(database: Db, who: Who): Promise<PostingSummar
     } catch (e) {
       if (!(e instanceof LedgerError)) throw e;
       waiting += 1;
-      reason ??= e.message === "noChart" ? "noChart" : "noFiscalYear";
+      reason ??= reasonOf(e);
     }
   }
 
@@ -300,7 +325,7 @@ export async function postPending(database: Db, who: Who): Promise<PostingSummar
     } catch (e) {
       if (!(e instanceof LedgerError)) throw e;
       waiting += 1;
-      reason ??= e.message === "noChart" ? "noChart" : "noFiscalYear";
+      reason ??= reasonOf(e);
     }
   }
 

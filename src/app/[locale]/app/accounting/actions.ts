@@ -18,6 +18,7 @@ import { deleteRule } from "@/server/booking-rules";
 import { db } from "@/server/db";
 import { postPending } from "@/server/ledger";
 import { matchReceipts, readReceipt, uploadReceipt } from "@/server/receipts";
+import { aiReview, draftVatReturn, validateVatReturn } from "@/server/vat-return";
 
 export async function postPendingAction(form: FormData) {
   const locale = pickLocale(form.get("locale"));
@@ -162,4 +163,45 @@ export async function readReceiptAction(form: FormData) {
   );
   revalidatePath(`/${locale}/app/accounting`, "layout");
   redirect(`/${locale}/app/accounting/receipts${result === "read" ? "" : `?error=${result}`}`);
+}
+
+export async function validateVatAction(form: FormData) {
+  const locale = pickLocale(form.get("locale"));
+  const session = await requireAppSession(locale);
+  const start = String(form.get("start") ?? "");
+  const end = String(form.get("end") ?? "");
+  const result = await validateVatReturn(
+    db(),
+    { organizationId: session.organization.id, userId: session.user.id },
+    start,
+    end,
+  );
+  revalidatePath(`/${locale}/app/accounting`, "layout");
+  redirect(
+    `/${locale}/app/accounting/vat?period=${start}${result === "validated" ? "&validated=1" : `&error=${result}`}`,
+  );
+}
+
+export type ReviewState = { points?: string[]; failed?: boolean; round: number };
+
+export async function reviewVatAction(prev: ReviewState, form: FormData): Promise<ReviewState> {
+  const locale = pickLocale(form.get("locale"));
+  const session = await requireAppSession(locale);
+  const start = String(form.get("start") ?? "");
+  const end = String(form.get("end") ?? "");
+  try {
+    const draft = await draftVatReturn(db(), session.organization.id, start, end);
+    const points = await aiReview(
+      db(),
+      session.organization.id,
+      start,
+      end,
+      draft,
+      locale === "fr" ? "fr" : "de",
+    );
+    return { points, round: prev.round + 1 };
+  } catch (e) {
+    console.error("[vat] relecture impossible", e instanceof Error ? e.message : "inconnu");
+    return { failed: true, round: prev.round + 1 };
+  }
 }

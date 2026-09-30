@@ -38,7 +38,16 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return { title: t("title"), robots: { index: false } };
 }
 
-const ERRORS = ["file", "format", "tooHigh", "noChart", "noFiscalYear", "noProposal", "notFound"];
+const ERRORS = [
+  "file",
+  "format",
+  "tooHigh",
+  "noChart",
+  "noFiscalYear",
+  "noProposal",
+  "notFound",
+  "vatPeriodClosed",
+];
 
 export default async function BankPage({ params, searchParams }: Props) {
   const { locale } = await params;

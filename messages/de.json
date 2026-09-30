@@ -711,7 +711,8 @@
       "unposted": "{count, plural, one {# Beleg wartet auf die Verbuchung.} other {# Belege warten auf die Verbuchung.}}",
       "reasons": {
         "noChart": "Richten Sie zuerst den Kontenplan ein.",
-        "noFiscalYear": "Eröffnen Sie das Geschäftsjahr, das das Datum dieser Belege umfasst."
+        "noFiscalYear": "Eröffnen Sie das Geschäftsjahr, das das Datum dieser Belege umfasst.",
+        "vatPeriodClosed": "Dieses Datum liegt in einer bereits bestätigten MWST-Periode: Es kann dort nicht mehr gebucht werden."
       },
       "postNow": "Jetzt verbuchen",
       "journal": "Journal",
@@ -732,7 +733,8 @@
         "bank": "Bank",
         "journal": "Journal",
         "receipts": "Belege",
-        "reports": "Auswertungen"
+        "reports": "Auswertungen",
+        "vat": "MWST"
       }
     },
     "bank": {
@@ -747,7 +749,8 @@
         "noChart": "Richten Sie zuerst den Kontenplan ein.",
         "noFiscalYear": "Kein offenes Geschäftsjahr umfasst das Datum dieser Bewegung.",
         "noProposal": "Wählen Sie zuerst ein Konto.",
-        "notFound": "Bewegung nicht gefunden oder bereits verarbeitet."
+        "notFound": "Bewegung nicht gefunden oder bereits verarbeitet.",
+        "vatPeriodClosed": "Dieses Datum liegt in einer bereits bestätigten MWST-Periode: Es kann dort nicht mehr gebucht werden."
       },
       "aiError": "Der Assistent konnte nicht antworten. Die Bewegungen bleiben offen; versuchen Sie es später erneut.",
       "aiOff": "Der Buchhaltungsassistent ist noch nicht aktiviert: Automatisch vorgeschlagen werden nur Rechnungszahlungen, die an ihrer QR-Referenz erkannt werden.",
@@ -851,6 +854,63 @@
       "entry": "Nr.",
       "text": "Text",
       "balance": "Saldo"
+    },
+    "vat": {
+      "title": "MWST",
+      "subtitle": "Quartalsabrechnung aus dem Journal (effektive Methode). Prüfen Sie, lassen Sie sie bei Bedarf vom Assistenten gegenlesen und bestätigen Sie: Die Zahlen übertragen Sie unverändert ins Formular der ESTV.",
+      "validatedNotice": "Abrechnung bestätigt. Die Periode ist im Journal abgeschlossen, die MWST ist auf das Abrechnungskonto 2201 übertragen.",
+      "errors": {
+        "blocked": "Die Abrechnung kann nicht bestätigt werden, solange blockierende Punkte offen sind.",
+        "noFiscalYear": "Kein offenes Geschäftsjahr umfasst das Ende dieser Periode.",
+        "noChart": "Dem Kontenplan fehlen die nötigen MWST-Konten."
+      },
+      "periods": "Perioden",
+      "quarter": "Q{q} {year}",
+      "done": "bestätigt",
+      "period": "Vom {start} bis {end}",
+      "validatedOn": "Bestätigt am {date}",
+      "draft": "Zu bestätigen",
+      "figure": "Ziffer",
+      "label": "Bezeichnung",
+      "amount": "CHF",
+      "anomalies": {
+        "notRegistered": "Das Unternehmen ist nicht im MWST-Register eingetragen (Unternehmenseinstellungen).",
+        "netTaxRate": "Die Saldosteuersatzmethode wird noch nicht unterstützt.",
+        "received": "Die Abrechnung nach vereinnahmten Entgelten wird noch nicht unterstützt.",
+        "baseMismatch": "Der steuerbare Umsatz stimmt nicht genau mit den Bemessungsgrundlagen überein: Prüfen Sie Ertragsbuchungen ohne MWST.",
+        "pendingBank": "{count, plural, one {# Bankbewegung der Periode ist noch nicht bestätigt.} other {# Bankbewegungen der Periode sind noch nicht bestätigt.}}",
+        "unposted": "{count, plural, one {# Rechnung der Periode ist noch nicht verbucht.} other {# Rechnungen der Periode sind noch nicht verbucht.}}",
+        "inputWithoutReceipt": "{count, plural, one {# Ausgabe mit Vorsteuerabzug hat keinen zugeordneten Beleg.} other {# Ausgaben mit Vorsteuerabzug haben keinen zugeordneten Beleg.}}",
+        "alreadyValidated": "Diese Periode überschneidet sich mit einer bereits bestätigten Abrechnung."
+      },
+      "figures": {
+        "200": "Total der vereinbarten Entgelte",
+        "220": "Von der Steuer befreite Leistungen (Exporte)",
+        "230": "Von der Steuer ausgenommene Leistungen",
+        "289": "Total Abzüge",
+        "299": "Steuerbarer Gesamtumsatz",
+        "303": "Leistungen zum Normalsatz 8,1 %",
+        "313": "Leistungen zum reduzierten Satz 2,6 %",
+        "343": "Beherbergungsleistungen 3,8 %",
+        "302": "Leistungen zum Normalsatz 7,7 % (vor 2024)",
+        "312": "Leistungen zum reduzierten Satz 2,5 % (vor 2024)",
+        "342": "Beherbergungsleistungen 3,7 % (vor 2024)",
+        "399": "Total geschuldete Steuer",
+        "400": "Vorsteuer auf Material- und Dienstleistungsaufwand",
+        "405": "Vorsteuer auf Investitionen und übrigem Betriebsaufwand",
+        "479": "Total Vorsteuer",
+        "500": "An die ESTV zu bezahlender Betrag",
+        "510": "Guthaben zu Ihren Gunsten"
+      },
+      "payBy": "An die ESTV zu bezahlen bis {date}.",
+      "reviewIntro": "Der Assistent kann die Periode gegenlesen und auf Auffälliges hinweisen.",
+      "review": "Gegenlesen lassen",
+      "reviewing": "Wird gelesen…",
+      "reviewFailed": "Der Assistent konnte nicht antworten. Versuchen Sie es später erneut.",
+      "reviewNothing": "Der Assistent hat nichts Ungewöhnliches gefunden.",
+      "cannotValidate": "Klären Sie zuerst die roten Punkte.",
+      "validateHint": "Mit der Bestätigung werden die Zahlen fixiert, und in dieser Periode kann nicht mehr gebucht werden.",
+      "validate": "Abrechnung bestätigen"
     }
   },
   "footer": {

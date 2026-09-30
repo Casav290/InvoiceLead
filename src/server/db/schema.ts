@@ -608,3 +608,42 @@ export const receipts = pgTable(
 );
 
 export type Receipt = typeof receipts.$inferSelect;
+
+/** Chiffres d'un décompte TVA, par chiffre du formulaire AFC (montants en centimes). */
+export type VatFigures = Record<string, number>;
+
+/** Anomalie relevée avant la validation d'un décompte. */
+export type VatAnomaly = {
+  code: string;
+  severity: "block" | "warn";
+  count?: number;
+  detail?: string;
+};
+
+/**
+ * Décompte TVA d'une période. Validé, il fige ses chiffres, ferme la période au journal (plus
+ * aucune écriture datée dedans) et vire la TVA due et l'impôt préalable sur le compte de décompte.
+ */
+export const vatReturns = pgTable(
+  "vat_returns",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    periodStart: date("period_start", { mode: "string" }).notNull(),
+    periodEnd: date("period_end", { mode: "string" }).notNull(),
+    status: text("status").notNull().default("validated"),
+    figures: jsonb("figures").$type<VatFigures>().notNull(),
+    anomalies: jsonb("anomalies").$type<VatAnomaly[]>().notNull(),
+    journalEntryId: uuid("journal_entry_id"),
+    validatedBy: uuid("validated_by").references(() => users.id, { onDelete: "set null" }),
+    validatedAt: timestamp("validated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("vat_returns_period_idx").on(t.organizationId, t.periodStart),
+    check("vat_returns_dates_check", sql`${t.periodEnd} >= ${t.periodStart}`),
+  ],
+);
+
+export type VatReturn = typeof vatReturns.$inferSelect;

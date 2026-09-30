@@ -12,7 +12,7 @@ export function testDb() {
     database,
     reset: () =>
       database.execute(
-        sql`truncate table audit_log, invoice_payments, bank_transactions, receipts, stored_files, sessions, memberships, organizations, users restart identity cascade`,
+        sql`truncate table audit_log, vat_returns, invoice_payments, bank_transactions, receipts, stored_files, sessions, memberships, organizations, users restart identity cascade`,
       ),
     close: () => pool.end(),
   };
