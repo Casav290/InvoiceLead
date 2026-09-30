@@ -24,6 +24,7 @@ import { emailConfigured } from "@/server/email";
 import { invoiceOptions } from "@/server/invoice-options";
 import { type DocumentKind, getInvoice, listInvoices } from "@/server/invoices";
 import { invoiceBalance, listPayments, paymentState } from "@/server/payments";
+import { listReminders } from "@/server/reminders";
 
 /**
  * Pages partagées des factures et des devis : même liste, même formulaire, même aperçu. Seuls les
@@ -94,6 +95,15 @@ export async function DocumentListPage({
       <div className="flex flex-wrap items-end justify-between gap-4">
         <h1 className="text-[28px] leading-tight">{tk("title")}</h1>
         <div className="flex flex-wrap items-center gap-4">
+          {kind === "invoice" ? (
+            <Link
+              href="/app/invoices/reminders"
+              className="text-[13px] font-semibold text-accent-dark hover:underline"
+              data-testid="reminders-link"
+            >
+              {t("remindersLink")}
+            </Link>
+          ) : null}
           {kind === "invoice" ? (
             <Link
               href="/app/credit-notes"
@@ -251,6 +261,7 @@ export async function DocumentDetailPage({
   const billed = kind === "invoice" && invoice.status === "issued";
   const balance = billed ? await invoiceBalance(db(), invoice.id, invoice.totalCents) : null;
   const payments = billed ? await listPayments(db(), organization.id, invoice.id) : [];
+  const reminders = billed ? await listReminders(db(), organization.id, invoice.id) : [];
   const section = sectionOf(kind);
   const hidden = (
     <>
@@ -471,6 +482,22 @@ export async function DocumentDetailPage({
                           {t("payments.delete")}
                         </Button>
                       </form>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+              {reminders.length > 0 ? (
+                <ul
+                  className="border-t border-line px-5 py-2 text-[12px] text-ink-2"
+                  data-testid="reminder-history"
+                >
+                  {reminders.map((r) => (
+                    <li key={r.id}>
+                      {t("reminderLine", {
+                        level: r.level,
+                        date: formatDate(r.sentAt.toISOString().slice(0, 10)),
+                        channel: r.channel,
+                      })}
                     </li>
                   ))}
                 </ul>

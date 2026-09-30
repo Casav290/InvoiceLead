@@ -649,3 +649,25 @@ export const vatReturns = pgTable(
 );
 
 export type VatReturn = typeof vatReturns.$inferSelect;
+
+/** Relance envoyée (ou notée comme envoyée par courrier) pour une facture échue. */
+export const invoiceReminders = pgTable(
+  "invoice_reminders",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    invoiceId: uuid("invoice_id")
+      .notNull()
+      .references(() => invoices.id, { onDelete: "cascade" }),
+    level: integer("level").notNull(), // 1, 2, 3
+    channel: text("channel").notNull(), // email | manual
+    sentTo: text("sent_to"),
+    sentBy: uuid("sent_by").references(() => users.id, { onDelete: "set null" }),
+    sentAt: timestamp("sent_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("invoice_reminders_level_idx").on(t.invoiceId, t.level)],
+);
+
+export type InvoiceReminder = typeof invoiceReminders.$inferSelect;

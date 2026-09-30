@@ -664,7 +664,9 @@
           "quote": "Guten Tag\n\nIm Anhang finden Sie unsere Offerte {number} über {currency} {amount}, gültig bis {due}.\n\nFreundliche Grüsse\n{company}",
           "credit_note": "Guten Tag\n\nIm Anhang finden Sie unsere Gutschrift {number} über {currency} {amount}.\n\nFreundliche Grüsse\n{company}"
         }
-      }
+      },
+      "remindersLink": "Mahnungen",
+      "reminderLine": "{level, select, 1 {1. Mahnung} 2 {2. Mahnung} other {Letzte Mahnung}} am {date} ({channel, select, email {E-Mail} other {Post}})"
     },
     "quotes": {
       "title": "Offerten",
@@ -936,6 +938,34 @@
       "validate": "Abrechnung bestätigen",
       "semester": "H{q} {year}",
       "tax": "Steuer"
+    },
+    "reminders": {
+      "title": "Mahnungen",
+      "back": "Alle Rechnungen",
+      "subtitle": "Überfällige Rechnungen, deren nächste Mahnstufe fällig ist (10, 25 und 40 Tage nach Fälligkeit). Die E-Mail geht in der Sprache der Rechnung, mit dem PDF und seinem QR-Einzahlungsschein.",
+      "sendAll": "Alle Mahnungen per E-Mail senden",
+      "sentCount": "{count, plural, =0 {Keine Mahnung gesendet.} one {# Mahnung gesendet.} other {# Mahnungen gesendet.}}",
+      "results": {
+        "sent": "Mahnung gesendet.",
+        "recorded": "Mahnung als gesendet vermerkt.",
+        "notDue": "Diese Mahnung ist nicht mehr fällig.",
+        "noEmail": "Keine E-Mail-Adresse für diesen Kunden, oder Versand nicht eingerichtet.",
+        "failed": "Der Versand ist fehlgeschlagen. Versuchen Sie es später erneut."
+      },
+      "empty": "Heute sind keine Mahnungen fällig.",
+      "line": "{level, select, 1 {1. Mahnung} 2 {2. Mahnung} other {Letzte Mahnung}} · {days} Tage überfällig · fällig seit {due}",
+      "noEmail": "keine E-Mail",
+      "send": "Senden",
+      "markManual": "Als gesendet vermerken (Post)",
+      "email": {
+        "link": "Online ansehen:",
+        "subject1": "Zahlungserinnerung: Rechnung {number} von {company}",
+        "subject2": "2. Mahnung: Rechnung {number} von {company}",
+        "subject3": "Letzte Mahnung: Rechnung {number} von {company}",
+        "body1": "Guten Tag\n\nGemäss unserer Buchhaltung ist unsere Rechnung {number}, fällig am {due}, noch offen. Der offene Betrag beträgt {currency} {amount}.\n\nFalls die Zahlung bereits unterwegs ist, betrachten Sie diese Nachricht bitte als gegenstandslos.\n\nFreundliche Grüsse\n{company}",
+        "body2": "Guten Tag\n\nTrotz unserer Zahlungserinnerung ist unsere Rechnung {number}, fällig am {due}, weiterhin offen. Wir bitten Sie, den offenen Betrag von {currency} {amount} innert 10 Tagen zu begleichen.\n\nFreundliche Grüsse\n{company}",
+        "body3": "Guten Tag\n\nUnsere Rechnung {number}, fällig am {due}, ist trotz unserer Mahnungen noch offen. Bitte begleichen Sie den offenen Betrag von {currency} {amount} innert 10 Tagen. Andernfalls sehen wir uns gezwungen, weitere Schritte einzuleiten.\n\nFreundliche Grüsse\n{company}"
+      }
     }
   },
   "footer": {

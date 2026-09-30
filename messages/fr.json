@@ -664,7 +664,9 @@
           "quote": "Bonjour,\n\nVous trouverez ci-joint notre devis {number} d'un montant de {currency} {amount}, valable jusqu'au {due}.\n\nMeilleures salutations\n{company}",
           "credit_note": "Bonjour,\n\nVous trouverez ci-joint notre avoir {number} d'un montant de {currency} {amount}.\n\nMeilleures salutations\n{company}"
         }
-      }
+      },
+      "remindersLink": "Relances",
+      "reminderLine": "{level, select, 1 {1re relance} 2 {2e relance} other {Dernière relance}} le {date} ({channel, select, email {e-mail} other {courrier}})"
     },
     "quotes": {
       "title": "Devis",
@@ -936,6 +938,34 @@
       "validate": "Valider le décompte",
       "semester": "S{q} {year}",
       "tax": "Impôt"
+    },
+    "reminders": {
+      "title": "Relances",
+      "back": "Toutes les factures",
+      "subtitle": "Factures échues dont la relance suivante est due (10, 25 puis 40 jours après l'échéance). L'e-mail part dans la langue de la facture, avec le PDF et sa QR-facture.",
+      "sendAll": "Envoyer toutes les relances par e-mail",
+      "sentCount": "{count, plural, =0 {Aucune relance envoyée.} one {# relance envoyée.} other {# relances envoyées.}}",
+      "results": {
+        "sent": "Relance envoyée.",
+        "recorded": "Relance notée comme envoyée.",
+        "notDue": "Cette relance n'est plus due.",
+        "noEmail": "Pas d'adresse e-mail pour ce client, ou envoi non configuré.",
+        "failed": "L'envoi a échoué. Réessayez plus tard."
+      },
+      "empty": "Aucune relance à faire aujourd'hui.",
+      "line": "{level, select, 1 {1re relance} 2 {2e relance} other {Dernière relance}} · {days} jours de retard · échue le {due}",
+      "noEmail": "pas d'e-mail",
+      "send": "Envoyer",
+      "markManual": "Noter comme envoyée (courrier)",
+      "email": {
+        "link": "Consulter en ligne :",
+        "subject1": "Rappel : facture {number} de {company}",
+        "subject2": "2e rappel : facture {number} de {company}",
+        "subject3": "Dernier rappel : facture {number} de {company}",
+        "body1": "Bonjour,\n\nSauf erreur de notre part, notre facture {number} échue le {due} n'a pas encore été réglée. Le montant ouvert est de {currency} {amount}.\n\nSi le paiement est en cours, merci de ne pas tenir compte de ce message.\n\nMeilleures salutations\n{company}",
+        "body2": "Bonjour,\n\nMalgré notre premier rappel, notre facture {number} échue le {due} reste impayée. Nous vous prions de régler le montant ouvert de {currency} {amount} dans les 10 jours.\n\nMeilleures salutations\n{company}",
+        "body3": "Bonjour,\n\nNotre facture {number} échue le {due} est toujours impayée malgré nos rappels. Nous vous prions de régler le montant ouvert de {currency} {amount} sous 10 jours. Sans paiement, nous serons contraints d'engager d'autres démarches.\n\nMeilleures salutations\n{company}"
+      }
     }
   },
   "footer": {
