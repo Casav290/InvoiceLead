@@ -27,6 +27,8 @@ export type InvoicePdfLabels = {
   units: Record<string, string>;
   /** Avoir : « Concerne la facture 2026-0001 ». */
   relatedLine?: string;
+  /** Formule gratuite : « Créé avec InvoiceLead ». */
+  poweredBy?: string;
 };
 
 const mm = (v: number) => (v * 72) / 25.4;
@@ -274,6 +276,11 @@ export function renderInvoicePdf(
     if (invoice.paymentReference)
       doc.text(labels.referenceLine(formatReference(invoice.paymentReference)));
     doc.fillColor(INK);
+  }
+
+  if (labels.poweredBy) {
+    doc.moveDown(1).fontSize(7).fillColor(MUTED).text(labels.poweredBy, LEFT, doc.y);
+    doc.fillColor(INK).fontSize(9);
   }
 
   // Section paiement QR, au bas de la dernière page ou sur une page A4 à elle.

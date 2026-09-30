@@ -1,7 +1,10 @@
 import "server-only";
+import { eq } from "drizzle-orm";
 import { getTranslations } from "next-intl/server";
-import type { Invoice, InvoiceLine } from "./db/schema";
+import { db } from "./db";
+import { type Invoice, type InvoiceLine, organizations } from "./db/schema";
 import { renderInvoicePdf } from "./invoice-pdf";
+import { LIMITS, tierOf } from "./plans";
 
 export const kindNamespace = (kind: string) =>
   kind === "quote" ? "app.quotes" : kind === "credit_note" ? "app.creditNotes" : "app.invoices";
@@ -19,6 +22,11 @@ export async function buildDocumentPdf(
   const units = Object.fromEntries(
     ["hour", "day", "piece", "flat", "km", "month"].map((u) => [u, tu(u)]),
   );
+  const [org] = await db()
+    .select({ leadPlan: organizations.leadPlan, entitlements: organizations.entitlements })
+    .from(organizations)
+    .where(eq(organizations.id, invoice.organizationId));
+  const poweredBy = org && LIMITS[tierOf(org)].poweredBy ? t("poweredBy") : undefined;
   const pdf = await renderInvoicePdf(invoice, lines, {
     invoice: tk("docTitle"),
     issueDate: t("issueDate"),
@@ -36,6 +44,7 @@ export async function buildDocumentPdf(
     referenceLine: (reference) => t("referenceLine", { reference }),
     units,
     relatedLine: related?.number ? t("relatedLine", { number: related.number }) : undefined,
+    poweredBy,
   });
   const safe = (invoice.number ?? "").replace(/[^0-9A-Za-z-]/g, "");
   return { pdf, filename: `${tk("docTitle")}-${safe}.pdf` };

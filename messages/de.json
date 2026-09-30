@@ -587,7 +587,8 @@
         "total": "Total",
         "payTo": "Zahlbar auf das Konto {iban}.",
         "referenceLine": "Referenz: {reference}",
-        "relatedLine": "Betrifft Rechnung {number}"
+        "relatedLine": "Betrifft Rechnung {number}",
+        "poweredBy": "Erstellt mit InvoiceLead · invoicelead.io"
       },
       "docTitle": "Rechnung",
       "docDue": "Zahlbar bis",
