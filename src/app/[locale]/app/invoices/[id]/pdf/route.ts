@@ -16,14 +16,20 @@ export async function GET(
   const { organization } = await requireAppSession(locale);
   const found = await getInvoice(db(), organization.id, id);
   // La même route sert les devis (/quotes/…/pdf) : le type demandé doit correspondre à la pièce.
-  const kind = new URL(request.url).pathname.includes("/app/quotes/") ? "quote" : "invoice";
+  const path = new URL(request.url).pathname;
+  const kind = path.includes("/app/quotes/")
+    ? "quote"
+    : path.includes("/app/credit-notes/")
+      ? "credit_note"
+      : "invoice";
   if (!found || found.invoice.kind !== kind || found.invoice.status === "draft") notFound();
-  const { invoice, lines } = found;
+  const { invoice, lines, related } = found;
   const lang = invoice.language;
   const t = await getTranslations({ locale: lang, namespace: "app.invoices.document" });
   const tk = await getTranslations({
     locale: lang,
-    namespace: kind === "quote" ? "app.quotes" : "app.invoices",
+    namespace:
+      kind === "quote" ? "app.quotes" : kind === "credit_note" ? "app.creditNotes" : "app.invoices",
   });
   const tu = await getTranslations({ locale: lang, namespace: "app.invoices.units" });
   const units = Object.fromEntries(
@@ -45,6 +51,7 @@ export async function GET(
     payTo: (iban) => t("payTo", { iban }),
     referenceLine: (reference) => t("referenceLine", { reference }),
     units,
+    relatedLine: related?.number ? t("relatedLine", { number: related.number }) : undefined,
   });
   const filename = `${tk("docTitle")}-${invoice.number}.pdf`;
   return new Response(new Uint8Array(pdf), {

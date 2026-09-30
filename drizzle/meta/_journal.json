@@ -64,6 +64,13 @@
       "when": 1790754925586,
       "tag": "0008_quotes",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1790756316376,
+      "tag": "0009_credit_notes_payments",
+      "breakpoints": true
     }
   ]
 }

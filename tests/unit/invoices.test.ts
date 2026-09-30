@@ -6,6 +6,7 @@ import { createContact, parseContactForm } from "@/server/contacts";
 import { organizations } from "@/server/db/schema";
 import {
   convertQuoteToInvoice,
+  createCreditNote,
   createInvoice,
   deleteDraft,
   getInvoice,
@@ -15,6 +16,13 @@ import {
   setQuoteOutcome,
   updateInvoice,
 } from "@/server/invoices";
+import {
+  addPayment,
+  deletePayment,
+  invoiceBalance,
+  listPayments,
+  paymentState,
+} from "@/server/payments";
 import { claims } from "../support/claims";
 import { testDb } from "../support/db";
 
@@ -260,5 +268,105 @@ describe("devis", () => {
     expect(await issueInvoice(db, who, invoice.id)).toMatchObject({ number: "2026-0001" });
     expect(await listInvoices(db, a.organization.id, "quote")).toHaveLength(1);
     expect(await listInvoices(db, a.organization.id, "invoice")).toHaveLength(1);
+  });
+});
+
+describe("paiements et avoirs", () => {
+  it("soldent une facture par paiements partiels et avoir, sans jamais la dépasser", async () => {
+    const { a, who, contact } = await setup();
+    const r = parseInvoiceForm(
+      form({ contactId: contact.id, language: "de", issueDate: "2026-03-01", ...lines }),
+      { vatRegistered: true },
+    );
+    if (!r.ok) throw new Error(JSON.stringify(r.errors));
+    const draft = await createInvoice(db, who, r.data);
+    if (typeof draft !== "object" || !draft) throw new Error("brouillon");
+    const pay = (amountCents: number) =>
+      addPayment(db, who, draft.id, {
+        paidOn: "2026-03-10",
+        amountCents,
+        method: "bank",
+        note: null,
+      });
+    expect(await pay(100)).toBe("notFound");
+    await issueInvoice(db, who, draft.id);
+    // 415.00 + 8.1 % = 448.62
+    const total = 44_862;
+
+    const p1 = await pay(20_000);
+    if (typeof p1 !== "object") throw new Error(p1);
+    expect(await pay(total)).toBe("tooHigh");
+    let b = await invoiceBalance(db, draft.id, total);
+    expect(b).toEqual({
+      totalCents: total,
+      creditedCents: 0,
+      paidCents: 20_000,
+      openCents: 24_862,
+    });
+    expect(paymentState(b, "2026-03-31", "2026-03-15")).toBe("partial");
+    expect(paymentState(b, "2026-03-31", "2026-04-01")).toBe("overdue");
+
+    // Avoir partiel : on garde seulement la ligne de frais (40.00 + TVA = 43.24).
+    const credit = await createCreditNote(db, who, draft.id, "2026-03-20");
+    if (typeof credit !== "object") throw new Error(credit);
+    expect(credit).toMatchObject({
+      kind: "credit_note",
+      relatedInvoiceId: draft.id,
+      totalCents: total,
+    });
+    const partial = parseInvoiceForm(
+      form({
+        contactId: contact.id,
+        language: "de",
+        issueDate: "2026-03-20",
+        serviceDate: "2026-03-01",
+        "line.description": ["Spesen"],
+        "line.quantity": ["1"],
+        "line.unit": ["flat"],
+        "line.unitPrice": ["40"],
+        "line.vatCode": ["normal"],
+        "line.productId": [""],
+      }),
+      { vatRegistered: true },
+    );
+    if (!partial.ok) throw new Error("avoir");
+    expect(await updateInvoice(db, who, credit.id, partial.data, "credit_note")).toMatchObject({
+      totalCents: 4324,
+    });
+    expect(await issueInvoice(db, who, credit.id)).toMatchObject({ number: "G-2026-0001" });
+    b = await invoiceBalance(db, draft.id, total);
+    expect(b.openCents).toBe(24_862 - 4324);
+
+    // Un second avoir complet dépasserait le reste à créditer.
+    const tooMuch = await createCreditNote(db, who, draft.id, "2026-03-21");
+    if (typeof tooMuch !== "object") throw new Error(tooMuch);
+    expect(await issueInvoice(db, who, tooMuch.id)).toBe("creditTooHigh");
+    expect(await deleteDraft(db, who, tooMuch.id)).toBe(true);
+
+    expect(typeof (await pay(24_862 - 4324))).toBe("object");
+    b = await invoiceBalance(db, draft.id, total);
+    expect(paymentState(b, "2026-03-31", "2026-05-01")).toBe("paid");
+    expect((await listInvoices(db, a.organization.id))[0]).toMatchObject({
+      paidCents: 20_000 + 24_862 - 4324,
+      creditedCents: 4324,
+    });
+
+    const b2 = await attachLeadIdentity(
+      db,
+      claims({ sub: "sub-b", email: "b@autre.test", org: "org-b" }),
+    );
+    const whoB = { organizationId: b2.organization.id, userId: b2.user.id };
+    expect(await deletePayment(db, whoB, p1.id)).toBe(false);
+    expect(
+      await addPayment(db, whoB, draft.id, {
+        paidOn: "2026-03-10",
+        amountCents: 1,
+        method: "bank",
+        note: null,
+      }),
+    ).toBe("notFound");
+    expect(await createCreditNote(db, whoB, draft.id, "2026-03-20")).toBe("notFound");
+    expect(await deletePayment(db, who, p1.id)).toBe(true);
+    expect(await listPayments(db, a.organization.id, draft.id)).toHaveLength(1);
   });
 });

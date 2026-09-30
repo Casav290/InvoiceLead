@@ -53,4 +53,34 @@ test("facture : brouillon avec article et ligne libre, émission avec numéro, f
 
   await page.getByRole("link", { name: "Toutes les factures" }).click();
   await expect(page.getByRole("row", { name: new RegExp(`${year}-0001`) })).toContainText("445.88");
+
+  // Paiement partiel, puis avoir sur le solde.
+  await page.getByRole("link", { name: `${year}-0001` }).click();
+  await expect(page.getByTestId("payment-state")).toHaveText("Ouverte");
+  const pay = page.getByTestId("payment-form");
+  await expect(pay.getByLabel("Montant (CHF)")).toHaveValue("445.88");
+  await pay.getByLabel("Montant (CHF)").fill("500");
+  await page.getByTestId("payment-save").click();
+  await expect(page.getByText("Le montant dépasse le solde ouvert.")).toBeVisible();
+  await page.getByTestId("payment-form").getByLabel("Montant (CHF)").fill("400");
+  await page.getByTestId("payment-save").click();
+  await expect(page.getByText("Paiement enregistré.")).toBeVisible();
+  await expect(page.getByTestId("payment-state")).toHaveText("Payée en partie");
+  await expect(page.getByTestId("balance-openCents")).toHaveText("45.88");
+
+  await page.getByTestId("credit-note-create").click();
+  await expect(page).toHaveURL(/\/fr\/app\/credit-notes\/[0-9a-f-]+\?saved=1$/);
+  await page.getByTestId("invoice-line-remove-0").click();
+  await page.getByTestId("invoice-line-0").getByLabel("Prix unitaire HT").fill("45,88");
+  await page.getByTestId("invoice-save").click();
+  await page.getByTestId("document-issue").click();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(`Avoir G-${year}-0001`);
+  await expect(page.getByTestId("invoice-document")).toContainText(
+    `Concerne la facture ${year}-0001`,
+  );
+
+  await page.getByRole("link", { name: `Facture concernée : ${year}-0001` }).click();
+  await expect(page.getByTestId("payment-state")).toHaveText("Payée");
+  await expect(page.getByTestId("balance-openCents")).toHaveText("0.00");
+  await expect(page.getByTestId("payment-form")).toHaveCount(0);
 });

@@ -21,7 +21,7 @@ import {
 import { PRODUCT_UNITS } from "./products";
 
 type Who = { organizationId: string; userId: string };
-export const DOCUMENT_KINDS = ["invoice", "quote"] as const;
+export const DOCUMENT_KINDS = ["invoice", "quote", "credit_note"] as const;
 export type DocumentKind = (typeof DOCUMENT_KINDS)[number];
 /** Durée de validité proposée pour un devis sans date saisie. */
 export const QUOTE_VALIDITY_DAYS = 30;
@@ -198,8 +198,16 @@ async function writeInvoice(
   data: InvoiceInput,
   id: string | null,
   kind: DocumentKind,
-  sourceQuoteId: string | null = null,
+  links: { sourceQuoteId?: string; relatedInvoiceId?: string } = {},
 ): Promise<SaveResult> {
+  if (kind === "credit_note" && id) {
+    // Un avoir reste au nom du client de sa facture, quoi que dise le formulaire.
+    const [current] = await database
+      .select({ contactId: invoices.contactId })
+      .from(invoices)
+      .where(and(eq(invoices.id, id), eq(invoices.organizationId, who.organizationId)));
+    if (current) data = { ...data, contactId: current.contactId };
+  }
   const contact = await customerOf(database, who.organizationId, data.contactId);
   if (!contact) return "contact";
   const vatRegistered = await vatRegisteredOf(database, who.organizationId);
@@ -213,8 +221,13 @@ async function writeInvoice(
     issueDate: data.issueDate,
     serviceDate: data.serviceDate,
     dueDate:
-      data.dueDate ??
-      addDays(data.issueDate, kind === "quote" ? QUOTE_VALIDITY_DAYS : contact.paymentTermDays),
+      kind === "credit_note"
+        ? data.issueDate
+        : (data.dueDate ??
+          addDays(
+            data.issueDate,
+            kind === "quote" ? QUOTE_VALIDITY_DAYS : contact.paymentTermDays,
+          )),
     vatRegistered,
     netCents: totals.netCents,
     vatCents: totals.vatCents,
@@ -244,7 +257,8 @@ async function writeInvoice(
         .values({
           ...values,
           kind,
-          sourceQuoteId,
+          sourceQuoteId: links.sourceQuoteId ?? null,
+          relatedInvoiceId: links.relatedInvoiceId ?? null,
           organizationId: who.organizationId,
           createdBy: who.userId,
         })
@@ -303,7 +317,12 @@ export async function getInvoice(
   database: Db,
   organizationId: string,
   id: string,
-): Promise<{ invoice: Invoice; lines: InvoiceLine[]; contact: Contact } | null> {
+): Promise<{
+  invoice: Invoice;
+  lines: InvoiceLine[];
+  contact: Contact;
+  related: { id: string; number: string | null } | null;
+} | null> {
   if (!UUID.test(id)) return null;
   const [row] = await database
     .select({ invoice: invoices, contact: contacts })
@@ -317,13 +336,26 @@ export async function getInvoice(
     .from(invoiceLines)
     .where(eq(invoiceLines.invoiceId, id))
     .orderBy(asc(invoiceLines.position));
-  return { ...row, lines };
+  let related: { id: string; number: string | null } | null = null;
+  if (row.invoice.relatedInvoiceId) {
+    const [r] = await database
+      .select({ id: invoices.id, number: invoices.number })
+      .from(invoices)
+      .where(
+        and(
+          eq(invoices.id, row.invoice.relatedInvoiceId),
+          eq(invoices.organizationId, organizationId),
+        ),
+      );
+    related = r ?? null;
+  }
+  return { ...row, lines, related };
 }
 
 export type InvoiceRow = Pick<
   Invoice,
   "id" | "number" | "status" | "issueDate" | "dueDate" | "totalCents" | "currency"
-> & { contactName: string };
+> & { contactName: string; paidCents: number; creditedCents: number };
 
 export async function listInvoices(
   database: Db,
@@ -340,6 +372,14 @@ export async function listInvoices(
       totalCents: invoices.totalCents,
       currency: invoices.currency,
       contactName: contacts.name,
+      paidCents:
+        sql<number>`coalesce((select sum(p.amount_cents) from invoice_payments p where p.invoice_id = ${invoices.id}), 0)::bigint`.mapWith(
+          Number,
+        ),
+      creditedCents:
+        sql<number>`coalesce((select sum(c.total_cents) from invoices c where c.related_invoice_id = ${invoices.id} and c.kind = 'credit_note' and c.status = 'issued'), 0)::bigint`.mapWith(
+          Number,
+        ),
     })
     .from(invoices)
     .innerJoin(contacts, eq(contacts.id, invoices.contactId))
@@ -372,14 +412,22 @@ export async function deleteDraft(database: Db, who: Who, id: string): Promise<b
 }
 
 /**
- * « 2026-0001 » pour une facture, « O-2026-0001 » pour un devis (Offerte, offre) : année de la date
+ * « 2026-0001 » pour une facture, « O-2026-0001 » pour un devis (Offerte, offre), « G-2026-0001 »
+ * pour un avoir (Gutschrift) : année de la date
  * de la pièce, compteur sans trou par année et par type.
  */
 export function formatInvoiceNumber(year: number, value: number, kind: DocumentKind = "invoice") {
-  return `${kind === "quote" ? "O-" : ""}${year}-${String(value).padStart(4, "0")}`;
+  const prefix = kind === "quote" ? "O-" : kind === "credit_note" ? "G-" : "";
+  return `${prefix}${year}-${String(value).padStart(4, "0")}`;
 }
 
-export type IssueResult = Invoice | "notFound" | "notDraft" | "companyIncomplete" | "vatChanged";
+export type IssueResult =
+  | Invoice
+  | "notFound"
+  | "notDraft"
+  | "companyIncomplete"
+  | "vatChanged"
+  | "creditTooHigh";
 
 /**
  * Émet un brouillon : numéro définitif, expéditeur et destinataire figés. Le numéro est pris dans la
@@ -405,6 +453,21 @@ export async function issueInvoice(database: Db, who: Who, id: string): Promise<
     if (org.vatRegistered !== row.invoice.vatRegistered) return "vatChanged";
 
     const kind = row.invoice.kind as DocumentKind;
+    if (kind === "credit_note") {
+      // L'avoir ne peut dépasser ce qui reste à créditer sur sa facture, ni changer de client.
+      const relatedId = row.invoice.relatedInvoiceId;
+      if (!relatedId) return "notFound";
+      const [target] = await tx
+        .select()
+        .from(invoices)
+        .where(and(eq(invoices.id, relatedId), eq(invoices.organizationId, who.organizationId)))
+        .for("update");
+      if (target?.status !== "issued" || target.contactId !== row.invoice.contactId)
+        return "notFound";
+      const credited = await creditedCents(tx as unknown as Db, relatedId);
+      if (row.invoice.totalCents <= 0 || credited + row.invoice.totalCents > target.totalCents)
+        return "creditTooHigh";
+    }
     const year = Number(row.invoice.issueDate.slice(0, 4));
     const [seq] = await tx
       .insert(numberSequences)
@@ -552,7 +615,7 @@ export async function convertQuoteToInvoice(
         },
         null,
         "invoice",
-        quoteId,
+        { sourceQuoteId: quoteId },
       );
       if (result === "contact") {
         // Client archivé entre-temps : on annule le passage à « facturé ».
@@ -573,4 +636,63 @@ export async function convertQuoteToInvoice(
       if (e instanceof Error && /rollback/i.test(e.message)) return "contact" as const;
       throw e;
     });
+}
+
+/** Somme des avoirs émis sur une facture. */
+export async function creditedCents(database: Db, invoiceId: string): Promise<number> {
+  const [row] = await database
+    .select({ sum: sql<string | null>`sum(${invoices.totalCents})` })
+    .from(invoices)
+    .where(
+      and(
+        eq(invoices.relatedInvoiceId, invoiceId),
+        eq(invoices.kind, "credit_note"),
+        eq(invoices.status, "issued"),
+      ),
+    );
+  return Number(row?.sum ?? 0);
+}
+
+/**
+ * Prépare un avoir sur une facture émise : brouillon reprenant toutes ses lignes (annulation
+ * complète), à réduire pour un avoir partiel. La date de prestation reste celle de la facture, pour
+ * que la TVA corrigée soit celle qui a été facturée.
+ */
+export async function createCreditNote(
+  database: Db,
+  who: Who,
+  invoiceId: string,
+  today: string,
+): Promise<Invoice | "notFound" | "contact"> {
+  const found = await getInvoice(database, who.organizationId, invoiceId);
+  if (found?.invoice.kind !== "invoice" || found.invoice.status !== "issued") return "notFound";
+  const { invoice, lines } = found;
+  const result = await writeInvoice(
+    database,
+    who,
+    {
+      contactId: invoice.contactId,
+      language: invoice.language as InvoiceInput["language"],
+      title: null,
+      introText: null,
+      footerText: null,
+      issueDate: today < invoice.issueDate ? invoice.issueDate : today,
+      serviceDate: invoice.serviceDate,
+      dueDate: null,
+      lines: lines.map((l) => ({
+        productId: l.productId,
+        description: l.description,
+        quantityMilli: l.quantityMilli,
+        unit: l.unit as InvoiceLineInput["unit"],
+        unitPriceCents: l.unitPriceCents,
+        vatCode: (l.vatCode as VatCode | null) ?? "normal",
+      })),
+    },
+    null,
+    "credit_note",
+    { relatedInvoiceId: invoice.id },
+  );
+  if (result === "contact") return "contact";
+  if (typeof result !== "object" || !result) throw new Error("credit_note_failed");
+  return result;
 }

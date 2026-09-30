@@ -7,6 +7,7 @@ import { pickLocale } from "@/server/auth/login-cookie";
 import { db } from "@/server/db";
 import {
   convertQuoteToInvoice,
+  createCreditNote,
   createInvoice,
   type DocumentKind,
   deleteDraft,
@@ -17,10 +18,14 @@ import {
   setQuoteOutcome,
   updateInvoice,
 } from "@/server/invoices";
+import { addPayment, deletePayment, parsePaymentForm } from "@/server/payments";
 
-const kindOf = (form: FormData): DocumentKind =>
-  form.get("kind") === "quote" ? "quote" : "invoice";
-const section = (kind: DocumentKind) => (kind === "quote" ? "quotes" : "invoices");
+const kindOf = (form: FormData): DocumentKind => {
+  const k = form.get("kind");
+  return k === "quote" || k === "credit_note" ? k : "invoice";
+};
+const section = (kind: DocumentKind) =>
+  kind === "quote" ? "quotes" : kind === "credit_note" ? "credit-notes" : "invoices";
 
 export type InvoiceFormState = {
   status: "idle" | "invalid" | "notFound";
@@ -118,4 +123,64 @@ export async function convertQuoteAction(form: FormData) {
   revalidatePath(`/${locale}/app/invoices`);
   if (typeof result === "string") redirect(`/${locale}/app/quotes/${id}?error=${result}`);
   redirect(`/${locale}/app/invoices/${result.id}?converted=1`);
+}
+
+export async function createCreditNoteAction(form: FormData) {
+  const locale = pickLocale(form.get("locale"));
+  const session = await requireAppSession(locale);
+  const id = String(form.get("id") ?? "");
+  const result = await createCreditNote(
+    db(),
+    { organizationId: session.organization.id, userId: session.user.id },
+    id,
+    new Date().toISOString().slice(0, 10),
+  );
+  if (typeof result === "string") redirect(`/${locale}/app/invoices/${id}?error=${result}`);
+  revalidatePath(`/${locale}/app/credit-notes`);
+  redirect(`/${locale}/app/credit-notes/${result.id}?saved=1`);
+}
+
+export type PaymentFormState = {
+  status: "idle" | "invalid" | "tooHigh";
+  errors?: Record<string, string>;
+  values?: Record<string, string>;
+  round: number;
+};
+
+export async function addPaymentAction(
+  prev: PaymentFormState,
+  form: FormData,
+): Promise<PaymentFormState> {
+  const locale = pickLocale(form.get("locale"));
+  const session = await requireAppSession(locale);
+  const id = String(form.get("id") ?? "");
+  const values = Object.fromEntries(
+    [...form.entries()].filter(([k]) => !k.startsWith("$")).map(([k, v]) => [k, String(v)]),
+  );
+  const round = prev.round + 1;
+  const parsed = parsePaymentForm(form);
+  if (!parsed.ok) return { status: "invalid", errors: parsed.errors, values, round };
+  const result = await addPayment(
+    db(),
+    { organizationId: session.organization.id, userId: session.user.id },
+    id,
+    parsed.data,
+  );
+  if (result === "tooHigh") return { status: "tooHigh", values, round };
+  if (result === "notFound") return { status: "invalid", values, round };
+  revalidatePath(`/${locale}/app/invoices`);
+  redirect(`/${locale}/app/invoices/${id}?paid=1`);
+}
+
+export async function deletePaymentAction(form: FormData) {
+  const locale = pickLocale(form.get("locale"));
+  const session = await requireAppSession(locale);
+  const id = String(form.get("id") ?? "");
+  await deletePayment(
+    db(),
+    { organizationId: session.organization.id, userId: session.user.id },
+    String(form.get("paymentId") ?? ""),
+  );
+  revalidatePath(`/${locale}/app/invoices`);
+  redirect(`/${locale}/app/invoices/${id}`);
 }

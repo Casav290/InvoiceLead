@@ -475,7 +475,8 @@
         "notDraft": "Diese Rechnung ist bereits ausgestellt.",
         "notFound": "Rechnung nicht gefunden.",
         "notConvertible": "Diese Offerte kann nicht mehr in eine Rechnung umgewandelt werden.",
-        "contact": "Der Kunde dieser Offerte wurde archiviert."
+        "contact": "Der Kunde dieser Offerte wurde archiviert.",
+        "creditTooHigh": "Die Gutschrift übersteigt den noch gutschreibbaren Betrag der Rechnung."
       },
       "addLine": "Position hinzufügen",
       "removeLine": "Entfernen",
@@ -561,7 +562,8 @@
         "vatLine": "MWST {rate} auf {base}",
         "total": "Total",
         "payTo": "Zahlbar auf das Konto {iban}.",
-        "referenceLine": "Referenz: {reference}"
+        "referenceLine": "Referenz: {reference}",
+        "relatedLine": "Betrifft Rechnung {number}"
       },
       "docTitle": "Rechnung",
       "docDue": "Zahlbar bis",
@@ -569,7 +571,43 @@
       "dueHint": "Leer: gemäss Zahlungsfrist des Kunden.",
       "converted": "Rechnungsentwurf aus der Offerte erstellt. Prüfen Sie ihn und stellen Sie ihn aus.",
       "fromQuote": "Ursprüngliche Offerte anzeigen",
-      "download": "PDF herunterladen"
+      "download": "PDF herunterladen",
+      "creditNotesLink": "Gutschriften",
+      "createCreditNote": "Gutschrift erstellen",
+      "relatedInvoice": "Betroffene Rechnung: {number}",
+      "payments": {
+        "title": "Zahlungen",
+        "saved": "Zahlung erfasst.",
+        "totalCents": "Total",
+        "creditedCents": "Gutschriften",
+        "paidCents": "Bezahlt",
+        "openCents": "Offener Betrag",
+        "date": "Zahlungsdatum",
+        "amount": "Betrag (CHF)",
+        "method": "Zahlungsart",
+        "note": "Bemerkung",
+        "add": "Zahlung erfassen",
+        "delete": "Löschen",
+        "tooHigh": "Der Betrag übersteigt den offenen Betrag.",
+        "methods": {
+          "bank": "Überweisung",
+          "cash": "Bar",
+          "other": "Andere"
+        },
+        "states": {
+          "open": "Offen",
+          "partial": "Teilweise bezahlt",
+          "paid": "Bezahlt",
+          "overdue": "Überfällig",
+          "credited": "Durch Gutschrift storniert"
+        },
+        "errors": {
+          "date": "Ungültiges Datum.",
+          "amount": "Ungültiger Betrag.",
+          "required": "Pflichtfeld.",
+          "tooLong": "Text zu lang."
+        }
+      }
     },
     "quotes": {
       "title": "Offerten",
@@ -600,6 +638,30 @@
       "docDue": "Gültig bis",
       "dueLabel": "Gültig bis",
       "dueHint": "Leer: 30 Tage nach dem Offertdatum."
+    },
+    "creditNotes": {
+      "title": "Gutschriften",
+      "new": "Neue Gutschrift",
+      "edit": "Gutschrift",
+      "back": "Alle Gutschriften",
+      "draftTitle": "Gutschriftentwurf",
+      "issuedTitle": "Gutschrift {number}",
+      "status": {
+        "draft": "Entwurf",
+        "issued": "Ausgestellt"
+      },
+      "saved": "Gutschriftentwurf gespeichert. Kürzen Sie die Positionen für eine Teilgutschrift.",
+      "issued": "Gutschrift ausgestellt. Sie reduziert den offenen Betrag der Rechnung.",
+      "deleted": "Entwurf gelöscht.",
+      "empty": "Noch keine Gutschriften. Eine Gutschrift wird aus einer ausgestellten Rechnung erstellt.",
+      "issue": "Gutschrift ausstellen",
+      "issueHint": "Beim Ausstellen erhält die Gutschrift die nächste Nummer und wird unveränderlich.",
+      "deleteDraft": "Diesen Entwurf löschen",
+      "converted": "",
+      "docTitle": "Gutschrift",
+      "docDue": "Datum",
+      "dueLabel": "Datum",
+      "dueHint": ""
     }
   },
   "footer": {

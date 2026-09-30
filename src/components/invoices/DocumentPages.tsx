@@ -3,12 +3,15 @@ import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import {
   convertQuoteAction,
+  createCreditNoteAction,
   deleteDraftAction,
+  deletePaymentAction,
   issueInvoiceAction,
   quoteOutcomeAction,
 } from "@/app/[locale]/app/invoices/actions";
 import { InvoiceDocument } from "@/components/invoices/InvoiceDocument";
 import { InvoiceForm } from "@/components/invoices/InvoiceForm";
+import { PaymentForm } from "@/components/invoices/PaymentForm";
 import { Button } from "@/components/ui/button";
 import { Link } from "@/i18n/navigation";
 import { formatDate } from "@/lib/fiscal-year";
@@ -18,14 +21,17 @@ import { requireAppSession } from "@/server/auth/guard";
 import { db } from "@/server/db";
 import { invoiceOptions } from "@/server/invoice-options";
 import { type DocumentKind, getInvoice, listInvoices } from "@/server/invoices";
+import { invoiceBalance, listPayments, paymentState } from "@/server/payments";
 
 /**
  * Pages partagées des factures et des devis : même liste, même formulaire, même aperçu. Seuls les
  * libellés (espace `app.invoices` ou `app.quotes`) et les actions propres au devis changent.
  */
 
-const namespaceOf = (kind: DocumentKind) => (kind === "quote" ? "app.quotes" : "app.invoices");
-const sectionOf = (kind: DocumentKind) => (kind === "quote" ? "quotes" : "invoices");
+const namespaceOf = (kind: DocumentKind) =>
+  kind === "quote" ? "app.quotes" : kind === "credit_note" ? "app.creditNotes" : "app.invoices";
+const sectionOf = (kind: DocumentKind) =>
+  kind === "quote" ? "quotes" : kind === "credit_note" ? "credit-notes" : "invoices";
 const ERRORS = [
   "companyIncomplete",
   "vatChanged",
@@ -33,6 +39,7 @@ const ERRORS = [
   "notFound",
   "notConvertible",
   "contact",
+  "creditTooHigh",
 ];
 
 export async function documentMetadata(
@@ -58,15 +65,28 @@ export async function DocumentListPage({
   const tk = await getTranslations({ locale, namespace: namespaceOf(kind) });
   const rows = await listInvoices(db(), organization.id, kind);
   const section = sectionOf(kind);
+  const today = new Date().toISOString().slice(0, 10);
   return (
     <div className="mx-auto max-w-5xl px-4 py-10 sm:px-8">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <h1 className="text-[28px] leading-tight">{tk("title")}</h1>
-        <Button asChild>
-          <Link href={`/app/${section}/new`} data-testid={`${kind}-new`}>
-            {tk("new")}
-          </Link>
-        </Button>
+        <div className="flex flex-wrap items-center gap-4">
+          {kind === "invoice" ? (
+            <Link
+              href="/app/credit-notes"
+              className="text-[13px] font-semibold text-accent-dark hover:underline"
+            >
+              {t("creditNotesLink")}
+            </Link>
+          ) : null}
+          {kind === "credit_note" ? null : (
+            <Button asChild>
+              <Link href={`/app/${section}/new`} data-testid={`${kind}-new`}>
+                {tk("new")}
+              </Link>
+            </Button>
+          )}
+        </div>
       </div>
       {deleted ? (
         <p
@@ -111,7 +131,20 @@ export async function DocumentListPage({
                     {formatDate(r.issueDate)}
                   </td>
                   <td className="hidden px-4 py-3 text-ink-2 md:table-cell">
-                    {tk(`status.${r.status}`)}
+                    {kind === "invoice" && r.status === "issued"
+                      ? t(
+                          `payments.states.${paymentState(
+                            {
+                              totalCents: r.totalCents,
+                              paidCents: r.paidCents,
+                              creditedCents: r.creditedCents,
+                              openCents: r.totalCents - r.paidCents - r.creditedCents,
+                            },
+                            r.dueDate,
+                            today,
+                          )}`,
+                        )
+                      : tk(`status.${r.status}`)}
                   </td>
                   <td className="px-4 py-3 text-right tabular-nums">
                     {formatAmount(r.totalCents)}
@@ -182,15 +215,19 @@ export async function DocumentDetailPage({
   locale: string;
   kind: DocumentKind;
   id: string;
-  query: { saved?: string; issued?: string; error?: string; converted?: string };
+  query: { saved?: string; issued?: string; error?: string; converted?: string; paid?: string };
 }) {
   const { organization } = await requireAppSession(locale);
   const found = await getInvoice(db(), organization.id, id);
   if (found?.invoice.kind !== kind) notFound();
-  const { invoice, lines } = found;
+  const { invoice, lines, related } = found;
   const t = await getTranslations({ locale, namespace: "app.invoices" });
   const tk = await getTranslations({ locale, namespace: namespaceOf(kind) });
   const draft = invoice.status === "draft";
+  const today = new Date().toISOString().slice(0, 10);
+  const billed = kind === "invoice" && invoice.status === "issued";
+  const balance = billed ? await invoiceBalance(db(), invoice.id, invoice.totalCents) : null;
+  const payments = billed ? await listPayments(db(), organization.id, invoice.id) : [];
   const section = sectionOf(kind);
   const hidden = (
     <>
@@ -199,13 +236,15 @@ export async function DocumentDetailPage({
       <input type="hidden" name="kind" value={kind} />
     </>
   );
-  const notice = query.converted
-    ? tk("converted")
-    : query.issued
-      ? tk("issued")
-      : query.saved
-        ? tk("saved")
-        : null;
+  const notice = query.paid
+    ? t("payments.saved")
+    : query.converted
+      ? tk("converted")
+      : query.issued
+        ? tk("issued")
+        : query.saved
+          ? tk("saved")
+          : null;
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-10 sm:px-8">
@@ -250,6 +289,16 @@ export async function DocumentDetailPage({
         </p>
       ) : null}
 
+      {related ? (
+        <p className="mt-4 text-[13px] text-ink-2">
+          <Link
+            href={`/app/invoices/${related.id}`}
+            className="font-semibold text-accent-dark underline"
+          >
+            {t("relatedInvoice", { number: related.number ?? "" })}
+          </Link>
+        </p>
+      ) : null}
       {draft ? (
         <>
           <div className="mt-6 flex flex-wrap items-center gap-3 border border-line-strong bg-panel px-5 py-4">
@@ -299,6 +348,14 @@ export async function DocumentDetailPage({
                 {t("download")}
               </a>
             </Button>
+            {balance && balance.totalCents - balance.creditedCents > 0 ? (
+              <form action={createCreditNoteAction}>
+                {hidden}
+                <Button type="submit" variant="ghost" data-testid="credit-note-create">
+                  {t("createCreditNote")}
+                </Button>
+              </form>
+            ) : null}
             {kind === "quote" && ["issued", "accepted"].includes(invoice.status) ? (
               <form action={convertQuoteAction}>
                 {hidden}
@@ -326,6 +383,69 @@ export async function DocumentDetailPage({
               </form>
             ) : null}
           </div>
+          {balance ? (
+            <section
+              className="mb-6 border border-line-strong bg-panel"
+              data-testid="invoice-balance"
+            >
+              <h2 className="flex flex-wrap items-center justify-between gap-2 border-b border-line bg-head px-5 py-3 text-[10.5px] font-extrabold tracking-[0.09em] text-ink-muted uppercase">
+                <span>{t("payments.title")}</span>
+                <span data-testid="payment-state" className="text-ink-2">
+                  {t(`payments.states.${paymentState(balance, invoice.dueDate, today)}`)}
+                </span>
+              </h2>
+              <dl className="grid grid-cols-2 gap-x-4 gap-y-1 px-5 py-4 text-[14px] sm:grid-cols-4">
+                {(["totalCents", "creditedCents", "paidCents", "openCents"] as const).map((k) => (
+                  <div key={k}>
+                    <dt className="text-[12px] text-ink-muted">{t(`payments.${k}`)}</dt>
+                    <dd
+                      className={
+                        k === "openCents"
+                          ? "font-extrabold tabular-nums"
+                          : "tabular-nums text-ink-2"
+                      }
+                      data-testid={`balance-${k}`}
+                    >
+                      {formatAmount(balance[k])}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+              {payments.length > 0 ? (
+                <ul className="border-t border-line">
+                  {payments.map((p) => (
+                    <li
+                      key={p.id}
+                      className="flex flex-wrap items-center gap-3 border-b border-line-soft px-5 py-2 text-[13px] last:border-b-0"
+                    >
+                      <span className="tabular-nums">{formatDate(p.paidOn)}</span>
+                      <span className="text-ink-2">{t(`payments.methods.${p.method}`)}</span>
+                      {p.note ? (
+                        <span className="text-ink-muted [overflow-wrap:anywhere]">{p.note}</span>
+                      ) : null}
+                      <span className="ml-auto font-semibold tabular-nums">
+                        {formatAmount(p.amountCents)}
+                      </span>
+                      <form action={deletePaymentAction}>
+                        {hidden}
+                        <input type="hidden" name="paymentId" value={p.id} />
+                        <Button type="submit" variant="ghost" size="sm">
+                          {t("payments.delete")}
+                        </Button>
+                      </form>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+              {balance.openCents > 0 ? (
+                <PaymentForm
+                  locale={locale}
+                  invoiceId={invoice.id}
+                  initial={{ paidOn: today, amount: formatAmount(balance.openCents) }}
+                />
+              ) : null}
+            </section>
+          ) : null}
           {invoice.sourceQuoteId ? (
             <p className="mb-4 text-[13px] text-ink-2">
               <Link
@@ -336,7 +456,7 @@ export async function DocumentDetailPage({
               </Link>
             </p>
           ) : null}
-          <InvoiceDocument invoice={invoice} lines={lines} />
+          <InvoiceDocument invoice={invoice} lines={lines} relatedNumber={related?.number} />
         </div>
       )}
     </div>

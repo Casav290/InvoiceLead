@@ -32,15 +32,22 @@ function Address({ party }: { party: PartySnapshot }) {
 export async function InvoiceDocument({
   invoice,
   lines,
+  relatedNumber,
 }: {
   invoice: Invoice;
   lines: InvoiceLine[];
+  relatedNumber?: string | null;
 }) {
   const lang = invoice.language;
   const t = await getTranslations({ locale: lang, namespace: "app.invoices.document" });
   const tk = await getTranslations({
     locale: lang,
-    namespace: invoice.kind === "quote" ? "app.quotes" : "app.invoices",
+    namespace:
+      invoice.kind === "quote"
+        ? "app.quotes"
+        : invoice.kind === "credit_note"
+          ? "app.creditNotes"
+          : "app.invoices",
   });
   const tu = await getTranslations({ locale: lang, namespace: "app.invoices.units" });
   const sender = invoice.sender;
@@ -75,9 +82,16 @@ export async function InvoiceDocument({
         <dd className="tabular-nums">{formatDate(invoice.issueDate)}</dd>
         <dt>{t("serviceDate")}</dt>
         <dd className="tabular-nums">{formatDate(invoice.serviceDate)}</dd>
-        <dt>{tk("docDue")}</dt>
-        <dd className="tabular-nums">{formatDate(invoice.dueDate)}</dd>
+        {invoice.kind === "credit_note" ? null : (
+          <>
+            <dt>{tk("docDue")}</dt>
+            <dd className="tabular-nums">{formatDate(invoice.dueDate)}</dd>
+          </>
+        )}
       </dl>
+      {relatedNumber ? (
+        <p className="mt-3 text-[13px]">{t("relatedLine", { number: relatedNumber })}</p>
+      ) : null}
       {invoice.introText ? (
         <p className="mt-6 text-[14px] whitespace-pre-line">{invoice.introText}</p>
       ) : null}

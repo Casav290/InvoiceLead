@@ -70,7 +70,7 @@ export function InvoiceForm({
   vatRegistered,
 }: {
   locale: string;
-  kind?: "invoice" | "quote";
+  kind?: "invoice" | "quote" | "credit_note";
   id?: string;
   initial: Record<string, string | string[]>;
   contacts: ContactOption[];
@@ -122,7 +122,7 @@ function InvoiceFormBody({
   t,
 }: {
   locale: string;
-  kind: "invoice" | "quote";
+  kind: "invoice" | "quote" | "credit_note";
   dueLabel: string;
   dueHint: string;
   id?: string;
@@ -217,6 +217,9 @@ function InvoiceFormBody({
       ) : null}
 
       <FormSection title={t("sections.customer")}>
+        {kind === "credit_note" ? (
+          <input type="hidden" name="contactId" value={v("contactId")} />
+        ) : null}
         <SelectField
           id="invoice-contact"
           name="contactId"
@@ -226,6 +229,7 @@ function InvoiceFormBody({
           placeholder={t("choose")}
           options={contacts.map((c) => ({ value: c.id, label: c.name }))}
           wide
+          disabled={kind === "credit_note"}
         />
         <div>
           <label htmlFor="invoice-language" className="mb-1 block text-[13px] font-semibold">
@@ -293,15 +297,17 @@ function InvoiceFormBody({
             </span>
           ) : null}
         </div>
-        <TextField
-          id="invoice-due"
-          name="dueDate"
-          type="date"
-          label={dueLabel}
-          hint={dueHint}
-          defaultValue={v("dueDate")}
-          error={err("dueDate")}
-        />
+        {kind === "credit_note" ? null : (
+          <TextField
+            id="invoice-due"
+            name="dueDate"
+            type="date"
+            label={dueLabel}
+            hint={dueHint}
+            defaultValue={v("dueDate")}
+            error={err("dueDate")}
+          />
+        )}
       </FormSection>
 
       <section className="border border-line-strong bg-panel" data-testid="invoice-lines">

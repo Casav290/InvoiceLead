@@ -299,11 +299,13 @@ export const invoices = pgTable(
     contactId: uuid("contact_id")
       .notNull()
       .references(() => contacts.id, { onDelete: "restrict" }),
-    kind: text("kind").notNull().default("invoice"), // invoice | quote
+    kind: text("kind").notNull().default("invoice"), // invoice | quote | credit_note
     number: text("number"),
     // facture : draft | issued ; devis : draft | issued | accepted | declined | invoiced
     status: text("status").notNull().default("draft"),
     sourceQuoteId: uuid("source_quote_id"),
+    /** Pour un avoir : la facture qu'il annule ou corrige. */
+    relatedInvoiceId: uuid("related_invoice_id"),
     language: text("language").notNull().default("de"),
     currency: text("currency").notNull().default("CHF"),
     title: text("title"),
@@ -327,6 +329,7 @@ export const invoices = pgTable(
   },
   (t) => [
     index("invoices_org_idx").on(t.organizationId, t.kind, t.createdAt),
+    index("invoices_related_idx").on(t.relatedInvoiceId),
     uniqueIndex("invoices_org_number_idx")
       .on(t.organizationId, t.number)
       .where(sql`${t.number} is not null`),
@@ -357,3 +360,29 @@ export const invoiceLines = pgTable(
 );
 
 export type InvoiceLine = typeof invoiceLines.$inferSelect;
+
+/** Paiement reçu sur une facture émise (saisi à la main ; le lettrage bancaire viendra plus tard). */
+export const invoicePayments = pgTable(
+  "invoice_payments",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    invoiceId: uuid("invoice_id")
+      .notNull()
+      .references(() => invoices.id, { onDelete: "restrict" }),
+    paidOn: date("paid_on", { mode: "string" }).notNull(),
+    amountCents: bigint("amount_cents", { mode: "number" }).notNull(),
+    method: text("method").notNull().default("bank"), // bank | cash | other
+    note: text("note"),
+    createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    index("invoice_payments_invoice_idx").on(t.invoiceId),
+    check("invoice_payments_positive", sql`${t.amountCents} > 0`),
+  ],
+);
+
+export type InvoicePayment = typeof invoicePayments.$inferSelect;

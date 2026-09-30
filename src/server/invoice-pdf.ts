@@ -25,6 +25,8 @@ export type InvoicePdfLabels = {
   payTo: (iban: string) => string;
   referenceLine: (reference: string) => string;
   units: Record<string, string>;
+  /** Avoir : « Concerne la facture 2026-0001 ». */
+  relatedLine?: string;
 };
 
 const mm = (v: number) => (v * 72) / 25.4;
@@ -150,14 +152,15 @@ export function renderInvoicePdf(
   const meta: [string, string][] = [
     [labels.issueDate, formatDate(invoice.issueDate)],
     [labels.serviceDate, formatDate(invoice.serviceDate)],
-    [labels.dueDate, formatDate(invoice.dueDate)],
   ];
+  if (invoice.kind !== "credit_note") meta.push([labels.dueDate, formatDate(invoice.dueDate)]);
   for (const [k, v] of meta) {
     const y = doc.y;
     doc.fillColor(MUTED).text(k, LEFT, y, { width: mm(40) });
     doc.fillColor(INK).text(v, LEFT + mm(40), y);
   }
 
+  if (labels.relatedLine) doc.moveDown(0.4).text(labels.relatedLine, LEFT, doc.y);
   if (invoice.introText) {
     doc
       .moveDown(1)

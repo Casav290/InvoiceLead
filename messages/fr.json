@@ -475,7 +475,8 @@
         "notDraft": "Cette facture est déjà émise.",
         "notFound": "Facture introuvable.",
         "notConvertible": "Ce devis ne peut plus être transformé en facture.",
-        "contact": "Le client de ce devis a été archivé."
+        "contact": "Le client de ce devis a été archivé.",
+        "creditTooHigh": "L'avoir dépasse le montant qui reste à créditer sur la facture."
       },
       "addLine": "Ajouter une ligne",
       "removeLine": "Retirer",
@@ -561,7 +562,8 @@
         "vatLine": "TVA {rate} sur {base}",
         "total": "Total",
         "payTo": "À verser sur le compte {iban}.",
-        "referenceLine": "Référence : {reference}"
+        "referenceLine": "Référence : {reference}",
+        "relatedLine": "Concerne la facture {number}"
       },
       "docTitle": "Facture",
       "docDue": "Payable jusqu'au",
@@ -569,7 +571,43 @@
       "dueHint": "Vide : selon le délai de paiement du client.",
       "converted": "Brouillon de facture créé à partir du devis. Vérifiez-le puis émettez-le.",
       "fromQuote": "Voir le devis d'origine",
-      "download": "Télécharger le PDF"
+      "download": "Télécharger le PDF",
+      "creditNotesLink": "Avoirs",
+      "createCreditNote": "Créer un avoir",
+      "relatedInvoice": "Facture concernée : {number}",
+      "payments": {
+        "title": "Paiements",
+        "saved": "Paiement enregistré.",
+        "totalCents": "Total",
+        "creditedCents": "Avoirs",
+        "paidCents": "Payé",
+        "openCents": "Solde ouvert",
+        "date": "Date du paiement",
+        "amount": "Montant (CHF)",
+        "method": "Moyen",
+        "note": "Remarque",
+        "add": "Enregistrer le paiement",
+        "delete": "Supprimer",
+        "tooHigh": "Le montant dépasse le solde ouvert.",
+        "methods": {
+          "bank": "Virement",
+          "cash": "Espèces",
+          "other": "Autre"
+        },
+        "states": {
+          "open": "Ouverte",
+          "partial": "Payée en partie",
+          "paid": "Payée",
+          "overdue": "En retard",
+          "credited": "Annulée par avoir"
+        },
+        "errors": {
+          "date": "Date invalide.",
+          "amount": "Montant invalide.",
+          "required": "Champ obligatoire.",
+          "tooLong": "Texte trop long."
+        }
+      }
     },
     "quotes": {
       "title": "Devis",
@@ -600,6 +638,30 @@
       "docDue": "Valable jusqu'au",
       "dueLabel": "Valable jusqu'au",
       "dueHint": "Vide : 30 jours après la date du devis."
+    },
+    "creditNotes": {
+      "title": "Avoirs",
+      "new": "Nouvel avoir",
+      "edit": "Avoir",
+      "back": "Tous les avoirs",
+      "draftTitle": "Brouillon d'avoir",
+      "issuedTitle": "Avoir {number}",
+      "status": {
+        "draft": "Brouillon",
+        "issued": "Émis"
+      },
+      "saved": "Brouillon d'avoir enregistré. Réduisez les lignes pour un avoir partiel.",
+      "issued": "Avoir émis. Il réduit le solde de la facture.",
+      "deleted": "Brouillon supprimé.",
+      "empty": "Aucun avoir pour l'instant. Un avoir se crée depuis une facture émise.",
+      "issue": "Émettre l'avoir",
+      "issueHint": "L'émission attribue le numéro suivant et fige l'avoir.",
+      "deleteDraft": "Supprimer ce brouillon",
+      "converted": "",
+      "docTitle": "Avoir",
+      "docDue": "Date",
+      "dueLabel": "Date",
+      "dueHint": ""
     }
   },
   "footer": {
