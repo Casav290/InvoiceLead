@@ -28,6 +28,13 @@ const schema = z.object({
   RECEIPTS_BUCKET: z.string().min(1).default("receipts"),
   /** Secret des tâches planifiées Vercel (en-tête Authorization: Bearer …). */
   CRON_SECRET: z.string().min(16).optional(),
+  /**
+   * Bêta privée : liste séparée par des virgules d'organisations Lead (« org_… »), d'adresses e-mail
+   * ou de domaines (« @fidu.ch »). Vide : ouvert à toutes les organisations dont la formule le permet.
+   */
+  BETA_ALLOWLIST: z.string().optional(),
+  /** Adresse qui reçoit les avis envoyés depuis l'application. */
+  FEEDBACK_EMAIL: z.email().optional(),
 });
 
 export type Env = z.infer<typeof schema>;

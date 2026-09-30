@@ -95,7 +95,8 @@
         "free": "Gratis",
         "pro": "Pro",
         "pro_plus": "Pro+"
-      }
+      },
+      "feedback": "Feedback geben"
     },
     "dashboard": {
       "title": "Guten Tag {name}",
@@ -121,7 +122,9 @@
       "blockedBody": "Eine verantwortliche Person von {org} hat Ihren Zugang zu InvoiceLead entzogen. Bitten Sie sie, ihn in den Team-Einstellungen wiederherzustellen.",
       "seatTitle": "Alle Plätze sind belegt",
       "seatBody": "Das Abo von {org} umfasst {seats, plural, one {# Benutzer} other {# Benutzer}}, alle bereits belegt. Eine verantwortliche Person kann ein höheres Abo wählen oder einen Platz freigeben.",
-      "otherOrgs": "In einem anderen Unternehmen arbeiten"
+      "otherOrgs": "In einem anderen Unternehmen arbeiten",
+      "betaTitle": "InvoiceLead ist in der privaten Beta",
+      "betaBody": "{org} steht noch nicht auf der Beta-Liste. Wir öffnen den Zugang in kleinen Gruppen; schreiben Sie uns an hello@invoicelead.io, um aufgenommen zu werden."
     },
     "company": {
       "title": "Firma",
@@ -1095,6 +1098,20 @@
       "createQuote": "Offerte erstellen",
       "createInvoice": "Rechnung erstellen",
       "fromCrm": "Entwurf aus CRMlead erstellt. Prüfen und dann ausstellen."
+    },
+    "feedback": {
+      "title": "Feedback geben",
+      "subtitle": "InvoiceLead ist in der privaten Beta. Eine Idee, ein Problem, ein Lob: Wir lesen alles.",
+      "kind": "Art des Feedbacks",
+      "kinds": {
+        "idea": "Idee",
+        "problem": "Problem",
+        "praise": "Gefällt mir"
+      },
+      "message": "Ihre Nachricht",
+      "send": "Senden",
+      "sent": "Danke, Ihr Feedback ist angekommen.",
+      "invalid": "Schreiben Sie ein paar Worte, bevor Sie senden."
     }
   },
   "footer": {

@@ -1,8 +1,10 @@
 "use client";
 
+import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { DropdownMenu } from "radix-ui";
 import { useRef } from "react";
+import { Link } from "@/i18n/navigation";
 
 export function UserMenu({
   name,
@@ -18,6 +20,7 @@ export function UserMenu({
   const t = useTranslations("app.user");
   // Le formulaire reste hors du menu : le contenu du menu disparaît à sa fermeture.
   const logoutForm = useRef<HTMLFormElement>(null);
+  const pathname = usePathname();
   const initials =
     (name || email)
       .split(/[\s@.]+/)
@@ -58,6 +61,18 @@ export function UserMenu({
               </span>
             </DropdownMenu.Label>
             <DropdownMenu.Separator className="my-1 h-px bg-line" />
+            <DropdownMenu.Item
+              asChild
+              className="cursor-pointer px-2 py-2 font-semibold outline-hidden data-[highlighted]:bg-accent-veil data-[highlighted]:outline-2 data-[highlighted]:outline-accent data-[highlighted]:-outline-offset-2"
+            >
+              <Link
+                href={`/app/feedback?from=${encodeURIComponent(pathname)}`}
+                data-testid="feedback-link"
+                className="block"
+              >
+                {t("feedback")}
+              </Link>
+            </DropdownMenu.Item>
             <DropdownMenu.Item
               data-testid="logout"
               onSelect={() => logoutForm.current?.requestSubmit()}

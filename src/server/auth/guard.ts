@@ -1,7 +1,9 @@
 import "server-only";
 import { redirect } from "next/navigation";
 import { cache } from "react";
+import { betaAllowed } from "../beta";
 import { db } from "../db";
+import { env } from "../env";
 import { can, hasAppAccess, type Permission } from "../roles";
 import { hasSeat } from "../team";
 import { pickLocale } from "./login-cookie";
@@ -19,8 +21,10 @@ export async function requireSession(locale: string): Promise<CurrentSession> {
 
 /** Raison pour laquelle la personne n'entre pas dans l'application, ou null si elle entre. */
 export const accessProblem = cache(
-  async (session: CurrentSession): Promise<"plan" | "blocked" | "seat" | null> => {
+  async (session: CurrentSession): Promise<"plan" | "beta" | "blocked" | "seat" | null> => {
     if (!session.organization.hasAccess) return "plan";
+    const beta = { leadOrg: session.organization.leadOrg ?? "", email: session.user.email };
+    if (!betaAllowed(env().BETA_ALLOWLIST, beta)) return "beta";
     if (!hasAppAccess(session.membership)) return "blocked";
     if (!(await hasSeat(db(), session.organization, session.user.id))) return "seat";
     return null;

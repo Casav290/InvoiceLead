@@ -733,3 +733,20 @@ export const fiduciaryInvitations = pgTable(
   },
   (t) => [index("fiduciary_invitations_org_idx").on(t.organizationId)],
 );
+
+/** Avis envoyé depuis l'application pendant la bêta. */
+export const feedback = pgTable(
+  "feedback",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
+    kind: text("kind").notNull(), // idea | problem | praise
+    page: text("page"),
+    message: text("message").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [index("feedback_created_idx").on(t.createdAt)],
+);

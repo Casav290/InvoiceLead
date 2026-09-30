@@ -86,3 +86,20 @@ test("équipe : rôle d'un utilisateur, invitation et accès d'une fiduciaire", 
   await expect(page.getByTestId("fiduciary")).toHaveCount(0);
   await fiduContext.close();
 });
+
+test("avis de bêta envoyé depuis le menu", async ({ page }) => {
+  const run = Date.now();
+  await login(page, "fr", {
+    sub: `sub-fb-${run}`,
+    email: `fb-${run}@atelier.test`,
+    org: `org-fb-${run}`,
+  });
+  await page.goto("/fr/app/invoices");
+  await page.getByTestId("user-menu").click();
+  await page.getByTestId("feedback-link").click();
+  await page.waitForURL(/\/fr\/app\/feedback\?from=/);
+  await page.getByLabel("Problème").check();
+  await page.getByLabel("Votre message").fill("Le bouton est difficile à trouver.");
+  await page.getByTestId("feedback-send").click();
+  await expect(page.getByText("Merci, votre avis est bien arrivé.")).toBeVisible();
+});

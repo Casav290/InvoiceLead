@@ -34,13 +34,21 @@ export default async function NoAccessPage({ params }: { params: Promise<{ local
   const upgradeUrl = entitlements?.apps?.[APP_CODE]?.upgrade_url ?? DEFAULT_UPGRADE_URL;
   const orgs = await listUserOrganizations(db(), session.user.id);
   const title =
-    problem === "blocked" ? t("blockedTitle") : problem === "seat" ? t("seatTitle") : t("title");
-  const body =
     problem === "blocked"
-      ? t("blockedBody", { org: organization.name })
+      ? t("blockedTitle")
       : problem === "seat"
-        ? t("seatBody", { org: organization.name, seats: seatsOf(organization) })
-        : t("body", { org: organization.name });
+        ? t("seatTitle")
+        : problem === "beta"
+          ? t("betaTitle")
+          : t("title");
+  const body =
+    problem === "beta"
+      ? t("betaBody", { org: organization.name })
+      : problem === "blocked"
+        ? t("blockedBody", { org: organization.name })
+        : problem === "seat"
+          ? t("seatBody", { org: organization.name, seats: seatsOf(organization) })
+          : t("body", { org: organization.name });
   return (
     <main className="flex min-h-screen items-start justify-center px-4 py-20">
       <div
@@ -52,7 +60,7 @@ export default async function NoAccessPage({ params }: { params: Promise<{ local
           <p className="mt-2 text-[14px] leading-relaxed text-ink-muted">{body}</p>
         </div>
         <div className="flex flex-wrap gap-3 px-6 py-5">
-          {problem === "blocked" ? null : (
+          {problem === "blocked" || problem === "beta" ? null : (
             <Button asChild>
               <a href={upgradeUrl}>{t("upgrade")}</a>
             </Button>
