@@ -553,8 +553,10 @@
         "net": "Total hors TVA",
         "vatLine": "TVA {rate} sur {base}",
         "total": "Total",
-        "payTo": "À verser sur le compte {iban}."
-      }
+        "payTo": "À verser sur le compte {iban}.",
+        "referenceLine": "Référence : {reference}"
+      },
+      "download": "Télécharger le PDF"
     }
   },
   "footer": {

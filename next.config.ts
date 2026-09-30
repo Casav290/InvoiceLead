@@ -4,7 +4,7 @@ import createNextIntlPlugin from "next-intl/plugin";
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   typedRoutes: false,
-  serverExternalPackages: ["pg"],
+  serverExternalPackages: ["pg", "pdfkit", "swissqrbill"],
   async headers() {
     return [
       {

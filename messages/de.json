@@ -553,8 +553,10 @@
         "net": "Total exkl. MWST",
         "vatLine": "MWST {rate} auf {base}",
         "total": "Total",
-        "payTo": "Zahlbar auf das Konto {iban}."
-      }
+        "payTo": "Zahlbar auf das Konto {iban}.",
+        "referenceLine": "Referenz: {reference}"
+      },
+      "download": "PDF herunterladen"
     }
   },
   "footer": {

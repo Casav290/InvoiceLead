@@ -70,6 +70,12 @@ test("facture : brouillon avec article et ligne libre, émission avec numéro, f
   await expect(page.getByTestId("invoice-total")).toHaveText("CHF 445.88");
   await expect(page.getByTestId("invoice-form")).toHaveCount(0);
 
+  const href = await page.getByTestId("invoice-pdf").getAttribute("href");
+  const pdf = await page.request.get(href ?? "");
+  expect(pdf.status()).toBe(200);
+  expect(pdf.headers()["content-type"]).toBe("application/pdf");
+  expect((await pdf.body()).subarray(0, 5).toString()).toBe("%PDF-");
+
   await page.getByRole("link", { name: "Toutes les factures" }).click();
   await expect(page.getByRole("row", { name: new RegExp(`${year}-0001`) })).toContainText("445.88");
 });

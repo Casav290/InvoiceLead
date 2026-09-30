@@ -123,6 +123,13 @@ export default async function InvoicePage({ params, searchParams }: Props) {
         </>
       ) : (
         <div className="mt-6">
+          <p className="mb-4">
+            <Button asChild>
+              <a href={`/${locale}/app/invoices/${invoice.id}/pdf`} data-testid="invoice-pdf">
+                {t("download")}
+              </a>
+            </Button>
+          </p>
           <InvoiceDocument invoice={invoice} lines={lines} />
         </div>
       )}

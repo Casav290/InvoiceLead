@@ -312,6 +312,8 @@ export const invoices = pgTable(
     totalCents: bigint("total_cents", { mode: "number" }).notNull().default(0),
     recipient: jsonb("recipient").$type<PartySnapshot>(),
     sender: jsonb("sender").$type<PartySnapshot>(),
+    /** Référence de paiement de la QR-facture (QRR avec un QR-IBAN, sinon SCOR « RF… »), fixée à l'émission. */
+    paymentReference: text("payment_reference"),
     issuedAt: timestamp("issued_at", { withTimezone: true }),
     createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
     createdAt: createdAt(),

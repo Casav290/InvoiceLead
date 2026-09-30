@@ -120,17 +120,19 @@ export async function InvoiceDocument({
               <dt>{t("net")}</dt>
               <dd className="tabular-nums">{formatAmount(invoice.netCents)}</dd>
             </div>
-            {totals.vat.map((v) => (
-              <div key={v.rateBp} className="flex justify-between gap-4 text-ink-2">
-                <dt>
-                  {t("vatLine", {
-                    rate: formatRate(v.rateBp, lang),
-                    base: formatAmount(v.netCents),
-                  })}
-                </dt>
-                <dd className="tabular-nums">{formatAmount(v.vatCents)}</dd>
-              </div>
-            ))}
+            {totals.vat
+              .filter((v) => v.rateBp > 0)
+              .map((v) => (
+                <div key={v.rateBp} className="flex justify-between gap-4 text-ink-2">
+                  <dt>
+                    {t("vatLine", {
+                      rate: formatRate(v.rateBp, lang),
+                      base: formatAmount(v.netCents),
+                    })}
+                  </dt>
+                  <dd className="tabular-nums">{formatAmount(v.vatCents)}</dd>
+                </div>
+              ))}
           </>
         ) : null}
         <div className="mt-2 flex justify-between gap-4 border-t border-line-strong pt-2 text-[15px] font-extrabold">

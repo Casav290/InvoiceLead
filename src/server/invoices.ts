@@ -1,4 +1,5 @@
 import { and, asc, desc, eq, isNull, sql } from "drizzle-orm";
+import { paymentReference } from "@/countries/ch/qr-reference";
 import { VAT_CODES, type VatCode, vatRateBp } from "@/countries/ch/vat";
 import { parseAmountToCents } from "@/lib/amount-input";
 import { isIsoDate } from "@/lib/fiscal-year";
@@ -408,11 +409,13 @@ export async function issueInvoice(database: Db, who: Who, id: string): Promise<
       vatNumber:
         org.vatRegistered && org.uid ? vatNumberLabel(org.uid, row.invoice.language) : null,
     };
+    const number = formatInvoiceNumber(year, seq.value);
     const [issued] = await tx
       .update(invoices)
       .set({
         status: "issued",
-        number: formatInvoiceNumber(year, seq.value),
+        number,
+        paymentReference: paymentReference(number, !!org.qrIban),
         recipient,
         sender,
         issuedAt: new Date(),
