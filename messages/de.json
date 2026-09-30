@@ -158,13 +158,16 @@
         "iban": "IBAN",
         "qrIban": "QR-IBAN",
         "fiscalYearStartMonth": "Beginn des Geschäftsjahres",
-        "netTaxRate": "Saldosteuersatz (%)"
+        "netTaxRate": "Saldosteuersatz (%)",
+        "country": "Land des Sitzes",
+        "ustId": "USt-IdNr."
       },
       "hints": {
         "uid": "Format CHE-123.456.789, Prüfziffer wird kontrolliert.",
         "iban": "Normales Konto: Rechnungen mit SCOR-Referenz (RF…).",
         "qrIban": "Optional: Rechnungen mit 27-stelliger QR-Referenz.",
-        "netTaxRate": "Nur bei der Saldosteuersatzmethode: der von der ESTV bewilligte Satz, zum Beispiel 6,2."
+        "netTaxRate": "Nur bei der Saldosteuersatzmethode: der von der ESTV bewilligte Satz, zum Beispiel 6,2.",
+        "ustId": "Format DE123456789, Prüfziffer wird kontrolliert."
       },
       "legalForms": {
         "sole_proprietorship": "Einzelunternehmen",
@@ -172,7 +175,10 @@
         "ag": "AG",
         "partnership": "Personengesellschaft",
         "association": "Verein",
-        "other": "Andere"
+        "other": "Andere",
+        "ug": "UG (haftungsbeschränkt)",
+        "ek": "Kaufmann (e.K.)",
+        "gbr": "GbR"
       },
       "vatMethods": {
         "effective": "Effektive Methode",
@@ -199,14 +205,20 @@
       "errors": {
         "required": "Pflichtfeld.",
         "tooLong": "Text zu lang.",
-        "postalCode": "Schweizer PLZ mit 4 Ziffern.",
+        "postalCode": "Ungültige Postleitzahl (4 Ziffern in der Schweiz, 5 in Deutschland).",
         "email": "Ungültige E-Mail-Adresse.",
         "uid": "Ungültige UID-Nummer (Format oder Prüfziffer).",
         "uidRequiredForVat": "Für MWST-pflichtige Firmen ist die UID-Nummer obligatorisch.",
-        "iban": "Ungültige Schweizer oder Liechtensteiner IBAN.",
+        "iban": "Ungültige IBAN (Land oder Prüfziffer).",
         "ibanIsQr": "Das ist eine QR-IBAN: bitte im Feld QR-IBAN erfassen.",
         "notQrIban": "Das ist keine QR-IBAN (Institut 30000 bis 31999).",
-        "netTaxRate": "Geben Sie den von der ESTV bewilligten Satz an (zwischen 0,1 und 15 %)."
+        "netTaxRate": "Geben Sie den von der ESTV bewilligten Satz an (zwischen 0,1 und 15 %).",
+        "ustId": "Ungültige USt-IdNr. (DE und 9 Ziffern, Prüfziffer).",
+        "countryLocked": "Das Land lässt sich nach dem ersten ausgestellten Dokument nicht mehr ändern."
+      },
+      "countries": {
+        "CH": "Schweiz",
+        "DE": "Deutschland"
       }
     },
     "contacts": {
@@ -305,7 +317,7 @@
       "columns": {
         "name": "Bezeichnung",
         "unit": "Einheit",
-        "price": "Preis exkl. MWST (CHF)",
+        "price": "Preis exkl. MWST ({currency})",
         "vat": "MWST"
       },
       "sections": {
@@ -317,7 +329,7 @@
         "sku": "Artikelnummer",
         "unit": "Einheit",
         "description": "Beschreibung",
-        "unitPrice": "Einzelpreis exkl. MWST (CHF)",
+        "unitPrice": "Einzelpreis exkl. MWST ({currency})",
         "vatCode": "MWST-Satz"
       },
       "hints": {
@@ -523,7 +535,7 @@
         "number": "Nr.",
         "customer": "Kunde",
         "date": "Datum",
-        "total": "Total (CHF)",
+        "total": "Total ({currency})",
         "status": "Status"
       },
       "sections": {
@@ -598,7 +610,10 @@
         "payTo": "Zahlbar auf das Konto {iban}.",
         "referenceLine": "Referenz: {reference}",
         "relatedLine": "Betrifft Rechnung {number}",
-        "poweredBy": "Erstellt mit InvoiceLead · invoicelead.io"
+        "poweredBy": "Erstellt mit InvoiceLead · invoicelead.io",
+        "smallBusinessDe": "Gemäss § 19 UStG wird keine Umsatzsteuer berechnet (Kleinunternehmerregelung).",
+        "reverseChargeDe": "Steuerschuldnerschaft des Leistungsempfängers (Reverse Charge).",
+        "scanToPay": "Mit der Banking-App scannen, um per SEPA-Überweisung zu bezahlen."
       },
       "docTitle": "Rechnung",
       "docDue": "Zahlbar bis",
@@ -618,7 +633,7 @@
         "paidCents": "Bezahlt",
         "openCents": "Offener Betrag",
         "date": "Zahlungsdatum",
-        "amount": "Betrag (CHF)",
+        "amount": "Betrag ({currency})",
         "method": "Zahlungsart",
         "note": "Bemerkung",
         "add": "Zahlung erfassen",
@@ -780,7 +795,9 @@
         "reports": "Auswertungen",
         "vat": "MWST"
       },
-      "welcomeFiduciary": "Willkommen. Sie arbeiten jetzt in der Buchhaltung Ihres Kunden; das Unternehmen wechseln Sie in der Kopfzeile."
+      "welcomeFiduciary": "Willkommen. Sie arbeiten jetzt in der Buchhaltung Ihres Kunden; das Unternehmen wechseln Sie in der Kopfzeile.",
+      "unavailableTitle": "Buchhaltung für dieses Land folgt bald",
+      "unavailableBody": "Die Fakturierung funktioniert bereits für ein Unternehmen in {country}. Doppelte Buchhaltung, MWST-Abrechnung und Bankimport folgen mit dem nächsten Paket; bis dahin exportieren Sie Ihre Rechnungen für Ihre Treuhand."
     },
     "bank": {
       "title": "Bank",

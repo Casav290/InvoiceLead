@@ -1,6 +1,7 @@
 import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm";
+import { countryPack } from "@/countries";
 import { paymentReference } from "@/countries/ch/qr-reference";
-import { VAT_CODES, type VatCode, vatRateBp } from "@/countries/ch/vat";
+import { VAT_CODES, type VatCode } from "@/countries/ch/vat";
 import { parseAmountToCents } from "@/lib/amount-input";
 import { isIsoDate } from "@/lib/fiscal-year";
 import { computeTotals, parseQuantityToMilli } from "@/lib/invoice-math";
@@ -59,7 +60,7 @@ const all = (form: FormData, key: string) => form.getAll(key).map((v) => String(
 
 export function parseInvoiceForm(
   form: FormData,
-  options: { vatRegistered: boolean },
+  options: { vatRegistered: boolean; country?: string | null },
 ): { ok: true; data: InvoiceInput } | { ok: false; errors: InvoiceErrors } {
   const errors: InvoiceErrors = {};
   const contactId = text(form, "contactId");
@@ -80,7 +81,7 @@ export function parseInvoiceForm(
   let rateDateOk = true;
   if (options.vatRegistered && isIsoDate(serviceDate)) {
     try {
-      vatRateBp("normal", serviceDate);
+      countryPack(options.country).vatRateBp("normal", serviceDate);
     } catch {
       rateDateOk = false;
       errors.serviceDate = "vatDate";
@@ -149,7 +150,8 @@ function addDays(iso: string, days: number) {
   return d.toISOString().slice(0, 10);
 }
 
-function priced(data: InvoiceInput, vatRegistered: boolean) {
+function priced(data: InvoiceInput, vatRegistered: boolean, country: string) {
+  const { vatRateBp } = countryPack(country);
   const rates = data.lines.map((l) =>
     vatRegistered && l.vatCode ? vatRateBp(l.vatCode, data.serviceDate) : 0,
   );
@@ -178,12 +180,21 @@ async function customerOf(database: Db, organizationId: string, contactId: strin
   return row ?? null;
 }
 
-async function vatRegisteredOf(database: Db, organizationId: string) {
+async function taxProfileOf(database: Db, organizationId: string) {
   const [row] = await database
-    .select({ vatRegistered: organizations.vatRegistered })
+    .select({ vatRegistered: organizations.vatRegistered, country: organizations.country })
     .from(organizations)
     .where(eq(organizations.id, organizationId));
-  return row?.vatRegistered ?? false;
+  const pack = countryPack(row?.country);
+  return {
+    vatRegistered: row?.vatRegistered ?? false,
+    country: pack.code,
+    currency: pack.currency,
+  };
+}
+
+async function vatRegisteredOf(database: Db, organizationId: string) {
+  return (await taxProfileOf(database, organizationId)).vatRegistered;
 }
 
 export async function isVatRegistered(database: Db, organizationId: string) {
@@ -210,8 +221,8 @@ async function writeInvoice(
   }
   const contact = await customerOf(database, who.organizationId, data.contactId);
   if (!contact) return "contact";
-  const vatRegistered = await vatRegisteredOf(database, who.organizationId);
-  const { rates, totals } = priced(data, vatRegistered);
+  const { vatRegistered, country, currency } = await taxProfileOf(database, who.organizationId);
+  const { rates, totals } = priced(data, vatRegistered, country);
   const values = {
     contactId: contact.id,
     language: data.language,
@@ -229,6 +240,7 @@ async function writeInvoice(
             kind === "quote" ? QUOTE_VALIDITY_DAYS : contact.paymentTermDays,
           )),
     vatRegistered,
+    currency,
     netCents: totals.netCents,
     vatCents: totals.vatCents,
     totalCents: totals.totalCents,

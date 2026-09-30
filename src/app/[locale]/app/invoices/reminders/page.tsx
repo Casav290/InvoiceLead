@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { Button } from "@/components/ui/button";
+import { countryPack } from "@/countries";
 import { Link } from "@/i18n/navigation";
 import { formatDate } from "@/lib/fiscal-year";
 import { formatAmount } from "@/lib/money";
@@ -89,7 +90,9 @@ export default async function RemindersPage({ params, searchParams }: Props) {
                   {r.number}
                 </Link>
                 <span className="min-w-0 flex-1 [overflow-wrap:anywhere]">{r.customer}</span>
-                <span className="font-extrabold tabular-nums">{formatAmount(r.openCents)}</span>
+                <span className="font-extrabold tabular-nums">
+                  {formatAmount(r.openCents, countryPack(organization.country).amounts)}
+                </span>
               </div>
               <p className="mt-1 text-[12px] text-ink-2">
                 {t("line", { level: r.level, days: r.daysLate, due: formatDate(r.dueDate) })}

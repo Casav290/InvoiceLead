@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { Button } from "@/components/ui/button";
+import { countryPack } from "@/countries";
 import { formatRate, type VatCode, vatRateBp } from "@/countries/ch/vat";
 import { Link } from "@/i18n/navigation";
 import { formatAmount } from "@/lib/money";
@@ -78,7 +79,9 @@ export default async function ProductsPage({ params, searchParams }: Props) {
               <tr className="border-b border-line-strong bg-head text-[10.5px] font-extrabold tracking-[0.09em] text-ink-muted uppercase">
                 <th className="px-4 py-2.5">{t("columns.name")}</th>
                 <th className="hidden px-4 py-2.5 sm:table-cell">{t("columns.unit")}</th>
-                <th className="px-4 py-2.5 text-right">{t("columns.price")}</th>
+                <th className="px-4 py-2.5 text-right">
+                  {t("columns.price", { currency: organization.currency })}
+                </th>
                 <th className="px-4 py-2.5 text-right">{t("columns.vat")}</th>
               </tr>
             </thead>
@@ -103,7 +106,7 @@ export default async function ProductsPage({ params, searchParams }: Props) {
                     {t(`units.${p.unit}`)}
                   </td>
                   <td className="px-4 py-3 text-right tabular-nums">
-                    {formatAmount(p.unitPriceCents)}
+                    {formatAmount(p.unitPriceCents, countryPack(organization.country).amounts)}
                   </td>
                   <td className="px-4 py-3 text-right text-ink-2">
                     {formatRate(vatRateBp(p.vatCode as VatCode, today), locale)}

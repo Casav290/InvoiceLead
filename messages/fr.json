@@ -158,13 +158,16 @@
         "iban": "IBAN",
         "qrIban": "QR-IBAN",
         "fiscalYearStartMonth": "Début de l'exercice",
-        "netTaxRate": "Taux de la dette fiscale nette (%)"
+        "netTaxRate": "Taux de la dette fiscale nette (%)",
+        "country": "Pays du siège",
+        "ustId": "USt-IdNr."
       },
       "hints": {
         "uid": "Format CHE-123.456.789, clé de contrôle vérifiée.",
         "iban": "Compte classique : factures avec référence SCOR (RF…).",
         "qrIban": "Facultatif : factures avec référence QR à 27 chiffres.",
-        "netTaxRate": "Seulement avec la méthode TDFN : le taux accordé par l'AFC, par exemple 6,2."
+        "netTaxRate": "Seulement avec la méthode TDFN : le taux accordé par l'AFC, par exemple 6,2.",
+        "ustId": "Format DE123456789, clé de contrôle vérifiée."
       },
       "legalForms": {
         "sole_proprietorship": "Raison individuelle",
@@ -172,7 +175,10 @@
         "ag": "SA",
         "partnership": "Société de personnes",
         "association": "Association",
-        "other": "Autre"
+        "other": "Autre",
+        "ug": "UG (haftungsbeschränkt)",
+        "ek": "Kaufmann (e.K.)",
+        "gbr": "GbR"
       },
       "vatMethods": {
         "effective": "Méthode effective",
@@ -199,14 +205,20 @@
       "errors": {
         "required": "Champ obligatoire.",
         "tooLong": "Texte trop long.",
-        "postalCode": "NPA suisse à 4 chiffres.",
+        "postalCode": "Code postal invalide (4 chiffres en Suisse, 5 en Allemagne).",
         "email": "Adresse e-mail invalide.",
         "uid": "Numéro IDE invalide (format ou clé de contrôle).",
         "uidRequiredForVat": "Le numéro IDE est obligatoire pour une entreprise inscrite à la TVA.",
-        "iban": "IBAN suisse ou liechtensteinois invalide.",
+        "iban": "IBAN invalide (pays ou clé de contrôle).",
         "ibanIsQr": "C'est un QR-IBAN : saisissez-le dans le champ QR-IBAN.",
         "notQrIban": "Ce n'est pas un QR-IBAN (identifiant 30000 à 31999).",
-        "netTaxRate": "Indiquez le taux accordé par l'AFC (entre 0,1 et 15 %)."
+        "netTaxRate": "Indiquez le taux accordé par l'AFC (entre 0,1 et 15 %).",
+        "ustId": "USt-IdNr. invalide (DE suivi de 9 chiffres, clé de contrôle).",
+        "countryLocked": "Le pays ne change plus une fois une pièce émise."
+      },
+      "countries": {
+        "CH": "Suisse",
+        "DE": "Allemagne"
       }
     },
     "contacts": {
@@ -305,7 +317,7 @@
       "columns": {
         "name": "Désignation",
         "unit": "Unité",
-        "price": "Prix HT (CHF)",
+        "price": "Prix HT ({currency})",
         "vat": "TVA"
       },
       "sections": {
@@ -317,7 +329,7 @@
         "sku": "Référence",
         "unit": "Unité",
         "description": "Description",
-        "unitPrice": "Prix unitaire hors TVA (CHF)",
+        "unitPrice": "Prix unitaire hors TVA ({currency})",
         "vatCode": "Taux de TVA"
       },
       "hints": {
@@ -523,7 +535,7 @@
         "number": "N°",
         "customer": "Client",
         "date": "Date",
-        "total": "Total (CHF)",
+        "total": "Total ({currency})",
         "status": "Statut"
       },
       "sections": {
@@ -598,7 +610,10 @@
         "payTo": "À verser sur le compte {iban}.",
         "referenceLine": "Référence : {reference}",
         "relatedLine": "Concerne la facture {number}",
-        "poweredBy": "Créé avec InvoiceLead · invoicelead.io"
+        "poweredBy": "Créé avec InvoiceLead · invoicelead.io",
+        "smallBusinessDe": "Conformément au § 19 UStG, aucune taxe sur le chiffre d'affaires n'est facturée (petite entreprise).",
+        "reverseChargeDe": "Autoliquidation : la taxe est due par le destinataire de la prestation (Steuerschuldnerschaft des Leistungsempfängers).",
+        "scanToPay": "Scannez ce code avec votre application bancaire pour payer par virement SEPA."
       },
       "docTitle": "Facture",
       "docDue": "Payable jusqu'au",
@@ -618,7 +633,7 @@
         "paidCents": "Payé",
         "openCents": "Solde ouvert",
         "date": "Date du paiement",
-        "amount": "Montant (CHF)",
+        "amount": "Montant ({currency})",
         "method": "Moyen",
         "note": "Remarque",
         "add": "Enregistrer le paiement",
@@ -780,7 +795,9 @@
         "reports": "Rapports",
         "vat": "TVA"
       },
-      "welcomeFiduciary": "Bienvenue. Vous travaillez maintenant dans la comptabilité de votre client ; changez d'entreprise depuis l'en-tête."
+      "welcomeFiduciary": "Bienvenue. Vous travaillez maintenant dans la comptabilité de votre client ; changez d'entreprise depuis l'en-tête.",
+      "unavailableTitle": "Comptabilité bientôt disponible pour ce pays",
+      "unavailableBody": "La facturation fonctionne déjà pour une entreprise en {country}. La comptabilité en partie double, le décompte de TVA et l'import bancaire arrivent avec le prochain lot ; d'ici là, exportez vos factures pour votre fiduciaire."
     },
     "bank": {
       "title": "Banque",

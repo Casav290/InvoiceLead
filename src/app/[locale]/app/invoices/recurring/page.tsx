@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { Button } from "@/components/ui/button";
+import { countryPack } from "@/countries";
 import { Link } from "@/i18n/navigation";
 import { formatDate } from "@/lib/fiscal-year";
 import { formatAmount } from "@/lib/money";
@@ -59,7 +60,9 @@ export default async function RecurringPage({ params, searchParams }: Props) {
                 <span className="min-w-0 flex-1 font-semibold [overflow-wrap:anywhere]">
                   {customer}
                 </span>
-                <span className="font-extrabold tabular-nums">{formatAmount(total)}</span>
+                <span className="font-extrabold tabular-nums">
+                  {formatAmount(total, countryPack(organization.country).amounts)}
+                </span>
               </div>
               <p className="mt-1 text-[12px] text-ink-2">
                 {t("line", {

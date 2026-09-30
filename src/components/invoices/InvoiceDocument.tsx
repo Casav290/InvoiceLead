@@ -1,4 +1,5 @@
 import { getTranslations } from "next-intl/server";
+import { countryPack } from "@/countries";
 import { formatRate } from "@/countries/ch/vat";
 import { formatDate } from "@/lib/fiscal-year";
 import { computeTotals, formatQuantity } from "@/lib/invoice-math";
@@ -51,6 +52,7 @@ export async function InvoiceDocument({
   });
   const tu = await getTranslations({ locale: lang, namespace: "app.invoices.units" });
   const sender = invoice.sender;
+  const style = countryPack(sender?.country).amounts;
   const recipient = invoice.recipient;
   const totals = computeTotals(lines);
   return (
@@ -118,14 +120,14 @@ export async function InvoiceDocument({
                   {formatQuantity(l.quantityMilli)} {tu(l.unit)}
                 </td>
                 <td className="hidden py-2 pr-3 text-right tabular-nums sm:table-cell">
-                  {formatAmount(l.unitPriceCents)}
+                  {formatAmount(l.unitPriceCents, style)}
                 </td>
                 {invoice.vatRegistered ? (
                   <td className="hidden py-2 pr-3 text-right sm:table-cell">
                     {formatRate(l.vatRateBp, lang)}
                   </td>
                 ) : null}
-                <td className="py-2 text-right tabular-nums">{formatAmount(l.netCents)}</td>
+                <td className="py-2 text-right tabular-nums">{formatAmount(l.netCents, style)}</td>
               </tr>
             ))}
           </tbody>
@@ -136,7 +138,7 @@ export async function InvoiceDocument({
           <>
             <div className="flex justify-between gap-4">
               <dt>{t("net")}</dt>
-              <dd className="tabular-nums">{formatAmount(invoice.netCents)}</dd>
+              <dd className="tabular-nums">{formatAmount(invoice.netCents, style)}</dd>
             </div>
             {totals.vat
               .filter((v) => v.rateBp > 0)
@@ -145,10 +147,10 @@ export async function InvoiceDocument({
                   <dt>
                     {t("vatLine", {
                       rate: formatRate(v.rateBp, lang),
-                      base: formatAmount(v.netCents),
+                      base: formatAmount(v.netCents, style),
                     })}
                   </dt>
-                  <dd className="tabular-nums">{formatAmount(v.vatCents)}</dd>
+                  <dd className="tabular-nums">{formatAmount(v.vatCents, style)}</dd>
                 </div>
               ))}
           </>
@@ -156,7 +158,7 @@ export async function InvoiceDocument({
         <div className="mt-2 flex justify-between gap-4 border-t border-line-strong pt-2 text-[15px] font-extrabold">
           <dt>{t("total")}</dt>
           <dd className="tabular-nums" data-testid="invoice-total">
-            {invoice.currency} {formatAmount(invoice.totalCents)}
+            {invoice.currency} {formatAmount(invoice.totalCents, style)}
           </dd>
         </div>
       </dl>

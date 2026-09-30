@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
+import { AccountingUnavailable } from "@/components/accounting/AccountingUnavailable";
 import { fieldClass } from "@/components/forms/fields";
 import { SettingsNav } from "@/components/settings/SettingsNav";
 import { Button } from "@/components/ui/button";
+import { countryPack } from "@/countries";
 import {
   accountClass,
   CHART_TEMPLATES,
@@ -30,6 +32,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function AccountsPage({ params, searchParams }: Props) {
   const { locale } = await params;
   const { user, organization } = await requireAppSession(locale);
+  if (!countryPack(organization.country).accounting) {
+    const tc = await getTranslations({ locale, namespace: "app.company.countries" });
+    return (
+      <div className="mx-auto max-w-3xl px-4 pt-10 sm:px-8">
+        <SettingsNav />
+        <AccountingUnavailable country={tc(countryPack(organization.country).code)} />
+      </div>
+    );
+  }
   const { saved, installed } = await searchParams;
   const editable = await canSetUpAccounting(db(), organization.id, user.id);
   const t = await getTranslations({ locale, namespace: "app.accounts" });

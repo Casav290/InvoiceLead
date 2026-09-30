@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { PlanNotice } from "@/components/app/PlanNotice";
 import { Button } from "@/components/ui/button";
+import { countryPack } from "@/countries";
 import { formatQuantity } from "@/lib/invoice-math";
 import { formatAmount } from "@/lib/money";
 import { requireAppSession } from "@/server/auth/guard";
@@ -79,7 +80,10 @@ export default async function CrmImportPage({ params, searchParams }: Props) {
                       {formatQuantity(Math.round(l.quantity * 1000))} {tu(l.unit)}
                     </td>
                     <td className="px-5 py-2 text-right tabular-nums">
-                      {formatAmount(Math.round(l.quantity * l.unitPriceCents))}
+                      {formatAmount(
+                        Math.round(l.quantity * l.unitPriceCents),
+                        countryPack(organization.country).amounts,
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -88,7 +92,10 @@ export default async function CrmImportPage({ params, searchParams }: Props) {
                     {t("net")}
                   </td>
                   <td className="px-5 py-2 text-right tabular-nums" data-testid="crm-total">
-                    {formatAmount(handoffTotalCents(handoff))}
+                    {formatAmount(
+                      handoffTotalCents(handoff),
+                      countryPack(organization.country).amounts,
+                    )}
                   </td>
                 </tr>
               </tbody>

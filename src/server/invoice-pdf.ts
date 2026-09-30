@@ -1,5 +1,7 @@
 import PDFDocument from "pdfkit";
+import QRCode from "qrcode";
 import { SwissQRBill } from "swissqrbill/pdf";
+import { countryPack } from "@/countries";
 import { formatReference } from "@/countries/ch/qr-reference";
 import { formatRate } from "@/countries/ch/vat";
 import { formatDate } from "@/lib/fiscal-year";
@@ -29,6 +31,10 @@ export type InvoicePdfLabels = {
   relatedLine?: string;
   /** Formule gratuite : « Créé avec InvoiceLead ». */
   poweredBy?: string;
+  /** Mention fiscale du pays, par exemple § 19 UStG pour une petite entreprise allemande. */
+  taxNote?: string;
+  /** Titre du GiroCode : « Mit Banking-App scannen ». */
+  scanToPay?: string;
 };
 
 const mm = (v: number) => (v * 72) / 25.4;
@@ -54,6 +60,7 @@ function addressLines(p: PartySnapshot): string[] {
 export function qrBillData(invoice: Invoice) {
   if (invoice.kind !== "invoice") return null;
   const s = invoice.sender;
+  if (countryPack(s?.country).paymentSlip !== "qr-bill") return null;
   const account = s?.qrIban ?? s?.iban;
   if (!s || !account || !s.street || !s.postalCode || !s.town || invoice.totalCents <= 0)
     return null;
@@ -88,6 +95,46 @@ export function qrBillData(invoice: Invoice) {
 }
 
 /**
+ * Contenu du GiroCode (EPC069-12, version 002) : virement SEPA en euros prêt à scanner. La référence
+ * structurée RF passe dans son champ ; sinon le numéro de facture sert de motif.
+ */
+export function epcQrPayload(invoice: Invoice): string | null {
+  const s = invoice.sender;
+  if (invoice.kind !== "invoice" || invoice.currency !== "EUR" || invoice.totalCents <= 0)
+    return null;
+  if (!s?.iban || countryPack(s.country).paymentSlip !== "epc-qr") return null;
+  const amount = (invoice.totalCents / 100).toFixed(2);
+  if (invoice.totalCents > 99_999_999_999) return null;
+  const reference = invoice.paymentReference?.startsWith("RF") ? invoice.paymentReference : "";
+  const text = reference ? "" : `Rechnung ${invoice.number ?? ""}`.trim().slice(0, 140);
+  return [
+    "BCD",
+    "002",
+    "1",
+    "SCT",
+    "",
+    s.name.slice(0, 70),
+    s.iban.replace(/\s/g, ""),
+    `EUR${amount}`,
+    "",
+    reference,
+    text,
+  ].join("\n");
+}
+
+/** Dessine un QR code en carrés vectoriels (pas d'image), zone de silence comprise. */
+function drawQr(doc: PDFKit.PDFDocument, text: string, x: number, y: number, size: number) {
+  const qr = QRCode.create(text, { errorCorrectionLevel: "M" });
+  const n = qr.modules.size;
+  const cell = size / (n + 8);
+  doc.save().fillColor("#000000");
+  for (let r = 0; r < n; r++)
+    for (let c = 0; c < n; c++)
+      if (qr.modules.get(r, c)) doc.rect(x + (c + 4) * cell, y + (r + 4) * cell, cell, cell);
+  doc.fill().restore();
+}
+
+/**
  * PDF A4 de la facture émise : en-tête, adresse dans la fenêtre à droite (enveloppe C5/6 suisse),
  * lignes, récapitulatif TVA par taux, puis la section paiement QR au bas de la dernière page.
  */
@@ -115,6 +162,8 @@ export function renderInvoicePdf(
 
   const sender = invoice.sender;
   const recipient = invoice.recipient;
+  const style = countryPack(sender?.country).amounts;
+  const fmt = (cents: number) => formatAmount(cents, style);
   doc.fillColor(INK);
 
   // Expéditeur
@@ -214,7 +263,7 @@ export function renderInvoicePdf(
       width: cols.qty.w,
       align: "right",
     });
-    doc.text(formatAmount(l.unitPriceCents), cols.price.x, y, {
+    doc.text(fmt(l.unitPriceCents), cols.price.x, y, {
       width: cols.price.w,
       align: "right",
     });
@@ -223,7 +272,7 @@ export function renderInvoicePdf(
         width: cols.vat.w,
         align: "right",
       });
-    doc.text(formatAmount(l.netCents), cols.amount.x, y, { width: cols.amount.w, align: "right" });
+    doc.text(fmt(l.netCents), cols.amount.x, y, { width: cols.amount.w, align: "right" });
     const next = y + h;
     doc
       .moveTo(LEFT, next - 3)
@@ -238,15 +287,15 @@ export function renderInvoicePdf(
   const totals = computeTotals(lines);
   const rows: [string, string, boolean][] = [];
   if (withVat) {
-    rows.push([labels.net, formatAmount(invoice.netCents), false]);
+    rows.push([labels.net, fmt(invoice.netCents), false]);
     for (const v of totals.vat.filter((x) => x.rateBp > 0))
       rows.push([
-        labels.vatLine(formatRate(v.rateBp, invoice.language), formatAmount(v.netCents)),
-        formatAmount(v.vatCents),
+        labels.vatLine(formatRate(v.rateBp, invoice.language), fmt(v.netCents)),
+        fmt(v.vatCents),
         false,
       ]);
   }
-  rows.push([`${labels.total} ${invoice.currency}`, formatAmount(invoice.totalCents), true]);
+  rows.push([`${labels.total} ${invoice.currency}`, fmt(invoice.totalCents), true]);
   if (doc.y + rows.length * 14 + 20 > BOTTOM) doc.addPage();
   doc.moveDown(0.5);
   const labelX = RIGHT - mm(95);
@@ -276,6 +325,31 @@ export function renderInvoicePdf(
     if (invoice.paymentReference)
       doc.text(labels.referenceLine(formatReference(invoice.paymentReference)));
     doc.fillColor(INK);
+  }
+
+  if (labels.taxNote) {
+    doc
+      .moveDown(1)
+      .fontSize(9)
+      .fillColor(INK)
+      .text(labels.taxNote, LEFT, doc.y, {
+        width: RIGHT - LEFT,
+      });
+  }
+
+  const epc = epcQrPayload(invoice);
+  if (epc) {
+    const size = mm(32);
+    if (doc.y + size + mm(10) > BOTTOM) doc.addPage();
+    const top = doc.y + mm(4);
+    drawQr(doc, epc, LEFT, top, size);
+    if (labels.scanToPay)
+      doc
+        .fontSize(8)
+        .fillColor(MUTED)
+        .text(labels.scanToPay, LEFT + size + mm(4), top + mm(4), { width: mm(60) });
+    doc.fillColor(INK).fontSize(9);
+    doc.y = top + size;
   }
 
   if (labels.poweredBy) {

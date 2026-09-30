@@ -16,6 +16,7 @@ import { InvoiceForm } from "@/components/invoices/InvoiceForm";
 import { PaymentForm } from "@/components/invoices/PaymentForm";
 import { SendPanel } from "@/components/invoices/SendPanel";
 import { Button } from "@/components/ui/button";
+import { countryPack } from "@/countries";
 import { Link } from "@/i18n/navigation";
 import { formatDate } from "@/lib/fiscal-year";
 import { formatQuantity } from "@/lib/invoice-math";
@@ -61,7 +62,7 @@ async function emailDefaults(
   const values = {
     number: invoice.number ?? "",
     company: invoice.sender?.name ?? "",
-    amount: formatAmount(invoice.totalCents),
+    amount: formatAmount(invoice.totalCents, countryPack(invoice.sender?.country).amounts),
     currency: invoice.currency,
     due: formatDate(invoice.dueDate),
   };
@@ -156,7 +157,9 @@ export async function DocumentListPage({
                 <th className="px-4 py-2.5">{t("columns.customer")}</th>
                 <th className="hidden px-4 py-2.5 sm:table-cell">{t("columns.date")}</th>
                 <th className="hidden px-4 py-2.5 md:table-cell">{t("columns.status")}</th>
-                <th className="px-4 py-2.5 text-right">{t("columns.total")}</th>
+                <th className="px-4 py-2.5 text-right">
+                  {t("columns.total", { currency: organization.currency })}
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -194,7 +197,7 @@ export async function DocumentListPage({
                       : tk(`status.${r.status}`)}
                   </td>
                   <td className="px-4 py-3 text-right tabular-nums">
-                    {formatAmount(r.totalCents)}
+                    {formatAmount(r.totalCents, countryPack(organization.country).amounts)}
                   </td>
                 </tr>
               ))}
@@ -238,6 +241,7 @@ export async function NewDocumentPage({
           contacts={options.contacts}
           products={options.products}
           vatRegistered={organization.vatRegistered}
+          country={organization.country}
           initial={{
             contactId: chosen?.id ?? "",
             language:
@@ -373,6 +377,7 @@ export async function DocumentDetailPage({
             kind={kind}
             id={invoice.id}
             vatRegistered={organization.vatRegistered}
+            country={organization.country}
             {...(await invoiceOptions(db(), organization.id))}
             initial={{
               contactId: invoice.contactId,
@@ -479,7 +484,7 @@ export async function DocumentDetailPage({
                       }
                       data-testid={`balance-${k}`}
                     >
-                      {formatAmount(balance[k])}
+                      {formatAmount(balance[k], countryPack(organization.country).amounts)}
                     </dd>
                   </div>
                 ))}
@@ -497,7 +502,7 @@ export async function DocumentDetailPage({
                         <span className="text-ink-muted [overflow-wrap:anywhere]">{p.note}</span>
                       ) : null}
                       <span className="ml-auto font-semibold tabular-nums">
-                        {formatAmount(p.amountCents)}
+                        {formatAmount(p.amountCents, countryPack(organization.country).amounts)}
                       </span>
                       <form action={deletePaymentAction}>
                         {hidden}
@@ -528,6 +533,7 @@ export async function DocumentDetailPage({
               ) : null}
               {balance.openCents > 0 ? (
                 <PaymentForm
+                  currency={invoice.currency}
                   locale={locale}
                   invoiceId={invoice.id}
                   initial={{ paidOn: today, amount: formatAmount(balance.openCents) }}

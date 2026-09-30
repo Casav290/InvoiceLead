@@ -33,6 +33,8 @@ export function formatUid(uid: string): string {
 
 /** Mention TVA selon la langue du document (art. 26 LTVA) : « CHE-123.456.789 MWST / TVA / IVA ». */
 export function vatNumberLabel(uid: string, locale: string): string {
+  // Allemagne : USt-IdNr. « DE123456789 », même libellé en allemand et en français.
+  if (uid.startsWith("DE")) return `USt-IdNr. ${uid}`;
   const suffix = locale.startsWith("fr") ? "TVA" : locale.startsWith("it") ? "IVA" : "MWST";
   return `${formatUid(uid)} ${suffix}`;
 }
@@ -45,6 +47,18 @@ export function normalizeIban(input: string): string {
 export function isValidSwissIban(input: string): boolean {
   const iban = normalizeIban(input);
   if (!/^(CH|LI)\d{7}[A-Z0-9]{12}$/.test(iban)) return false;
+  const rearranged = iban.slice(4) + iban.slice(0, 4);
+  const numeric = rearranged.replace(/[A-Z]/g, (c) => String(c.charCodeAt(0) - 55));
+  let remainder = 0;
+  for (const ch of numeric) remainder = (remainder * 10 + Number(ch)) % 97;
+  return remainder === 1;
+}
+
+/** IBAN d'un pays SEPA (structure générale) avec clé modulo 97 valide. */
+export function isValidSepaIban(input: string): boolean {
+  const iban = normalizeIban(input);
+  if (!/^[A-Z]{2}\d{2}[A-Z0-9]{11,30}$/.test(iban)) return false;
+  if (iban.startsWith("DE") && iban.length !== 22) return false;
   const rearranged = iban.slice(4) + iban.slice(0, 4);
   const numeric = rearranged.replace(/[A-Z]/g, (c) => String(c.charCodeAt(0) - 55));
   let remainder = 0;

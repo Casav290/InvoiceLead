@@ -11,9 +11,11 @@ export function PaymentForm({
   locale,
   invoiceId,
   initial,
+  currency = "CHF",
 }: {
   locale: string;
   invoiceId: string;
+  currency?: string;
   initial: Record<string, string>;
 }) {
   const t = useTranslations("app.invoices.payments");
@@ -49,7 +51,7 @@ export function PaymentForm({
       <TextField
         id="payment-amount"
         name="amount"
-        label={t("amount")}
+        label={t("amount", { currency })}
         defaultValue={values.amount}
         error={err("amount")}
       />

@@ -6,7 +6,7 @@ const nextConfig: NextConfig = {
   typedRoutes: false,
   // Relevés camt.053 (5 Mo) et justificatifs (10 Mo chacun) envoyés par formulaire.
   experimental: { serverActions: { bodySizeLimit: "25mb" } },
-  serverExternalPackages: ["pg", "pdfkit", "swissqrbill"],
+  serverExternalPackages: ["pg", "pdfkit", "swissqrbill", "qrcode"],
   async headers() {
     return [
       {

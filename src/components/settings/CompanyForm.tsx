@@ -1,12 +1,16 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { type CompanyFormState, saveCompany } from "@/app/[locale]/app/settings/company/actions";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-const LEGAL_FORMS = ["sole_proprietorship", "gmbh", "ag", "partnership", "association", "other"];
+const LEGAL_FORMS: Record<string, string[]> = {
+  CH: ["sole_proprietorship", "gmbh", "ag", "partnership", "association", "other"],
+  DE: ["sole_proprietorship", "ek", "gbr", "ug", "gmbh", "ag", "association", "other"],
+};
+const COUNTRIES = ["CH", "DE"];
 const VAT_METHODS = ["effective", "net_tax_rate"];
 const VAT_SETTLEMENTS = ["agreed", "received"];
 const MONTHS = Array.from({ length: 12 }, (_, i) => String(i + 1));
@@ -29,21 +33,27 @@ export function CompanyForm({
     round: 0,
   });
   const values = state.values ?? initial;
+  // Le pays change les champs proposés : IDE ou USt-IdNr., QR-IBAN et TDFN seulement en Suisse.
+  const [country, setCountry] = useState(values.country || "CH");
+  const swiss = country !== "DE";
   const error = (name: string) =>
     state.errors?.[(name === "netTaxRate" ? "netTaxRateBp" : name) as keyof typeof state.errors];
 
   const field = ({
     name,
+    formName = name,
     type = "text",
     wide = false,
     autoComplete,
   }: {
     name: string;
+    /** Nom envoyé au serveur, quand le libellé diffère (USt-IdNr. dans le champ « uid »). */
+    formName?: string;
     type?: string;
     wide?: boolean;
     autoComplete?: string;
   }) => {
-    const code = error(name);
+    const code = error(formName);
     const hint = t.has(`hints.${name}`);
     const describedBy = [hint ? `${name}-hint` : null, code ? `${name}-error` : null]
       .filter(Boolean)
@@ -55,10 +65,10 @@ export function CompanyForm({
         </label>
         <input
           id={`company-${name}`}
-          name={name}
+          name={formName}
           type={type}
           autoComplete={autoComplete}
-          defaultValue={values[name] ?? ""}
+          defaultValue={values[formName] ?? ""}
           disabled={!editable}
           aria-invalid={code ? true : undefined}
           aria-describedby={describedBy || undefined}
@@ -151,9 +161,36 @@ export function CompanyForm({
       {section(
         t("sections.identity"),
         <>
+          <label className="block sm:col-span-2">
+            <span className="mb-1 block text-[13px] font-semibold">{t("fields.country")}</span>
+            <select
+              name="country"
+              value={country}
+              onChange={(e) => setCountry(e.target.value)}
+              disabled={!editable}
+              aria-invalid={error("country") ? true : undefined}
+              className={fieldClass}
+              data-testid="company-country"
+            >
+              {COUNTRIES.map((c) => (
+                <option key={c} value={c}>
+                  {t(`countries.${c}`)}
+                </option>
+              ))}
+            </select>
+            {error("country") ? (
+              <span className="mt-1 block text-[12px] font-semibold text-hot-fg">
+                {t(`errors.${error("country")}`)}
+              </span>
+            ) : null}
+          </label>
           {field({ name: "legalName", wide: true, autoComplete: "organization" })}
-          {select({ name: "legalForm", options: LEGAL_FORMS, prefix: "legalForms" })}
-          {field({ name: "uid" })}
+          {select({
+            name: "legalForm",
+            options: LEGAL_FORMS[country] ?? LEGAL_FORMS.CH ?? [],
+            prefix: "legalForms",
+          })}
+          {field({ name: swiss ? "uid" : "ustId", formName: "uid" })}
         </>,
       )}
 
@@ -183,9 +220,9 @@ export function CompanyForm({
             />
             <span className="text-[14px] font-semibold">{t("fields.vatRegistered")}</span>
           </label>
-          {select({ name: "vatMethod", options: VAT_METHODS, prefix: "vatMethods" })}
+          {swiss ? select({ name: "vatMethod", options: VAT_METHODS, prefix: "vatMethods" }) : null}
           {select({ name: "vatSettlement", options: VAT_SETTLEMENTS, prefix: "vatSettlements" })}
-          {field({ name: "netTaxRate" })}
+          {swiss ? field({ name: "netTaxRate" }) : null}
         </>,
       )}
 
@@ -193,7 +230,7 @@ export function CompanyForm({
         t("sections.bank"),
         <>
           {field({ name: "iban" })}
-          {field({ name: "qrIban" })}
+          {swiss ? field({ name: "qrIban" }) : null}
         </>,
       )}
 

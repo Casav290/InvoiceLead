@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
+import { AccountingUnavailable } from "@/components/accounting/AccountingUnavailable";
 import { fieldClass } from "@/components/forms/fields";
 import { SettingsNav } from "@/components/settings/SettingsNav";
 import { Button } from "@/components/ui/button";
+import { countryPack } from "@/countries";
 import { fiscalYearContaining, formatDate, nextFiscalYear } from "@/lib/fiscal-year";
 import { listFiscalYears } from "@/server/accounting";
 import { requireAppSession } from "@/server/auth/guard";
@@ -29,6 +31,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function FiscalYearsPage({ params, searchParams }: Props) {
   const { locale } = await params;
   const { user, organization } = await requireAppSession(locale);
+  if (!countryPack(organization.country).accounting) {
+    const tc = await getTranslations({ locale, namespace: "app.company.countries" });
+    return (
+      <div className="mx-auto max-w-3xl px-4 pt-10 sm:px-8">
+        <SettingsNav />
+        <AccountingUnavailable country={tc(countryPack(organization.country).code)} />
+      </div>
+    );
+  }
   const { opened, error, closed, closeError } = await searchParams;
   const editable = await canSetUpAccounting(db(), organization.id, user.id);
   const t = await getTranslations({ locale, namespace: "app.fiscalYears" });

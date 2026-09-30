@@ -27,6 +27,14 @@ export async function buildDocumentPdf(
     .from(organizations)
     .where(eq(organizations.id, invoice.organizationId));
   const poweredBy = org && LIMITS[tierOf(org)].poweredBy ? t("poweredBy") : undefined;
+  const germany = invoice.sender?.country === "DE";
+  const taxNote = !germany
+    ? undefined
+    : !invoice.vatRegistered
+      ? t("smallBusinessDe")
+      : lines.some((l) => l.vatCode === "export")
+        ? t("reverseChargeDe")
+        : undefined;
   const pdf = await renderInvoicePdf(invoice, lines, {
     invoice: tk("docTitle"),
     issueDate: t("issueDate"),
@@ -45,6 +53,8 @@ export async function buildDocumentPdf(
     units,
     relatedLine: related?.number ? t("relatedLine", { number: related.number }) : undefined,
     poweredBy,
+    taxNote,
+    scanToPay: t("scanToPay"),
   });
   const safe = (invoice.number ?? "").replace(/[^0-9A-Za-z-]/g, "");
   return { pdf, filename: `${tk("docTitle")}-${safe}.pdf` };

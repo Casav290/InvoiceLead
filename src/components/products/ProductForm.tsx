@@ -13,9 +13,11 @@ export function ProductForm({
   locale,
   id,
   initial,
+  currency = "CHF",
 }: {
   locale: string;
   id?: string;
+  currency?: string;
   initial: Record<string, string>;
 }) {
   const t = useTranslations("app.products");
@@ -77,7 +79,7 @@ export function ProductForm({
         <TextField
           id="product-price"
           name="unitPrice"
-          label={t("fields.unitPrice")}
+          label={t("fields.unitPrice", { currency })}
           hint={t("hints.unitPrice")}
           defaultValue={values.unitPrice}
           error={err("unitPriceCents")}

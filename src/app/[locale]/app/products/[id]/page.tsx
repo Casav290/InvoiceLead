@@ -27,6 +27,7 @@ export default async function ProductPage({ params }: Props) {
     <div className="mx-auto max-w-3xl px-4 py-10 sm:px-8">
       <h1 className="text-[28px] leading-tight">{product.name}</h1>
       <ProductForm
+        currency={organization.currency}
         locale={locale}
         id={product.id}
         initial={{

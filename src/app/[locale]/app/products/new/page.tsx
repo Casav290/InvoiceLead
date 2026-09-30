@@ -13,12 +13,16 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function NewProductPage({ params }: Props) {
   const { locale } = await params;
-  await requireAppSession(locale);
+  const { organization } = await requireAppSession(locale);
   const t = await getTranslations({ locale, namespace: "app.products" });
   return (
     <div className="mx-auto max-w-3xl px-4 py-10 sm:px-8">
       <h1 className="text-[28px] leading-tight">{t("new")}</h1>
-      <ProductForm locale={locale} initial={{ unit: "hour", vatCode: "normal" }} />
+      <ProductForm
+        locale={locale}
+        currency={organization.currency}
+        initial={{ unit: "hour", vatCode: "normal" }}
+      />
     </div>
   );
 }

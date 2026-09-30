@@ -5,7 +5,8 @@ import { useActionState, useId, useState } from "react";
 import { type InvoiceFormState, saveInvoice } from "@/app/[locale]/app/invoices/actions";
 import { FormSection, fieldClass, SelectField, TextField } from "@/components/forms/fields";
 import { Button } from "@/components/ui/button";
-import { formatRate, type VatCode, vatRateBp } from "@/countries/ch/vat";
+import { countryPack } from "@/countries";
+import { formatRate, type VatCode } from "@/countries/ch/vat";
 import { parseAmountToCents } from "@/lib/amount-input";
 import { computeTotals, parseQuantityToMilli } from "@/lib/invoice-math";
 import { formatAmount } from "@/lib/money";
@@ -68,8 +69,10 @@ export function InvoiceForm({
   contacts,
   products,
   vatRegistered,
+  country = "CH",
 }: {
   locale: string;
+  country?: string;
   kind?: "invoice" | "quote" | "credit_note";
   id?: string;
   initial: Record<string, string | string[]>;
@@ -100,6 +103,7 @@ export function InvoiceForm({
       contacts={contacts}
       products={products}
       vatRegistered={vatRegistered}
+      country={country}
       t={t}
     />
   );
@@ -119,6 +123,7 @@ function InvoiceFormBody({
   contacts,
   products,
   vatRegistered,
+  country,
   t,
 }: {
   locale: string;
@@ -134,8 +139,10 @@ function InvoiceFormBody({
   contacts: ContactOption[];
   products: ProductOption[];
   vatRegistered: boolean;
+  country: string;
   t: ReturnType<typeof useTranslations>;
 }) {
+  const pack = countryPack(country);
   const v = (k: string) => {
     const x = values[k];
     return typeof x === "string" ? x : "";
@@ -173,7 +180,7 @@ function InvoiceFormBody({
   const rateOf = (code: string) => {
     if (!vatRegistered) return 0;
     try {
-      return vatRateBp(code as VatCode, rateDate);
+      return pack.vatRateBp(code as VatCode, rateDate);
     } catch {
       return 0;
     }
@@ -453,7 +460,7 @@ function InvoiceFormBody({
                   <span className="text-[13px] text-ink-2">
                     {t("lineTotal")}{" "}
                     <span className="font-semibold tabular-nums text-ink">
-                      {formatAmount(lineNet)}
+                      {formatAmount(lineNet, pack.amounts)}
                     </span>
                   </span>
                   <Button
@@ -481,7 +488,7 @@ function InvoiceFormBody({
         >
           <div className="flex justify-between gap-4">
             <dt>{vatRegistered ? t("net") : t("total")}</dt>
-            <dd className="tabular-nums">{formatAmount(totals.netCents)}</dd>
+            <dd className="tabular-nums">{formatAmount(totals.netCents, pack.amounts)}</dd>
           </div>
           {vatRegistered
             ? totals.vat
@@ -491,17 +498,19 @@ function InvoiceFormBody({
                     <dt>
                       {t("vatLine", {
                         rate: formatRate(x.rateBp, locale),
-                        base: formatAmount(x.netCents),
+                        base: formatAmount(x.netCents, pack.amounts),
                       })}
                     </dt>
-                    <dd className="tabular-nums">{formatAmount(x.vatCents)}</dd>
+                    <dd className="tabular-nums">{formatAmount(x.vatCents, pack.amounts)}</dd>
                   </div>
                 ))
             : null}
           {vatRegistered ? (
             <div className="mt-2 flex justify-between gap-4 border-t border-line pt-2 font-extrabold">
               <dt>{t("totalWithVat")}</dt>
-              <dd className="tabular-nums">CHF {formatAmount(totals.totalCents)}</dd>
+              <dd className="tabular-nums">
+                {pack.currency} {formatAmount(totals.totalCents, pack.amounts)}
+              </dd>
             </div>
           ) : null}
         </dl>

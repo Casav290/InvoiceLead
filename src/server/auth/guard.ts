@@ -1,6 +1,7 @@
 import "server-only";
 import { redirect } from "next/navigation";
 import { cache } from "react";
+import { countryPack } from "@/countries";
 import { betaAllowed } from "../beta";
 import { db } from "../db";
 import { env } from "../env";
@@ -53,5 +54,9 @@ export async function requirePermission(
 ): Promise<CurrentSession> {
   const session = await requireAppSession(locale);
   if (!can(session.membership, permission)) redirect(`/${pickLocale(locale)}/app?forbidden=1`);
+  // Pays sans comptabilité dans son pack : aucune action comptable, l'écran l'explique.
+  const accountingOnly = permission === "accounting" || permission === "setup";
+  if (accountingOnly && !countryPack(session.organization.country).accounting)
+    redirect(`/${pickLocale(locale)}/app/accounting`);
   return session;
 }

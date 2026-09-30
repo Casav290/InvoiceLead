@@ -1,13 +1,16 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, ne } from "drizzle-orm";
+import { type Country, countryPack, isCountry } from "@/countries";
+import { isValidUstId, normalizeUstId } from "@/countries/de/vat";
 import {
   isQrIban,
+  isValidSepaIban,
   isValidSwissIban,
   isValidUid,
   normalizeIban,
   normalizeUid,
 } from "@/lib/swiss-ids";
 import type { Db } from "./db";
-import { auditLog, memberships, organizations } from "./db/schema";
+import { auditLog, invoices, memberships, organizations } from "./db/schema";
 import { can } from "./roles";
 
 export const LEGAL_FORMS = [
@@ -16,6 +19,9 @@ export const LEGAL_FORMS = [
   "ag",
   "partnership",
   "association",
+  "ug",
+  "ek",
+  "gbr",
   "other",
 ] as const;
 export const VAT_METHODS = ["effective", "net_tax_rate"] as const;
@@ -23,6 +29,7 @@ export const VAT_SETTLEMENTS = ["agreed", "received"] as const;
 /** Rôles Lead autorisés à modifier les réglages de l'entreprise. */
 
 export type CompanyInput = {
+  country: Country;
   legalName: string;
   legalForm: (typeof LEGAL_FORMS)[number];
   street: string;
@@ -53,6 +60,10 @@ export function parseCompanyForm(
   form: FormData,
 ): { ok: true; data: CompanyInput } | { ok: false; errors: CompanyErrors } {
   const errors: CompanyErrors = {};
+  const countryRaw = text(form, "country") || "CH";
+  if (!isCountry(countryRaw)) errors.country = "required";
+  const country: Country = isCountry(countryRaw) ? countryRaw : "CH";
+  const germany = country === "DE";
 
   const legalName = text(form, "legalName");
   if (!legalName) errors.legalName = "required";
@@ -68,7 +79,7 @@ export function parseCompanyForm(
   const buildingNumber = optional(text(form, "buildingNumber"));
   if (buildingNumber && buildingNumber.length > 16) errors.buildingNumber = "tooLong";
   const postalCode = text(form, "postalCode");
-  if (!/^\d{4}$/.test(postalCode)) errors.postalCode = "postalCode";
+  if (!(germany ? /^\d{5}$/ : /^\d{4}$/).test(postalCode)) errors.postalCode = "postalCode";
   const town = text(form, "town");
   if (!town) errors.town = "required";
   else if (town.length > 35) errors.town = "tooLong";
@@ -79,11 +90,16 @@ export function parseCompanyForm(
   const website = optional(text(form, "website"));
 
   const uidRaw = optional(text(form, "uid"));
-  const uid = uidRaw ? normalizeUid(uidRaw) : null;
-  if (uidRaw && (!uid || !isValidUid(uid))) errors.uid = "uid";
+  // Suisse : IDE (CHE…) ; Allemagne : USt-IdNr. (DE…).
+  const uid = uidRaw ? (germany ? normalizeUstId(uidRaw) : normalizeUid(uidRaw)) : null;
+  if (uidRaw && (!uid || !(germany ? isValidUstId(uid) : isValidUid(uid))))
+    errors.uid = germany ? "ustId" : "uid";
 
   const vatRegistered = form.get("vatRegistered") === "on";
-  let vatMethod = optional(text(form, "vatMethod")) as CompanyInput["vatMethod"];
+  // L'Allemagne ne connaît que la méthode effective (Soll- ou Ist-Versteuerung).
+  let vatMethod = (
+    germany ? "effective" : optional(text(form, "vatMethod"))
+  ) as CompanyInput["vatMethod"];
   let vatSettlement = optional(text(form, "vatSettlement")) as CompanyInput["vatSettlement"];
   if (vatRegistered) {
     if (!uidRaw) errors.uid = "uidRequiredForVat";
@@ -106,10 +122,10 @@ export function parseCompanyForm(
 
   const ibanRaw = optional(text(form, "iban"));
   const iban = ibanRaw ? normalizeIban(ibanRaw) : null;
-  if (iban && !isValidSwissIban(iban)) errors.iban = "iban";
+  if (iban && !(germany ? isValidSepaIban(iban) : isValidSwissIban(iban))) errors.iban = "iban";
   else if (iban && isQrIban(iban)) errors.iban = "ibanIsQr";
 
-  const qrIbanRaw = optional(text(form, "qrIban"));
+  const qrIbanRaw = germany ? null : optional(text(form, "qrIban"));
   const qrIban = qrIbanRaw ? normalizeIban(qrIbanRaw) : null;
   if (qrIban && !isValidSwissIban(qrIban)) errors.qrIban = "iban";
   else if (qrIban && !isQrIban(qrIban)) errors.qrIban = "notQrIban";
@@ -127,6 +143,7 @@ export function parseCompanyForm(
   return {
     ok: true,
     data: {
+      country,
       legalName,
       legalForm,
       street,
@@ -174,8 +191,21 @@ export async function saveCompanySettings(
   database: Db,
   who: { organizationId: string; userId: string },
   data: CompanyInput,
-): Promise<"saved" | "forbidden"> {
+): Promise<"saved" | "forbidden" | "countryLocked"> {
   if (!(await canEditSettings(database, who.organizationId, who.userId))) return "forbidden";
+  // Le pays fixe la devise et les taux : il ne change plus une fois une pièce émise.
+  const [current] = await database
+    .select({ country: organizations.country })
+    .from(organizations)
+    .where(eq(organizations.id, who.organizationId));
+  if (current && current.country !== data.country) {
+    const [issued] = await database
+      .select({ id: invoices.id })
+      .from(invoices)
+      .where(and(eq(invoices.organizationId, who.organizationId), ne(invoices.status, "draft")))
+      .limit(1);
+    if (issued) return "countryLocked";
+  }
   const complete = !!(
     data.legalName &&
     data.street &&
@@ -192,6 +222,7 @@ export async function saveCompanySettings(
       .update(organizations)
       .set({
         ...data,
+        currency: countryPack(data.country).currency,
         settingsCompletedAt: complete ? (before?.completedAt ?? new Date()) : null,
         updatedAt: new Date(),
       })

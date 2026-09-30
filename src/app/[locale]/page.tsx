@@ -34,7 +34,7 @@ export default function HomePage() {
                 </Button>
               </div>
             </div>
-            <InvoicePreview locale={locale} />
+            <InvoicePreview />
           </div>
         </section>
 
@@ -86,7 +86,7 @@ export default function HomePage() {
 }
 
 /** Aperçu d'une facture QR dessiné en traits : une illustration, pas une vraie pièce. */
-function InvoicePreview({ locale }: { locale: string }) {
+function InvoicePreview() {
   const t = useTranslations("home.preview");
   const labels = t.raw("rows") as string[];
   const rows = [
@@ -115,20 +115,20 @@ function InvoicePreview({ locale }: { locale: string }) {
         >
           <span>{row.label}</span>
           <span className="w-14 text-right text-ink-muted">{row.qty}</span>
-          <span className="w-20 text-right tabular-nums">{formatAmount(row.cents, locale)}</span>
+          <span className="w-20 text-right tabular-nums">{formatAmount(row.cents)}</span>
         </div>
       ))}
       <div className="flex justify-between px-5 pt-3 text-ink-muted">
         <span>{t("subtotal")}</span>
-        <span className="tabular-nums">{formatAmount(subtotal, locale)}</span>
+        <span className="tabular-nums">{formatAmount(subtotal)}</span>
       </div>
       <div className="flex justify-between px-5 pt-1 pb-3 text-ink-muted">
         <span>{t("vat")}</span>
-        <span className="tabular-nums">{formatAmount(vat, locale)}</span>
+        <span className="tabular-nums">{formatAmount(vat)}</span>
       </div>
       <div className="flex justify-between border-t border-line-strong px-5 py-3 font-bold">
         <span>{t("total")}</span>
-        <span className="tabular-nums">{formatMoney(total, locale)}</span>
+        <span className="tabular-nums">{formatMoney(total)}</span>
       </div>
       <div className="grid grid-cols-[auto_1fr] gap-4 border-t border-dashed border-ink-3 px-5 py-4">
         <QrMock />

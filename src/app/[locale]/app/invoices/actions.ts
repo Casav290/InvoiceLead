@@ -69,6 +69,7 @@ export async function saveInvoice(
   const round = prev.round + 1;
   const parsed = parseInvoiceForm(form, {
     vatRegistered: await isVatRegistered(db(), who.organizationId),
+    country: session.organization.country,
   });
   if (!parsed.ok) return { status: "invalid", errors: parsed.errors, values, round };
   const result = id
