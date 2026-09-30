@@ -160,14 +160,16 @@
         "fiscalYearStartMonth": "Beginn des Geschäftsjahres",
         "netTaxRate": "Saldosteuersatz (%)",
         "country": "Land des Sitzes",
-        "ustId": "USt-IdNr."
+        "ustId": "USt-IdNr.",
+        "taxNumber": "Steuernummer"
       },
       "hints": {
         "uid": "Format CHE-123.456.789, Prüfziffer wird kontrolliert.",
         "iban": "Normales Konto: Rechnungen mit SCOR-Referenz (RF…).",
         "qrIban": "Optional: Rechnungen mit 27-stelliger QR-Referenz.",
         "netTaxRate": "Nur bei der Saldosteuersatzmethode: der von der ESTV bewilligte Satz, zum Beispiel 6,2.",
-        "ustId": "Format DE123456789, Prüfziffer wird kontrolliert."
+        "ustId": "Format DE123456789, Prüfziffer wird kontrolliert.",
+        "taxNumber": "Steuernummer des Finanzamts, zum Beispiel 12/345/67890. USt-IdNr. oder Steuernummer: eines von beiden ist Pflicht."
       },
       "legalForms": {
         "sole_proprietorship": "Einzelunternehmen",
@@ -214,7 +216,9 @@
         "notQrIban": "Das ist keine QR-IBAN (Institut 30000 bis 31999).",
         "netTaxRate": "Geben Sie den von der ESTV bewilligten Satz an (zwischen 0,1 und 15 %).",
         "ustId": "Ungültige USt-IdNr. (DE und 9 Ziffern, Prüfziffer).",
-        "countryLocked": "Das Land lässt sich nach dem ersten ausgestellten Dokument nicht mehr ändern."
+        "countryLocked": "Das Land lässt sich nach dem ersten ausgestellten Dokument nicht mehr ändern.",
+        "taxNumber": "Ungültige Steuernummer (10 bis 13 Ziffern).",
+        "taxIdRequired": "Geben Sie die USt-IdNr. oder die Steuernummer an: eines von beiden steht auf jeder Rechnung."
       },
       "countries": {
         "CH": "Schweiz",
@@ -716,6 +720,21 @@
         "next": "Nächste Rechnung am",
         "autoSend": "Automatisch ausstellen und senden (sonst: Entwurf zur Prüfung)",
         "create": "Wiederholung speichern"
+      },
+      "einvoice": {
+        "download": "XRechnung (XML)",
+        "missing": "XRechnung nicht möglich, es fehlt: {fields}.",
+        "fields": {
+          "number": "Nummer",
+          "sellerAddress": "Adresse des Unternehmens",
+          "buyerAddress": "Adresse des Kunden",
+          "sellerEmail": "E-Mail des Unternehmens",
+          "sellerPhone": "Telefon des Unternehmens",
+          "sellerIban": "IBAN",
+          "buyerEmail": "E-Mail des Kunden",
+          "buyerVatId": "USt-IdNr. des Kunden",
+          "sellerTaxId": "USt-IdNr. oder Steuernummer"
+        }
       }
     },
     "quotes": {

@@ -1,6 +1,7 @@
 import "server-only";
 import { eq } from "drizzle-orm";
 import { getTranslations } from "next-intl/server";
+import { buildCii } from "@/countries/de/cii";
 import { db } from "./db";
 import { type Invoice, type InvoiceLine, organizations } from "./db/schema";
 import { renderInvoicePdf } from "./invoice-pdf";
@@ -35,27 +36,36 @@ export async function buildDocumentPdf(
       : lines.some((l) => l.vatCode === "export")
         ? t("reverseChargeDe")
         : undefined;
-  const pdf = await renderInvoicePdf(invoice, lines, {
-    invoice: tk("docTitle"),
-    issueDate: t("issueDate"),
-    serviceDate: t("serviceDate"),
-    dueDate: tk("docDue"),
-    description: t("description"),
-    quantity: t("quantity"),
-    unitPrice: t("unitPrice"),
-    vat: t("vat"),
-    amount: t("amount"),
-    net: t("net"),
-    total: t("total"),
-    vatLine: (rate, base) => t("vatLine", { rate, base }),
-    payTo: (iban) => t("payTo", { iban }),
-    referenceLine: (reference) => t("referenceLine", { reference }),
-    units,
-    relatedLine: related?.number ? t("relatedLine", { number: related.number }) : undefined,
-    poweredBy,
-    taxNote,
-    scanToPay: t("scanToPay"),
-  });
+  // Allemagne : facture et avoir en ZUGFeRD (PDF/A-3 avec le XML EN 16931), si les données suffisent.
+  const cii =
+    germany && invoice.kind !== "quote" ? buildCii(invoice, lines, "zugferd", related) : null;
+  const einvoice = cii && "xml" in cii ? { xml: cii.xml } : undefined;
+  const pdf = await renderInvoicePdf(
+    invoice,
+    lines,
+    {
+      invoice: tk("docTitle"),
+      issueDate: t("issueDate"),
+      serviceDate: t("serviceDate"),
+      dueDate: tk("docDue"),
+      description: t("description"),
+      quantity: t("quantity"),
+      unitPrice: t("unitPrice"),
+      vat: t("vat"),
+      amount: t("amount"),
+      net: t("net"),
+      total: t("total"),
+      vatLine: (rate, base) => t("vatLine", { rate, base }),
+      payTo: (iban) => t("payTo", { iban }),
+      referenceLine: (reference) => t("referenceLine", { reference }),
+      units,
+      relatedLine: related?.number ? t("relatedLine", { number: related.number }) : undefined,
+      poweredBy,
+      taxNote,
+      scanToPay: t("scanToPay"),
+    },
+    einvoice,
+  );
   const safe = (invoice.number ?? "").replace(/[^0-9A-Za-z-]/g, "");
   return { pdf, filename: `${tk("docTitle")}-${safe}.pdf` };
 }

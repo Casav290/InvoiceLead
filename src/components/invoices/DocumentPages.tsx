@@ -17,6 +17,7 @@ import { PaymentForm } from "@/components/invoices/PaymentForm";
 import { SendPanel } from "@/components/invoices/SendPanel";
 import { Button } from "@/components/ui/button";
 import { countryPack } from "@/countries";
+import { buildCii } from "@/countries/de/cii";
 import { Link } from "@/i18n/navigation";
 import { formatDate } from "@/lib/fiscal-year";
 import { formatQuantity } from "@/lib/invoice-math";
@@ -288,6 +289,11 @@ export async function DocumentDetailPage({
   const payments = billed ? await listPayments(db(), organization.id, invoice.id) : [];
   const reminders = billed ? await listReminders(db(), organization.id, invoice.id) : [];
   const section = sectionOf(kind);
+  // Allemagne : XRechnung pour les factures et avoirs émis.
+  const xrechnung =
+    organization.country === "DE" && kind !== "quote" && !draft
+      ? buildCii(invoice, lines, "xrechnung", related)
+      : null;
   const hidden = (
     <>
       <input type="hidden" name="locale" value={locale} />
@@ -411,6 +417,27 @@ export async function DocumentDetailPage({
                 {t("download")}
               </a>
             </Button>
+            {xrechnung ? (
+              "xml" in xrechnung ? (
+                <Button asChild variant="secondary">
+                  <a
+                    href={`/${locale}/app/${section}/${invoice.id}/xrechnung`}
+                    data-testid="document-xrechnung"
+                  >
+                    {t("einvoice.download")}
+                  </a>
+                </Button>
+              ) : (
+                <p
+                  className="self-center text-[13px] text-ink-muted"
+                  data-testid="xrechnung-missing"
+                >
+                  {t("einvoice.missing", {
+                    fields: xrechnung.missing.map((m) => t(`einvoice.fields.${m}`)).join(", "),
+                  })}
+                </p>
+              )
+            ) : null}
             {balance && balance.totalCents - balance.creditedCents > 0 ? (
               <form action={createCreditNoteAction}>
                 {hidden}

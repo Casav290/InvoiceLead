@@ -25,6 +25,7 @@
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1143.0",
     "@fontsource-variable/archivo": "^5.3.0",
+    "@fontsource/archivo": "^5.3.0",
     "@vercel/functions": "^3.9.9",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -58,7 +59,8 @@
     "db:migrate": "node scripts/migrate.mjs",
     "test": "vitest run",
     "e2e": "playwright test",
-    "check": "npm run lint && npm run typecheck && npm test"
+    "check": "npm run lint && npm run typecheck && npm test",
+    "validate:xrechnung": "bash scripts/validate-xrechnung.sh"
   },
   "engines": {
     "node": "22.x"

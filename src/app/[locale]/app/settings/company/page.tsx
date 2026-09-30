@@ -31,6 +31,7 @@ export default async function CompanySettingsPage({ params }: Params) {
     phone: o.phone ?? "",
     website: o.website ?? "",
     country: o.country,
+    taxNumber: o.taxNumber ?? "",
     uid: o.uid ? (o.uid.startsWith("DE") ? o.uid : formatUid(o.uid)) : "",
     vatRegistered: o.vatRegistered ? "on" : "",
     vatMethod: o.vatMethod ?? "",

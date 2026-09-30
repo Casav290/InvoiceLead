@@ -191,6 +191,7 @@ export function CompanyForm({
             prefix: "legalForms",
           })}
           {field({ name: swiss ? "uid" : "ustId", formName: "uid" })}
+          {swiss ? null : field({ name: "taxNumber" })}
         </>,
       )}
 

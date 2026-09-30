@@ -68,6 +68,9 @@ export async function InvoiceDocument({
             {sender.vatNumber ? (
               <p className="mt-1 text-[12px] text-ink-2">{sender.vatNumber}</p>
             ) : null}
+            {sender.taxNumber ? (
+              <p className="text-[12px] text-ink-2">Steuernummer {sender.taxNumber}</p>
+            ) : null}
           </div>
         ) : null}
         {recipient ? (

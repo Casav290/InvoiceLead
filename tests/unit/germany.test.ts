@@ -1,13 +1,19 @@
 import { eq } from "drizzle-orm";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { countryPack } from "@/countries";
+import { buildCii } from "@/countries/de/cii";
 import { isValidUstId, vatRateBpDe } from "@/countries/de/vat";
 import { isValidSepaIban, vatNumberLabel } from "@/lib/swiss-ids";
 import { attachLeadIdentity } from "@/server/auth/attach";
 import { parseCompanyForm, saveCompanySettings } from "@/server/company";
 import { createContact, parseContactForm } from "@/server/contacts";
 import { organizations } from "@/server/db/schema";
-import { epcQrPayload, qrBillData, renderInvoicePdf } from "@/server/invoice-pdf";
+import {
+  epcQrPayload,
+  type InvoicePdfLabels,
+  qrBillData,
+  renderInvoicePdf,
+} from "@/server/invoice-pdf";
 import { createInvoice, getInvoice, issueInvoice, parseInvoiceForm } from "@/server/invoices";
 import { claims } from "../support/claims";
 import { testDb } from "../support/db";
@@ -24,6 +30,25 @@ function form(values: Record<string, string | string[]>) {
   }
   return f;
 }
+
+const LABELS: InvoicePdfLabels = {
+  invoice: "Rechnung",
+  issueDate: "Datum",
+  serviceDate: "Leistungsdatum",
+  dueDate: "Zahlbar bis",
+  description: "Beschreibung",
+  quantity: "Menge",
+  unitPrice: "Einzelpreis",
+  vat: "USt",
+  amount: "Betrag",
+  net: "Netto",
+  total: "Total",
+  vatLine: (rate, base) => `USt ${rate} auf ${base}`,
+  payTo: (iban) => `Zahlbar auf ${iban}.`,
+  referenceLine: (ref) => `Referenz ${ref}`,
+  units: { hour: "Std." },
+  scanToPay: "Mit der Banking-App scannen.",
+};
 
 const COMPANY = {
   country: "DE",
@@ -152,25 +177,55 @@ describe("pack Allemagne", () => {
     ]);
     expect(epc?.[9]).toMatch(/^RF\d{2}/);
 
-    const pdf = await renderInvoicePdf(invoice, lines, {
-      invoice: "Rechnung",
-      issueDate: "Datum",
-      serviceDate: "Leistungsdatum",
-      dueDate: "Zahlbar bis",
-      description: "Beschreibung",
-      quantity: "Menge",
-      unitPrice: "Einzelpreis",
-      vat: "USt",
-      amount: "Betrag",
-      net: "Netto",
-      total: "Total",
-      vatLine: (rate, base) => `USt ${rate} auf ${base}`,
-      payTo: (iban) => `Zahlbar auf ${iban}.`,
-      referenceLine: (ref) => `Referenz ${ref}`,
-      units: { hour: "Std." },
-      scanToPay: "Mit der Banking-App scannen.",
-    });
+    const pdf = await renderInvoicePdf(invoice, lines, LABELS);
     expect(pdf.subarray(0, 5).toString()).toBe("%PDF-");
+
+    // Facture électronique : XRechnung exige le téléphone du vendeur et l'e-mail du client.
+    const x = buildCii(invoice, lines, "xrechnung");
+    expect("missing" in x && x.missing).toEqual(["sellerEmail", "sellerPhone", "buyerEmail"]);
+    const withContacts = {
+      ...invoice,
+      sender: {
+        ...invoice.sender,
+        name: invoice.sender?.name ?? "",
+        country: "DE",
+        email: "rechnung@werkstatt.test",
+        phone: "+49 30 123456",
+      },
+      recipient: {
+        ...invoice.recipient,
+        name: "Kunde GmbH",
+        country: "DE",
+        email: "ap@kunde.test",
+      },
+    } as typeof invoice;
+    const xr = buildCii(withContacts, lines, "xrechnung");
+    if (!("xml" in xr)) throw new Error(JSON.stringify(xr));
+    for (const needle of [
+      "urn:xeinkauf.de:kosit:xrechnung_3.0",
+      "<ram:TypeCode>380</ram:TypeCode>",
+      '<ram:BilledQuantity unitCode="HUR">10</ram:BilledQuantity>',
+      "<ram:CategoryCode>S</ram:CategoryCode><ram:RateApplicablePercent>19</ram:RateApplicablePercent>",
+      '<ram:URIID schemeID="EM">ap@kunde.test</ram:URIID>',
+      '<ram:ID schemeID="VA">DE136695976</ram:ID>',
+      "<ram:IBANID>DE89370400440532013000</ram:IBANID>",
+      '<ram:TaxTotalAmount currencyID="EUR">190.00</ram:TaxTotalAmount>',
+      "<ram:GrandTotalAmount>1190.00</ram:GrandTotalAmount>",
+    ])
+      expect(xr.xml).toContain(needle);
+
+    // ZUGFeRD : PDF/A-3 avec le XML joint et le profil déclaré.
+    const z = buildCii(invoice, lines, "zugferd");
+    if (!("xml" in z)) throw new Error(JSON.stringify(z));
+    const zugferd = (await renderInvoicePdf(invoice, lines, { ...LABELS }, z)).toString("latin1");
+    for (const needle of [
+      "factur-x.xml",
+      "/AFRelationship /Alternative",
+      "pdfaid:part>3",
+      "fx:ConformanceLevel>EN 16931",
+      "/FontFile2",
+    ])
+      expect(zugferd).toContain(needle);
 
     // Une pièce émise : le pays ne change plus.
     const swiss = parseCompanyForm(

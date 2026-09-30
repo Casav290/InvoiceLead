@@ -9,6 +9,7 @@ import { computeTotals, formatQuantity } from "@/lib/invoice-math";
 import { formatAmount } from "@/lib/money";
 import { formatIban } from "@/lib/swiss-ids";
 import type { Invoice, InvoiceLine, PartySnapshot } from "./db/schema";
+import { ARCHIVO_BOLD, ARCHIVO_REGULAR } from "./pdf-fonts";
 
 /** Libellés du PDF, dans la langue de la facture. */
 export type InvoicePdfLabels = {
@@ -142,8 +143,12 @@ export function renderInvoicePdf(
   invoice: Invoice,
   lines: InvoiceLine[],
   labels: InvoicePdfLabels,
+  /** XML CII à intégrer : le PDF devient un PDF/A-3 ZUGFeRD (profil EN 16931). */
+  einvoice?: { xml: string },
 ): Promise<Buffer> {
+  const pdfa = !!einvoice;
   const doc = new PDFDocument({
+    ...(pdfa ? { subset: "PDF/A-3b" as const, pdfVersion: "1.7" as const, tagged: true } : {}),
     size: "A4",
     margins: { top: mm(20), bottom: mm(20), left: LEFT, right: mm(20) },
     info: {
@@ -153,6 +158,15 @@ export function renderInvoicePdf(
     },
     lang: invoice.language,
   });
+  // PDF/A exige des polices intégrées : Archivo à la place des polices standard du PDF.
+  const F = pdfa
+    ? { regular: "Archivo", bold: "Archivo-Bold" }
+    : { regular: "Helvetica", bold: "Helvetica-Bold" };
+  if (pdfa) {
+    doc.registerFont(F.regular, ARCHIVO_REGULAR);
+    doc.registerFont(F.bold, ARCHIVO_BOLD);
+    doc.font(F.regular);
+  }
   const chunks: Buffer[] = [];
   doc.on("data", (c: Buffer) => chunks.push(c));
   const done = new Promise<Buffer>((resolve, reject) => {
@@ -170,14 +184,15 @@ export function renderInvoicePdf(
   if (sender) {
     const [name, ...rest] = addressLines(sender);
     doc
-      .font("Helvetica-Bold")
+      .font(F.bold)
       .fontSize(11)
       .text(name ?? "", LEFT, mm(18));
-    doc.font("Helvetica").fontSize(9).fillColor(MUTED);
+    doc.font(F.regular).fontSize(9).fillColor(MUTED);
     for (const l of rest) doc.text(l);
     const contact = [sender.email, sender.phone].filter(Boolean).join("  ·  ");
     if (contact) doc.text(contact);
     if (sender.vatNumber) doc.text(sender.vatNumber);
+    if (sender.taxNumber) doc.text(`Steuernummer ${sender.taxNumber}`);
     doc.fillColor(INK);
   }
 
@@ -185,21 +200,21 @@ export function renderInvoicePdf(
   if (recipient) {
     const [name, ...rest] = addressLines(recipient);
     doc
-      .font("Helvetica-Bold")
+      .font(F.bold)
       .fontSize(10)
       .text(name ?? "", mm(118), mm(50), { width: mm(72) });
-    doc.font("Helvetica").fontSize(10);
+    doc.font(F.regular).fontSize(10);
     for (const l of rest) doc.text(l, { width: mm(72) });
   }
 
   // Titre et dates
   doc
-    .font("Helvetica-Bold")
+    .font(F.bold)
     .fontSize(16)
     .text(`${invoice.title || labels.invoice} ${invoice.number ?? ""}`, LEFT, mm(92), {
       width: RIGHT - LEFT,
     });
-  doc.moveDown(0.4).font("Helvetica").fontSize(9);
+  doc.moveDown(0.4).font(F.regular).fontSize(9);
   const meta: [string, string][] = [
     [labels.issueDate, formatDate(invoice.issueDate)],
     [labels.serviceDate, formatDate(invoice.serviceDate)],
@@ -230,7 +245,7 @@ export function renderInvoicePdf(
   const descWidth = cols.qty.x - LEFT - mm(3);
   const header = () => {
     const y = doc.y;
-    doc.font("Helvetica-Bold").fontSize(8).fillColor(MUTED);
+    doc.font(F.bold).fontSize(8).fillColor(MUTED);
     doc.text(labels.description.toUpperCase(), LEFT, y, { width: descWidth });
     doc.text(labels.quantity.toUpperCase(), cols.qty.x, y, { width: cols.qty.w, align: "right" });
     doc.text(labels.unitPrice.toUpperCase(), cols.price.x, y, {
@@ -245,7 +260,7 @@ export function renderInvoicePdf(
     });
     const after = y + 12;
     doc.moveTo(LEFT, after).lineTo(RIGHT, after).lineWidth(0.8).strokeColor(INK).stroke();
-    doc.fillColor(INK).font("Helvetica").fontSize(9);
+    doc.fillColor(INK).font(F.regular).fontSize(9);
     doc.y = after + 5;
   };
   doc.moveDown(1.5);
@@ -306,13 +321,13 @@ export function renderInvoicePdf(
       doc.y = y + 4;
     }
     const ty = doc.y;
-    doc.font(strong ? "Helvetica-Bold" : "Helvetica").fontSize(strong ? 11 : 9);
+    doc.font(strong ? F.bold : F.regular).fontSize(strong ? 11 : 9);
     doc.text(k, labelX, ty, { width: mm(65) });
     doc.text(v, cols.amount.x, ty, { width: cols.amount.w, align: "right" });
     doc.moveDown(0.2);
   }
 
-  doc.font("Helvetica").fontSize(9).fillColor(INK);
+  doc.font(F.regular).fontSize(9).fillColor(INK);
   if (invoice.footerText) {
     doc.moveDown(1.5).text(invoice.footerText, LEFT, doc.y, { width: RIGHT - LEFT });
   }
@@ -367,6 +382,42 @@ export function renderInvoicePdf(
     bill.attachTo(doc);
   }
 
+  if (einvoice) attachFacturX(doc, einvoice.xml, invoice);
   doc.end();
   return done;
+}
+
+/** Joint le XML (factur-x.xml) et déclare le profil dans les métadonnées XMP, comme ZUGFeRD l'exige. */
+function attachFacturX(doc: PDFKit.PDFDocument, xml: string, invoice: Invoice) {
+  const when = invoice.issuedAt ?? new Date();
+  // `relationship` (AFRelationship) existe dans pdfkit mais manque à ses types.
+  const attach = doc.file.bind(doc) as (src: Buffer, options: Record<string, unknown>) => void;
+  attach(Buffer.from(xml, "utf8"), {
+    name: "factur-x.xml",
+    type: "text/xml",
+    relationship: "Alternative",
+    description: "Factur-X / ZUGFeRD",
+    creationDate: when,
+    modifiedDate: when,
+  });
+  (doc as unknown as { appendXML: (xml: string) => void }).appendXML(`
+    <rdf:Description xmlns:fx="urn:factur-x:pdfa:CrossIndustryDocument:invoice:1p0#" rdf:about="">
+      <fx:DocumentType>INVOICE</fx:DocumentType>
+      <fx:DocumentFileName>factur-x.xml</fx:DocumentFileName>
+      <fx:Version>1.0</fx:Version>
+      <fx:ConformanceLevel>EN 16931</fx:ConformanceLevel>
+    </rdf:Description>
+    <rdf:Description xmlns:pdfaExtension="http://www.aiim.org/pdfa/ns/extension/" xmlns:pdfaSchema="http://www.aiim.org/pdfa/ns/schema#" xmlns:pdfaProperty="http://www.aiim.org/pdfa/ns/property#" rdf:about="">
+      <pdfaExtension:schemas><rdf:Bag><rdf:li rdf:parseType="Resource">
+        <pdfaSchema:schema>Factur-X PDFA Extension Schema</pdfaSchema:schema>
+        <pdfaSchema:namespaceURI>urn:factur-x:pdfa:CrossIndustryDocument:invoice:1p0#</pdfaSchema:namespaceURI>
+        <pdfaSchema:prefix>fx</pdfaSchema:prefix>
+        <pdfaSchema:property><rdf:Seq>
+          <rdf:li rdf:parseType="Resource"><pdfaProperty:name>DocumentFileName</pdfaProperty:name><pdfaProperty:valueType>Text</pdfaProperty:valueType><pdfaProperty:category>external</pdfaProperty:category><pdfaProperty:description>Name of the embedded XML invoice file</pdfaProperty:description></rdf:li>
+          <rdf:li rdf:parseType="Resource"><pdfaProperty:name>DocumentType</pdfaProperty:name><pdfaProperty:valueType>Text</pdfaProperty:valueType><pdfaProperty:category>external</pdfaProperty:category><pdfaProperty:description>INVOICE</pdfaProperty:description></rdf:li>
+          <rdf:li rdf:parseType="Resource"><pdfaProperty:name>Version</pdfaProperty:name><pdfaProperty:valueType>Text</pdfaProperty:valueType><pdfaProperty:category>external</pdfaProperty:category><pdfaProperty:description>Version of the Factur-X XML schema</pdfaProperty:description></rdf:li>
+          <rdf:li rdf:parseType="Resource"><pdfaProperty:name>ConformanceLevel</pdfaProperty:name><pdfaProperty:valueType>Text</pdfaProperty:valueType><pdfaProperty:category>external</pdfaProperty:category><pdfaProperty:description>Conformance level of the embedded XML</pdfaProperty:description></rdf:li>
+        </rdf:Seq></pdfaSchema:property>
+      </rdf:li></rdf:Bag></pdfaExtension:schemas>
+    </rdf:Description>`);
 }

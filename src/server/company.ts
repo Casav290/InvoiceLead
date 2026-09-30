@@ -40,6 +40,7 @@ export type CompanyInput = {
   phone: string | null;
   website: string | null;
   uid: string | null;
+  taxNumber: string | null;
   vatRegistered: boolean;
   vatMethod: (typeof VAT_METHODS)[number] | null;
   vatSettlement: (typeof VAT_SETTLEMENTS)[number] | null;
@@ -95,6 +96,15 @@ export function parseCompanyForm(
   if (uidRaw && (!uid || !(germany ? isValidUstId(uid) : isValidUid(uid))))
     errors.uid = germany ? "ustId" : "uid";
 
+  // Allemagne : Steuernummer du Finanzamt (10 à 13 chiffres) ; USt-IdNr. ou Steuernummer exigé.
+  const taxNumberRaw = germany ? optional(text(form, "taxNumber")) : null;
+  const taxNumber = taxNumberRaw ? taxNumberRaw.replace(/\s+/g, " ") : null;
+  if (taxNumber) {
+    const digits = taxNumber.replace(/\D/g, "").length;
+    if (!/^[\d/ ]+$/.test(taxNumber) || digits < 10 || digits > 13) errors.taxNumber = "taxNumber";
+  }
+  if (germany && !uidRaw && !taxNumber) errors.taxNumber = "taxIdRequired";
+
   const vatRegistered = form.get("vatRegistered") === "on";
   // L'Allemagne ne connaît que la méthode effective (Soll- ou Ist-Versteuerung).
   let vatMethod = (
@@ -102,7 +112,7 @@ export function parseCompanyForm(
   ) as CompanyInput["vatMethod"];
   let vatSettlement = optional(text(form, "vatSettlement")) as CompanyInput["vatSettlement"];
   if (vatRegistered) {
-    if (!uidRaw) errors.uid = "uidRequiredForVat";
+    if (!uidRaw && !germany) errors.uid = "uidRequiredForVat";
     if (!vatMethod || !VAT_METHODS.includes(vatMethod)) errors.vatMethod = "required";
     if (!vatSettlement || !VAT_SETTLEMENTS.includes(vatSettlement))
       errors.vatSettlement = "required";
@@ -154,6 +164,7 @@ export function parseCompanyForm(
       phone,
       website,
       uid,
+      taxNumber,
       vatRegistered,
       vatMethod,
       vatSettlement,

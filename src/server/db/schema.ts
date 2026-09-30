@@ -66,7 +66,9 @@ export const organizations = pgTable("organizations", {
   email: text("email"),
   phone: text("phone"),
   website: text("website"),
-  uid: text("uid"), // CHE123456789, sans séparateurs
+  uid: text("uid"), // CHE123456789 ou, en Allemagne, USt-IdNr. DE123456789
+  /** Allemagne : Steuernummer attribuée par le Finanzamt (« 12/345/67890 »). */
+  taxNumber: text("tax_number"),
   vatRegistered: boolean("vat_registered").notNull().default(false),
   vatMethod: text("vat_method"), // effective | net_tax_rate
   vatSettlement: text("vat_settlement"), // agreed | received
@@ -293,6 +295,8 @@ export type PartySnapshot = {
   iban?: string | null;
   qrIban?: string | null;
   vatNumber?: string | null;
+  /** Allemagne : Steuernummer, exigée sur la facture quand il n'y a pas d'USt-IdNr. */
+  taxNumber?: string | null;
 };
 
 /**

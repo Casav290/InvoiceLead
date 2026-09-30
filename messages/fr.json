@@ -160,14 +160,16 @@
         "fiscalYearStartMonth": "Début de l'exercice",
         "netTaxRate": "Taux de la dette fiscale nette (%)",
         "country": "Pays du siège",
-        "ustId": "USt-IdNr."
+        "ustId": "USt-IdNr.",
+        "taxNumber": "Steuernummer"
       },
       "hints": {
         "uid": "Format CHE-123.456.789, clé de contrôle vérifiée.",
         "iban": "Compte classique : factures avec référence SCOR (RF…).",
         "qrIban": "Facultatif : factures avec référence QR à 27 chiffres.",
         "netTaxRate": "Seulement avec la méthode TDFN : le taux accordé par l'AFC, par exemple 6,2.",
-        "ustId": "Format DE123456789, clé de contrôle vérifiée."
+        "ustId": "Format DE123456789, clé de contrôle vérifiée.",
+        "taxNumber": "Numéro fiscal du Finanzamt, par exemple 12/345/67890. USt-IdNr. ou Steuernummer : l'un des deux est obligatoire."
       },
       "legalForms": {
         "sole_proprietorship": "Raison individuelle",
@@ -214,7 +216,9 @@
         "notQrIban": "Ce n'est pas un QR-IBAN (identifiant 30000 à 31999).",
         "netTaxRate": "Indiquez le taux accordé par l'AFC (entre 0,1 et 15 %).",
         "ustId": "USt-IdNr. invalide (DE suivi de 9 chiffres, clé de contrôle).",
-        "countryLocked": "Le pays ne change plus une fois une pièce émise."
+        "countryLocked": "Le pays ne change plus une fois une pièce émise.",
+        "taxNumber": "Steuernummer invalide (10 à 13 chiffres).",
+        "taxIdRequired": "Indiquez l'USt-IdNr. ou la Steuernummer : l'un des deux figure sur chaque facture."
       },
       "countries": {
         "CH": "Suisse",
@@ -716,6 +720,21 @@
         "next": "Prochaine facture le",
         "autoSend": "Émettre et envoyer automatiquement (sinon : brouillon à vérifier)",
         "create": "Enregistrer la récurrence"
+      },
+      "einvoice": {
+        "download": "XRechnung (XML)",
+        "missing": "XRechnung impossible, il manque : {fields}.",
+        "fields": {
+          "number": "numéro",
+          "sellerAddress": "adresse de l'entreprise",
+          "buyerAddress": "adresse du client",
+          "sellerEmail": "e-mail de l'entreprise",
+          "sellerPhone": "téléphone de l'entreprise",
+          "sellerIban": "IBAN",
+          "buyerEmail": "e-mail du client",
+          "buyerVatId": "USt-IdNr. du client",
+          "sellerTaxId": "USt-IdNr. ou Steuernummer"
+        }
       }
     },
     "quotes": {

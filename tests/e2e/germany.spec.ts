@@ -54,6 +54,10 @@ test("entreprise allemande : facture en euros à 19 %, GiroCode, SKR04 et UStVA"
   await expect(page.locator("body")).toContainText("1.190,00");
   await expect(page.locator("body")).toContainText("USt-IdNr. DE136695976");
 
+  // XRechnung : le téléphone de l'entreprise et l'e-mail du client manquent, la page le dit.
+  await expect(page.getByTestId("xrechnung-missing")).toContainText("téléphone de l'entreprise");
+  await expect(page.getByTestId("xrechnung-missing")).toContainText("e-mail du client");
+
   const pdfLink = page.getByRole("link", { name: /PDF/ }).first();
   const response = await page.request.get((await pdfLink.getAttribute("href")) ?? "");
   expect(response.headers()["content-type"]).toBe("application/pdf");
