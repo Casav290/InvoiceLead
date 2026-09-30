@@ -327,6 +327,8 @@ export const invoices = pgTable(
     sentAt: timestamp("sent_at", { withTimezone: true }),
     sentTo: text("sent_to"),
     viewedAt: timestamp("viewed_at", { withTimezone: true }),
+    /** Écriture comptable de l'émission ; vide tant que la pièce n'est pas comptabilisée. */
+    journalEntryId: uuid("journal_entry_id"),
     issuedAt: timestamp("issued_at", { withTimezone: true }),
     createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
     createdAt: createdAt(),
@@ -382,6 +384,7 @@ export const invoicePayments = pgTable(
     amountCents: bigint("amount_cents", { mode: "number" }).notNull(),
     method: text("method").notNull().default("bank"), // bank | cash | other
     note: text("note"),
+    journalEntryId: uuid("journal_entry_id"),
     createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
     createdAt: createdAt(),
   },
@@ -392,3 +395,71 @@ export const invoicePayments = pgTable(
 );
 
 export type InvoicePayment = typeof invoicePayments.$inferSelect;
+
+/**
+ * Écriture du journal. Jamais modifiée ni supprimée : une erreur se corrige par une écriture
+ * d'extourne (`reversal_of`). Chaque écriture porte l'empreinte de la précédente de l'organisation
+ * (`prev_hash` → `hash`), si bien qu'une modification après coup se voit (GeBüV, art. 3 et 9).
+ */
+export const journalEntries = pgTable(
+  "journal_entries",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    fiscalYearId: uuid("fiscal_year_id")
+      .notNull()
+      .references(() => fiscalYears.id, { onDelete: "restrict" }),
+    /** Ordre d'enregistrement dans l'organisation, base de la chaîne d'empreintes. */
+    seq: integer("seq").notNull(),
+    /** Numéro de l'écriture dans son exercice. */
+    number: integer("number").notNull(),
+    entryDate: date("entry_date", { mode: "string" }).notNull(),
+    description: text("description").notNull(),
+    sourceType: text("source_type").notNull(), // invoice | credit_note | payment | payment_reversal | manual
+    sourceId: uuid("source_id"),
+    reversalOf: uuid("reversal_of"),
+    prevHash: text("prev_hash").notNull(),
+    hash: text("hash").notNull(),
+    createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    uniqueIndex("journal_entries_org_seq_idx").on(t.organizationId, t.seq),
+    uniqueIndex("journal_entries_year_number_idx").on(t.fiscalYearId, t.number),
+    index("journal_entries_org_date_idx").on(t.organizationId, t.entryDate),
+  ],
+);
+
+export type JournalEntry = typeof journalEntries.$inferSelect;
+
+/** Ligne d'écriture : un débit ou un crédit sur un compte, avec le détail TVA utile au décompte. */
+export const journalLines = pgTable(
+  "journal_lines",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    entryId: uuid("entry_id")
+      .notNull()
+      .references(() => journalEntries.id, { onDelete: "cascade" }),
+    position: integer("position").notNull(),
+    accountId: uuid("account_id")
+      .notNull()
+      .references(() => accounts.id, { onDelete: "restrict" }),
+    debitCents: bigint("debit_cents", { mode: "number" }).notNull().default(0),
+    creditCents: bigint("credit_cents", { mode: "number" }).notNull().default(0),
+    vatRateBp: integer("vat_rate_bp"),
+    /** Sur une ligne de TVA : le chiffre d'affaires (hors TVA) auquel elle s'applique. */
+    vatBaseCents: bigint("vat_base_cents", { mode: "number" }),
+  },
+  (t) => [
+    index("journal_lines_entry_idx").on(t.entryId),
+    index("journal_lines_account_idx").on(t.accountId),
+    check(
+      "journal_lines_one_side",
+      sql`(${t.debitCents} >= 0 and ${t.creditCents} >= 0 and (${t.debitCents} = 0) <> (${t.creditCents} = 0))`,
+    ),
+  ],
+);
+
+export type JournalLine = typeof journalLines.$inferSelect;

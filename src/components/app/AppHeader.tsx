@@ -25,7 +25,7 @@ export function AppHeader({
   const planLabel = tPlans.has(planCode) ? tPlans(planCode) : planName;
   return (
     <header className="border-b border-line-strong bg-panel">
-      <div className="flex min-h-[52px] flex-wrap items-stretch px-3 lg:flex-nowrap sm:px-5">
+      <div className="flex min-h-[52px] flex-wrap items-stretch px-3 xl:flex-nowrap sm:px-5">
         <Link
           href="/app"
           className="flex min-h-[52px] items-center gap-2.5 border-r border-line-strong pr-4"

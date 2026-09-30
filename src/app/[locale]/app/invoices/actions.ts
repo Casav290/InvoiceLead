@@ -19,7 +19,18 @@ import {
   setQuoteOutcome,
   updateInvoice,
 } from "@/server/invoices";
+import { postPending } from "@/server/ledger";
 import { addPayment, deletePayment, parsePaymentForm } from "@/server/payments";
+
+/** Comptabilise ce qui peut l'être ; une panne ici ne doit jamais bloquer la facturation. */
+async function postQuietly(who: { organizationId: string; userId: string }) {
+  try {
+    await postPending(db(), who);
+  } catch (e) {
+    console.error("[ledger] comptabilisation reportée", e instanceof Error ? e.message : "inconnu");
+  }
+}
+
 import { parseSendForm, sendDocument } from "@/server/send";
 import { enableShareLink, shareUrl } from "@/server/sharing";
 
@@ -81,6 +92,7 @@ export async function issueInvoiceAction(form: FormData) {
   );
   revalidatePath(path);
   if (typeof result === "string") redirect(`${path}/${id}?error=${result}`);
+  await postQuietly({ organizationId: session.organization.id, userId: session.user.id });
   redirect(`${path}/${id}?issued=1`);
 }
 
@@ -171,6 +183,7 @@ export async function addPaymentAction(
   );
   if (result === "tooHigh") return { status: "tooHigh", values, round };
   if (result === "notFound") return { status: "invalid", values, round };
+  await postQuietly({ organizationId: session.organization.id, userId: session.user.id });
   revalidatePath(`/${locale}/app/invoices`);
   redirect(`/${locale}/app/invoices/${id}?paid=1`);
 }
@@ -179,13 +192,13 @@ export async function deletePaymentAction(form: FormData) {
   const locale = pickLocale(form.get("locale"));
   const session = await requireAppSession(locale);
   const id = String(form.get("id") ?? "");
-  await deletePayment(
+  const result = await deletePayment(
     db(),
     { organizationId: session.organization.id, userId: session.user.id },
     String(form.get("paymentId") ?? ""),
   );
   revalidatePath(`/${locale}/app/invoices`);
-  redirect(`/${locale}/app/invoices/${id}`);
+  redirect(`/${locale}/app/invoices/${id}${result === "closed" ? "?error=closed" : ""}`);
 }
 
 export type SendFormState = {

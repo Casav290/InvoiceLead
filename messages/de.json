@@ -77,7 +77,8 @@
       "contacts": "Kontakte",
       "products": "Artikel",
       "invoices": "Rechnungen",
-      "quotes": "Offerten"
+      "quotes": "Offerten",
+      "accounting": "Buchhaltung"
     },
     "switcher": {
       "open": "Anwendung wechseln",
@@ -476,7 +477,8 @@
         "notFound": "Rechnung nicht gefunden.",
         "notConvertible": "Diese Offerte kann nicht mehr in eine Rechnung umgewandelt werden.",
         "contact": "Der Kunde dieser Offerte wurde archiviert.",
-        "creditTooHigh": "Die Gutschrift übersteigt den noch gutschreibbaren Betrag der Rechnung."
+        "creditTooHigh": "Die Gutschrift übersteigt den noch gutschreibbaren Betrag der Rechnung.",
+        "closed": "Diese Zahlung ist in einem abgeschlossenen Geschäftsjahr verbucht und kann nicht mehr gelöscht werden."
       },
       "addLine": "Position hinzufügen",
       "removeLine": "Entfernen",
@@ -698,6 +700,33 @@
       "docDue": "Datum",
       "dueLabel": "Datum",
       "dueHint": ""
+    },
+    "accountingHome": {
+      "title": "Buchhaltung",
+      "subtitle": "Rechnungen, Gutschriften und Zahlungen werden automatisch ins Journal gebucht. Das Journal ist unveränderlich: Korrekturen erfolgen per Stornobuchung.",
+      "postedCount": "{count, plural, =0 {Keine Buchung hinzugefügt.} one {# Buchung ins Journal übernommen.} other {# Buchungen ins Journal übernommen.}}",
+      "setupTitle": "Für die Buchhaltung fehlt noch:",
+      "setupChart": "der Kontenplan",
+      "setupYear": "ein offenes Geschäftsjahr",
+      "unposted": "{count, plural, one {# Beleg wartet auf die Verbuchung.} other {# Belege warten auf die Verbuchung.}}",
+      "reasons": {
+        "noChart": "Richten Sie zuerst den Kontenplan ein.",
+        "noFiscalYear": "Eröffnen Sie das Geschäftsjahr, das das Datum dieser Belege umfasst."
+      },
+      "postNow": "Jetzt verbuchen",
+      "journal": "Journal",
+      "year": "Geschäftsjahr",
+      "show": "Anzeigen",
+      "chainOk": "{count, plural, =0 {Journal leer.} one {Hash-Kette über # Buchung geprüft.} other {Hash-Kette über # Buchungen geprüft.}}",
+      "chainBroken": "Achtung: Die Hash-Kette stimmt ab Buchung Nr. {seq} nicht mehr.",
+      "empty": "Keine Buchungen in diesem Geschäftsjahr.",
+      "columns": {
+        "number": "Nr.",
+        "date": "Datum",
+        "account": "Konto",
+        "debit": "Soll",
+        "credit": "Haben"
+      }
     }
   },
   "footer": {

@@ -77,7 +77,8 @@
       "contacts": "Contacts",
       "products": "Articles",
       "invoices": "Factures",
-      "quotes": "Devis"
+      "quotes": "Devis",
+      "accounting": "Comptabilité"
     },
     "switcher": {
       "open": "Changer d'application",
@@ -476,7 +477,8 @@
         "notFound": "Facture introuvable.",
         "notConvertible": "Ce devis ne peut plus être transformé en facture.",
         "contact": "Le client de ce devis a été archivé.",
-        "creditTooHigh": "L'avoir dépasse le montant qui reste à créditer sur la facture."
+        "creditTooHigh": "L'avoir dépasse le montant qui reste à créditer sur la facture.",
+        "closed": "Ce paiement est déjà comptabilisé dans un exercice fermé : il ne peut plus être supprimé."
       },
       "addLine": "Ajouter une ligne",
       "removeLine": "Retirer",
@@ -698,6 +700,33 @@
       "docDue": "Date",
       "dueLabel": "Date",
       "dueHint": ""
+    },
+    "accountingHome": {
+      "title": "Comptabilité",
+      "subtitle": "Factures, avoirs et paiements sont passés au journal automatiquement. Le journal ne se modifie pas : une correction se fait par écriture d'extourne.",
+      "postedCount": "{count, plural, =0 {Aucune écriture ajoutée.} one {# écriture ajoutée au journal.} other {# écritures ajoutées au journal.}}",
+      "setupTitle": "Pour tenir la comptabilité, il manque encore :",
+      "setupChart": "le plan comptable",
+      "setupYear": "un exercice ouvert",
+      "unposted": "{count, plural, one {# pièce attend d'être comptabilisée.} other {# pièces attendent d'être comptabilisées.}}",
+      "reasons": {
+        "noChart": "Installez d'abord le plan comptable.",
+        "noFiscalYear": "Ouvrez l'exercice qui couvre la date de ces pièces."
+      },
+      "postNow": "Comptabiliser maintenant",
+      "journal": "Journal",
+      "year": "Exercice",
+      "show": "Afficher",
+      "chainOk": "{count, plural, =0 {Journal vide.} one {Chaîne d'empreintes vérifiée sur # écriture.} other {Chaîne d'empreintes vérifiée sur # écritures.}}",
+      "chainBroken": "Attention : la chaîne d'empreintes ne correspond plus à partir de l'écriture n° {seq}.",
+      "empty": "Aucune écriture dans cet exercice.",
+      "columns": {
+        "number": "N°",
+        "date": "Date",
+        "account": "Compte",
+        "debit": "Débit",
+        "credit": "Crédit"
+      }
     }
   },
   "footer": {

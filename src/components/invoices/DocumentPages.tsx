@@ -42,6 +42,7 @@ const ERRORS = [
   "notConvertible",
   "contact",
   "creditTooHigh",
+  "closed",
 ];
 
 /** Objet et message proposés, dans la langue de la pièce. */

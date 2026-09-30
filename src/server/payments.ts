@@ -4,6 +4,7 @@ import { isIsoDate } from "@/lib/fiscal-year";
 import type { Db } from "./db";
 import { auditLog, type InvoicePayment, invoicePayments, invoices } from "./db/schema";
 import { creditedCents } from "./invoices";
+import { LedgerError, reversePaymentEntry } from "./ledger";
 
 type Who = { organizationId: string; userId: string };
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -113,28 +114,46 @@ export async function addPayment(
   });
 }
 
-/** Supprime un paiement saisi par erreur ; la trace reste dans le journal. */
-export async function deletePayment(database: Db, who: Who, paymentId: string): Promise<boolean> {
+/**
+ * Supprime un paiement saisi par erreur. S'il était déjà comptabilisé, son écriture est extournée dans
+ * la même transaction : le journal garde les deux écritures, rien n'y est effacé.
+ */
+export async function deletePayment(
+  database: Db,
+  who: Who,
+  paymentId: string,
+  today = new Date().toISOString().slice(0, 10),
+): Promise<boolean | "closed"> {
   if (!UUID.test(paymentId)) return false;
-  const [row] = await database
-    .delete(invoicePayments)
-    .where(
-      and(
-        eq(invoicePayments.id, paymentId),
-        eq(invoicePayments.organizationId, who.organizationId),
-      ),
-    )
-    .returning();
-  if (!row) return false;
-  await database.insert(auditLog).values({
-    organizationId: who.organizationId,
-    userId: who.userId,
-    action: "payment.delete",
-    entity: "invoice",
-    entityId: row.invoiceId,
-    data: { paymentId, amountCents: row.amountCents, paidOn: row.paidOn },
-  });
-  return true;
+  try {
+    return await database.transaction(async (tx) => {
+      const [row] = await tx
+        .delete(invoicePayments)
+        .where(
+          and(
+            eq(invoicePayments.id, paymentId),
+            eq(invoicePayments.organizationId, who.organizationId),
+          ),
+        )
+        .returning();
+      if (!row) return false;
+      if (row.journalEntryId) {
+        await reversePaymentEntry(tx as unknown as Db, who, row.journalEntryId, paymentId, today);
+      }
+      await tx.insert(auditLog).values({
+        organizationId: who.organizationId,
+        userId: who.userId,
+        action: "payment.delete",
+        entity: "invoice",
+        entityId: row.invoiceId,
+        data: { paymentId, amountCents: row.amountCents, paidOn: row.paidOn },
+      });
+      return true;
+    });
+  } catch (e) {
+    if (e instanceof LedgerError) return "closed";
+    throw e;
+  }
 }
 
 export type PaymentState = "open" | "partial" | "paid" | "overdue" | "credited";
