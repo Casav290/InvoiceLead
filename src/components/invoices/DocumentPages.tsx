@@ -198,6 +198,7 @@ export async function DocumentListPage({
                       : tk(`status.${r.status}`)}
                   </td>
                   <td className="px-4 py-3 text-right tabular-nums">
+                    {r.currency !== organization.currency ? `${r.currency} ` : null}
                     {formatAmount(r.totalCents, countryPack(organization.country).amounts)}
                   </td>
                 </tr>
@@ -250,6 +251,7 @@ export async function NewDocumentPage({
               chosen && ["de", "fr", "en"].includes(chosen.language) ? chosen.language : locale,
             issueDate: today,
             serviceDate: today,
+            currency: organization.currency,
           }}
         />
       )}
@@ -394,6 +396,8 @@ export async function DocumentDetailPage({
               issueDate: invoice.issueDate,
               serviceDate: invoice.serviceDate,
               dueDate: invoice.dueDate,
+              currency: invoice.currency,
+              fxRate: invoice.fxRate ? String(invoice.fxRate) : "",
               "line.productId": lines.map((l) => l.productId ?? ""),
               "line.description": lines.map((l) => l.description),
               "line.quantity": lines.map((l) => formatQuantity(l.quantityMilli)),
@@ -561,6 +565,7 @@ export async function DocumentDetailPage({
               {balance.openCents > 0 ? (
                 <PaymentForm
                   currency={invoice.currency}
+                  home={organization.currency}
                   locale={locale}
                   invoiceId={invoice.id}
                   initial={{ paidOn: today, amount: formatAmount(balance.openCents) }}

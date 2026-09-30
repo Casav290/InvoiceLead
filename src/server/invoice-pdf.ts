@@ -37,6 +37,8 @@ export type InvoicePdfLabels = {
   taxNote?: string;
   /** Titre du GiroCode : « Mit Banking-App scannen ». */
   scanToPay?: string;
+  /** Pièce en devise : cours figé et contre-valeur dans la monnaie de l'entreprise. */
+  fxLine?: string;
 };
 
 const mm = (v: number) => (v * 72) / 25.4;
@@ -50,6 +52,8 @@ const PAGE = { A4: { w: 210, h: 297 }, LETTER: { w: 215.9, h: 279.4 } };
 /** Données de la QR-facture, ou null si la facture ne peut pas en porter (montant nul, compte absent). */
 export function qrBillData(invoice: Invoice) {
   if (invoice.kind !== "invoice") return null;
+  // La QR-facture ne connaît que le franc et l'euro.
+  if (invoice.currency !== "CHF" && invoice.currency !== "EUR") return null;
   const s = invoice.sender;
   if (countryPack(s?.country).paymentSlip !== "qr-bill") return null;
   const account = s?.qrIban ?? s?.iban;
@@ -68,7 +72,7 @@ export function qrBillData(invoice: Invoice) {
         }
       : undefined;
   return {
-    currency: invoice.currency === "EUR" ? ("EUR" as const) : ("CHF" as const),
+    currency: invoice.currency as "CHF" | "EUR",
     amount: invoice.totalCents / 100,
     creditor: {
       name: s.name,
@@ -333,6 +337,14 @@ export function renderInvoicePdf(
     doc.text(k, labelX, ty, { width: mm(65) });
     doc.text(v, cols.amount.x, ty, { width: cols.amount.w, align: "right" });
     doc.moveDown(0.2);
+  }
+
+  if (labels.fxLine) {
+    doc
+      .font(F.regular)
+      .fontSize(8)
+      .fillColor(MUTED)
+      .text(labels.fxLine, labelX, doc.y + 2, { width: RIGHT - labelX, align: "right" });
   }
 
   doc.font(F.regular).fontSize(9).fillColor(INK);

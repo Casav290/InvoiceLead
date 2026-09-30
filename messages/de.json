@@ -623,7 +623,8 @@
         "creditTooHigh": "Die Gutschrift übersteigt den noch gutschreibbaren Betrag der Rechnung.",
         "closed": "Diese Zahlung ist in einem abgeschlossenen Geschäftsjahr verbucht und kann nicht mehr gelöscht werden.",
         "planLimit": "Sie haben die 10 Rechnungen pro Monat des Gratis-Abos erreicht. Mit Pro stellen Sie unbegrenzt Rechnungen aus.",
-        "recurring": "Die Wiederholung konnte nicht gespeichert werden."
+        "recurring": "Die Wiederholung konnte nicht gespeichert werden.",
+        "fxRate": "Der Tageskurs konnte nicht abgerufen werden. Bitte den Kurs im Entwurf erfassen und erneut ausstellen."
       },
       "addLine": "Position hinzufügen",
       "removeLine": "Entfernen",
@@ -661,11 +662,14 @@
         "introText": "Einleitungstext",
         "footerText": "Schlusstext",
         "vatCodeUs": "Steuer",
-        "unitPriceUs": "Einzelpreis ohne Steuer"
+        "unitPriceUs": "Einzelpreis ohne Steuer",
+        "currency": "Währung",
+        "fxRate": "Kurs (1 {currency} in {home})"
       },
       "hints": {
         "serviceDate": "Bestimmt den anwendbaren MWST-Satz.",
-        "dueDate": "Leer: gemäss Zahlungsfrist des Kunden."
+        "dueDate": "Leer: gemäss Zahlungsfrist des Kunden.",
+        "fxRate": "Leer: EZB-Referenzkurs des Rechnungsdatums, bei der Ausstellung festgeschrieben."
       },
       "languages": {
         "de": "Deutsch",
@@ -696,7 +700,9 @@
         "quantity": "Ungültige Menge (höchstens drei Dezimalstellen, nicht null).",
         "amount": "Ungültiger Betrag (höchstens zwei Dezimalstellen).",
         "noLines": "Erfassen Sie mindestens eine Position.",
-        "tooManyLines": "Höchstens hundert Positionen."
+        "tooManyLines": "Höchstens hundert Positionen.",
+        "plan": "Rechnungen in Fremdwährung sind Teil des Pro-Abos.",
+        "fxRate": "Ungültiger Kurs (positive Zahl, zum Beispiel 0.9412)."
       },
       "document": {
         "invoice": "Rechnung",
@@ -725,7 +731,9 @@
         "outsideScopeGb": "Nicht im Anwendungsbereich der britischen MWST: Leistungsort im Land des Kunden.",
         "vatUs": "Steuer",
         "vatLineUs": "Sales Tax {rate} auf {base}",
-        "netUs": "Zwischensumme"
+        "netUs": "Zwischensumme",
+        "fxLine": "Umrechnungskurs: 1 {currency} = {rate} {home}, entspricht {home} {total}",
+        "fxVatLine": "davon MWST {home} {vat}"
       },
       "docTitle": "Rechnung",
       "docDue": "Zahlbar bis",
@@ -768,8 +776,11 @@
           "date": "Ungültiges Datum.",
           "amount": "Ungültiger Betrag.",
           "required": "Pflichtfeld.",
-          "tooLong": "Text zu lang."
-        }
+          "tooLong": "Text zu lang.",
+          "fxRate": "Ungültiger Kurs (positive Zahl, zum Beispiel 0.9412)."
+        },
+        "fxRate": "Tageskurs (1 {currency} in {home})",
+        "fxHint": "Leer: EZB-Referenzkurs des Zahlungsdatums. Die Abweichung zum Rechnungskurs wird als Kursdifferenz verbucht."
       },
       "email": {
         "title": "Versand",

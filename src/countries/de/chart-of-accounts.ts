@@ -96,7 +96,9 @@ export const CHART_ACCOUNTS_DE: readonly TemplateAccount[] = [
   ),
   a("4700", "Erlösschmälerungen", "Déductions sur ventes", "revenue", { role: "sales_deductions" }),
   a("4830", "Sonstige betriebliche Erträge", "Autres produits d'exploitation", "revenue"),
-  a("4840", "Erträge aus Kursdifferenzen", "Gains de change", "revenue"),
+  a("4840", "Erträge aus Kursdifferenzen", "Gains de change", "revenue", {
+    role: "exchange_gain",
+  }),
   // 5 Material und Fremdleistungen
   a("5200", "Wareneingang", "Achats de marchandises", "expense"),
   a("5900", "Fremdleistungen", "Prestations de tiers", "expense"),

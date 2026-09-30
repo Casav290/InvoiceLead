@@ -1,8 +1,16 @@
 import { and, asc, eq, sql } from "drizzle-orm";
 import { parseAmountToCents } from "@/lib/amount-input";
+import { parseFxRate } from "@/lib/currencies";
 import { isIsoDate } from "@/lib/fiscal-year";
 import type { Db } from "./db";
-import { auditLog, type InvoicePayment, invoicePayments, invoices } from "./db/schema";
+import {
+  auditLog,
+  type InvoicePayment,
+  invoicePayments,
+  invoices,
+  organizations,
+} from "./db/schema";
+import { fetchFxRate } from "./fx";
 import { creditedCents } from "./invoices";
 import { LedgerError, reversePaymentEntry } from "./ledger";
 
@@ -15,6 +23,8 @@ export type PaymentInput = {
   amountCents: number;
   method: (typeof PAYMENT_METHODS)[number];
   note: string | null;
+  /** Facture en devise : cours du jour du paiement ; absent, celui de la BCE. */
+  fxRate?: number | null;
 };
 
 export function parsePaymentForm(
@@ -29,8 +39,11 @@ export function parsePaymentForm(
   if (!PAYMENT_METHODS.includes(method)) errors.method = "required";
   const note = String(form.get("note") ?? "").trim() || null;
   if (note && note.length > 200) errors.note = "tooLong";
+  const fxText = String(form.get("fxRate") ?? "").trim();
+  const fxRate = fxText ? parseFxRate(fxText) : null;
+  if (fxText && fxRate === null) errors.fxRate = "fxRate";
   if (Object.keys(errors).length > 0) return { ok: false, errors };
-  return { ok: true, data: { paidOn, amountCents: amountCents ?? 0, method, note } };
+  return { ok: true, data: { paidOn, amountCents: amountCents ?? 0, method, note, fxRate } };
 }
 
 export type Balance = {
@@ -81,13 +94,36 @@ export async function listPayments(
 }
 
 /** Enregistre un paiement sur une facture émise, sans dépasser le solde ouvert. */
+/**
+ * Cours d'un paiement sur une facture en devise : celui saisi, sinon le cours BCE du jour du paiement,
+ * sinon celui de la facture (sans différence de change). Null pour une facture dans la monnaie de
+ * l'entreprise.
+ */
+export async function paymentFxRate(
+  database: Db,
+  invoiceId: string,
+  paidOn: string,
+  entered: number | null | undefined,
+  fetcher?: typeof fetch,
+): Promise<number | null> {
+  const [row] = await database
+    .select({ currency: invoices.currency, fxRate: invoices.fxRate, home: organizations.currency })
+    .from(invoices)
+    .innerJoin(organizations, eq(organizations.id, invoices.organizationId))
+    .where(eq(invoices.id, invoiceId));
+  if (!row?.fxRate || row.currency === row.home) return null;
+  return entered ?? (await fetchFxRate(row.currency, row.home, paidOn, fetcher)) ?? row.fxRate;
+}
+
 export async function addPayment(
   database: Db,
   who: Who,
   invoiceId: string,
   data: PaymentInput,
+  fetcher?: typeof fetch,
 ): Promise<InvoicePayment | "notFound" | "tooHigh"> {
   if (!UUID.test(invoiceId)) return "notFound";
+  const fxRate = await paymentFxRate(database, invoiceId, data.paidOn, data.fxRate, fetcher);
   return database.transaction(async (tx) => {
     const [invoice] = await tx
       .select()
@@ -99,7 +135,13 @@ export async function addPayment(
     if (data.amountCents > balance.openCents) return "tooHigh";
     const [row] = await tx
       .insert(invoicePayments)
-      .values({ ...data, invoiceId, organizationId: who.organizationId, createdBy: who.userId })
+      .values({
+        ...data,
+        fxRate,
+        invoiceId,
+        organizationId: who.organizationId,
+        createdBy: who.userId,
+      })
       .returning();
     if (!row) throw new Error("payment_not_saved");
     await tx.insert(auditLog).values({

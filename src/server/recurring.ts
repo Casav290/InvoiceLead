@@ -135,6 +135,8 @@ export async function runRecurring(
         issueDate: r.nextDate,
         serviceDate: r.nextDate,
         dueDate: null,
+        // Même devise que le modèle ; le cours est celui du jour d'émission de chaque facture.
+        currency: invoice.currency as InvoiceInput["currency"],
         lines: lines.map((l) => ({
           productId: l.productId,
           description: l.description,

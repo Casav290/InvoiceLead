@@ -42,6 +42,8 @@ const schema = z.object({
   STRIPE_WEBHOOK_SECRET: z.string().min(1).optional(),
   STRIPE_API_URL: z.url().default("https://api.stripe.com"),
   STRIPE_CONNECT_URL: z.url().default("https://connect.stripe.com"),
+  /** Cours de change de référence de la BCE, pour les factures en devise. */
+  FX_API_URL: z.url().default("https://api.frankfurter.dev/v1"),
 });
 
 export type Env = z.infer<typeof schema>;

@@ -195,6 +195,19 @@ createServer(async (req, res) => {
   }
   if (url.pathname === "/test/emails") return send(res, 200, emails);
 
+  // Faux cours BCE (Frankfurter) : base EUR, le franc bouge d'un millième par jour du mois, pour
+  // qu'un paiement reçu plus tard produise une différence de change.
+  const fx = /^\/fx\/v1\/(\d{4}-\d{2}-\d{2})$/.exec(url.pathname);
+  if (fx) {
+    const day = Number(fx[1].slice(8, 10));
+    const eur = { EUR: 1, CHF: 0.94 + (day - 1) / 1000, USD: 1.1, GBP: 0.85 };
+    const base = url.searchParams.get("base") ?? "EUR";
+    const to = url.searchParams.get("symbols") ?? "CHF";
+    if (!(base in eur) || !(to in eur)) return send(res, 404, { message: "not found" });
+    const rate = Math.round((eur[to] / eur[base]) * 1e5) / 1e5;
+    return send(res, 200, { amount: 1, base, date: fx[1], rates: { [to]: rate } });
+  }
+
   // Faux Stripe : autorisation Connect (acceptée d'office), échange du code, sessions Checkout.
   if (url.pathname === "/stripe-connect/oauth/authorize") {
     const back = new URL(url.searchParams.get("redirect_uri") ?? "/");

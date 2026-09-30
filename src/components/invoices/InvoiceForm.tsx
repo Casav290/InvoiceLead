@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { countryPack } from "@/countries";
 import { formatRate, type VatCode } from "@/countries/ch/vat";
 import { parseAmountToCents } from "@/lib/amount-input";
+import { CURRENCIES } from "@/lib/currencies";
 import { computeTotals, parseQuantityToMilli } from "@/lib/invoice-math";
 import { formatAmount } from "@/lib/money";
 
@@ -160,6 +161,8 @@ function InvoiceFormBody({
   const [serviceDate, setServiceDate] = useState(v("serviceDate"));
   const [issueDate, setIssueDate] = useState(v("issueDate"));
   const [language, setLanguage] = useState(v("language") || locale);
+  const [currency, setCurrency] = useState(v("currency") || pack.currency);
+  const foreign = currency !== pack.currency;
   const uid = useId();
   const err = (name: string) => (errors[name] ? t(`errors.${errors[name]}`) : undefined);
 
@@ -268,6 +271,43 @@ function InvoiceFormBody({
           label={t("fields.title")}
           defaultValue={v("title")}
         />
+        <div>
+          <label htmlFor="invoice-currency" className="mb-1 block text-[13px] font-semibold">
+            {t("fields.currency")}
+          </label>
+          {/* Un avoir reste dans la devise de sa facture. */}
+          {kind === "credit_note" ? <input type="hidden" name="currency" value={currency} /> : null}
+          <select
+            id="invoice-currency"
+            name="currency"
+            value={currency}
+            onChange={(e) => setCurrency(e.target.value)}
+            disabled={kind === "credit_note"}
+            aria-invalid={errors.currency ? true : undefined}
+            className={fieldClass}
+          >
+            {CURRENCIES.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+          {err("currency") ? (
+            <span className="mt-1 block text-[12px] font-semibold text-hot-fg">
+              {err("currency")}
+            </span>
+          ) : null}
+        </div>
+        {foreign && kind === "invoice" ? (
+          <TextField
+            id="invoice-fx"
+            name="fxRate"
+            label={t("fields.fxRate", { currency, home: pack.currency })}
+            hint={t("hints.fxRate")}
+            defaultValue={v("fxRate")}
+            error={err("fxRate")}
+          />
+        ) : null}
       </FormSection>
 
       <FormSection title={t("sections.dates")}>
@@ -519,7 +559,7 @@ function InvoiceFormBody({
             <div className="mt-2 flex justify-between gap-4 border-t border-line pt-2 font-extrabold">
               <dt>{t(us ? "totalWithVatUs" : "totalWithVat")}</dt>
               <dd className="tabular-nums">
-                {pack.currency} {formatAmount(totals.totalCents, pack.amounts)}
+                {currency} {formatAmount(totals.totalCents, pack.amounts)}
               </dd>
             </div>
           ) : null}

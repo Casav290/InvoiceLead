@@ -190,6 +190,13 @@
       "when": 1790780094429,
       "tag": "0026_online_payments",
       "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1790781449965,
+      "tag": "0027_multi_currency",
+      "breakpoints": true
     }
   ]
 }

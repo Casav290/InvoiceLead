@@ -22,7 +22,7 @@ import {
 } from "@/server/invoices";
 import { postPending } from "@/server/ledger";
 import { addPayment, deletePayment, parsePaymentForm } from "@/server/payments";
-import { limitReached } from "@/server/plans";
+import { hasFeature, limitReached } from "@/server/plans";
 
 /** Comptabilise ce qui peut l'être ; une panne ici ne doit jamais bloquer la facturation. */
 async function postQuietly(who: { organizationId: string; userId: string }) {
@@ -73,6 +73,13 @@ export async function saveInvoice(
     country: session.organization.country,
   });
   if (!parsed.ok) return { status: "invalid", errors: parsed.errors, values, round };
+  // Facturer dans une autre devise que celle de l'entreprise fait partie de la formule Pro.
+  if (
+    parsed.data.currency &&
+    parsed.data.currency !== session.organization.currency &&
+    !hasFeature(session.organization, "multiCurrency")
+  )
+    return { status: "invalid", errors: { currency: "plan" }, values, round };
   const result = id
     ? await updateInvoice(db(), who, id, parsed.data, kind)
     : await createInvoice(db(), who, parsed.data, kind);

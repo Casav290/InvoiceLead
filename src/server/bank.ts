@@ -81,6 +81,9 @@ async function openInvoices(database: Db, organizationId: string): Promise<OpenI
         eq(invoices.organizationId, organizationId),
         eq(invoices.kind, "invoice"),
         eq(invoices.status, "issued"),
+        // Le relevé est dans la monnaie de l'entreprise : une facture en devise se solde à la main,
+        // avec le cours du jour.
+        sql`${invoices.currency} = (select o.currency from organizations o where o.id = ${invoices.organizationId})`,
       ),
     )
     .orderBy(desc(invoices.issueDate))

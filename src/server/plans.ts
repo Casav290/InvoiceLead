@@ -8,7 +8,13 @@ import { contacts, invoices, receipts } from "./db/schema";
  */
 export type Tier = "free" | "pro" | "proplus";
 
-export type Feature = "bankImport" | "vatReturn" | "recurring" | "receipts" | "fiduciary";
+export type Feature =
+  | "bankImport"
+  | "vatReturn"
+  | "recurring"
+  | "receipts"
+  | "fiduciary"
+  | "multiCurrency";
 
 type Limits = {
   invoicesPerMonth: number;
@@ -36,7 +42,7 @@ export const LIMITS: Record<Tier, Limits> = {
     contacts: UNLIMITED,
     receiptsPerMonth: 50,
     seats: 2,
-    features: ["bankImport", "vatReturn", "recurring", "receipts", "fiduciary"],
+    features: ["bankImport", "vatReturn", "recurring", "receipts", "fiduciary", "multiCurrency"],
     poweredBy: false,
   },
   proplus: {
@@ -44,7 +50,7 @@ export const LIMITS: Record<Tier, Limits> = {
     contacts: UNLIMITED,
     receiptsPerMonth: 300,
     seats: 5,
-    features: ["bankImport", "vatReturn", "recurring", "receipts", "fiduciary"],
+    features: ["bankImport", "vatReturn", "recurring", "receipts", "fiduciary", "multiCurrency"],
     poweredBy: false,
   },
 };

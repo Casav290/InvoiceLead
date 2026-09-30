@@ -3,7 +3,9 @@ import { and, eq } from "drizzle-orm";
 import type { Db } from "./db";
 import { auditLog, invoicePayments, invoices, organizations } from "./db/schema";
 import { env } from "./env";
-import { invoiceBalance } from "./payments";
+import { invoiceBalance, paymentFxRate } from "./payments";
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
  * Paiement en ligne par Stripe Connect (comptes « Standard ») : l'entreprise relie son compte
@@ -174,6 +176,10 @@ export async function handleStripeEvent(
   const invoiceId = s.metadata?.invoice_id;
   const organizationId = s.metadata?.organization_id;
   if (!s.id || !invoiceId || !organizationId || !s.amount_total) return "ignored";
+  if (!UUID_RE.test(invoiceId) || !UUID_RE.test(organizationId)) return "ignored";
+  const paidOn = new Date((s.created ?? Date.now() / 1000) * 1000).toISOString().slice(0, 10);
+  // Facture en devise : cours du jour du paiement, cherché avant de verrouiller la facture.
+  const fxRate = await paymentFxRate(database, invoiceId, paidOn, null);
   return database.transaction(async (tx) => {
     const [row] = await tx
       .select({ invoice: invoices, account: organizations.stripeAccountId })
@@ -196,7 +202,6 @@ export async function handleStripeEvent(
       row.invoice.totalCents,
     );
     const amount = Math.min(s.amount_total ?? 0, openCents);
-    const paidOn = new Date((s.created ?? Date.now() / 1000) * 1000).toISOString().slice(0, 10);
     if (amount <= 0) {
       await tx.insert(auditLog).values({
         organizationId,
@@ -217,6 +222,7 @@ export async function handleStripeEvent(
         method: "online",
         note: "Stripe",
         externalRef: s.id,
+        fxRate,
       })
       .onConflictDoNothing()
       .returning({ id: invoicePayments.id });

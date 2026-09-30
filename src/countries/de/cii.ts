@@ -1,3 +1,5 @@
+import { countryPack } from "@/countries";
+import { toHome } from "@/lib/currencies";
 import { computeTotals } from "@/lib/invoice-math";
 import type { Invoice, InvoiceLine } from "@/server/db/schema";
 import { EU_COUNTRIES } from "../eu";
@@ -164,6 +166,13 @@ export function buildCii(
   if (missing.length > 0 || !invoice.sender || !invoice.recipient) return { missing };
   const creditNote = invoice.kind === "credit_note";
   const currency = invoice.currency;
+  // Pièce en devise : la TVA est aussi donnée dans la monnaie de l'entreprise (BT-6 et BT-111).
+  const home = countryPack(invoice.sender.country).currency;
+  const foreign = currency !== home && !!invoice.fxRate;
+  const taxCurrency = foreign ? `<ram:TaxCurrencyCode>${home}</ram:TaxCurrencyCode>` : "";
+  const homeTax = foreign
+    ? `<ram:TaxTotalAmount currencyID="${home}">${money(toHome(invoice.vatCents, invoice.fxRate))}</ram:TaxTotalAmount>`
+    : "";
 
   const items = lines
     .map((l, i) => {
@@ -196,7 +205,7 @@ export function buildCii(
 
   const s = invoice.sender;
   const payment = s.iban
-    ? `<ram:SpecifiedTradeSettlementPaymentMeans><ram:TypeCode>58</ram:TypeCode><ram:PayeePartyCreditorFinancialAccount><ram:IBANID>${esc(s.iban)}</ram:IBANID></ram:PayeePartyCreditorFinancialAccount></ram:SpecifiedTradeSettlementPaymentMeans>`
+    ? `<ram:SpecifiedTradeSettlementPaymentMeans><ram:TypeCode>${currency === "EUR" ? "58" : "30"}</ram:TypeCode><ram:PayeePartyCreditorFinancialAccount><ram:IBANID>${esc(s.iban)}</ram:IBANID></ram:PayeePartyCreditorFinancialAccount></ram:SpecifiedTradeSettlementPaymentMeans>`
     : "";
   // Un avoir aussi porte des conditions (BR-CO-25) : le montant est remboursé ou imputé.
   const terms = creditNote
@@ -218,7 +227,7 @@ export function buildCii(
     invoice.paymentReference
       ? `<ram:PaymentReference>${esc(invoice.paymentReference)}</ram:PaymentReference>`
       : ""
-  }<ram:InvoiceCurrencyCode>${currency}</ram:InvoiceCurrencyCode>${payment}${taxes}${terms}<ram:SpecifiedTradeSettlementHeaderMonetarySummation><ram:LineTotalAmount>${money(invoice.netCents)}</ram:LineTotalAmount><ram:TaxBasisTotalAmount>${money(invoice.netCents)}</ram:TaxBasisTotalAmount><ram:TaxTotalAmount currencyID="${currency}">${money(invoice.vatCents)}</ram:TaxTotalAmount><ram:GrandTotalAmount>${money(invoice.totalCents)}</ram:GrandTotalAmount><ram:DuePayableAmount>${money(invoice.totalCents)}</ram:DuePayableAmount></ram:SpecifiedTradeSettlementHeaderMonetarySummation>${preceding}</ram:ApplicableHeaderTradeSettlement></rsm:SupplyChainTradeTransaction></rsm:CrossIndustryInvoice>
+  }${taxCurrency}<ram:InvoiceCurrencyCode>${currency}</ram:InvoiceCurrencyCode>${payment}${taxes}${terms}<ram:SpecifiedTradeSettlementHeaderMonetarySummation><ram:LineTotalAmount>${money(invoice.netCents)}</ram:LineTotalAmount><ram:TaxBasisTotalAmount>${money(invoice.netCents)}</ram:TaxBasisTotalAmount><ram:TaxTotalAmount currencyID="${currency}">${money(invoice.vatCents)}</ram:TaxTotalAmount>${homeTax}<ram:GrandTotalAmount>${money(invoice.totalCents)}</ram:GrandTotalAmount><ram:DuePayableAmount>${money(invoice.totalCents)}</ram:DuePayableAmount></ram:SpecifiedTradeSettlementHeaderMonetarySummation>${preceding}</ram:ApplicableHeaderTradeSettlement></rsm:SupplyChainTradeTransaction></rsm:CrossIndustryInvoice>
 `;
   return { xml };
 }

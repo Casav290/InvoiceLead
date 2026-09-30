@@ -2,6 +2,7 @@ import { getTranslations } from "next-intl/server";
 import { countryPack } from "@/countries";
 import { formatRate } from "@/countries/ch/vat";
 import { addressLines } from "@/lib/address";
+import { formatFxRate, toHome } from "@/lib/currencies";
 import { formatDate } from "@/lib/fiscal-year";
 import { computeTotals, formatQuantity } from "@/lib/invoice-math";
 import { formatAmount } from "@/lib/money";
@@ -176,6 +177,22 @@ export async function InvoiceDocument({
           </dd>
         </div>
       </dl>
+      {invoice.fxRate && sender ? (
+        <p className="mt-3 text-right text-[12px] text-ink-2" data-testid="invoice-fx">
+          {t("fxLine", {
+            currency: invoice.currency,
+            rate: formatFxRate(invoice.fxRate),
+            home: countryPack(sender.country).currency,
+            total: formatAmount(toHome(invoice.totalCents, invoice.fxRate), style),
+          })}
+          {invoice.vatRegistered && invoice.vatCents > 0
+            ? `, ${t("fxVatLine", {
+                home: countryPack(sender.country).currency,
+                vat: formatAmount(toHome(invoice.vatCents, invoice.fxRate), style),
+              })}`
+            : null}
+        </p>
+      ) : null}
       {invoice.footerText ? (
         <p className="mt-8 text-[13px] whitespace-pre-line text-ink-2">{invoice.footerText}</p>
       ) : null}

@@ -133,7 +133,7 @@ export const CHART_ACCOUNTS_FR: readonly TemplateAccount[] = [
     role: "sales_deductions",
   }),
   a("758000", "Produits divers de gestion courante", "Übrige betriebliche Erträge", "revenue"),
-  a("766000", "Gains de change", "Kursgewinne", "revenue"),
+  a("766000", "Gains de change", "Kursgewinne", "revenue", { role: "exchange_gain" }),
   a("768000", "Autres produits financiers", "Übrige Finanzerträge", "revenue"),
   // 8 Comptes spéciaux
   a("890000", "Bilan d'ouverture", "Eröffnungsbilanz", "closing", { role: "opening_balance" }),

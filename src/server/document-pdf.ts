@@ -1,8 +1,11 @@
 import "server-only";
 import { eq } from "drizzle-orm";
 import { getTranslations } from "next-intl/server";
+import { countryPack } from "@/countries";
 import { buildCii } from "@/countries/de/cii";
 import { EU_COUNTRIES } from "@/countries/eu";
+import { formatFxRate, toHome } from "@/lib/currencies";
+import { formatAmount } from "@/lib/money";
 import { db } from "./db";
 import { type Invoice, type InvoiceLine, organizations } from "./db/schema";
 import { renderInvoicePdf } from "./invoice-pdf";
@@ -48,6 +51,25 @@ export async function buildDocumentPdf(
   }
   if (country === "GB" && invoice.vatRegistered && exportLines) notes.push(t("outsideScopeGb"));
   const taxNote = notes.length > 0 ? notes.join("\n") : undefined;
+  const pack = countryPack(country);
+  const fxLine = invoice.fxRate
+    ? [
+        t("fxLine", {
+          currency: invoice.currency,
+          rate: formatFxRate(invoice.fxRate),
+          home: pack.currency,
+          total: formatAmount(toHome(invoice.totalCents, invoice.fxRate), pack.amounts),
+        }),
+        invoice.vatRegistered && invoice.vatCents > 0
+          ? t("fxVatLine", {
+              home: pack.currency,
+              vat: formatAmount(toHome(invoice.vatCents, invoice.fxRate), pack.amounts),
+            })
+          : null,
+      ]
+        .filter(Boolean)
+        .join(", ")
+    : undefined;
   // Allemagne et France : facture et avoir en ZUGFeRD / Factur-X (PDF/A-3 avec le XML EN 16931).
   const einvoicing = germany || country === "FR";
   const cii =
@@ -76,6 +98,7 @@ export async function buildDocumentPdf(
       poweredBy,
       taxNote,
       scanToPay: t("scanToPay"),
+      fxLine,
     },
     einvoice,
   );

@@ -88,6 +88,18 @@ it("écrit les échantillons XRechnung", () => {
       ],
     ],
     [
+      "devise-usd",
+      invoice({
+        currency: "USD",
+        fxRate: 0.9091,
+        paymentReference: null,
+        netCents: 150000,
+        vatCents: 28500,
+        totalCents: 178500,
+      }),
+      [line(1, "Consulting", 150000, "normal", 1900)],
+    ],
+    [
       "avoir",
       invoice({
         kind: "credit_note",

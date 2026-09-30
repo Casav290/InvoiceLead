@@ -623,7 +623,8 @@
         "creditTooHigh": "The credit note exceeds the amount still available to credit on the invoice.",
         "closed": "This payment is already posted in a closed fiscal year: it can no longer be deleted.",
         "planLimit": "You have reached the Free plan limit of 10 invoices per month. Upgrade to Pro for unlimited invoicing.",
-        "recurring": "The recurrence could not be saved."
+        "recurring": "The recurrence could not be saved.",
+        "fxRate": "The day's exchange rate could not be retrieved. Enter the rate in the draft, then issue again."
       },
       "addLine": "Add line",
       "removeLine": "Remove",
@@ -661,11 +662,14 @@
         "introText": "Introductory text",
         "footerText": "Closing text",
         "vatCodeUs": "Tax",
-        "unitPriceUs": "Unit price excl. tax"
+        "unitPriceUs": "Unit price excl. tax",
+        "currency": "Currency",
+        "fxRate": "Rate (1 {currency} in {home})"
       },
       "hints": {
         "serviceDate": "Determines the applicable VAT rate.",
-        "dueDate": "Empty: based on the customer's payment term."
+        "dueDate": "Empty: based on the customer's payment term.",
+        "fxRate": "Empty: ECB reference rate on the issue date, fixed when the invoice is issued."
       },
       "languages": {
         "de": "German",
@@ -696,7 +700,9 @@
         "quantity": "Invalid quantity (at most three decimal places, not zero).",
         "amount": "Invalid amount (at most two decimal places).",
         "noLines": "Add at least one line.",
-        "tooManyLines": "One hundred lines at most."
+        "tooManyLines": "One hundred lines at most.",
+        "plan": "Invoicing in a foreign currency is part of the Pro plan.",
+        "fxRate": "Invalid rate (a positive number, for example 0.9412)."
       },
       "document": {
         "invoice": "Invoice",
@@ -725,7 +731,9 @@
         "outsideScopeGb": "Outside the scope of UK VAT: place of supply in the customer's country.",
         "vatUs": "Tax",
         "vatLineUs": "Sales tax {rate} on {base}",
-        "netUs": "Subtotal"
+        "netUs": "Subtotal",
+        "fxLine": "Exchange rate: 1 {currency} = {rate} {home}, equal to {home} {total}",
+        "fxVatLine": "of which VAT {home} {vat}"
       },
       "docTitle": "Invoice",
       "docDue": "Payable by",
@@ -768,8 +776,11 @@
           "date": "Invalid date.",
           "amount": "Invalid amount.",
           "required": "Required field.",
-          "tooLong": "Text too long."
-        }
+          "tooLong": "Text too long.",
+          "fxRate": "Invalid rate (a positive number, for example 0.9412)."
+        },
+        "fxRate": "Day's rate (1 {currency} in {home})",
+        "fxHint": "Empty: ECB reference rate on the payment date. The difference from the invoice rate is booked as an exchange difference."
       },
       "email": {
         "title": "Sending",

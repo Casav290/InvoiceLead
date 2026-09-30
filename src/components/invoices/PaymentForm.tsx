@@ -12,10 +12,13 @@ export function PaymentForm({
   invoiceId,
   initial,
   currency = "CHF",
+  home = currency,
 }: {
   locale: string;
   invoiceId: string;
   currency?: string;
+  /** Monnaie de l'entreprise : une facture dans une autre devise demande le cours du jour. */
+  home?: string;
   initial: Record<string, string>;
 }) {
   const t = useTranslations("app.invoices.payments");
@@ -69,6 +72,17 @@ export function PaymentForm({
         defaultValue={values.note}
         error={err("note")}
       />
+      {currency !== home ? (
+        <TextField
+          id="payment-fx"
+          name="fxRate"
+          label={t("fxRate", { currency, home })}
+          hint={t("fxHint")}
+          defaultValue={values.fxRate}
+          error={err("fxRate")}
+          wide
+        />
+      ) : null}
       <div className="sm:col-span-2">
         <Button type="submit" variant="secondary" disabled={pending} data-testid="payment-save">
           {t("add")}

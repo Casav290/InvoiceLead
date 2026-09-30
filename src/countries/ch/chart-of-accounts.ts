@@ -42,6 +42,7 @@ export const ACCOUNT_ROLES = [
   "bad_debt",
   "bank_fees",
   "exchange_difference",
+  "exchange_gain",
   "income_statement",
   "opening_balance",
 ] as const;

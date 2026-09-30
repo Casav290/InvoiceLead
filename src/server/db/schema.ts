@@ -338,6 +338,11 @@ export const invoices = pgTable(
     relatedInvoiceId: uuid("related_invoice_id"),
     language: text("language").notNull().default("de"),
     currency: text("currency").notNull().default("CHF"),
+    /**
+     * Pièce en devise étrangère : valeur d'une unité de la devise de la pièce dans la monnaie de
+     * l'entreprise (1 EUR = 0.9412 CHF). Saisi ou repris du cours BCE du jour d'émission, puis figé.
+     */
+    fxRate: doublePrecision("fx_rate"),
     title: text("title"),
     introText: text("intro_text"),
     footerText: text("footer_text"),
@@ -422,6 +427,10 @@ export const invoicePayments = pgTable(
     note: text("note"),
     /** Paiement en ligne : identifiant chez le prestataire (session Stripe), unique pour l'idempotence. */
     externalRef: text("external_ref"),
+    /** Facture en devise : cours du jour du paiement ; l'écart avec le cours de la facture va en différence de change. */
+    fxRate: doublePrecision("fx_rate"),
+    /** Part de la créance soldée, en monnaie de l'entreprise, fixée à la comptabilisation. */
+    receivableHomeCents: bigint("receivable_home_cents", { mode: "number" }),
     journalEntryId: uuid("journal_entry_id"),
     createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
     createdAt: createdAt(),

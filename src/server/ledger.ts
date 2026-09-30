@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { and, asc, desc, eq, gte, inArray, isNotNull, isNull, lte, sql } from "drizzle-orm";
 import type { AccountRole } from "@/countries/ch/chart-of-accounts";
 import { clearingAccount } from "@/countries/clearing";
+import { convertDocument, paymentFx, toHome } from "@/lib/currencies";
 import { vatOf } from "@/lib/money";
 import type { Db } from "./db";
 import {
@@ -207,28 +208,40 @@ async function documentPostings(
     .groupBy(invoiceLines.vatRateBp)
     .orderBy(desc(invoiceLines.vatRateBp));
   const sign = invoice.kind === "credit_note" ? -1 : 1;
-  const postings: Posting[] = [{ accountId: receivable, amountCents: sign * invoice.totalCents }];
-  let vatTotal = 0;
-  for (const g of groups) {
+  // Même arrondi que sur la facture : TVA par taux, au centime, dans la devise de la pièce.
+  const parts = groups.map((g) => {
     const net = Number(g.net);
+    const vat = invoice.vatRegistered && g.rateBp > 0 ? vatOf(net, g.rateBp) : 0;
+    return { rateBp: g.rateBp, netCents: net, vatCents: vat };
+  });
+  if (parts.reduce((s, p) => s + p.vatCents, 0) !== invoice.vatCents)
+    throw new LedgerError("vat_mismatch");
+  // Pièce en devise : le journal est tenu dans la monnaie de l'entreprise, au cours figé à l'émission.
+  let receivableCents = invoice.totalCents;
+  if (invoice.fxRate) {
+    const converted = convertDocument(parts, invoice.totalCents, invoice.fxRate);
+    receivableCents = converted.receivableCents;
+    converted.groups.forEach((g, i) => {
+      const p = parts[i];
+      if (p) Object.assign(p, g);
+    });
+  }
+  const postings: Posting[] = [{ accountId: receivable, amountCents: sign * receivableCents }];
+  for (const p of parts) {
     postings.push({
       accountId: revenue,
-      amountCents: -sign * net,
-      vatRateBp: invoice.vatRegistered ? g.rateBp : null,
+      amountCents: -sign * p.netCents,
+      vatRateBp: invoice.vatRegistered ? p.rateBp : null,
     });
-    if (invoice.vatRegistered && g.rateBp > 0) {
-      // Même arrondi que sur la facture : TVA par taux, au centime.
-      const vat = vatOf(net, g.rateBp);
-      vatTotal += vat;
+    if (invoice.vatRegistered && p.rateBp > 0) {
       postings.push({
         accountId: vatOutput,
-        amountCents: -sign * vat,
-        vatRateBp: g.rateBp,
-        vatBaseCents: sign * net,
+        amountCents: -sign * p.vatCents,
+        vatRateBp: p.rateBp,
+        vatBaseCents: sign * p.netCents,
       });
     }
   }
-  if (vatTotal !== invoice.vatCents) throw new LedgerError("vat_mismatch");
   return postings;
 }
 
@@ -306,22 +319,25 @@ export async function postPending(database: Db, who: Who): Promise<PostingSummar
     try {
       const done = await database.transaction(async (tx) => {
         const [payment] = await tx
-          .select({ payment: invoicePayments, number: invoices.number })
+          .select({ payment: invoicePayments, invoice: invoices })
           .from(invoicePayments)
           .innerJoin(invoices, eq(invoices.id, invoicePayments.invoiceId))
           .where(eq(invoicePayments.id, p.id))
           .for("update", { of: invoicePayments });
         if (!payment || payment.payment.journalEntryId) return false;
+        const fx = payment.invoice.fxRate
+          ? await foreignPayment(tx as unknown as Db, payment.invoice, payment.payment)
+          : null;
         const entry = await appendEntry(tx as unknown as Db, who, {
           entryDate: payment.payment.paidOn,
-          description: `Zahlung / Paiement ${payment.number}`,
+          description: `Zahlung / Paiement ${payment.invoice.number}`,
           sourceType: "payment",
           sourceId: payment.payment.id,
-          postings: paymentPostings(payment.payment.method, payment.payment.amountCents, roles),
+          postings: paymentPostings(payment.payment.method, payment.payment.amountCents, roles, fx),
         });
         await tx
           .update(invoicePayments)
-          .set({ journalEntryId: entry.id })
+          .set({ journalEntryId: entry.id, receivableHomeCents: fx?.receivableCents ?? null })
           .where(eq(invoicePayments.id, p.id));
         return true;
       });
@@ -398,18 +414,83 @@ async function ensureClearingAccount(database: Db, organizationId: string) {
     .onConflictDoNothing();
 }
 
+/**
+ * Paiement d'une facture en devise, converti : l'argent au cours du paiement, la créance au cours de
+ * la facture. Le paiement qui solde la facture solde aussi exactement sa créance convertie.
+ */
+async function foreignPayment(
+  tx: Db,
+  invoice: Invoice,
+  payment: typeof invoicePayments.$inferSelect,
+) {
+  const rate = invoice.fxRate ?? 1;
+  const [credits] = await tx
+    .select({
+      total: sql<string | null>`sum(${invoices.totalCents})`,
+      home: sql<
+        string | null
+      >`sum(round(${invoices.totalCents} * coalesce(${invoices.fxRate}, 1)))`,
+    })
+    .from(invoices)
+    .where(
+      and(
+        eq(invoices.relatedInvoiceId, invoice.id),
+        eq(invoices.kind, "credit_note"),
+        eq(invoices.status, "issued"),
+      ),
+    );
+  const others = await tx
+    .select({
+      amount: invoicePayments.amountCents,
+      home: invoicePayments.receivableHomeCents,
+      posted: invoicePayments.journalEntryId,
+    })
+    .from(invoicePayments)
+    .where(
+      and(eq(invoicePayments.invoiceId, invoice.id), sql`${invoicePayments.id} <> ${payment.id}`),
+    );
+  const paid = others.reduce((s, o) => s + o.amount, 0) + payment.amountCents;
+  const settles =
+    invoice.totalCents - Number(credits?.total ?? 0) - paid === 0 && others.every((o) => o.posted);
+  const remaining =
+    toHome(invoice.totalCents, rate) -
+    Number(credits?.home ?? 0) -
+    others.reduce((s, o) => s + (o.home ?? toHome(o.amount, rate)), 0);
+  return paymentFx({
+    amountCents: payment.amountCents,
+    paymentRate: payment.fxRate,
+    invoiceRate: rate,
+    settles,
+    remainingReceivableCents: remaining,
+  });
+}
+
 export function paymentPostings(
   method: string,
   amountCents: number,
   roles: Partial<Record<AccountRole, string>>,
+  fx: { moneyCents: number; receivableCents: number; differenceCents: number } | null = null,
 ): Posting[] {
   // Paiement en ligne : il attend sur le compte du prestataire jusqu'au versement sur la banque.
   const money =
     method === "cash" ? roles.cash : method === "online" ? roles.payment_clearing : roles.bank;
   if (!money || !roles.receivable) throw new LedgerError("noChart");
+  if (!fx) {
+    return [
+      { accountId: money, amountCents },
+      { accountId: roles.receivable, amountCents: -amountCents },
+    ];
+  }
+  // Gain de change au crédit (compte de gains s'il existe), perte au débit.
+  const exchange =
+    fx.differenceCents > 0
+      ? (roles.exchange_gain ?? roles.exchange_difference)
+      : roles.exchange_difference;
+  if (fx.differenceCents !== 0 && !exchange) throw new LedgerError("noChart");
   return [
-    { accountId: money, amountCents },
-    { accountId: roles.receivable, amountCents: -amountCents },
+    { accountId: money, amountCents: fx.moneyCents },
+    { accountId: roles.receivable, amountCents: -fx.receivableCents },
+    ...(exchange ? [{ accountId: exchange, amountCents: -fx.differenceCents }] : []),
   ];
 }
 

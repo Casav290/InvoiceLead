@@ -3,6 +3,7 @@ import { countryPack } from "@/countries";
 import { paymentReference } from "@/countries/ch/qr-reference";
 import { VAT_CODES, type VatCode } from "@/countries/ch/vat";
 import { parseAmountToCents } from "@/lib/amount-input";
+import { type Currency, isCurrency, parseFxRate } from "@/lib/currencies";
 import { isIsoDate } from "@/lib/fiscal-year";
 import { computeTotals, parseQuantityToMilli } from "@/lib/invoice-math";
 import { vatNumberLabel } from "@/lib/swiss-ids";
@@ -19,6 +20,7 @@ import {
   organizations,
   type PartySnapshot,
 } from "./db/schema";
+import { fetchFxRate } from "./fx";
 import { PRODUCT_UNITS } from "./products";
 
 type Who = { organizationId: string; userId: string };
@@ -53,6 +55,10 @@ export type InvoiceInput = {
   issueDate: string;
   serviceDate: string;
   dueDate: string | null;
+  /** Devise de la pièce ; absente, celle de l'entreprise. */
+  currency?: Currency;
+  /** Cours saisi pour une pièce en devise ; absent, le cours BCE du jour d'émission. */
+  fxRate?: number | null;
   lines: InvoiceLineInput[];
 };
 
@@ -82,6 +88,16 @@ export function parseInvoiceForm(
   if (dueDate && !isIsoDate(dueDate)) errors.dueDate = "date";
   else if (dueDate && isIsoDate(issueDate) && dueDate < issueDate)
     errors.dueDate = "dueBeforeIssue";
+
+  const home = countryPack(options.country).currency;
+  const currency = text(form, "currency") || home;
+  if (!isCurrency(currency)) errors.currency = "required";
+  let fxRate: number | null = null;
+  const fxText = text(form, "fxRate");
+  if (currency !== home && fxText) {
+    fxRate = parseFxRate(fxText);
+    if (fxRate === null) errors.fxRate = "fxRate";
+  }
 
   let rateDateOk = true;
   if (options.vatRegistered && isIsoDate(serviceDate)) {
@@ -144,6 +160,8 @@ export function parseInvoiceForm(
       issueDate,
       serviceDate,
       dueDate,
+      currency: currency as Currency,
+      fxRate,
       lines,
     },
   };
@@ -236,10 +254,35 @@ async function writeInvoice(
   }
   const contact = await customerOf(database, who.organizationId, data.contactId);
   if (!contact) return "contact";
-  const { vatRegistered, country, currency, localRateBp } = await taxProfileOf(
-    database,
-    who.organizationId,
-  );
+  const {
+    vatRegistered,
+    country,
+    currency: home,
+    localRateBp,
+  } = await taxProfileOf(database, who.organizationId);
+  let currency: string = data.currency ?? home;
+  let fxRate = currency === home ? null : (data.fxRate ?? null);
+  if (kind === "credit_note") {
+    // L'avoir est dans la devise et au cours de sa facture : il en annule une part exacte.
+    let relatedId = links.relatedInvoiceId ?? null;
+    if (!relatedId && id) {
+      const [current] = await database
+        .select({ relatedInvoiceId: invoices.relatedInvoiceId })
+        .from(invoices)
+        .where(and(eq(invoices.id, id), eq(invoices.organizationId, who.organizationId)));
+      relatedId = current?.relatedInvoiceId ?? null;
+    }
+    if (relatedId) {
+      const [related] = await database
+        .select({ currency: invoices.currency, fxRate: invoices.fxRate })
+        .from(invoices)
+        .where(and(eq(invoices.id, relatedId), eq(invoices.organizationId, who.organizationId)));
+      if (related) {
+        currency = related.currency;
+        fxRate = related.fxRate;
+      }
+    }
+  }
   const { rates, totals } = priced(data, vatRegistered, country, localRateBp);
   const values = {
     contactId: contact.id,
@@ -259,6 +302,7 @@ async function writeInvoice(
           )),
     vatRegistered,
     currency,
+    fxRate,
     netCents: totals.netCents,
     vatCents: totals.vatCents,
     totalCents: totals.totalCents,
@@ -457,14 +501,37 @@ export type IssueResult =
   | "notDraft"
   | "companyIncomplete"
   | "vatChanged"
-  | "creditTooHigh";
+  | "creditTooHigh"
+  | "fxRate";
 
 /**
  * Émet un brouillon : numéro définitif, expéditeur et destinataire figés. Le numéro est pris dans la
  * même transaction que le changement d'état, si bien qu'un échec ne laisse aucun trou.
  */
-export async function issueInvoice(database: Db, who: Who, id: string): Promise<IssueResult> {
+export async function issueInvoice(
+  database: Db,
+  who: Who,
+  id: string,
+  fetcher?: typeof fetch,
+): Promise<IssueResult> {
   if (!UUID.test(id)) return "notFound";
+  // Facture en devise sans cours saisi : cours BCE du jour d'émission, cherché hors transaction.
+  const [draft] = await database
+    .select({
+      kind: invoices.kind,
+      currency: invoices.currency,
+      fxRate: invoices.fxRate,
+      issueDate: invoices.issueDate,
+      home: organizations.currency,
+    })
+    .from(invoices)
+    .innerJoin(organizations, eq(organizations.id, invoices.organizationId))
+    .where(and(eq(invoices.id, id), eq(invoices.organizationId, who.organizationId)));
+  let fetchedRate: number | null = null;
+  if (draft && draft.kind === "invoice" && draft.currency !== draft.home && draft.fxRate === null) {
+    fetchedRate = await fetchFxRate(draft.currency, draft.home, draft.issueDate, fetcher);
+    if (fetchedRate === null) return "fxRate";
+  }
   return database.transaction(async (tx) => {
     const [row] = await tx
       .select({ invoice: invoices, contact: contacts })
@@ -481,6 +548,7 @@ export async function issueInvoice(database: Db, who: Who, id: string): Promise<
       .where(eq(organizations.id, who.organizationId));
     if (!org?.settingsCompletedAt) return "companyIncomplete";
     if (org.vatRegistered !== row.invoice.vatRegistered) return "vatChanged";
+    let fxRate = row.invoice.currency === org.currency ? null : (row.invoice.fxRate ?? fetchedRate);
 
     const kind = row.invoice.kind as DocumentKind;
     if (kind === "credit_note") {
@@ -497,7 +565,10 @@ export async function issueInvoice(database: Db, who: Who, id: string): Promise<
       const credited = await creditedCents(tx as unknown as Db, relatedId);
       if (row.invoice.totalCents <= 0 || credited + row.invoice.totalCents > target.totalCents)
         return "creditTooHigh";
+      if (target.currency !== row.invoice.currency) return "notFound";
+      fxRate = target.fxRate;
     }
+    if (kind !== "quote" && row.invoice.currency !== org.currency && !fxRate) return "fxRate";
     const year = Number(row.invoice.issueDate.slice(0, 4));
     const [seq] = await tx
       .insert(numberSequences)
@@ -545,6 +616,7 @@ export async function issueInvoice(database: Db, who: Who, id: string): Promise<
       .set({
         status: "issued",
         number,
+        fxRate,
         paymentReference: kind === "invoice" ? paymentReference(number, !!org.qrIban) : null,
         recipient,
         sender,
@@ -637,6 +709,7 @@ export async function convertQuoteToInvoice(
           issueDate: today,
           serviceDate: today,
           dueDate: null,
+          currency: quote.currency as Currency,
           lines: lines.map((l) => ({
             productId: l.productId,
             description: l.description,

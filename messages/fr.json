@@ -623,7 +623,8 @@
         "creditTooHigh": "L'avoir dépasse le montant qui reste à créditer sur la facture.",
         "closed": "Ce paiement est déjà comptabilisé dans un exercice fermé : il ne peut plus être supprimé.",
         "planLimit": "Vous avez atteint les 10 factures du mois de la formule gratuite. Passez à Pro pour facturer sans limite.",
-        "recurring": "La récurrence n'a pas pu être enregistrée."
+        "recurring": "La récurrence n'a pas pu être enregistrée.",
+        "fxRate": "Le cours du jour n'a pas pu être obtenu. Saisissez le cours dans le brouillon, puis émettez à nouveau."
       },
       "addLine": "Ajouter une ligne",
       "removeLine": "Retirer",
@@ -661,11 +662,14 @@
         "introText": "Texte d'introduction",
         "footerText": "Texte de fin",
         "vatCodeUs": "Taxe",
-        "unitPriceUs": "Prix unitaire hors taxe"
+        "unitPriceUs": "Prix unitaire hors taxe",
+        "currency": "Devise",
+        "fxRate": "Cours (1 {currency} en {home})"
       },
       "hints": {
         "serviceDate": "Détermine le taux de TVA applicable.",
-        "dueDate": "Vide : selon le délai de paiement du client."
+        "dueDate": "Vide : selon le délai de paiement du client.",
+        "fxRate": "Vide : cours de référence de la BCE du jour d'émission, figé à l'émission."
       },
       "languages": {
         "de": "Allemand",
@@ -696,7 +700,9 @@
         "quantity": "Quantité invalide (au plus trois décimales, pas zéro).",
         "amount": "Montant invalide (au plus deux décimales).",
         "noLines": "Ajoutez au moins une ligne.",
-        "tooManyLines": "Cent lignes au plus."
+        "tooManyLines": "Cent lignes au plus.",
+        "plan": "Facturer en devise étrangère fait partie de la formule Pro.",
+        "fxRate": "Cours invalide (nombre positif, par exemple 0.9412)."
       },
       "document": {
         "invoice": "Facture",
@@ -725,7 +731,9 @@
         "outsideScopeGb": "Hors du champ de la TVA britannique : lieu de la prestation dans le pays du client.",
         "vatUs": "Taxe",
         "vatLineUs": "Sales tax {rate} sur {base}",
-        "netUs": "Sous-total"
+        "netUs": "Sous-total",
+        "fxLine": "Cours de change : 1 {currency} = {rate} {home}, soit {home} {total}",
+        "fxVatLine": "dont TVA {home} {vat}"
       },
       "docTitle": "Facture",
       "docDue": "Payable jusqu'au",
@@ -768,8 +776,11 @@
           "date": "Date invalide.",
           "amount": "Montant invalide.",
           "required": "Champ obligatoire.",
-          "tooLong": "Texte trop long."
-        }
+          "tooLong": "Texte trop long.",
+          "fxRate": "Cours invalide (nombre positif, par exemple 0.9412)."
+        },
+        "fxRate": "Cours du jour (1 {currency} en {home})",
+        "fxHint": "Vide : cours de référence de la BCE du jour du paiement. L'écart avec le cours de la facture est comptabilisé en différence de change."
       },
       "email": {
         "title": "Envoi",
