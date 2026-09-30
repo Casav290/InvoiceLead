@@ -116,7 +116,7 @@ export default async function AccountingPage({ params, searchParams }: Props) {
       <div className="mt-8 flex flex-wrap items-end justify-between gap-4">
         <h2 className="text-[20px]">{t("journal")}</h2>
         {years.length > 1 ? (
-          <form className="flex items-center gap-2">
+          <form className="flex max-w-full min-w-0 flex-wrap items-center gap-2">
             <label htmlFor="journal-year" className="text-[13px] font-semibold">
               {t("year")}
             </label>
@@ -124,7 +124,7 @@ export default async function AccountingPage({ params, searchParams }: Props) {
               id="journal-year"
               name="year"
               defaultValue={year?.id}
-              className="h-9 border border-line-strong bg-panel px-2 text-[13px]"
+              className="h-9 max-w-full min-w-0 border border-line-strong bg-panel px-2 text-[13px]"
             >
               {years.map((y) => (
                 <option key={y.id} value={y.id}>

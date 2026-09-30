@@ -414,7 +414,8 @@
       "accounts": "Chart of accounts",
       "fiscalYears": "Fiscal years",
       "team": "Team",
-      "payments": "Online payments"
+      "payments": "Online payments",
+      "api": "API"
     },
     "accounts": {
       "title": "Chart of accounts",
@@ -1367,6 +1368,46 @@
         "state": "Stripe's response could not be verified. Please try again.",
         "denied": "The link was cancelled on Stripe.",
         "failed": "Stripe did not confirm the link. Try again later."
+      }
+    },
+    "apiSettings": {
+      "title": "API and webhooks",
+      "subtitle": "Connect InvoiceLead to your tools: the REST API ({base}) creates contacts, quotes, invoices and payments; webhooks notify your tools when an invoice is issued or paid.",
+      "plan": "The API and webhooks are part of the Pro+ plan.",
+      "keys": {
+        "title": "API keys",
+        "empty": "No key.",
+        "name": "Key name (for example “Online shop”)",
+        "create": "Create a key",
+        "created": "Copy this key now: it will not be shown again. Send it in the Authorization: Bearer header.",
+        "meta": "created {created}, used: {used}",
+        "never": "never",
+        "revoke": "Revoke",
+        "revoked": "Key revoked."
+      },
+      "webhooks": {
+        "title": "Webhooks",
+        "hint": "Each event is sent as a JSON POST, signed in the InvoiceLead-Signature header (HMAC-SHA256 of “t.body” with the secret). If delivery fails, it is retried later, up to five times.",
+        "empty": "No endpoint.",
+        "url": "Endpoint URL (https)",
+        "events": "Events",
+        "create": "Add webhook",
+        "created": "Copy this signing secret now: it will not be shown again.",
+        "disable": "Delete",
+        "disabled": "Webhook deleted.",
+        "delivery": "{event}: {status} ({code}), {date}",
+        "status": {
+          "pending": "pending",
+          "delivered": "delivered",
+          "failed": "given up"
+        }
+      },
+      "errors": {
+        "plan": "The API and webhooks are part of the Pro+ plan.",
+        "invalid": "Name required (60 characters at most).",
+        "tooMany": "Maximum reached.",
+        "url": "Invalid URL: https to a public server, without credentials.",
+        "events": "Choose at least one event."
       }
     }
   },

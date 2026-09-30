@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/server/db";
 import { env } from "@/server/env";
 import { handleStripeEvent, verifyStripeSignature } from "@/server/stripe";
+import { flushWebhooks } from "@/server/webhooks";
 
 export const dynamic = "force-dynamic";
 
@@ -19,5 +20,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "payload" }, { status: 400 });
   }
   const result = await handleStripeEvent(db(), event);
+  // Paiement enregistré : les webhooks de l'entreprise partent après la réponse à Stripe.
+  const orgId = (event as { data?: { object?: { metadata?: { organization_id?: string } } } }).data
+    ?.object?.metadata?.organization_id;
+  if (result === "recorded" && orgId) await flushWebhooks(db(), orgId);
   return NextResponse.json({ received: true, result });
 }

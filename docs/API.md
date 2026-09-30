@@ -1,0 +1,60 @@
+# API et webhooks (formule Pro+)
+
+L'API REST relie InvoiceLead à une boutique en ligne, un outil de gestion ou une automatisation. Elle crée des contacts, des devis et des factures, les émet, enregistre des paiements et rend les PDF. Les webhooks préviennent un autre outil quand une facture est émise ou payée.
+
+## Clés
+
+Une clé se crée dans Réglages, API, par un administrateur ou un responsable de l'entreprise. Elle commence par `il_live_` et n'est affichée qu'une fois ; seule son empreinte SHA-256 est gardée. Elle agit au nom de la personne qui l'a créée, tant que cette personne peut facturer dans l'entreprise et que l'entreprise est en Pro+. Dix clés actives au plus, révocables à tout moment.
+
+```
+Authorization: Bearer il_live_…
+```
+
+Réponses d'erreur : `401 {"error":"unauthorized"}` (clé absente, inconnue ou révoquée), `403 {"error":"forbidden"}` (formule ou droits), `404 {"error":"not_found"}`, `422 {"error":"invalid","fields":{"lines":"noLines"}}` avec les mêmes codes que les formulaires, `409` pour un état qui ne permet pas l'action (`notDraft`, `companyIncomplete`, `fxRate`, `too_high`…).
+
+Les montants saisis sont en unités (`"150.00"`), les montants rendus en centimes (`totalCents`), les dates au format `AAAA-MM-JJ`.
+
+## Points d'accès
+
+| Méthode | Chemin | Rôle |
+|---|---|---|
+| GET | `/api/v1/contacts?q=` | Contacts, recherche facultative |
+| POST | `/api/v1/contacts` | Nouveau contact (client par défaut) : `name`, `kind` (`company` ou `person`), `email`, `street`, `buildingNumber`, `postalCode`, `town`, `country`, `language`, `uid`, `paymentTermDays` |
+| GET | `/api/v1/invoices?kind=invoice` | Pièces (`invoice`, `quote`, `credit_note`), solde ouvert compris |
+| POST | `/api/v1/invoices` | Brouillon de facture, ou de devis avec `"kind":"quote"` : `contactId`, `language`, `issueDate`, `serviceDate`, `dueDate`, `currency`, `fxRate`, `title`, `introText`, `footerText`, `lines: [{ description, quantity, unit, unitPrice, vatCode, productId }]` |
+| GET | `/api/v1/invoices/{id}` | Pièce, lignes et solde |
+| POST | `/api/v1/invoices/{id}/issue` | Émission : numéro définitif, écritures, événement `invoice.issued` |
+| POST | `/api/v1/invoices/{id}/payments` | Paiement reçu : `amount`, `paidOn`, `method` (`bank`, `cash`, `other`), `note`, `fxRate` |
+| GET | `/api/v1/invoices/{id}/pdf` | PDF de la pièce émise (QR-facture, ZUGFeRD ou Factur-X selon le pays) |
+
+La TVA est toujours calculée par InvoiceLead, au taux en vigueur à la date de prestation (`vatCode` : `normal`, `reduced`, `lodging`, `exempt`, `export`). Après chaque écriture, les pièces sont comptabilisées comme depuis l'application.
+
+Exemple :
+
+```
+curl https://invoicelead.io/api/v1/invoices \
+  -H "Authorization: Bearer il_live_…" \
+  -H "Content-Type: application/json" \
+  -d '{"contactId":"…","lines":[{"description":"Conseil","unit":"hour","quantity":"2","unitPrice":"150","vatCode":"normal"}]}'
+```
+
+## Webhooks
+
+Cinq adresses au plus, en https vers un serveur public (les adresses locales, privées ou réservées sont refusées, à l'enregistrement et à chaque envoi). Événements :
+
+| Événement | Quand |
+|---|---|
+| `invoice.issued` | Facture ou avoir émis (application, API, facture récurrente) |
+| `payment.created` | Paiement enregistré (saisi, relevé bancaire, paiement en ligne, API) |
+| `invoice.paid` | Paiement qui solde la facture |
+
+Corps (POST JSON) :
+
+```json
+{ "id": "…", "type": "invoice.paid", "created": "2026-09-30T08:00:00.000Z",
+  "data": { "invoice": { "id": "…", "number": "2026-0042", "currency": "CHF", "totalCents": 21620, "openCents": 0 } } }
+```
+
+Signature : l'en-tête `InvoiceLead-Signature: t=1790000000,v1=…` porte le HMAC-SHA256 hexadécimal de `t` + `.` + corps brut, avec le secret `whsec_…` affiché une fois à la création. Vérifier la signature et refuser un `t` trop ancien (cinq minutes). Les en-têtes `InvoiceLead-Event` et `InvoiceLead-Delivery` donnent le type et l'identifiant de l'envoi, à utiliser pour ignorer un doublon.
+
+Un envoi qui ne reçoit pas de réponse 2xx en cinq secondes est rejoué après 1 minute, 5 minutes, 30 minutes, 2 heures puis 12 heures, puis abandonné. Les reprises partent avec le prochain événement de l'entreprise ou la tâche quotidienne. Les derniers envois et leur état s'affichent sous chaque adresse.

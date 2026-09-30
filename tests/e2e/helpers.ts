@@ -10,7 +10,7 @@ export type FakeUser = {
   org_name?: string;
   org_role?: string;
   access?: boolean;
-  plan?: "free" | "pro";
+  plan?: "free" | "pro" | "proplus";
 };
 
 /** Connexion complète par le faux Compte Lead, depuis l'écran de connexion. */

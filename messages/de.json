@@ -414,7 +414,8 @@
       "accounts": "Kontenplan",
       "fiscalYears": "Geschäftsjahre",
       "team": "Team",
-      "payments": "Online-Zahlung"
+      "payments": "Online-Zahlung",
+      "api": "API"
     },
     "accounts": {
       "title": "Kontenplan",
@@ -1367,6 +1368,46 @@
         "state": "Die Rückmeldung von Stripe konnte nicht geprüft werden. Bitte erneut versuchen.",
         "denied": "Die Verbindung wurde bei Stripe abgebrochen.",
         "failed": "Stripe hat die Verbindung nicht bestätigt. Versuchen Sie es später erneut."
+      }
+    },
+    "apiSettings": {
+      "title": "API und Webhooks",
+      "subtitle": "Verbinden Sie InvoiceLead mit Ihren Werkzeugen: Die REST-API ({base}) erstellt Kontakte, Offerten, Rechnungen und Zahlungen; Webhooks melden Ihren Werkzeugen, wenn eine Rechnung ausgestellt oder bezahlt wird.",
+      "plan": "API und Webhooks sind Teil des Pro+-Abos.",
+      "keys": {
+        "title": "API-Schlüssel",
+        "empty": "Kein Schlüssel.",
+        "name": "Name des Schlüssels (zum Beispiel «Onlineshop»)",
+        "create": "Schlüssel erstellen",
+        "created": "Kopieren Sie diesen Schlüssel jetzt: Er wird nicht mehr angezeigt. Senden Sie ihn im Header Authorization: Bearer.",
+        "meta": "erstellt am {created}, verwendet: {used}",
+        "never": "nie",
+        "revoke": "Widerrufen",
+        "revoked": "Schlüssel widerrufen."
+      },
+      "webhooks": {
+        "title": "Webhooks",
+        "hint": "Jedes Ereignis wird als JSON per POST gesendet und im Header InvoiceLead-Signature signiert (HMAC-SHA256 von «t.Inhalt» mit dem Geheimnis). Bei einem Fehler wird es später erneut gesendet, bis zu fünfmal.",
+        "empty": "Keine Adresse.",
+        "url": "Empfangsadresse (https)",
+        "events": "Ereignisse",
+        "create": "Webhook hinzufügen",
+        "created": "Kopieren Sie dieses Signaturgeheimnis jetzt: Es wird nicht mehr angezeigt.",
+        "disable": "Löschen",
+        "disabled": "Webhook gelöscht.",
+        "delivery": "{event}: {status} ({code}), {date}",
+        "status": {
+          "pending": "ausstehend",
+          "delivered": "zugestellt",
+          "failed": "aufgegeben"
+        }
+      },
+      "errors": {
+        "plan": "API und Webhooks sind Teil des Pro+-Abos.",
+        "invalid": "Name erforderlich (höchstens 60 Zeichen).",
+        "tooMany": "Höchstzahl erreicht.",
+        "url": "Ungültige Adresse: https zu einem öffentlichen Server, ohne Zugangsdaten.",
+        "events": "Wählen Sie mindestens ein Ereignis."
       }
     }
   },

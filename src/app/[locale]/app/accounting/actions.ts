@@ -20,6 +20,7 @@ import { postPending } from "@/server/ledger";
 import { hasFeature, limitReached } from "@/server/plans";
 import { matchReceipts, readReceipt, uploadReceipt } from "@/server/receipts";
 import { aiReview, draftVatReturn, validateVatReturn } from "@/server/vat-return";
+import { flushWebhooks } from "@/server/webhooks";
 
 export async function postPendingAction(form: FormData) {
   const locale = pickLocale(form.get("locale"));
@@ -90,6 +91,7 @@ export async function validateBankAction(form: FormData) {
       }
     : undefined;
   const result = await validateTransaction(db(), who, id, override);
+  await flushWebhooks(db(), who.organizationId);
   revalidatePath(`/${locale}/app/accounting`, "layout");
   redirect(`/${locale}/app/accounting/bank${result === "posted" ? "" : `?error=${result}`}`);
 }
@@ -101,6 +103,7 @@ export async function validateConfidentAction(form: FormData) {
     organizationId: session.organization.id,
     userId: session.user.id,
   });
+  await flushWebhooks(db(), session.organization.id);
   revalidatePath(`/${locale}/app/accounting`, "layout");
   redirect(`/${locale}/app/accounting/bank?validated=${posted}`);
 }

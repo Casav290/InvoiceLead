@@ -15,7 +15,8 @@ export type Feature =
   | "receipts"
   | "fiduciary"
   | "multiCurrency"
-  | "reminders";
+  | "reminders"
+  | "api";
 
 type Limits = {
   invoicesPerMonth: number;
@@ -67,6 +68,7 @@ export const LIMITS: Record<Tier, Limits> = {
       "fiduciary",
       "multiCurrency",
       "reminders",
+      "api",
     ],
     poweredBy: false,
   },

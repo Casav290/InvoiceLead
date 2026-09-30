@@ -14,6 +14,7 @@ import {
 import { fetchFxRate } from "./fx";
 import { creditedCents } from "./invoices";
 import { LedgerError, reversePaymentEntry } from "./ledger";
+import { emitEvent, invoiceSummary } from "./webhooks";
 
 type Who = { organizationId: string; userId: string };
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -82,11 +83,10 @@ export async function chargesCents(database: Db, invoiceId: string): Promise<num
  * rappel et intérêts réclamés par les relances.
  */
 export async function invoiceBalance(database: Db, invoiceId: string, totalCents: number) {
-  const [credited, paid, charges] = await Promise.all([
-    creditedCents(database, invoiceId),
-    paidCents(database, invoiceId),
-    chargesCents(database, invoiceId),
-  ]);
+  // L'une après l'autre : dans une transaction, le client ne mène qu'une requête à la fois.
+  const credited = await creditedCents(database, invoiceId);
+  const paid = await paidCents(database, invoiceId);
+  const charges = await chargesCents(database, invoiceId);
   return {
     totalCents,
     creditedCents: credited,
@@ -145,7 +145,7 @@ export async function addPayment(
 ): Promise<InvoicePayment | "notFound" | "tooHigh"> {
   if (!UUID.test(invoiceId)) return "notFound";
   const fxRate = await paymentFxRate(database, invoiceId, data.paidOn, data.fxRate, fetcher);
-  return database.transaction(async (tx) => {
+  const result = await database.transaction(async (tx) => {
     const [invoice] = await tx
       .select()
       .from(invoices)
@@ -175,6 +175,31 @@ export async function addPayment(
     });
     return row;
   });
+  if (typeof result === "object") await paymentEvents(database, result);
+  return result;
+}
+
+/** Événements d'un paiement reçu : « payment.created », et « invoice.paid » s'il solde la facture. */
+export async function paymentEvents(database: Db, payment: InvoicePayment) {
+  const [invoice] = await database
+    .select()
+    .from(invoices)
+    .where(eq(invoices.id, payment.invoiceId));
+  if (!invoice) return;
+  const balance = await invoiceBalance(database, invoice.id, invoice.totalCents);
+  const summary = { ...invoiceSummary(invoice), openCents: balance.openCents };
+  await emitEvent(database, payment.organizationId, "payment.created", {
+    payment: {
+      id: payment.id,
+      invoiceId: payment.invoiceId,
+      amountCents: payment.amountCents,
+      paidOn: payment.paidOn,
+      method: payment.method,
+    },
+    invoice: summary,
+  });
+  if (balance.openCents <= 0)
+    await emitEvent(database, payment.organizationId, "invoice.paid", { invoice: summary });
 }
 
 /**

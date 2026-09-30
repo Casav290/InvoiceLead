@@ -23,6 +23,7 @@ import {
 import { postPending } from "@/server/ledger";
 import { addPayment, deletePayment, parsePaymentForm } from "@/server/payments";
 import { hasFeature, limitReached } from "@/server/plans";
+import { flushWebhooks } from "@/server/webhooks";
 
 /** Comptabilise ce qui peut l'être ; une panne ici ne doit jamais bloquer la facturation. */
 async function postQuietly(who: { organizationId: string; userId: string }) {
@@ -105,6 +106,7 @@ export async function issueInvoiceAction(form: FormData) {
   revalidatePath(path);
   if (typeof result === "string") redirect(`${path}/${id}?error=${result}`);
   await postQuietly({ organizationId: session.organization.id, userId: session.user.id });
+  await flushWebhooks(db(), session.organization.id);
   redirect(`${path}/${id}?issued=1`);
 }
 
@@ -196,6 +198,7 @@ export async function addPaymentAction(
   if (result === "tooHigh") return { status: "tooHigh", values, round };
   if (result === "notFound") return { status: "invalid", values, round };
   await postQuietly({ organizationId: session.organization.id, userId: session.user.id });
+  await flushWebhooks(db(), session.organization.id);
   revalidatePath(`/${locale}/app/invoices`);
   redirect(`/${locale}/app/invoices/${id}?paid=1`);
 }

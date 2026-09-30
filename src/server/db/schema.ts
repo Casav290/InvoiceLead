@@ -796,3 +796,76 @@ export const feedback = pgTable(
   },
   (t) => [index("feedback_created_idx").on(t.createdAt)],
 );
+
+/**
+ * Clé d'API d'une entreprise (formule Pro+). Seule l'empreinte SHA-256 est gardée : la clé n'est
+ * montrée qu'une fois, à sa création. Elle agit au nom de la personne qui l'a créée, tant que cette
+ * personne peut facturer dans l'entreprise.
+ */
+export const apiKeys = pgTable(
+  "api_keys",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    /** Début de la clé (« il_live_ab12 »), pour la reconnaître dans la liste. */
+    prefix: text("prefix").notNull(),
+    keyHash: text("key_hash").notNull().unique(),
+    createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+    lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+  },
+  (t) => [index("api_keys_org_idx").on(t.organizationId)],
+);
+
+export type ApiKey = typeof apiKeys.$inferSelect;
+
+/** Adresse qui reçoit les événements de l'entreprise, signés avec son secret (chiffré ici). */
+export const webhookEndpoints = pgTable(
+  "webhook_endpoints",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    url: text("url").notNull(),
+    secretEnc: text("secret_enc").notNull(),
+    events: jsonb("events").$type<string[]>().notNull(),
+    createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+    disabledAt: timestamp("disabled_at", { withTimezone: true }),
+  },
+  (t) => [index("webhook_endpoints_org_idx").on(t.organizationId)],
+);
+
+export type WebhookEndpoint = typeof webhookEndpoints.$inferSelect;
+
+/** Envoi d'un événement à une adresse, rejoué avec un délai croissant tant qu'il échoue. */
+export const webhookDeliveries = pgTable(
+  "webhook_deliveries",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    endpointId: uuid("endpoint_id")
+      .notNull()
+      .references(() => webhookEndpoints.id, { onDelete: "cascade" }),
+    event: text("event").notNull(),
+    payload: jsonb("payload").notNull(),
+    status: text("status").notNull().default("pending"), // pending | delivered | failed
+    attempts: integer("attempts").notNull().default(0),
+    lastStatus: integer("last_status"),
+    lastError: text("last_error"),
+    nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true }).notNull().defaultNow(),
+    deliveredAt: timestamp("delivered_at", { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    index("webhook_deliveries_pending_idx").on(t.status, t.nextAttemptAt),
+    index("webhook_deliveries_endpoint_idx").on(t.endpointId, t.createdAt),
+  ],
+);

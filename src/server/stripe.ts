@@ -3,7 +3,7 @@ import { and, eq } from "drizzle-orm";
 import type { Db } from "./db";
 import { auditLog, invoicePayments, invoices, organizations } from "./db/schema";
 import { env } from "./env";
-import { invoiceBalance, paymentFxRate } from "./payments";
+import { invoiceBalance, paymentEvents, paymentFxRate } from "./payments";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -180,7 +180,8 @@ export async function handleStripeEvent(
   const paidOn = new Date((s.created ?? Date.now() / 1000) * 1000).toISOString().slice(0, 10);
   // Facture en devise : cours du jour du paiement, cherché avant de verrouiller la facture.
   const fxRate = await paymentFxRate(database, invoiceId, paidOn, null);
-  return database.transaction(async (tx) => {
+  let paymentId: string | null = null;
+  const result = await database.transaction(async (tx) => {
     const [row] = await tx
       .select({ invoice: invoices, account: organizations.stripeAccountId })
       .from(invoices)
@@ -227,6 +228,7 @@ export async function handleStripeEvent(
       .onConflictDoNothing()
       .returning({ id: invoicePayments.id });
     if (inserted.length === 0) return "duplicate";
+    paymentId = inserted[0]?.id ?? null;
     await tx.insert(auditLog).values({
       organizationId,
       action: "payment.online",
@@ -234,6 +236,14 @@ export async function handleStripeEvent(
       entityId: invoiceId,
       data: { paymentId: inserted[0]?.id, amountCents: amount, session: s.id },
     });
-    return "recorded";
+    return "recorded" as const;
   });
+  if (result === "recorded" && paymentId) {
+    const [payment] = await database
+      .select()
+      .from(invoicePayments)
+      .where(eq(invoicePayments.id, paymentId));
+    if (payment) await paymentEvents(database, payment);
+  }
+  return result;
 }

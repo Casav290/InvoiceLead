@@ -4,6 +4,7 @@ import { env } from "@/server/env";
 import { runRecurring } from "@/server/recurring";
 import { runAutoReminders } from "@/server/reminders";
 import { sendWithDefaults } from "@/server/send";
+import { deliverPending } from "@/server/webhooks";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -24,5 +25,7 @@ export async function GET(request: Request) {
     return (await sendWithDefaults(db(), who, id)) === "sent";
   });
   const reminders = await runAutoReminders(db(), today);
-  return Response.json({ today, recurring, reminders });
+  // Événements des factures récurrentes, et reprise des envois de webhooks en échec.
+  const webhooks = await deliverPending(db(), { limit: 500 });
+  return Response.json({ today, recurring, reminders, webhooks });
 }

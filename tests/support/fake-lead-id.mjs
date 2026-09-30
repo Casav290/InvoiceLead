@@ -55,6 +55,8 @@ function send(res, status, body, headers = {}) {
 
 /** Sessions Checkout créées, pour les tests. */
 const checkouts = [];
+/** Webhooks reçus, pour les tests. */
+const hooks = [];
 
 async function readBody(req) {
   let data = "";
@@ -130,9 +132,11 @@ createServer(async (req, res) => {
       org_role: u.org_role,
       lead: {
         plan:
-          u.plan === "pro"
-            ? { code: "pro", name: "Pro", rank: 1, seats: 2 }
-            : { code: "free", name: "Gratuit", rank: 0, seats: 1 },
+          u.plan === "proplus"
+            ? { code: "pro_plus", name: "Pro+", rank: 2, seats: 5 }
+            : u.plan === "pro"
+              ? { code: "pro", name: "Pro", rank: 1, seats: 2 }
+              : { code: "free", name: "Gratuit", rank: 0, seats: 1 },
         apps: {
           scanlead: {
             access: true,
@@ -194,6 +198,13 @@ createServer(async (req, res) => {
     return send(res, 200, { id: `em_${emails.length}` });
   }
   if (url.pathname === "/test/emails") return send(res, 200, emails);
+
+  // Faux récepteur de webhooks : garde les en-têtes et le corps reçus.
+  if (url.pathname === "/hooks" && req.method === "POST") {
+    hooks.push({ headers: req.headers, body: await readBody(req) });
+    return send(res, 200, { ok: true });
+  }
+  if (url.pathname === "/test/hooks") return send(res, 200, hooks);
 
   // Faux cours BCE (Frankfurter) : base EUR, le franc bouge d'un millième par jour du mois, pour
   // qu'un paiement reçu plus tard produise une différence de change.

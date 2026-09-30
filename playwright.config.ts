@@ -25,6 +25,7 @@ const appEnv = {
   STRIPE_API_URL: `http://localhost:${LEAD_PORT}/stripe`,
   STRIPE_CONNECT_URL: `http://localhost:${LEAD_PORT}/stripe-connect`,
   FX_API_URL: `http://localhost:${LEAD_PORT}/fx/v1`,
+  WEBHOOK_ALLOW_LOCAL: "1",
   NEXT_TELEMETRY_DISABLED: "1",
 };
 

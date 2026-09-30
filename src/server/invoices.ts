@@ -22,6 +22,7 @@ import {
 } from "./db/schema";
 import { fetchFxRate } from "./fx";
 import { PRODUCT_UNITS } from "./products";
+import { emitEvent, invoiceSummary } from "./webhooks";
 
 type Who = { organizationId: string; userId: string };
 export const DOCUMENT_KINDS = ["invoice", "quote", "credit_note"] as const;
@@ -536,7 +537,7 @@ export async function issueInvoice(
     fetchedRate = await fetchFxRate(draft.currency, draft.home, draft.issueDate, fetcher);
     if (fetchedRate === null) return "fxRate";
   }
-  return database.transaction(async (tx) => {
+  const result = await database.transaction(async (tx): Promise<IssueResult> => {
     const [row] = await tx
       .select({ invoice: invoices, contact: contacts })
       .from(invoices)
@@ -640,6 +641,11 @@ export async function issueInvoice(
     });
     return issued;
   });
+  if (typeof result === "object" && result.kind !== "quote")
+    await emitEvent(database, who.organizationId, "invoice.issued", {
+      invoice: invoiceSummary(result),
+    });
+  return result;
 }
 
 /** Accepté ou refusé par le client : seulement pour un devis émis et pas encore facturé. */

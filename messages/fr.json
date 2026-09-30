@@ -414,7 +414,8 @@
       "accounts": "Plan comptable",
       "fiscalYears": "Exercices",
       "team": "Équipe",
-      "payments": "Paiement en ligne"
+      "payments": "Paiement en ligne",
+      "api": "API"
     },
     "accounts": {
       "title": "Plan comptable",
@@ -1367,6 +1368,46 @@
         "state": "Le retour de Stripe n'a pas pu être vérifié. Recommencez.",
         "denied": "La liaison a été annulée sur Stripe.",
         "failed": "Stripe n'a pas confirmé la liaison. Réessayez plus tard."
+      }
+    },
+    "apiSettings": {
+      "title": "API et webhooks",
+      "subtitle": "Reliez InvoiceLead à vos outils : l'API REST ({base}) crée contacts, devis, factures et paiements ; les webhooks préviennent vos outils quand une facture est émise ou payée.",
+      "plan": "L'API et les webhooks font partie de la formule Pro+.",
+      "keys": {
+        "title": "Clés d'API",
+        "empty": "Aucune clé.",
+        "name": "Nom de la clé (par exemple « Boutique en ligne »)",
+        "create": "Créer une clé",
+        "created": "Copiez cette clé maintenant : elle ne sera plus affichée. Envoyez-la dans l'en-tête Authorization: Bearer.",
+        "meta": "créée le {created}, utilisée : {used}",
+        "never": "jamais",
+        "revoke": "Révoquer",
+        "revoked": "Clé révoquée."
+      },
+      "webhooks": {
+        "title": "Webhooks",
+        "hint": "Chaque événement est envoyé en POST JSON, signé dans l'en-tête InvoiceLead-Signature (HMAC-SHA256 de « t.corps » avec le secret). En cas d'échec, il est renvoyé plus tard, jusqu'à cinq fois.",
+        "empty": "Aucune adresse.",
+        "url": "Adresse de réception (https)",
+        "events": "Événements",
+        "create": "Ajouter le webhook",
+        "created": "Copiez ce secret de signature maintenant : il ne sera plus affiché.",
+        "disable": "Supprimer",
+        "disabled": "Webhook supprimé.",
+        "delivery": "{event} : {status} ({code}), {date}",
+        "status": {
+          "pending": "en attente",
+          "delivered": "livré",
+          "failed": "abandonné"
+        }
+      },
+      "errors": {
+        "plan": "L'API et les webhooks font partie de la formule Pro+.",
+        "invalid": "Nom obligatoire (60 caractères au plus).",
+        "tooMany": "Nombre maximal atteint.",
+        "url": "Adresse invalide : https vers un serveur public, sans identifiants.",
+        "events": "Choisissez au moins un événement."
       }
     }
   },
