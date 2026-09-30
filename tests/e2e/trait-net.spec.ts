@@ -80,6 +80,8 @@ for (const size of WIDTHS) {
       expect(await traitNetIssues(page)).toEqual([]);
       await page.goto("/de/app/accounting/receipts");
       expect(await traitNetIssues(page)).toEqual([]);
+      await page.goto("/fr/app/accounting/reports");
+      expect(await traitNetIssues(page)).toEqual([]);
     });
 
     test("écran sans accès", async ({ page }) => {

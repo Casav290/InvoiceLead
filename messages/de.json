@@ -731,7 +731,8 @@
         "label": "Bereiche der Buchhaltung",
         "bank": "Bank",
         "journal": "Journal",
-        "receipts": "Belege"
+        "receipts": "Belege",
+        "reports": "Auswertungen"
       }
     },
     "bank": {
@@ -819,6 +820,37 @@
         "matched": "Zugeordnet",
         "posted": "Verbucht"
       }
+    },
+    "reports": {
+      "title": "Auswertungen",
+      "period": "Geschäftsjahr vom {start} bis {end}",
+      "provisional": "Provisorische Zahlen aus dem Journal: Sie werden mit dem Jahresabschluss definitiv.",
+      "empty": "Keine Buchungen in diesem Geschäftsjahr.",
+      "income": "Erfolgsrechnung",
+      "balanceSheet": "Bilanz",
+      "trial": "Saldenliste",
+      "account": "Konto",
+      "amount": "Betrag",
+      "profit": "Jahresgewinn",
+      "loss": "Jahresverlust",
+      "assets": "Aktiven",
+      "liabilitiesEquity": "Passiven",
+      "totalAssets": "Total Aktiven",
+      "totalLiabilities": "Total Passiven",
+      "equity": "Eigenkapital",
+      "currentResult": "Ergebnis des laufenden Geschäftsjahres",
+      "balanced": "Die Bilanz ist ausgeglichen.",
+      "unbalanced": "Achtung: Die Bilanz ist nicht ausgeglichen. Prüfen Sie die Eröffnungsbuchungen.",
+      "debit": "Soll",
+      "credit": "Haben",
+      "total": "Total",
+      "ledger": "Kontoblatt",
+      "back": "Zurück zu den Auswertungen",
+      "noMovement": "Keine Bewegungen auf diesem Konto in diesem Geschäftsjahr.",
+      "date": "Datum",
+      "entry": "Nr.",
+      "text": "Text",
+      "balance": "Saldo"
     }
   },
   "footer": {

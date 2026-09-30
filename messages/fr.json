@@ -731,7 +731,8 @@
         "label": "Sections de la comptabilité",
         "bank": "Banque",
         "journal": "Journal",
-        "receipts": "Justificatifs"
+        "receipts": "Justificatifs",
+        "reports": "Rapports"
       }
     },
     "bank": {
@@ -819,6 +820,37 @@
         "matched": "Rattaché",
         "posted": "Comptabilisé"
       }
+    },
+    "reports": {
+      "title": "Rapports",
+      "period": "Exercice du {start} au {end}",
+      "provisional": "Chiffres provisoires, établis à partir du journal : ils deviennent définitifs à la clôture de l'exercice.",
+      "empty": "Aucune écriture dans cet exercice.",
+      "income": "Compte de résultat",
+      "balanceSheet": "Bilan",
+      "trial": "Balance des comptes",
+      "account": "Compte",
+      "amount": "Montant",
+      "profit": "Bénéfice de l'exercice",
+      "loss": "Perte de l'exercice",
+      "assets": "Actifs",
+      "liabilitiesEquity": "Passifs",
+      "totalAssets": "Total des actifs",
+      "totalLiabilities": "Total des passifs",
+      "equity": "Capitaux propres",
+      "currentResult": "Résultat de l'exercice en cours",
+      "balanced": "Le bilan est équilibré.",
+      "unbalanced": "Attention : le bilan n'est pas équilibré. Vérifiez les écritures d'ouverture.",
+      "debit": "Débit",
+      "credit": "Crédit",
+      "total": "Total",
+      "ledger": "Grand livre",
+      "back": "Retour aux rapports",
+      "noMovement": "Aucun mouvement sur ce compte dans cet exercice.",
+      "date": "Date",
+      "entry": "N°",
+      "text": "Libellé",
+      "balance": "Solde"
     }
   },
   "footer": {

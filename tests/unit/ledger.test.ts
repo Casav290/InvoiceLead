@@ -13,6 +13,7 @@ import {
 } from "@/server/invoices";
 import { countUnposted, postPending, verifyChain } from "@/server/ledger";
 import { addPayment, deletePayment } from "@/server/payments";
+import { accountBalances, accountLedger, balanceSheet, incomeStatement } from "@/server/reports";
 import { claims } from "../support/claims";
 import { testDb } from "../support/db";
 
@@ -184,6 +185,24 @@ describe("comptabilisation automatique", () => {
     ]);
 
     expect(await verifyChain(db, who.organizationId)).toEqual({ ok: true, count: 4 });
+
+    // Rapports : facture 355.08 moins avoir 30.78 ; le paiement a été extourné.
+    const year = entries[0]?.fiscalYearId ?? "";
+    const balances = await accountBalances(db, who.organizationId, year);
+    const debit = balances.reduce((s, b) => s + b.debitCents, 0);
+    expect(debit).toBe(balances.reduce((s, b) => s + b.creditCents, 0));
+    const income = incomeStatement(balances);
+    expect(income.resultCents).toBe(30_000 + 3000 - 3000);
+    const sheet = balanceSheet(balances, income.resultCents);
+    expect(sheet).toMatchObject({
+      assetsCents: 35_508 - 3078,
+      liabilitiesCents: 2430,
+      balanced: true,
+    });
+    const receivable = balances.find((b) => b.account.number === "1100");
+    const ledger = await accountLedger(db, who.organizationId, year, receivable?.account.id ?? "");
+    // Ordre des dates : facture, paiement (15.03), avoir (20.03), extourne (02.04).
+    expect(ledger?.lines.map((l) => l.runningCents)).toEqual([35_508, 25_508, 22_430, 32_430]);
     // Le journal refuse toute modification…
     await expect(
       db.execute(sql`update journal_entries set description = 'x' where seq = 2`),

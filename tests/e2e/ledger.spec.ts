@@ -110,6 +110,13 @@ test("comptabilité : pièce en attente, puis journal en partie double après mi
   await expect(page.getByRole("row", { name: /Client SA/ })).toContainText("Payée");
   await page.goto("/fr/app/accounting/receipts");
   await expect(page.getByTestId("receipt-status")).toHaveText("Comptabilisé");
+
+  // Rapports : 150.00 de prestations moins 5.00 de frais bancaires.
+  await page.getByRole("link", { name: "Rapports" }).click();
+  await expect(page.getByTestId("result")).toHaveText("145.00");
+  await expect(page.getByTestId("balance-check")).toHaveText("Le bilan est équilibré.");
+  await page.getByTestId("trial-balance").getByRole("link", { name: /6940/ }).click();
+  await expect(page.getByTestId("ledger")).toContainText("5.00");
 });
 
 /** Référence SCOR de la facture émise, recalculée depuis son numéro (IBAN ordinaire, pas de QR-IBAN). */
