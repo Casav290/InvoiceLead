@@ -8,7 +8,9 @@
     "family": "Famille Lead",
     "login": "Connexion",
     "cta": "Commencer gratuitement",
-    "language": "Langue"
+    "language": "Langue",
+    "pricing": "Tarifs",
+    "faq": "FAQ"
   },
   "home": {
     "kicker": "Nouveau dans la famille Lead",
@@ -52,7 +54,11 @@
       "vat": "TVA 8,1 %",
       "total": "Total",
       "payment": "Section paiement",
-      "rows": ["Conseil, septembre", "Atelier de lancement", "Frais de déplacement"],
+      "rows": [
+        "Conseil, septembre",
+        "Atelier de lancement",
+        "Frais de déplacement"
+      ],
       "hours": "h"
     }
   },
@@ -116,11 +122,116 @@
     "signup": "Inscription",
     "scanlead": "Scanlead, la capture de leads sur les salons",
     "crmlead": "CRMlead, le CRM qui suit vos contacts",
-    "features": "Fonctions"
+    "features": "Fonctions",
+    "pricing": "Tarifs",
+    "faq": "FAQ",
+    "legal": "Légal",
+    "imprint": "Mentions légales",
+    "privacy": "Confidentialité",
+    "terms": "Conditions",
+    "dpa": "Sous-traitance (DPA)"
   },
   "notFound": {
     "title": "Page introuvable",
     "body": "Cette adresse n'existe pas, ou plus, sur InvoiceLead.",
     "home": "Retour à l'accueil"
+  },
+  "legal": {
+    "home": "Accueil",
+    "titles": {
+      "imprint": "Mentions légales",
+      "privacy": "Confidentialité",
+      "terms": "Conditions générales",
+      "dpa": "Accord de sous-traitance"
+    }
+  },
+  "pricing": {
+    "title": "Des tarifs simples, pour toute la famille Lead",
+    "subtitle": "Une seule formule ouvre InvoiceLead, Scanlead et CRMlead. Prix hors TVA.",
+    "notice": "InvoiceLead ouvre par étapes : les fonctions marquées « Bientôt » arrivent dans les prochaines versions. L'inscription est gratuite.",
+    "monthly": "par mois",
+    "yearly": "ou {price} par an (2 mois offerts)",
+    "popular": "Recommandé",
+    "soon": "Bientôt",
+    "cta": {
+      "free": "Commencer gratuitement",
+      "paid": "Choisir {plan}"
+    },
+    "plans": {
+      "free": {
+        "name": "Gratuit",
+        "tagline": "Pour démarrer comme indépendant",
+        "features": [
+          "1 utilisateur, 1 entreprise",
+          "10 factures par mois, devis illimités",
+          "50 contacts",
+          "QR-facture, documents en DE, FR, IT, EN",
+          "Comptabilité alimentée par vos factures",
+          "Mention « Créé avec InvoiceLead »"
+        ]
+      },
+      "pro": {
+        "name": "Pro",
+        "tagline": "Pour les PME qui facturent chaque semaine",
+        "features": [
+          "Factures et contacts illimités",
+          "2 utilisateurs et accès fiduciaire gratuit",
+          "Relances automatiques sur 3 niveaux",
+          "Décompte TVA (effective et TDFN)",
+          "Import bancaire camt et lettrage",
+          "Factures récurrentes, multidevise"
+        ]
+      },
+      "proPlus": {
+        "name": "Pro+",
+        "tagline": "Pour les équipes et plusieurs sociétés",
+        "features": [
+          "5 utilisateurs avec rôles",
+          "Jusqu'à 3 sociétés",
+          "Connexion bancaire directe",
+          "eBill, API et webhooks",
+          "Archivage conforme GeBüV",
+          "Support prioritaire"
+        ]
+      }
+    },
+    "footer": "Facturé en euros par la famille Lead (Quantum Liquid LLC). Résiliable à tout moment."
+  },
+  "faq": {
+    "title": "Questions fréquentes",
+    "items": [
+      {
+        "q": "InvoiceLead produit-il des QR-factures conformes ?",
+        "a": "Oui. La section paiement suit la norme SIX en vigueur (version 2.3, adresses structurées), avec référence QR ou SCOR selon votre compte bancaire."
+      },
+      {
+        "q": "Puis-je tenir toute ma comptabilité dans InvoiceLead ?",
+        "a": "C'est l'objectif : comptabilité en partie double sur le plan comptable PME, écritures créées par vos factures et paiements, bilan, compte de résultat et décompte TVA. Ces fonctions ouvrent progressivement."
+      },
+      {
+        "q": "Quelles méthodes de TVA sont prévues ?",
+        "a": "La méthode effective et celle du taux de la dette fiscale nette, sur contre-prestations convenues ou reçues. Le décompte sera exporté au format XML eCH-0217, accepté par le portail de l'AFC."
+      },
+      {
+        "q": "Qu'est-ce que le Compte Lead ?",
+        "a": "Le compte unique de la famille Lead : le même identifiant pour InvoiceLead, Scanlead et CRMlead, et une formule payée dans une application ouvre les autres."
+      },
+      {
+        "q": "Ma fiduciaire peut-elle accéder à ma comptabilité ?",
+        "a": "Oui, un accès fiduciaire gratuit est prévu dès la formule Pro."
+      },
+      {
+        "q": "Où sont hébergées mes données ?",
+        "a": "Aux États-Unis (Vercel et Neon, Ohio), chiffrées en transit et au repos. Le détail figure dans la politique de confidentialité."
+      },
+      {
+        "q": "Puis-je récupérer mes données ?",
+        "a": "Oui, à tout moment, et pendant 30 jours après une résiliation. Vos livres doivent être conservés dix ans : l'export est prévu pour cela."
+      },
+      {
+        "q": "Faut-il une carte bancaire pour commencer ?",
+        "a": "Non. La formule Gratuite ne demande aucune carte et n'a pas de limite de durée."
+      }
+    ]
   }
 }

@@ -11,6 +11,8 @@ export function PublicFooter() {
       links: [
         { href: "/", label: t("home"), internal: true },
         { href: `/${locale}#fonctions`, label: t("features"), internal: false },
+        { href: "/pricing", label: t("pricing"), internal: true },
+        { href: "/faq", label: t("faq"), internal: true },
       ],
     },
     {
@@ -18,6 +20,15 @@ export function PublicFooter() {
       links: [
         { href: `https://scanlead.io/?lang=${locale}`, label: t("scanlead"), internal: false },
         { href: `https://crmlead.io/?lang=${locale}`, label: t("crmlead"), internal: false },
+      ],
+    },
+    {
+      heading: t("legal"),
+      links: [
+        { href: "/legal/imprint", label: t("imprint"), internal: true },
+        { href: "/legal/privacy", label: t("privacy"), internal: true },
+        { href: "/legal/terms", label: t("terms"), internal: true },
+        { href: "/legal/dpa", label: t("dpa"), internal: true },
       ],
     },
     {
@@ -38,7 +49,7 @@ export function PublicFooter() {
               InvoiceLead
             </span>
           </Link>
-          <div className="grid grid-cols-2 gap-8 text-[13px] sm:grid-cols-3 sm:gap-12">
+          <div className="grid grid-cols-2 gap-8 text-[13px] sm:gap-10 lg:grid-cols-4">
             {columns.map((column) => (
               <div key={column.heading}>
                 <p className="mb-3 text-[10px] font-extrabold tracking-[.08em] text-ink-muted uppercase">

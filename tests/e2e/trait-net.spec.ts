@@ -16,6 +16,14 @@ const PUBLIC_PAGES = [
   "/de/signup",
   "/fr/signup",
   "/fr/nexiste-pas",
+  "/de/pricing",
+  "/fr/pricing",
+  "/de/faq",
+  "/fr/faq",
+  "/de/legal/privacy",
+  "/fr/legal/terms",
+  "/fr/legal/dpa",
+  "/de/legal/imprint",
 ];
 
 for (const size of WIDTHS) {

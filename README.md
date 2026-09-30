@@ -31,7 +31,7 @@ Sans accès au vrai Compte Lead, le faux émetteur des tests suffit :
 npm run lint        # Biome
 npm run typecheck   # TypeScript
 npm test            # Vitest, sur la base TEST_DATABASE_URL (migrée)
-npm run build && npm run e2e   # Playwright : connexion Compte Lead et audit Trait net à 390, 820, 1280 px
+npm run build && npm run e2e   # Playwright : connexion Compte Lead et audit Trait net à 320, 390, 820, 1280 px
 ```
 
 L'audit Trait net échoue sur toute police autre qu'Archivo, tout arrondi, toute ombre, tout dégradé

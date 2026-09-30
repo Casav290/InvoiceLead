@@ -130,3 +130,20 @@ test.describe("navigateur en français", () => {
     await expect(page).toHaveURL(/\/fr\/login\?erreur=session$/);
   });
 });
+
+test("pages publiques : tarifs, FAQ et textes légaux dans les deux langues", async ({ page }) => {
+  for (const [path, heading] of [
+    ["/fr/pricing", "Des tarifs simples, pour toute la famille Lead"],
+    ["/de/faq", "Häufige Fragen"],
+    ["/fr/legal/privacy", "Politique de confidentialité InvoiceLead"],
+    ["/de/legal/dpa", "Auftragsbearbeitungsvertrag (AVV) InvoiceLead"],
+    ["/de/legal/imprint", "Impressum"],
+    ["/fr/legal/terms", "Conditions générales InvoiceLead"],
+  ] as const) {
+    const res = await page.goto(path);
+    expect(res?.status(), path).toBe(200);
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText(heading);
+  }
+  const missing = await page.goto("/fr/legal/inconnu");
+  expect(missing?.status()).toBe(404);
+});

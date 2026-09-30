@@ -8,7 +8,9 @@
     "family": "Lead-Familie",
     "login": "Anmelden",
     "cta": "Kostenlos starten",
-    "language": "Sprache"
+    "language": "Sprache",
+    "pricing": "Preise",
+    "faq": "FAQ"
   },
   "home": {
     "kicker": "Neu in der Lead-Familie",
@@ -52,7 +54,11 @@
       "vat": "MWST 8,1 %",
       "total": "Total",
       "payment": "Zahlteil",
-      "rows": ["Beratung, September", "Lancierungs-Workshop", "Reisespesen"],
+      "rows": [
+        "Beratung, September",
+        "Lancierungs-Workshop",
+        "Reisespesen"
+      ],
       "hours": "Std."
     }
   },
@@ -116,11 +122,116 @@
     "signup": "Registrieren",
     "scanlead": "Scanlead, Leaderfassung an Messen",
     "crmlead": "CRMlead, das CRM für Ihre Kontakte",
-    "features": "Funktionen"
+    "features": "Funktionen",
+    "pricing": "Preise",
+    "faq": "FAQ",
+    "legal": "Rechtliches",
+    "imprint": "Impressum",
+    "privacy": "Datenschutz",
+    "terms": "AGB",
+    "dpa": "Auftragsbearbeitung (AVV)"
   },
   "notFound": {
     "title": "Seite nicht gefunden",
     "body": "Diese Adresse gibt es bei InvoiceLead nicht, oder nicht mehr.",
     "home": "Zur Startseite"
+  },
+  "legal": {
+    "home": "Startseite",
+    "titles": {
+      "imprint": "Impressum",
+      "privacy": "Datenschutz",
+      "terms": "Allgemeine Geschäftsbedingungen",
+      "dpa": "Auftragsbearbeitungsvertrag"
+    }
+  },
+  "pricing": {
+    "title": "Einfache Preise, für die ganze Lead-Familie",
+    "subtitle": "Ein Abo öffnet InvoiceLead, Scanlead und CRMlead. Preise exkl. MWST.",
+    "notice": "InvoiceLead öffnet schrittweise: Mit «Demnächst» markierte Funktionen folgen in den nächsten Versionen. Die Registrierung ist kostenlos.",
+    "monthly": "pro Monat",
+    "yearly": "oder {price} pro Jahr (2 Monate geschenkt)",
+    "popular": "Empfohlen",
+    "soon": "Demnächst",
+    "cta": {
+      "free": "Kostenlos starten",
+      "paid": "{plan} wählen"
+    },
+    "plans": {
+      "free": {
+        "name": "Gratis",
+        "tagline": "Für den Start als Selbständige",
+        "features": [
+          "1 Benutzer, 1 Firma",
+          "10 Rechnungen pro Monat, Offerten unbegrenzt",
+          "50 Kontakte",
+          "QR-Rechnung, Dokumente auf DE, FR, IT, EN",
+          "Buchhaltung direkt aus Ihren Rechnungen",
+          "Hinweis «Erstellt mit InvoiceLead»"
+        ]
+      },
+      "pro": {
+        "name": "Pro",
+        "tagline": "Für KMU, die jede Woche verrechnen",
+        "features": [
+          "Rechnungen und Kontakte unbegrenzt",
+          "2 Benutzer und kostenloser Treuhandzugang",
+          "Automatische Mahnungen in 3 Stufen",
+          "MWST-Abrechnung (effektiv und Saldosteuersatz)",
+          "Bankimport camt und Abgleich",
+          "Wiederkehrende Rechnungen, Fremdwährungen"
+        ]
+      },
+      "proPlus": {
+        "name": "Pro+",
+        "tagline": "Für Teams und mehrere Firmen",
+        "features": [
+          "5 Benutzer mit Rollen",
+          "Bis zu 3 Firmen",
+          "Direkte Bankanbindung",
+          "eBill, API und Webhooks",
+          "GeBüV-konforme Archivierung",
+          "Priorisierter Support"
+        ]
+      }
+    },
+    "footer": "Verrechnet in Euro durch die Lead-Familie (Quantum Liquid LLC). Jederzeit kündbar."
+  },
+  "faq": {
+    "title": "Häufige Fragen",
+    "items": [
+      {
+        "q": "Erstellt InvoiceLead konforme QR-Rechnungen?",
+        "a": "Ja. Der Zahlteil folgt dem geltenden SIX-Standard (Version 2.3, strukturierte Adressen), mit QR- oder SCOR-Referenz je nach Bankkonto."
+      },
+      {
+        "q": "Kann ich meine ganze Buchhaltung in InvoiceLead führen?",
+        "a": "Das ist das Ziel: doppelte Buchhaltung nach KMU-Kontenrahmen, Buchungen direkt aus Rechnungen und Zahlungen, Bilanz, Erfolgsrechnung und MWST-Abrechnung. Diese Funktionen werden schrittweise freigeschaltet."
+      },
+      {
+        "q": "Welche MWST-Methoden sind vorgesehen?",
+        "a": "Die effektive Methode und die Saldosteuersatzmethode, nach vereinbarten oder vereinnahmten Entgelten. Die Abrechnung wird als XML nach eCH-0217 exportiert, wie es das ESTV-Portal annimmt."
+      },
+      {
+        "q": "Was ist das Lead-Konto?",
+        "a": "Das gemeinsame Konto der Lead-Familie: dieselbe Anmeldung für InvoiceLead, Scanlead und CRMlead, und ein in einer Anwendung bezahltes Abo öffnet die anderen."
+      },
+      {
+        "q": "Kann meine Treuhand auf die Buchhaltung zugreifen?",
+        "a": "Ja, ab dem Pro-Abo ist ein kostenloser Treuhandzugang vorgesehen."
+      },
+      {
+        "q": "Wo werden meine Daten gespeichert?",
+        "a": "In den USA (Vercel und Neon, Ohio), verschlüsselt bei der Übertragung und im Ruhezustand. Details stehen in der Datenschutzerklärung."
+      },
+      {
+        "q": "Kann ich meine Daten exportieren?",
+        "a": "Ja, jederzeit und noch 30 Tage nach einer Kündigung. Ihre Bücher müssen Sie zehn Jahre aufbewahren: Der Export ist genau dafür vorgesehen."
+      },
+      {
+        "q": "Brauche ich für den Start eine Kreditkarte?",
+        "a": "Nein. Das Gratis-Abo verlangt keine Karte und ist zeitlich unbegrenzt."
+      }
+    ]
   }
 }

@@ -104,3 +104,68 @@
     }
   }
 }
+
+/* Textes légaux rendus depuis content/legal (Markdown). */
+@layer components {
+  /* Les mots composés allemands (« Datenschutz-Grundverordnung ») doivent pouvoir se couper à 320 px. */
+  .legal-prose {
+    overflow-wrap: anywhere;
+    hyphens: auto;
+  }
+  .legal-prose h1 {
+    font-size: 28px;
+    line-height: 1.15;
+    margin: 0 0 12px;
+  }
+  .legal-prose h2 {
+    font-size: 17px;
+    font-weight: 700;
+    letter-spacing: 0;
+    margin: 28px 0 8px;
+  }
+  .legal-prose h3 {
+    font-size: 15px;
+    margin: 20px 0 6px;
+  }
+  .legal-prose p,
+  .legal-prose li {
+    font-size: 15px;
+    line-height: 1.75;
+    color: var(--color-ink-2);
+  }
+  .legal-prose p {
+    margin: 0 0 12px;
+  }
+  .legal-prose ul {
+    list-style: square;
+    padding-left: 1.3em;
+    margin: 0 0 12px;
+  }
+  .legal-prose a {
+    color: var(--color-accent-dark);
+    text-decoration: underline;
+  }
+  .legal-prose hr {
+    border-top: 1px solid var(--color-line);
+    margin: 28px 0;
+  }
+  .legal-prose table {
+    display: block;
+    width: 100%;
+    overflow-x: auto;
+    border-collapse: collapse;
+    margin: 0 0 16px;
+    font-size: 14px;
+  }
+  .legal-prose th,
+  .legal-prose td {
+    border: 1px solid var(--color-line-strong);
+    padding: 8px 10px;
+    text-align: left;
+    vertical-align: top;
+  }
+  .legal-prose th {
+    background: var(--color-head);
+    font-weight: 700;
+  }
+}

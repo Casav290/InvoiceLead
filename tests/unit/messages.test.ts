@@ -2,15 +2,15 @@ import { describe, expect, it } from "vitest";
 import de from "../../messages/de.json";
 import fr from "../../messages/fr.json";
 
-type Tree = { [key: string]: string | string[] | Tree };
+type Tree = { [key: string]: Node };
+type Node = string | Node[] | Tree;
 
-function entries(tree: Tree, prefix = ""): [string, string][] {
-  return Object.entries(tree).flatMap(([key, value]) => {
-    const path = prefix ? `${prefix}.${key}` : key;
-    if (typeof value === "string") return [[path, value] as [string, string]];
-    if (Array.isArray(value)) return value.map((v, i) => [`${path}.${i}`, v] as [string, string]);
-    return entries(value, path);
-  });
+function entries(node: Node, prefix = ""): [string, string][] {
+  if (typeof node === "string") return [[prefix, node]];
+  const pairs = Array.isArray(node)
+    ? node.map((v, i) => [String(i), v] as const)
+    : Object.entries(node);
+  return pairs.flatMap(([key, value]) => entries(value, prefix ? `${prefix}.${key}` : key));
 }
 
 describe("messages", () => {

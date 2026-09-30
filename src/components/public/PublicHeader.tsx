@@ -9,7 +9,8 @@ export function PublicHeader() {
   const locale = useLocale();
   const links = [
     { href: `/${locale}#fonctions`, label: t("features") },
-    { href: `/${locale}#famille`, label: t("family") },
+    { href: `/${locale}/pricing`, label: t("pricing") },
+    { href: `/${locale}/faq`, label: t("faq") },
   ];
   return (
     <header className="border-b border-line-strong bg-app">
@@ -49,6 +50,17 @@ export function PublicHeader() {
             {t("cta")}
           </Link>
         </div>
+        <nav className="flex w-full border-t border-line sm:hidden">
+          {links.map((link) => (
+            <a
+              key={link.href}
+              href={link.href}
+              className="flex min-w-0 flex-1 items-center justify-center border-r border-line px-1 py-2 text-center text-[11px] font-semibold text-ink-muted last:border-r-0"
+            >
+              {link.label}
+            </a>
+          ))}
+        </nav>
       </div>
     </header>
   );

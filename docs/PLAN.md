@@ -198,7 +198,7 @@ Règle d'Ève : une fonction à la fois, terminée et mise en ligne avant la sui
 | Lot | Contenu | Terminé quand | État |
 |---|---|---|---|
 | 0. Fondations | Next.js 16, Trait net, de/fr, Drizzle, connexion Compte Lead, coquille de l'application, CI, audit Playwright | Connexion de bout en bout contre un faux Compte Lead, 76 contrôles verts (28 unitaires, 48 de bout en bout), revue adversariale appliquée | fait (PR #1) |
-| 1. Mise en ligne | Vercel, domaine invoicelead.io, Compte Lead réel (client déclaré dans CRMlead), pages légales, tarifs, FAQ | Connexion réelle sur invoicelead.io | à faire |
+| 1. Mise en ligne | Vercel, domaine invoicelead.io, Compte Lead réel (client déclaré dans CRMlead), pages légales, tarifs, FAQ | Connexion réelle sur invoicelead.io | en ligne sur invoicelead.io ; pages légales, tarifs et FAQ faits ; reste la déclaration dans CRMlead |
 | 2. Entreprise et référentiels | Réglages entreprise, contacts, articles, taux TVA datés, plan comptable (2 modèles), exercices | Une entreprise configurée avec son plan comptable | |
 | 3. Devis et factures | Devis, confirmation, facture, avoir, numérotation, PDF avec QR-facture, envoi, facture en ligne, paiements saisis, écritures automatiques | Une vraie facture QR payée dans une app bancaire, écritures justes | |
 | 4. Comptabilité | Journal en ajout seul, grand livre, balance, bilan, résultat, dépenses avec impôt préalable, postes ouverts, import camt et lettrage, clôture | Un exercice complet bouclé et contrôlé | |
