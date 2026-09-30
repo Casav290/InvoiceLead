@@ -5,6 +5,7 @@ import { PlanNotice } from "@/components/app/PlanNotice";
 import { Button } from "@/components/ui/button";
 import { countryPack } from "@/countries";
 import { VAT_CODES } from "@/countries/ch/vat";
+import { accountName } from "@/lib/account-name";
 import { formatDate } from "@/lib/fiscal-year";
 import { formatAmount } from "@/lib/money";
 import { listAccounts } from "@/server/accounting";
@@ -65,9 +66,7 @@ export default async function BankPage({ params, searchParams }: Props) {
     listInvoices(db(), organization.id, "invoice"),
     listRules(db(), organization.id),
   ]);
-  const accountName = new Map(
-    chart.map((a) => [a.id, `${a.number} ${locale === "fr" ? a.nameFr : a.nameDe}`]),
-  );
+  const accountLabel = new Map(chart.map((a) => [a.id, `${a.number} ${accountName(a, locale)}`]));
   const invoiceName = new Map(
     invoiceRows.map((i) => [i.id, `${i.number ?? ""} · ${i.contactName}`]),
   );
@@ -187,7 +186,7 @@ export default async function BankPage({ params, searchParams }: Props) {
               ? t("noSuggestion")
               : p.kind === "invoice"
                 ? t("paysInvoice", { invoice: invoiceName.get(p.invoiceId) ?? "" })
-                : `${accountName.get(p.accountId) ?? ""}${p.vatCode ? ` · ${t(`vat.${p.vatCode}`)}` : ""}`;
+                : `${accountLabel.get(p.accountId) ?? ""}${p.vatCode ? ` · ${t(`vat.${p.vatCode}`)}` : ""}`;
             const sure = (p?.confidence ?? 0) >= CONFIDENT;
             return (
               <li key={r.id} className="border border-line-strong bg-panel" data-testid="bank-row">
@@ -267,7 +266,7 @@ export default async function BankPage({ params, searchParams }: Props) {
                         <option value="">{t("choose")}</option>
                         {choices.map((a) => (
                           <option key={a.id} value={a.id}>
-                            {a.number} {locale === "fr" ? a.nameFr : a.nameDe}
+                            {a.number} {accountName(a, locale)}
                           </option>
                         ))}
                       </select>
@@ -303,7 +302,7 @@ export default async function BankPage({ params, searchParams }: Props) {
           <h2 className="text-[20px]">{t("rules.title")}</h2>
           <p className="mt-1 text-[13px] text-ink-muted">{t("rules.hint")}</p>
           <ul className="mt-4 border border-line-strong bg-panel">
-            {rules.map(({ rule, number, nameDe, nameFr }) => (
+            {rules.map(({ rule, number, nameDe, nameFr, nameEn }) => (
               <li
                 key={rule.id}
                 className="flex flex-wrap items-center gap-3 border-b border-line-soft px-4 py-2 text-[13px] last:border-b-0"
@@ -315,7 +314,7 @@ export default async function BankPage({ params, searchParams }: Props) {
                   </span>
                 </span>
                 <span className="[overflow-wrap:anywhere]">
-                  {number} {locale === "fr" ? nameFr : nameDe}
+                  {number} {accountName({ nameDe, nameFr, nameEn }, locale)}
                   {rule.vatCode ? ` · ${t(`vat.${rule.vatCode}`)}` : ""}
                 </span>
                 <span className="text-ink-muted">{t("rules.hits", { count: rule.hits })}</span>

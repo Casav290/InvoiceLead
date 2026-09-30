@@ -246,9 +246,7 @@ export async function NewDocumentPage({
           initial={{
             contactId: chosen?.id ?? "",
             language:
-              chosen && (chosen.language === "de" || chosen.language === "fr")
-                ? chosen.language
-                : locale,
+              chosen && ["de", "fr", "en"].includes(chosen.language) ? chosen.language : locale,
             issueDate: today,
             serviceDate: today,
           }}

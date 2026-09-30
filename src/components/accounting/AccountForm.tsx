@@ -86,6 +86,14 @@ export function AccountForm({
           error={err("nameFr")}
           wide
         />
+        <TextField
+          id="account-name-en"
+          name="nameEn"
+          label={t("fields.nameEn")}
+          defaultValue={values.nameEn}
+          error={err("nameEn")}
+          wide
+        />
       </FormSection>
       <FormSection title={t("sections.options")}>
         <SelectField

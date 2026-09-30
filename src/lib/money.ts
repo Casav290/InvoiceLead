@@ -6,16 +6,23 @@
  * doit s'afficher à l'identique partout. Style « ch » (franc, en allemand comme en français) :
  * apostrophe pour les milliers, point pour les décimales. Style « de » (euro, Allemagne) : point pour
  * les milliers, virgule pour les décimales. Style « fr » (euro, France) : espace insécable pour les
- * milliers, virgule pour les décimales.
+ * milliers, virgule pour les décimales. Style « en » (Royaume-Uni, États-Unis) : virgule pour les
+ * milliers, point pour les décimales.
  */
-export type AmountStyle = "ch" | "de" | "fr";
+export type AmountStyle = "ch" | "de" | "fr" | "en";
 
 export function formatAmount(cents: number, style: AmountStyle = "ch"): string {
   if (!Number.isSafeInteger(cents)) throw new Error(`Montant invalide : ${cents}`);
   const abs = Math.abs(cents);
   // France : espace insécable (U+00A0, présente dans les polices standard des PDF) et virgule.
   const [thousands, decimal] =
-    style === "de" ? [".", ","] : style === "fr" ? ["\u00a0", ","] : ["'", "."];
+    style === "de"
+      ? [".", ","]
+      : style === "fr"
+        ? ["\u00a0", ","]
+        : style === "en"
+          ? [",", "."]
+          : ["'", "."];
   const units = Math.floor(abs / 100)
     .toString()
     .replace(/\B(?=(\d{3})+(?!\d))/g, thousands);

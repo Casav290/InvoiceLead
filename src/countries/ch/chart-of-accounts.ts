@@ -50,6 +50,7 @@ export type TemplateAccount = {
   number: string;
   de: string;
   fr: string;
+  en?: string;
   type: AccountType;
   role?: AccountRole;
   vatCode?: "normal";

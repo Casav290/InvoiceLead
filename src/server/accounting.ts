@@ -71,6 +71,7 @@ export async function installChart(
         number: a.number,
         nameDe: a.de,
         nameFr: a.fr,
+        nameEn: a.en ?? null,
         type: a.type,
         role: a.role ?? null,
         vatCode: a.vatCode ?? null,
@@ -92,6 +93,7 @@ export type AccountInput = {
   number: string;
   nameDe: string;
   nameFr: string;
+  nameEn?: string | null;
   type: AccountType;
   vatCode: VatCode | null;
   active: boolean;
@@ -117,6 +119,8 @@ export function parseAccountForm(
   nameFr ||= nameDe;
   if (nameDe.length > 100) errors.nameDe = "tooLong";
   if (nameFr.length > 100) errors.nameFr = "tooLong";
+  const nameEn = text(form, "nameEn") || null;
+  if (nameEn && nameEn.length > 100) errors.nameEn = "tooLong";
 
   const type = text(form, "type") as AccountType;
   const allowed = chartPack(country).typesByClass[accountClass(number)] ?? [];
@@ -129,7 +133,7 @@ export function parseAccountForm(
   if (Object.keys(errors).length > 0) return { ok: false, errors };
   return {
     ok: true,
-    data: { number, nameDe, nameFr, type, vatCode, active: form.get("active") === "on" },
+    data: { number, nameDe, nameFr, nameEn, type, vatCode, active: form.get("active") === "on" },
   };
 }
 

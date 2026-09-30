@@ -163,7 +163,9 @@
         "ustId": "USt-IdNr.",
         "taxNumber": "Steuernummer",
         "frVatId": "Numéro de TVA intracommunautaire",
-        "siret": "SIRET"
+        "siret": "SIRET",
+        "gbVat": "VAT registration number",
+        "companyNumber": "Companies House number"
       },
       "hints": {
         "uid": "Format CHE-123.456.789, clé de contrôle vérifiée.",
@@ -173,7 +175,9 @@
         "ustId": "Format DE123456789, clé de contrôle vérifiée.",
         "taxNumber": "Numéro fiscal du Finanzamt, par exemple 12/345/67890. USt-IdNr. ou Steuernummer : l'un des deux est obligatoire.",
         "frVatId": "Format FR + 2 chiffres + SIREN, clé vérifiée. Facultatif en franchise en base.",
-        "siret": "14 chiffres (ou SIREN à 9 chiffres), clé de contrôle vérifiée. Obligatoire sur chaque facture."
+        "siret": "14 chiffres (ou SIREN à 9 chiffres), clé de contrôle vérifiée. Obligatoire sur chaque facture.",
+        "gbVat": "Format GB + 9 chiffres, clé HMRC vérifiée.",
+        "companyNumber": "8 caractères, par exemple 01234567 ou SC123456. Facultatif pour une entreprise individuelle."
       },
       "legalForms": {
         "sole_proprietorship": "Raison individuelle",
@@ -191,7 +195,11 @@
         "sarl": "SARL",
         "sas": "SAS",
         "sasu": "SASU",
-        "sa": "SA"
+        "sa": "SA",
+        "sole_trader": "Sole trader",
+        "llp": "LLP",
+        "ltd": "Private limited company (Ltd)",
+        "plc": "Public limited company (PLC)"
       },
       "vatMethods": {
         "effective": "Méthode effective",
@@ -218,7 +226,7 @@
       "errors": {
         "required": "Champ obligatoire.",
         "tooLong": "Texte trop long.",
-        "postalCode": "Code postal invalide (4 chiffres en Suisse, 5 en Allemagne et en France).",
+        "postalCode": "Code postal invalide (4 chiffres en Suisse, 5 en Allemagne et en France, format britannique au Royaume-Uni).",
         "email": "Adresse e-mail invalide.",
         "uid": "Numéro IDE invalide (format ou clé de contrôle).",
         "uidRequiredForVat": "Le numéro IDE est obligatoire pour une entreprise inscrite à la TVA.",
@@ -232,12 +240,16 @@
         "taxIdRequired": "Indiquez l'USt-IdNr. ou la Steuernummer : l'un des deux figure sur chaque facture.",
         "frVatId": "Numéro de TVA invalide (FR, clé à 2 chiffres, SIREN).",
         "siret": "SIRET ou SIREN invalide (clé de contrôle).",
-        "siretRequired": "Le SIRET est obligatoire sur les factures françaises."
+        "siretRequired": "Le SIRET est obligatoire sur les factures françaises.",
+        "gbVat": "Numéro de TVA britannique invalide (GB et 9 chiffres, clé HMRC).",
+        "gbVatRequired": "Le numéro de TVA est obligatoire pour une entreprise enregistrée à la TVA.",
+        "companyNumber": "Numéro Companies House invalide (8 caractères)."
       },
       "countries": {
         "CH": "Suisse",
         "DE": "Allemagne",
-        "FR": "France"
+        "FR": "France",
+        "GB": "Royaume-Uni"
       }
     },
     "contacts": {
@@ -436,7 +448,8 @@
         "nameFr": "Nom en français",
         "type": "Type",
         "vatCode": "Code TVA par défaut",
-        "active": "Compte actif"
+        "active": "Compte actif",
+        "nameEn": "Libellé anglais (facultatif)"
       },
       "hints": {
         "number": "Quatre chiffres ; le premier donne la classe.",
@@ -480,7 +493,20 @@
         "7": "7 Produits",
         "8": "8 Comptes spéciaux"
       },
-      "subtitleFr": "Plan comptable général (PCG), numéros à six chiffres. Les comptes système sont utilisés par les écritures automatiques."
+      "subtitleFr": "Plan comptable général (PCG), numéros à six chiffres. Les comptes système sont utilisés par les écritures automatiques.",
+      "classesGb": {
+        "0": "0 Immobilisations",
+        "1": "1 Actifs circulants",
+        "2": "2 Dettes",
+        "3": "3 Capitaux",
+        "4": "4 Ventes",
+        "5": "5 Achats",
+        "6": "6 Charges directes",
+        "7": "7 Frais généraux",
+        "8": "8 Autres frais généraux",
+        "9": "9 Comptes de contrôle et clôture"
+      },
+      "subtitleGb": "Plan de comptes britannique (nominal ledger), codes à quatre chiffres. Les comptes système sont utilisés par les écritures automatiques."
     },
     "fiscalYears": {
       "title": "Exercices comptables",
@@ -608,7 +634,8 @@
       },
       "languages": {
         "de": "Allemand",
-        "fr": "Français"
+        "fr": "Français",
+        "en": "Anglais"
       },
       "units": {
         "hour": "h",
@@ -659,7 +686,8 @@
         "franchiseFr": "TVA non applicable, art. 293 B du CGI.",
         "reverseChargeFr": "Autoliquidation : TVA due par le preneur (art. 283-2 du CGI).",
         "outsideEuFr": "TVA non applicable, art. 259-1 du CGI.",
-        "latePaymentFr": "En cas de retard de paiement : pénalités au taux de trois fois l'intérêt légal et indemnité forfaitaire pour frais de recouvrement de 40 €. Pas d'escompte pour paiement anticipé."
+        "latePaymentFr": "En cas de retard de paiement : pénalités au taux de trois fois l'intérêt légal et indemnité forfaitaire pour frais de recouvrement de 40 €. Pas d'escompte pour paiement anticipé.",
+        "outsideScopeGb": "Hors du champ de la TVA britannique : lieu de la prestation dans le pays du client."
       },
       "docTitle": "Facture",
       "docDue": "Payable jusqu'au",
@@ -1069,6 +1097,17 @@
         "23": "23 · Total TVA déductible",
         "28": "28 · TVA nette due",
         "25": "25 · Crédit de TVA"
+      },
+      "figuresGb": {
+        "1": "Case 1 · TVA due sur les ventes",
+        "2": "Case 2 · TVA due sur les acquisitions UE (Irlande du Nord)",
+        "3": "Case 3 · Total de la TVA due",
+        "4": "Case 4 · TVA récupérable sur les achats",
+        "5": "Case 5 · Montant net à payer ou à récupérer",
+        "6": "Case 6 · Ventes totales hors TVA",
+        "7": "Case 7 · Achats totaux hors TVA",
+        "8": "Case 8 · Livraisons de biens vers l'UE (Irlande du Nord)",
+        "9": "Case 9 · Acquisitions de biens de l'UE (Irlande du Nord)"
       }
     },
     "reminders": {

@@ -68,7 +68,11 @@ export function nextFiscalYear(previousEnd: string) {
 }
 
 /** « 01.01.2026 » : format de date suisse, identique en allemand et en français. */
-export function formatDate(iso: string): string {
+/** « 30.09.2026 » (Suisse, Allemagne), « 30/09/2026 » (France, Royaume-Uni), « 09/30/2026 » (États-Unis). */
+export type DateStyle = "dot" | "slash" | "us";
+
+export function formatDate(iso: string, style: DateStyle = "dot"): string {
   const [y, m, d] = iso.split("-");
-  return `${d}.${m}.${y}`;
+  if (style === "us") return `${m}/${d}/${y}`;
+  return style === "slash" ? `${d}/${m}/${y}` : `${d}.${m}.${y}`;
 }

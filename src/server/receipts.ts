@@ -2,7 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { and, desc, eq, gte, inArray, isNull, lte } from "drizzle-orm";
 import { VAT_CODES } from "@/countries/ch/vat";
 import { addDays, isIsoDate } from "@/lib/fiscal-year";
-import { chatJson } from "./ai";
+import { aiLanguageName, chatJson } from "./ai";
 import type { Db } from "./db";
 import {
   accounts,
@@ -109,7 +109,7 @@ export async function readReceipt(
   database: Db,
   who: Who,
   id: string,
-  language: "de" | "fr",
+  language: "de" | "fr" | "en",
 ): Promise<"read" | "notFound" | "unreadable" | "failed"> {
   if (!UUID.test(id)) return "notFound";
   const [row] = await database
@@ -125,6 +125,7 @@ export async function readReceipt(
     .where(eq(organizations.id, who.organizationId));
   const germany = org?.country === "DE";
   const france = org?.country === "FR";
+  const uk = org?.country === "GB";
   const chart = await database
     .select({
       number: accounts.number,
@@ -140,14 +141,16 @@ export async function readReceipt(
     .join("\n");
 
   const instructions = [
-    "You read supplier invoices and receipts (Switzerland, Germany or France) for bookkeeping.",
+    "You read supplier invoices and receipts (Switzerland, Germany, France or the UK) for bookkeeping.",
     'Answer with JSON only: {"supplier":"...","date":"YYYY-MM-DD","total":"123.45","currency":"CHF","vat":"8.07","vat_code":"normal|reduced|lodging|exempt|null","invoice_number":"...","description":"...","account":"6510","confidence":0.9}',
     germany
       ? "total is the amount to pay including VAT. vat is the VAT amount shown (null if none). vat_code: German VAT rate applied (19 % normal, 7 % reduced)."
       : france
         ? "total is the amount to pay including VAT. vat is the VAT amount shown (null if none). vat_code: French VAT rate applied (20 % normal, 10 % lodging, 5.5 % reduced)."
-        : "total is the amount to pay including VAT. vat is the VAT amount shown (null if none). vat_code: Swiss VAT rate applied (8.1 % normal, 2.6 % reduced, 3.8 % lodging).",
-    `description: a few words in ${language === "fr" ? "French" : "Swiss German (no ß)"}. account: the best expense account from this chart:`,
+        : uk
+          ? "total is the amount to pay including VAT. vat is the VAT amount shown (null if none). vat_code: UK VAT rate applied (20 % normal, 5 % reduced)."
+          : "total is the amount to pay including VAT. vat is the VAT amount shown (null if none). vat_code: Swiss VAT rate applied (8.1 % normal, 2.6 % reduced, 3.8 % lodging).",
+    `description: a few words in ${aiLanguageName(language)}. account: the best expense account from this chart:`,
     expenseChart,
     "confidence: your probability (0 to 1) that total, date and account are right.",
   ].join("\n");
@@ -219,7 +222,7 @@ export async function readReceipt(
  * Rattache chaque justificatif lu au mouvement bancaire qui le paie (même montant, payé entre 5 jours
  * avant et 60 jours après sa date), et en fait la proposition de ce mouvement.
  */
-export async function matchReceipts(database: Db, who: Who, language: "de" | "fr") {
+export async function matchReceipts(database: Db, who: Who, language: "de" | "fr" | "en") {
   const open = await database
     .select()
     .from(receipts)

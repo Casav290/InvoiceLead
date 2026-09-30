@@ -16,7 +16,7 @@ export async function YearPicker({
   if (years.length < 2) return null;
   const t = await getTranslations({ locale, namespace: "app.accountingHome" });
   return (
-    <form className="flex items-center gap-2">
+    <form className="flex max-w-full flex-wrap items-center gap-2">
       <label htmlFor="report-year" className="text-[13px] font-semibold">
         {t("year")}
       </label>
@@ -24,7 +24,7 @@ export async function YearPicker({
         id="report-year"
         name="year"
         defaultValue={selected}
-        className="h-9 border border-line-strong bg-panel px-2 text-[13px]"
+        className="h-9 max-w-full min-w-0 border border-line-strong bg-panel px-2 text-[13px]"
       >
         {years.map((y) => (
           <option key={y.id} value={y.id}>

@@ -227,6 +227,8 @@ export const accounts = pgTable(
     number: text("number").notNull(), // 4 chiffres, la classe est le premier
     nameDe: text("name_de").notNull(),
     nameFr: text("name_fr").notNull(),
+    /** Libellé anglais ; vide, l'interface anglaise retombe sur le libellé allemand. */
+    nameEn: text("name_en"),
     type: text("type").notNull(), // asset | liability | equity | revenue | expense | closing
     role: text("role"),
     vatCode: text("vat_code"), // code TVA proposé par défaut à la saisie

@@ -4,6 +4,7 @@ import { AccountingNav } from "@/components/accounting/AccountingNav";
 import { Button } from "@/components/ui/button";
 import { countryPack } from "@/countries";
 import { Link } from "@/i18n/navigation";
+import { accountName } from "@/lib/account-name";
 import { formatDate } from "@/lib/fiscal-year";
 import { formatAmount } from "@/lib/money";
 import { listAccounts, listFiscalYears } from "@/server/accounting";
@@ -177,7 +178,7 @@ export default async function AccountingPage({ params, searchParams }: Props) {
                     <td />
                     <td className="px-3 py-1.5 [overflow-wrap:anywhere]">
                       <span className="font-semibold tabular-nums">{l.accountNumber}</span>{" "}
-                      <span className="text-ink-2">{locale === "fr" ? l.nameFr : l.nameDe}</span>
+                      <span className="text-ink-2">{accountName(l, locale)}</span>
                     </td>
                     <td className="px-3 py-1.5 text-right tabular-nums">
                       {l.debitCents ? formatAmount(l.debitCents, style) : ""}

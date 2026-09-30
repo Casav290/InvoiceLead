@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { AccountForm } from "@/components/accounting/AccountForm";
 import { SettingsNav } from "@/components/settings/SettingsNav";
+import { accountName } from "@/lib/account-name";
 import { getAccount } from "@/server/accounting";
 import { requireAppSession } from "@/server/auth/guard";
 import { canSetUpAccounting } from "@/server/company";
@@ -27,7 +28,7 @@ export default async function AccountPage({ params }: Props) {
     <div className="mx-auto max-w-3xl px-4 py-10 sm:px-8">
       <SettingsNav />
       <h1 className="text-[28px] leading-tight [overflow-wrap:anywhere]">
-        {account.number} {locale === "fr" ? account.nameFr : account.nameDe}
+        {account.number} {accountName(account, locale)}
       </h1>
       <AccountForm
         locale={locale}
@@ -38,6 +39,7 @@ export default async function AccountPage({ params }: Props) {
           type: account.type,
           nameDe: account.nameDe,
           nameFr: account.nameFr,
+          nameEn: account.nameEn ?? "",
           vatCode: account.vatCode ?? "",
           active: account.active ? "on" : "",
         }}

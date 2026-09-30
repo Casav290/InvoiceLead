@@ -4,7 +4,7 @@ import { auditLog, memberships, organizations, users } from "../db/schema";
 import type { LeadClaims } from "../lead-id/leadId";
 
 export const APP_CODE = "invoicelead";
-const LOCALES = ["de", "fr"] as const;
+const LOCALES = ["de", "fr", "en"] as const;
 
 function appLocale(locale: string | undefined): string {
   const short = (locale ?? "").slice(0, 2).toLowerCase();

@@ -5,6 +5,7 @@ import { AccountingNav } from "@/components/accounting/AccountingNav";
 import { YearPicker } from "@/components/accounting/YearPicker";
 import { countryPack } from "@/countries";
 import { Link } from "@/i18n/navigation";
+import { accountName } from "@/lib/account-name";
 import { formatDate } from "@/lib/fiscal-year";
 import { formatAmount } from "@/lib/money";
 import { listFiscalYears } from "@/server/accounting";
@@ -51,7 +52,7 @@ export default async function LedgerPage({ params, searchParams }: Props) {
       </p>
       <div className="mt-2 flex flex-wrap items-end justify-between gap-4">
         <h1 className="text-[28px] leading-tight [overflow-wrap:anywhere]">
-          {account.number} {locale === "fr" ? account.nameFr : account.nameDe}
+          {account.number} {accountName(account, locale)}
         </h1>
         <YearPicker locale={locale} years={years} selected={year.id} />
       </div>

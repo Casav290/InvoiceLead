@@ -27,7 +27,12 @@ export type DocumentKind = (typeof DOCUMENT_KINDS)[number];
 /** Durée de validité proposée pour un devis sans date saisie. */
 export const QUOTE_VALIDITY_DAYS = 30;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-export const INVOICE_LANGUAGES = ["de", "fr"] as const;
+export const INVOICE_LANGUAGES = ["de", "fr", "en"] as const;
+
+/** Langue de document admise, allemand par défaut. */
+export function documentLanguage(value: unknown): (typeof INVOICE_LANGUAGES)[number] {
+  return value === "fr" || value === "en" ? value : "de";
+}
 export const MAX_LINES = 100;
 
 export type InvoiceLineInput = {
@@ -517,7 +522,7 @@ export async function issueInvoice(database: Db, who: Who, id: string): Promise<
       qrIban: org.qrIban,
       vatNumber:
         org.vatRegistered && org.uid ? vatNumberLabel(org.uid, row.invoice.language) : null,
-      taxNumber: org.country === "DE" || org.country === "FR" ? org.taxNumber : null,
+      taxNumber: ["DE", "FR", "GB"].includes(org.country) ? org.taxNumber : null,
     };
     const number = formatInvoiceNumber(year, seq.value, kind);
     const [issued] = await tx

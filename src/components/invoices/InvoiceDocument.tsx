@@ -4,6 +4,7 @@ import { formatRate } from "@/countries/ch/vat";
 import { formatDate } from "@/lib/fiscal-year";
 import { computeTotals, formatQuantity } from "@/lib/invoice-math";
 import { formatAmount } from "@/lib/money";
+import { taxNumberLabel } from "@/lib/swiss-ids";
 import type { Invoice, InvoiceLine, PartySnapshot } from "@/server/db/schema";
 
 function Address({ party }: { party: PartySnapshot }) {
@@ -53,6 +54,7 @@ export async function InvoiceDocument({
   const tu = await getTranslations({ locale: lang, namespace: "app.invoices.units" });
   const sender = invoice.sender;
   const style = countryPack(sender?.country).amounts;
+  const dateStyle = countryPack(sender?.country).dates;
   const recipient = invoice.recipient;
   const totals = computeTotals(lines);
   return (
@@ -70,7 +72,7 @@ export async function InvoiceDocument({
             ) : null}
             {sender.taxNumber ? (
               <p className="text-[12px] text-ink-2">
-                {sender.country === "FR" ? "SIRET" : "Steuernummer"} {sender.taxNumber}
+                {taxNumberLabel(sender.country)} {sender.taxNumber}
               </p>
             ) : null}
           </div>
@@ -86,13 +88,13 @@ export async function InvoiceDocument({
       </h2>
       <dl className="mt-3 grid grid-cols-[auto_1fr] gap-x-4 text-[13px] text-ink-2">
         <dt>{t("issueDate")}</dt>
-        <dd className="tabular-nums">{formatDate(invoice.issueDate)}</dd>
+        <dd className="tabular-nums">{formatDate(invoice.issueDate, dateStyle)}</dd>
         <dt>{t("serviceDate")}</dt>
-        <dd className="tabular-nums">{formatDate(invoice.serviceDate)}</dd>
+        <dd className="tabular-nums">{formatDate(invoice.serviceDate, dateStyle)}</dd>
         {invoice.kind === "credit_note" ? null : (
           <>
             <dt>{tk("docDue")}</dt>
-            <dd className="tabular-nums">{formatDate(invoice.dueDate)}</dd>
+            <dd className="tabular-nums">{formatDate(invoice.dueDate, dateStyle)}</dd>
           </>
         )}
       </dl>

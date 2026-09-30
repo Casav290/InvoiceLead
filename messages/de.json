@@ -163,7 +163,9 @@
         "ustId": "USt-IdNr.",
         "taxNumber": "Steuernummer",
         "frVatId": "Französische USt-IdNr.",
-        "siret": "SIRET"
+        "siret": "SIRET",
+        "gbVat": "VAT registration number",
+        "companyNumber": "Companies House number"
       },
       "hints": {
         "uid": "Format CHE-123.456.789, Prüfziffer wird kontrolliert.",
@@ -173,7 +175,9 @@
         "ustId": "Format DE123456789, Prüfziffer wird kontrolliert.",
         "taxNumber": "Steuernummer des Finanzamts, zum Beispiel 12/345/67890. USt-IdNr. oder Steuernummer: eines von beiden ist Pflicht.",
         "frVatId": "Format FR + 2 Ziffern + SIREN, Prüfziffer wird kontrolliert.",
-        "siret": "14 Ziffern (oder SIREN mit 9 Ziffern), Prüfziffer wird kontrolliert. Pflicht auf jeder Rechnung."
+        "siret": "14 Ziffern (oder SIREN mit 9 Ziffern), Prüfziffer wird kontrolliert. Pflicht auf jeder Rechnung.",
+        "gbVat": "Format GB + 9 Ziffern, HMRC-Prüfziffer wird kontrolliert.",
+        "companyNumber": "8 Zeichen, zum Beispiel 01234567 oder SC123456. Optional für Einzelunternehmen."
       },
       "legalForms": {
         "sole_proprietorship": "Einzelunternehmen",
@@ -191,7 +195,11 @@
         "sarl": "SARL",
         "sas": "SAS",
         "sasu": "SASU",
-        "sa": "SA"
+        "sa": "SA",
+        "sole_trader": "Sole trader",
+        "llp": "LLP",
+        "ltd": "Private limited company (Ltd)",
+        "plc": "Public limited company (PLC)"
       },
       "vatMethods": {
         "effective": "Effektive Methode",
@@ -218,7 +226,7 @@
       "errors": {
         "required": "Pflichtfeld.",
         "tooLong": "Text zu lang.",
-        "postalCode": "Ungültige Postleitzahl (4 Ziffern in der Schweiz, 5 in Deutschland und Frankreich).",
+        "postalCode": "Ungültige Postleitzahl (4 Ziffern in der Schweiz, 5 in Deutschland und Frankreich, britisches Format im Vereinigten Königreich).",
         "email": "Ungültige E-Mail-Adresse.",
         "uid": "Ungültige UID-Nummer (Format oder Prüfziffer).",
         "uidRequiredForVat": "Für MWST-pflichtige Firmen ist die UID-Nummer obligatorisch.",
@@ -232,12 +240,16 @@
         "taxIdRequired": "Geben Sie die USt-IdNr. oder die Steuernummer an: eines von beiden steht auf jeder Rechnung.",
         "frVatId": "Ungültige französische USt-IdNr. (FR, 2 Prüfziffern, SIREN).",
         "siret": "Ungültige SIRET oder SIREN (Prüfziffer).",
-        "siretRequired": "Die SIRET ist auf französischen Rechnungen Pflicht."
+        "siretRequired": "Die SIRET ist auf französischen Rechnungen Pflicht.",
+        "gbVat": "Ungültige britische MWST-Nummer (GB und 9 Ziffern, HMRC-Prüfziffer).",
+        "gbVatRequired": "Die MWST-Nummer ist für ein MWST-pflichtiges Unternehmen Pflicht.",
+        "companyNumber": "Ungültige Companies-House-Nummer (8 Zeichen)."
       },
       "countries": {
         "CH": "Schweiz",
         "DE": "Deutschland",
-        "FR": "Frankreich"
+        "FR": "Frankreich",
+        "GB": "Vereinigtes Königreich"
       }
     },
     "contacts": {
@@ -436,7 +448,8 @@
         "nameFr": "Name auf Französisch",
         "type": "Typ",
         "vatCode": "Standard-MWST-Code",
-        "active": "Konto aktiv"
+        "active": "Konto aktiv",
+        "nameEn": "Englische Bezeichnung (optional)"
       },
       "hints": {
         "number": "Vier Ziffern; die erste bestimmt die Klasse.",
@@ -480,7 +493,20 @@
         "7": "7 Ertrag",
         "8": "8 Sonderkonten"
       },
-      "subtitleFr": "Französischer Kontenrahmen (PCG), sechsstellige Nummern. Die Systemkonten werden von den automatischen Buchungen verwendet."
+      "subtitleFr": "Französischer Kontenrahmen (PCG), sechsstellige Nummern. Die Systemkonten werden von den automatischen Buchungen verwendet.",
+      "classesGb": {
+        "0": "0 Anlagevermögen",
+        "1": "1 Umlaufvermögen",
+        "2": "2 Verbindlichkeiten",
+        "3": "3 Eigenkapital",
+        "4": "4 Umsätze",
+        "5": "5 Einkäufe",
+        "6": "6 Direkte Kosten",
+        "7": "7 Gemeinkosten",
+        "8": "8 Übrige Gemeinkosten",
+        "9": "9 Kontroll- und Abschlusskonten"
+      },
+      "subtitleGb": "Britischer Kontenplan (Nominal Ledger), vierstellige Nummern. Die Systemkonten werden von den automatischen Buchungen verwendet."
     },
     "fiscalYears": {
       "title": "Geschäftsjahre",
@@ -608,7 +634,8 @@
       },
       "languages": {
         "de": "Deutsch",
-        "fr": "Französisch"
+        "fr": "Französisch",
+        "en": "Englisch"
       },
       "units": {
         "hour": "Std.",
@@ -659,7 +686,8 @@
         "franchiseFr": "TVA non applicable, art. 293 B du CGI (Kleinunternehmer, keine Mehrwertsteuer).",
         "reverseChargeFr": "Autoliquidation: Steuerschuldnerschaft des Leistungsempfängers (art. 283-2 du CGI).",
         "outsideEuFr": "TVA non applicable, art. 259-1 du CGI (nicht in Frankreich steuerbar).",
-        "latePaymentFr": "Bei Zahlungsverzug: Verzugszinsen in Höhe des dreifachen gesetzlichen Zinssatzes und eine Pauschale von 40 € für Inkassokosten. Kein Skonto bei vorzeitiger Zahlung."
+        "latePaymentFr": "Bei Zahlungsverzug: Verzugszinsen in Höhe des dreifachen gesetzlichen Zinssatzes und eine Pauschale von 40 € für Inkassokosten. Kein Skonto bei vorzeitiger Zahlung.",
+        "outsideScopeGb": "Nicht im Anwendungsbereich der britischen MWST: Leistungsort im Land des Kunden."
       },
       "docTitle": "Rechnung",
       "docDue": "Zahlbar bis",
@@ -1069,6 +1097,17 @@
         "23": "23 · Total Vorsteuer",
         "28": "28 · Geschuldete Netto-MWST",
         "25": "25 · MWST-Guthaben"
+      },
+      "figuresGb": {
+        "1": "Feld 1 · MWST auf Verkäufen",
+        "2": "Feld 2 · MWST auf EU-Erwerben (Nordirland)",
+        "3": "Feld 3 · Total geschuldete MWST",
+        "4": "Feld 4 · Rückforderbare Vorsteuer",
+        "5": "Feld 5 · Nettobetrag zu zahlen oder zurück",
+        "6": "Feld 6 · Gesamtumsatz ohne MWST",
+        "7": "Feld 7 · Gesamteinkäufe ohne MWST",
+        "8": "Feld 8 · Warenlieferungen in die EU (Nordirland)",
+        "9": "Feld 9 · Warenerwerbe aus der EU (Nordirland)"
       }
     },
     "reminders": {

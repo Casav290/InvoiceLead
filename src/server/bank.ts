@@ -4,7 +4,7 @@ import type { BankEntry } from "@/countries/ch/camt";
 import { VAT_CODES, type VatCode } from "@/countries/ch/vat";
 import { chartPack } from "@/countries/charts";
 import { roundHalfAwayFromZero } from "@/lib/money";
-import { chatJson } from "./ai";
+import { aiLanguageName, chatJson } from "./ai";
 import { counterpartyKey, directionOf, learnRule, ruleConfidence } from "./booking-rules";
 import type { Db } from "./db";
 import {
@@ -116,7 +116,7 @@ type AiAnswer = {
 export async function proposeAll(
   database: Db,
   who: Who,
-  options: { language: "de" | "fr"; useAi: boolean },
+  options: { language: "de" | "fr" | "en"; useAi: boolean },
 ): Promise<{ proposed: number; aiError: boolean }> {
   const pending = await database
     .select()
@@ -261,26 +261,34 @@ async function askAi(
   batch: BankTransaction[],
   chart: { number: string; nameDe: string; nameFr: string; type: string; role: string | null }[],
   open: OpenInvoice[],
-  ctx: { language: "de" | "fr"; vatRegistered: boolean; legalForm: string | null; country: string },
+  ctx: {
+    language: "de" | "fr" | "en";
+    vatRegistered: boolean;
+    legalForm: string | null;
+    country: string;
+  },
 ): Promise<Map<number, AiAnswer>> {
   const germany = ctx.country === "DE";
   const france = ctx.country === "FR";
+  const uk = ctx.country === "GB";
   const system = [
     germany
       ? "You are the bookkeeping assistant of a German small business using the DATEV SKR04 chart of accounts."
       : france
         ? "You are the bookkeeping assistant of a French small business using the French PCG chart of accounts."
-        : "You are the bookkeeping assistant of a Swiss SME using the Swiss KMU chart of accounts.",
+        : uk
+          ? "You are the bookkeeping assistant of a UK small business using a standard UK nominal ledger."
+          : "You are the bookkeeping assistant of a Swiss SME using the Swiss KMU chart of accounts.",
     "For each bank transaction, decide EITHER which open customer invoice it pays (incoming money only) OR which account of the chart it must be booked against (the bank side is booked automatically).",
     "Only use invoice numbers and account numbers from the lists given. Never use class 9 accounts.",
     ctx.vatRegistered
-      ? `The company is VAT registered: set vat to the ${germany ? "German VAT code the amount includes (normal 19 %, reduced 7 %)" : france ? "French VAT code the amount includes (normal 20 %, lodging 10 %, reduced 5.5 %)" : "Swiss VAT code the amount includes (normal, reduced, lodging)"} or null when there is no VAT (bank fees, salaries, social insurance, insurance premiums, taxes, private withdrawals, transfers).`
+      ? `The company is VAT registered: set vat to the ${germany ? "German VAT code the amount includes (normal 19 %, reduced 7 %)" : france ? "French VAT code the amount includes (normal 20 %, lodging 10 %, reduced 5.5 %)" : uk ? "UK VAT code the amount includes (normal 20 %, reduced 5 %)" : "Swiss VAT code the amount includes (normal, reduced, lodging)"} or null when there is no VAT (bank fees, salaries, social insurance, insurance premiums, taxes, private withdrawals, transfers).`
       : "The company is not VAT registered: always set vat to null.",
     ctx.legalForm === "sole_proprietorship"
       ? "Private withdrawals and deposits of the owner go to the private account."
       : "",
     "confidence is your probability (0 to 1) that the booking is right. Be honest: below 0.6 when unsure.",
-    `explanation: one short sentence in ${ctx.language === "fr" ? "French" : "Swiss German (no ß)"} a non-accountant understands.`,
+    `explanation: one short sentence in ${aiLanguageName(ctx.language)} a non-accountant understands.`,
     'Answer with JSON only: {"results":[{"id":"t1","invoice":null,"account":"6570","vat":"normal","confidence":0.9,"explanation":"..."}]}',
   ]
     .filter(Boolean)

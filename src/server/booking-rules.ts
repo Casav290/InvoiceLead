@@ -68,6 +68,7 @@ export async function listRules(database: Db, organizationId: string) {
       number: accounts.number,
       nameDe: accounts.nameDe,
       nameFr: accounts.nameFr,
+      nameEn: accounts.nameEn,
     })
     .from(bookingRules)
     .innerJoin(accounts, eq(accounts.id, bookingRules.accountId))

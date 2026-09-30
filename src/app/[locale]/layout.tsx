@@ -32,7 +32,7 @@ export default async function LocaleLayout({ children }: { children: React.React
   const locale = await getLocale();
   if (!hasLocale(routing.locales, locale)) notFound();
   return (
-    <html lang={`${locale}-CH`}>
+    <html lang={locale === "en" ? "en-GB" : `${locale}-CH`}>
       <body className="min-h-screen">
         <NextIntlClientProvider>{children}</NextIntlClientProvider>
       </body>

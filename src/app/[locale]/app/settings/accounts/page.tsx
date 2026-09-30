@@ -12,6 +12,7 @@ import {
 } from "@/countries/ch/chart-of-accounts";
 import { chartPack } from "@/countries/charts";
 import { Link } from "@/i18n/navigation";
+import { accountName } from "@/lib/account-name";
 import { listAccounts } from "@/server/accounting";
 import { requireAppSession } from "@/server/auth/guard";
 import { canSetUpAccounting } from "@/server/company";
@@ -51,7 +52,7 @@ export default async function AccountsPage({ params, searchParams }: Props) {
     const c = accountClass(a.number);
     byClass.set(c, [...(byClass.get(c) ?? []), a]);
   }
-  const name = (a: Account) => (locale === "fr" ? a.nameFr : a.nameDe);
+  const name = (a: Account) => accountName(a, locale);
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-10 sm:px-8">
@@ -72,7 +73,9 @@ export default async function AccountsPage({ params, searchParams }: Props) {
             ? "subtitleDe"
             : organization.country === "FR"
               ? "subtitleFr"
-              : "subtitle",
+              : organization.country === "GB"
+                ? "subtitleGb"
+                : "subtitle",
         )}
       </p>
       {saved || installed ? (

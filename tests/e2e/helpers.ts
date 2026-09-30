@@ -16,7 +16,7 @@ export type FakeUser = {
 /** Connexion complète par le faux Compte Lead, depuis l'écran de connexion. */
 export async function login(
   page: Page,
-  locale: "de" | "fr" = "de",
+  locale: "de" | "fr" | "en" = "de",
   user?: FakeUser,
   landing = `**/${locale}/app`,
 ) {

@@ -3,8 +3,9 @@ import { netRateFigure, RATE_FIGURES } from "@/countries/ch/vat-return";
 import { chartPack } from "@/countries/charts";
 import { ustvaFigures } from "@/countries/de/vat-return";
 import { ca3Figures } from "@/countries/fr/vat-return";
+import { mtdFigures } from "@/countries/gb/vat-return";
 import { roundHalfAwayFromZero, vatOf } from "@/lib/money";
-import { chatJson } from "./ai";
+import { aiLanguageName, chatJson } from "./ai";
 import type { Db } from "./db";
 import {
   accounts,
@@ -59,7 +60,8 @@ export async function draftVatReturn(
     .where(eq(organizations.id, organizationId));
   const germany = org?.country === "DE";
   const france = org?.country === "FR";
-  const swiss = !germany && !france;
+  const uk = org?.country === "GB";
+  const swiss = !germany && !france && !uk;
   const chart = chartPack(org?.country);
   // La TDFN n'existe qu'en Suisse.
   const method = swiss && org?.vatMethod === "net_tax_rate" ? "net_tax_rate" : "effective";
@@ -96,6 +98,9 @@ export async function draftVatReturn(
   const byRate = new Map<number, { base: number; tax: number }>();
   let input400 = 0;
   let input405 = 0;
+  // Achats hors TVA (case 7 britannique) : charges et immobilisations, hors écritures d'ouverture
+  // et de clôture.
+  let purchases = 0;
   // Contre-prestations reçues : la TVA des factures devient due au paiement, pas à l'émission.
   const received = org?.vatSettlement === "received";
   for (const l of lines) {
@@ -114,6 +119,9 @@ export async function draftVatReturn(
       byRate.set(l.rateBp, r);
     }
     if (l.accountId === roles.vat_input_material) input400 += l.debit - l.credit;
+    const regular = l.sourceType !== "closing" && l.sourceType !== "opening";
+    if (regular && (l.type === "expense" || (l.type === "asset" && /^0/.test(l.number))))
+      purchases += l.debit - l.credit;
     if (l.accountId === roles.vat_input_invest) input405 += l.debit - l.credit;
   }
 
@@ -209,6 +217,18 @@ export async function draftVatReturn(
     };
     if (input400 + input405 !== 0)
       anomalies.push({ code: "inputUnderNetTaxRate", severity: "warn" });
+  } else if (uk) {
+    rates = [...byRate.entries()]
+      .sort(([a], [b]) => b - a)
+      .map(([rateBp, v]) => ({ rateBp, figure: "1", baseCents: v.base, taxCents: v.tax }));
+    figures = mtdFigures({
+      byRate,
+      exports: f220,
+      exempt: f230,
+      inputVat: input400 + input405,
+      turnoverNet: turnover,
+      purchasesNet: purchases,
+    });
   } else if (france) {
     rates = [...byRate.entries()]
       .sort(([a], [b]) => b - a)
@@ -354,7 +374,7 @@ export async function aiReview(
   start: string,
   end: string,
   draft: VatReturnDraft,
-  language: "de" | "fr",
+  language: "de" | "fr" | "en",
 ): Promise<string[]> {
   const expenses = await database
     .select({
@@ -385,6 +405,7 @@ export async function aiReview(
     .where(eq(organizations.id, organizationId));
   const germany = org?.country === "DE";
   const france = org?.country === "FR";
+  const uk = org?.country === "GB";
   const raw = await chatJson([
     {
       role: "system",
@@ -393,9 +414,11 @@ export async function aiReview(
           ? "You review a German small business VAT pre-return (Umsatzsteuer-Voranmeldung) before a human validates it."
           : france
             ? "You review a French small business VAT return (CA3) before a human validates it."
-            : "You review a Swiss SME VAT return (effective method) before a human validates it.",
-        `Point out only concrete, checkable issues: expenses booked without input VAT that usually carry ${germany ? "German" : france ? "French" : "Swiss"} VAT, input VAT on items that are exempt (insurance, salaries, bank fees, taxes), unusual amounts, possible private expenses.`,
-        `Write at most 5 short points in ${language === "fr" ? "French" : "Swiss German (no ß)"}, understandable by a non-accountant.`,
+            : uk
+              ? "You review a UK small business VAT return (Making Tax Digital, nine boxes) before a human validates it."
+              : "You review a Swiss SME VAT return (effective method) before a human validates it.",
+        `Point out only concrete, checkable issues: expenses booked without input VAT that usually carry ${germany ? "German" : france ? "French" : uk ? "UK" : "Swiss"} VAT, input VAT on items that are exempt (insurance, salaries, bank fees, taxes), unusual amounts, possible private expenses.`,
+        `Write at most 5 short points in ${aiLanguageName(language)}, understandable by a non-accountant.`,
         'Answer JSON only: {"points":["..."]}. Return {"points":[]} when nothing stands out.',
       ].join("\n"),
     },

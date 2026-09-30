@@ -251,6 +251,7 @@ function InvoiceFormBody({
           >
             <option value="de">{t("languages.de")}</option>
             <option value="fr">{t("languages.fr")}</option>
+            <option value="en">{t("languages.en")}</option>
           </select>
         </div>
         <TextField

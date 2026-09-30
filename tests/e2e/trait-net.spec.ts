@@ -24,6 +24,10 @@ const PUBLIC_PAGES = [
   "/fr/legal/terms",
   "/fr/legal/dpa",
   "/de/legal/imprint",
+  "/en",
+  "/en/pricing",
+  "/en/faq",
+  "/en/legal/privacy",
 ];
 
 for (const size of WIDTHS) {

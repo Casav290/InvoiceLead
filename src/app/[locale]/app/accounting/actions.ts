@@ -51,10 +51,10 @@ export async function importStatementAction(form: FormData) {
   }
   const result = await importEntries(db(), who, statement.entries);
   const proposed = await proposeAll(db(), who, {
-    language: locale === "fr" ? "fr" : "de",
+    language: locale,
     useAi: aiConfigured(),
   });
-  await matchReceipts(db(), who, locale === "fr" ? "fr" : "de");
+  await matchReceipts(db(), who, locale);
   revalidatePath(path);
   const q = new URLSearchParams({
     imported: String(result.imported),
@@ -70,7 +70,7 @@ export async function proposeAction(form: FormData) {
   const result = await proposeAll(
     db(),
     { organizationId: session.organization.id, userId: session.user.id },
-    { language: locale === "fr" ? "fr" : "de", useAi: aiConfigured() },
+    { language: locale, useAi: aiConfigured() },
   );
   revalidatePath(`/${locale}/app/accounting/bank`);
   redirect(`/${locale}/app/accounting/bank${result.aiError ? "?ai=error" : ""}`);
@@ -133,7 +133,7 @@ export async function uploadReceiptsAction(form: FormData) {
   const locale = pickLocale(form.get("locale"));
   const session = await requirePermission(locale, "accounting");
   const who = { organizationId: session.organization.id, userId: session.user.id };
-  const language = locale === "fr" ? "fr" : "de";
+  const language = locale;
   const files = form.getAll("files").filter((f): f is File => f instanceof File && f.size > 0);
   if (!hasFeature(session.organization, "receipts"))
     redirect(`/${locale}/app/accounting/receipts?error=plan`);
@@ -167,7 +167,7 @@ export async function readReceiptAction(form: FormData) {
     db(),
     { organizationId: session.organization.id, userId: session.user.id },
     String(form.get("id") ?? ""),
-    locale === "fr" ? "fr" : "de",
+    locale,
   );
   revalidatePath(`/${locale}/app/accounting`, "layout");
   redirect(`/${locale}/app/accounting/receipts${result === "read" ? "" : `?error=${result}`}`);
@@ -201,14 +201,7 @@ export async function reviewVatAction(prev: ReviewState, form: FormData): Promis
   const end = String(form.get("end") ?? "");
   try {
     const draft = await draftVatReturn(db(), session.organization.id, start, end);
-    const points = await aiReview(
-      db(),
-      session.organization.id,
-      start,
-      end,
-      draft,
-      locale === "fr" ? "fr" : "de",
-    );
+    const points = await aiReview(db(), session.organization.id, start, end, draft, locale);
     return { points, round: prev.round + 1 };
   } catch (e) {
     console.error("[vat] relecture impossible", e instanceof Error ? e.message : "inconnu");

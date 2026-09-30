@@ -32,6 +32,7 @@ test("entreprise allemande : facture en euros à 19 %, GiroCode, SKR04 et UStVA"
   await page.goto("/fr/app/contacts/new");
   await page.getByTestId("contact-form").getByLabel("Nom ou raison sociale").fill("Kunde GmbH");
   await page.getByTestId("contact-save").click();
+  await expect(page).toHaveURL(/\/fr\/app\/contacts\?saved=1$/);
   await page.goto("/fr/app/products/new");
   const product = page.getByTestId("product-form");
   await product.getByLabel("Désignation").fill("Beratung");

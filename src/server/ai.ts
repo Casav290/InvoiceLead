@@ -42,3 +42,12 @@ export async function chatJson(
   if (start < 0 || end < start) throw new Error("ai_no_json");
   return JSON.parse(content.slice(start, end + 1));
 }
+
+/** Langue des réponses de l'assistant, pour les consignes. */
+export function aiLanguageName(language: string): string {
+  return language === "fr"
+    ? "French"
+    : language === "en"
+      ? "British English"
+      : "Swiss German (no ß)";
+}

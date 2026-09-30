@@ -3,6 +3,12 @@ import { type Country, countryPack, isCountry } from "@/countries";
 import { isValidUstId, normalizeUstId } from "@/countries/de/vat";
 import { isValidFrVatId, isValidSiret, normalizeFrVatId, normalizeSiret } from "@/countries/fr/vat";
 import {
+  isValidCompanyNumber,
+  isValidGbVatNumber,
+  isValidUkPostcode,
+  normalizeGbVatNumber,
+} from "@/countries/gb/vat";
+import {
   isQrIban,
   isValidSepaIban,
   isValidSwissIban,
@@ -30,6 +36,10 @@ export const LEGAL_FORMS = [
   "sas",
   "sasu",
   "sa",
+  "sole_trader",
+  "ltd",
+  "llp",
+  "plc",
   "other",
 ] as const;
 export const VAT_METHODS = ["effective", "net_tax_rate"] as const;
@@ -74,6 +84,7 @@ export function parseCompanyForm(
   const country: Country = isCountry(countryRaw) ? countryRaw : "CH";
   const germany = country === "DE";
   const france = country === "FR";
+  const uk = country === "GB";
   const eu = germany || france;
 
   const legalName = text(form, "legalName");
@@ -90,7 +101,10 @@ export function parseCompanyForm(
   const buildingNumber = optional(text(form, "buildingNumber"));
   if (buildingNumber && buildingNumber.length > 16) errors.buildingNumber = "tooLong";
   const postalCode = text(form, "postalCode");
-  if (!(eu ? /^\d{5}$/ : /^\d{4}$/).test(postalCode)) errors.postalCode = "postalCode";
+  const postalOk = uk
+    ? isValidUkPostcode(postalCode)
+    : (eu ? /^\d{5}$/ : /^\d{4}$/).test(postalCode);
+  if (!postalOk) errors.postalCode = "postalCode";
   const town = text(form, "town");
   if (!town) errors.town = "required";
   else if (town.length > 35) errors.town = "tooLong";
@@ -107,22 +121,35 @@ export function parseCompanyForm(
       ? normalizeUstId(uidRaw)
       : france
         ? normalizeFrVatId(uidRaw)
-        : normalizeUid(uidRaw)
+        : uk
+          ? normalizeGbVatNumber(uidRaw)
+          : normalizeUid(uidRaw)
     : null;
   const uidValid = (v: string) =>
-    germany ? isValidUstId(v) : france ? isValidFrVatId(v) : isValidUid(v);
+    germany
+      ? isValidUstId(v)
+      : france
+        ? isValidFrVatId(v)
+        : uk
+          ? isValidGbVatNumber(v)
+          : isValidUid(v);
   if (uidRaw && (!uid || !uidValid(uid)))
-    errors.uid = germany ? "ustId" : france ? "frVatId" : "uid";
+    errors.uid = germany ? "ustId" : france ? "frVatId" : uk ? "gbVat" : "uid";
 
   // Allemagne : Steuernummer du Finanzamt (10 à 13 chiffres) ; USt-IdNr. ou Steuernummer exigé.
   // France : SIRET (ou SIREN), obligatoire sur toute facture.
-  const taxNumberRaw = eu ? optional(text(form, "taxNumber")) : null;
+  // Royaume-Uni : numéro Companies House, facultatif (entreprise individuelle).
+  const taxNumberRaw = eu || uk ? optional(text(form, "taxNumber")) : null;
   const taxNumber = taxNumberRaw
     ? france
       ? normalizeSiret(taxNumberRaw)
-      : taxNumberRaw.replace(/\s+/g, " ")
+      : uk
+        ? taxNumberRaw.replace(/\s+/g, "").toUpperCase()
+        : taxNumberRaw.replace(/\s+/g, " ")
     : null;
-  if (france) {
+  if (uk) {
+    if (taxNumber && !isValidCompanyNumber(taxNumber)) errors.taxNumber = "companyNumber";
+  } else if (france) {
     if (!taxNumber) errors.taxNumber = "siretRequired";
     else if (!isValidSiret(taxNumber)) errors.taxNumber = "siret";
   } else if (taxNumber) {
@@ -134,11 +161,11 @@ export function parseCompanyForm(
   const vatRegistered = form.get("vatRegistered") === "on";
   // L'Allemagne ne connaît que la méthode effective (Soll- ou Ist-Versteuerung).
   let vatMethod = (
-    eu ? "effective" : optional(text(form, "vatMethod"))
+    eu || uk ? "effective" : optional(text(form, "vatMethod"))
   ) as CompanyInput["vatMethod"];
   let vatSettlement = optional(text(form, "vatSettlement")) as CompanyInput["vatSettlement"];
   if (vatRegistered) {
-    if (!uidRaw && !germany) errors.uid = "uidRequiredForVat";
+    if (!uidRaw && !germany) errors.uid = uk ? "gbVatRequired" : "uidRequiredForVat";
     if (!vatMethod || !VAT_METHODS.includes(vatMethod)) errors.vatMethod = "required";
     if (!vatSettlement || !VAT_SETTLEMENTS.includes(vatSettlement))
       errors.vatSettlement = "required";
@@ -158,10 +185,10 @@ export function parseCompanyForm(
 
   const ibanRaw = optional(text(form, "iban"));
   const iban = ibanRaw ? normalizeIban(ibanRaw) : null;
-  if (iban && !(eu ? isValidSepaIban(iban) : isValidSwissIban(iban))) errors.iban = "iban";
+  if (iban && !(eu || uk ? isValidSepaIban(iban) : isValidSwissIban(iban))) errors.iban = "iban";
   else if (iban && isQrIban(iban)) errors.iban = "ibanIsQr";
 
-  const qrIbanRaw = eu ? null : optional(text(form, "qrIban"));
+  const qrIbanRaw = eu || uk ? null : optional(text(form, "qrIban"));
   const qrIban = qrIbanRaw ? normalizeIban(qrIbanRaw) : null;
   if (qrIban && !isValidSwissIban(qrIban)) errors.qrIban = "iban";
   else if (qrIban && !isQrIban(qrIban)) errors.qrIban = "notQrIban";

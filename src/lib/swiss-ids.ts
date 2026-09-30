@@ -35,6 +35,8 @@ export function formatUid(uid: string): string {
 export function vatNumberLabel(uid: string, locale: string): string {
   // Allemagne : USt-IdNr. « DE123456789 », même libellé en allemand et en français.
   if (uid.startsWith("DE")) return `USt-IdNr. ${uid}`;
+  // Royaume-Uni : VAT registration number.
+  if (uid.startsWith("GB")) return `VAT No. ${uid}`;
   // France : numéro de TVA intracommunautaire.
   if (uid.startsWith("FR")) return `${locale.startsWith("fr") ? "N° TVA" : "USt-IdNr."} ${uid}`;
   const suffix = locale.startsWith("fr") ? "TVA" : locale.startsWith("it") ? "IVA" : "MWST";
@@ -54,6 +56,11 @@ export function isValidSwissIban(input: string): boolean {
   let remainder = 0;
   for (const ch of numeric) remainder = (remainder * 10 + Number(ch)) % 97;
   return remainder === 1;
+}
+
+/** Libellé du numéro d'entreprise imprimé sur la facture, selon le pays de l'émetteur. */
+export function taxNumberLabel(country: string): string {
+  return country === "FR" ? "SIRET" : country === "GB" ? "Company No." : "Steuernummer";
 }
 
 /** IBAN d'un pays SEPA (structure générale) avec clé modulo 97 valide. */

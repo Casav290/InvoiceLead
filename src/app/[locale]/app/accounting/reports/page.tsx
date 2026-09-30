@@ -5,6 +5,7 @@ import { YearPicker } from "@/components/accounting/YearPicker";
 import { countryPack } from "@/countries";
 import { chartPack } from "@/countries/charts";
 import { Link } from "@/i18n/navigation";
+import { accountName } from "@/lib/account-name";
 import { formatDate } from "@/lib/fiscal-year";
 import { formatAmount } from "@/lib/money";
 import { listFiscalYears } from "@/server/accounting";
@@ -47,7 +48,7 @@ export default async function ReportsPage({ params, searchParams }: Props) {
   const balances = year ? await accountBalances(db(), organization.id, year.id) : [];
   const income = incomeStatement(balances);
   const sheet = balanceSheet(balances, income.resultCents);
-  const name = (b: AccountBalance) => (locale === "fr" ? b.account.nameFr : b.account.nameDe);
+  const name = (b: AccountBalance) => accountName(b.account, locale);
   const ledgerHref = (b: AccountBalance) =>
     `/app/accounting/ledger/${b.account.id}${year ? `?year=${year.id}` : ""}`;
 

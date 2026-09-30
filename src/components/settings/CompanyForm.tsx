@@ -10,8 +10,9 @@ const LEGAL_FORMS: Record<string, string[]> = {
   CH: ["sole_proprietorship", "gmbh", "ag", "partnership", "association", "other"],
   DE: ["sole_proprietorship", "ek", "gbr", "ug", "gmbh", "ag", "association", "other"],
   FR: ["ei", "micro", "eurl", "sarl", "sas", "sasu", "sa", "association", "other"],
+  GB: ["sole_trader", "partnership", "llp", "ltd", "plc", "association", "other"],
 };
-const COUNTRIES = ["CH", "DE", "FR"];
+const COUNTRIES = ["CH", "DE", "FR", "GB"];
 const VAT_METHODS = ["effective", "net_tax_rate"];
 const VAT_SETTLEMENTS = ["agreed", "received"];
 const MONTHS = Array.from({ length: 12 }, (_, i) => String(i + 1));
@@ -192,12 +193,22 @@ export function CompanyForm({
             prefix: "legalForms",
           })}
           {field({
-            name: country === "DE" ? "ustId" : country === "FR" ? "frVatId" : "uid",
+            name:
+              country === "DE"
+                ? "ustId"
+                : country === "FR"
+                  ? "frVatId"
+                  : country === "GB"
+                    ? "gbVat"
+                    : "uid",
             formName: "uid",
           })}
           {swiss
             ? null
-            : field({ name: country === "FR" ? "siret" : "taxNumber", formName: "taxNumber" })}
+            : field({
+                name: country === "FR" ? "siret" : country === "GB" ? "companyNumber" : "taxNumber",
+                formName: "taxNumber",
+              })}
         </>,
       )}
 

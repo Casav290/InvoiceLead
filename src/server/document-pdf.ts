@@ -44,6 +44,7 @@ export async function buildDocumentPdf(
     else if (exportLines) notes.push(t(toEu ? "reverseChargeFr" : "outsideEuFr"));
     if (invoice.kind === "invoice") notes.push(t("latePaymentFr"));
   }
+  if (country === "GB" && invoice.vatRegistered && exportLines) notes.push(t("outsideScopeGb"));
   const taxNote = notes.length > 0 ? notes.join("\n") : undefined;
   // Allemagne et France : facture et avoir en ZUGFeRD / Factur-X (PDF/A-3 avec le XML EN 16931).
   const einvoicing = germany || country === "FR";

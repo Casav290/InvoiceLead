@@ -12,6 +12,7 @@ import {
   createInvoice,
   type DocumentKind,
   deleteDraft,
+  documentLanguage,
   type InvoiceErrors,
   issueInvoice,
   isVatRegistered,
@@ -225,7 +226,7 @@ export async function sendDocumentAction(
   const round = prev.round + 1;
   const parsed = parseSendForm(form);
   if (!parsed.ok) return { status: "invalid", errors: parsed.errors, values, round };
-  const language = String(form.get("language") ?? "de") === "fr" ? "fr" : "de";
+  const language = documentLanguage(form.get("language"));
   const t = await getTranslations({ locale: language, namespace: "app.invoices.email" });
   const result = await sendDocument(
     db(),
@@ -245,6 +246,6 @@ export async function shareLinkAction(prev: LinkState, form: FormData): Promise<
   const session = await requirePermission(locale, "billing");
   const id = String(form.get("id") ?? "");
   const token = await enableShareLink(db(), session.organization.id, id);
-  const language = String(form.get("language") ?? "de") === "fr" ? "fr" : "de";
+  const language = documentLanguage(form.get("language"));
   return { url: token ? shareUrl(language, token) : undefined, round: prev.round + 1 };
 }

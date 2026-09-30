@@ -43,7 +43,7 @@ describe("cookie de connexion", () => {
     expect(openLogin(undefined, SECRET)).toBeNull();
     expect(openLogin(sealLogin(saved, SECRET), "x".repeat(40))).toBeNull();
     const forged = sign(
-      Buffer.from(JSON.stringify({ ...saved, locale: "en" })).toString("base64url"),
+      Buffer.from(JSON.stringify({ ...saved, locale: "it" })).toString("base64url"),
       SECRET,
     );
     expect(openLogin(forged, SECRET)).toBeNull();
@@ -51,7 +51,8 @@ describe("cookie de connexion", () => {
 
   it("ramène toute langue inconnue à l'allemand", () => {
     expect(pickLocale("fr")).toBe("fr");
-    expect(pickLocale("en")).toBe("de");
+    expect(pickLocale("it")).toBe("de");
+    expect(pickLocale("en")).toBe("en");
     expect(pickLocale(null)).toBe("de");
   });
 });
@@ -60,8 +61,9 @@ describe("langue d'une requête sans demande en cours", () => {
   it("préfère le cookie de langue, puis Accept-Language, sinon l'allemand", () => {
     expect(localeFromRequest("fr", "de-CH")).toBe("fr");
     expect(localeFromRequest(undefined, "fr-CH,fr;q=0.9,de;q=0.8")).toBe("fr");
-    expect(localeFromRequest(undefined, "en-US,de;q=0.5,fr;q=0.7")).toBe("fr");
-    expect(localeFromRequest(undefined, "en-US")).toBe("de");
+    expect(localeFromRequest(undefined, "it-CH,de;q=0.5,fr;q=0.7")).toBe("fr");
+    expect(localeFromRequest(undefined, "en-US")).toBe("en");
+    expect(localeFromRequest(undefined, "it-IT")).toBe("de");
     expect(localeFromRequest("it", null)).toBe("de");
     expect(localeFromRequest(undefined, "fr;q=0")).toBe("de");
   });

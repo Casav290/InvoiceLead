@@ -38,6 +38,7 @@ test("entreprise française : facture en euros à 20 %, SIRET, Factur-X, PCG et 
   await contact.getByLabel("NPA").fill("69001");
   await contact.getByLabel("Localité").fill("Lyon");
   await page.getByTestId("contact-save").click();
+  await expect(page).toHaveURL(/\/fr\/app\/contacts\?saved=1$/);
 
   await page.goto("/fr/app/invoices/new");
   const form = page.getByTestId("invoice-form");

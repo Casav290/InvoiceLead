@@ -7,7 +7,7 @@ import { formatRate } from "@/countries/ch/vat";
 import { formatDate } from "@/lib/fiscal-year";
 import { computeTotals, formatQuantity } from "@/lib/invoice-math";
 import { formatAmount } from "@/lib/money";
-import { formatIban } from "@/lib/swiss-ids";
+import { formatIban, taxNumberLabel } from "@/lib/swiss-ids";
 import type { Invoice, InvoiceLine, PartySnapshot } from "./db/schema";
 import { ARCHIVO_BOLD, ARCHIVO_REGULAR } from "./pdf-fonts";
 
@@ -91,7 +91,8 @@ export function qrBillData(invoice: Invoice) {
     },
     debtor,
     reference: invoice.paymentReference ?? undefined,
-    message: `${invoice.language === "fr" ? "Facture" : "Rechnung"} ${invoice.number ?? ""}`.trim(),
+    message:
+      `${invoice.language === "fr" ? "Facture" : invoice.language === "en" ? "Invoice" : "Rechnung"} ${invoice.number ?? ""}`.trim(),
   };
 }
 
@@ -186,6 +187,7 @@ export function renderInvoicePdf(
   const sender = invoice.sender;
   const recipient = invoice.recipient;
   const style = countryPack(sender?.country).amounts;
+  const dateStyle = countryPack(sender?.country).dates;
   const fmt = (cents: number) => formatAmount(cents, style);
   doc.fillColor(INK);
 
@@ -201,8 +203,7 @@ export function renderInvoicePdf(
     const contact = [sender.email, sender.phone].filter(Boolean).join("  ·  ");
     if (contact) doc.text(contact);
     if (sender.vatNumber) doc.text(sender.vatNumber);
-    if (sender.taxNumber)
-      doc.text(`${sender.country === "FR" ? "SIRET" : "Steuernummer"} ${sender.taxNumber}`);
+    if (sender.taxNumber) doc.text(`${taxNumberLabel(sender.country)} ${sender.taxNumber}`);
     doc.fillColor(INK);
   }
 
@@ -226,10 +227,11 @@ export function renderInvoicePdf(
     });
   doc.moveDown(0.4).font(F.regular).fontSize(9);
   const meta: [string, string][] = [
-    [labels.issueDate, formatDate(invoice.issueDate)],
-    [labels.serviceDate, formatDate(invoice.serviceDate)],
+    [labels.issueDate, formatDate(invoice.issueDate, dateStyle)],
+    [labels.serviceDate, formatDate(invoice.serviceDate, dateStyle)],
   ];
-  if (invoice.kind !== "credit_note") meta.push([labels.dueDate, formatDate(invoice.dueDate)]);
+  if (invoice.kind !== "credit_note")
+    meta.push([labels.dueDate, formatDate(invoice.dueDate, dateStyle)]);
   for (const [k, v] of meta) {
     const y = doc.y;
     doc.fillColor(MUTED).text(k, LEFT, y, { width: mm(40) });
@@ -386,7 +388,7 @@ export function renderInvoicePdf(
   const data = qrBillData(invoice);
   if (data) {
     const bill = new SwissQRBill(data, {
-      language: invoice.language === "fr" ? "FR" : "DE",
+      language: invoice.language === "fr" ? "FR" : invoice.language === "en" ? "EN" : "DE",
     });
     if (!SwissQRBill.isSpaceSufficient(doc)) doc.addPage();
     bill.attachTo(doc);

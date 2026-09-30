@@ -18,6 +18,12 @@ import {
   FR_FIGURE_ORDER,
   FR_TAXED_FIGURES,
 } from "@/countries/fr/vat-return";
+import {
+  GB_ALWAYS_SHOWN,
+  GB_FIGURE_ORDER,
+  GB_TAXED_FIGURES,
+  mtdDueDate,
+} from "@/countries/gb/vat-return";
 import { Link } from "@/i18n/navigation";
 import { formatDate } from "@/lib/fiscal-year";
 import { formatAmount } from "@/lib/money";
@@ -55,34 +61,44 @@ export default async function VatPage({ params, searchParams }: Props) {
   const germany = organization.country === "DE";
   const style = countryPack(organization.country).amounts;
   const france = organization.country === "FR";
-  const months = !germany && !france && organization.vatMethod === "net_tax_rate" ? 6 : 3;
+  const uk = organization.country === "GB";
+  const months = organization.country === "CH" && organization.vatMethod === "net_tax_rate" ? 6 : 3;
   // Formulaire du pays : décompte AFC ou Umsatzsteuer-Voranmeldung.
-  const form = france
+  const form = uk
     ? {
-        order: FR_FIGURE_ORDER as readonly string[],
-        taxed: FR_TAXED_FIGURES,
-        always: FR_ALWAYS_SHOWN,
-        bold: ["16", "23", "28", "25"],
-        labels: "figuresFr",
-        due: ca3DueDate,
+        order: GB_FIGURE_ORDER as readonly string[],
+        taxed: GB_TAXED_FIGURES,
+        always: GB_ALWAYS_SHOWN,
+        bold: ["3", "5"],
+        labels: "figuresGb",
+        due: mtdDueDate,
       }
-    : germany
+    : france
       ? {
-          order: DE_FIGURE_ORDER as readonly string[],
-          taxed: DE_TAXED_FIGURES,
-          always: DE_ALWAYS_SHOWN,
-          bold: ["83"],
-          labels: "figuresDe",
-          due: ustvaDueDate,
+          order: FR_FIGURE_ORDER as readonly string[],
+          taxed: FR_TAXED_FIGURES,
+          always: FR_ALWAYS_SHOWN,
+          bold: ["16", "23", "28", "25"],
+          labels: "figuresFr",
+          due: ca3DueDate,
         }
-      : {
-          order: FIGURE_ORDER as readonly string[],
-          taxed: TAXED_FIGURES,
-          always: ["200", "299", "399", "479"],
-          bold: ["299", "399", "479", "500", "510"],
-          labels: "figures",
-          due: vatDueDate,
-        };
+      : germany
+        ? {
+            order: DE_FIGURE_ORDER as readonly string[],
+            taxed: DE_TAXED_FIGURES,
+            always: DE_ALWAYS_SHOWN,
+            bold: ["83"],
+            labels: "figuresDe",
+            due: ustvaDueDate,
+          }
+        : {
+            order: FIGURE_ORDER as readonly string[],
+            taxed: TAXED_FIGURES,
+            always: ["200", "299", "399", "479"],
+            bold: ["299", "399", "479", "500", "510"],
+            labels: "figures",
+            due: vatDueDate,
+          };
   const quarters = periodsBetween(firstStart, today, months).reverse();
   const done = await listVatReturns(db(), organization.id);
   const doneByStart = new Map(done.map((r) => [r.periodStart, r]));

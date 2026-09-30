@@ -8,7 +8,7 @@ const saved = z.object({
   state: z.string().min(1),
   nonce: z.string().min(1),
   verifier: z.string().min(1),
-  locale: z.enum(["de", "fr"]),
+  locale: z.enum(["de", "fr", "en"]),
   /** Jeton d'invitation de fiduciaire à reprendre après la connexion. */
   invite: z.string().regex(INVITE_TOKEN).optional(),
 });
@@ -32,8 +32,8 @@ export function openLogin(cookie: string | undefined, secret: string): SavedLogi
   }
 }
 
-export function pickLocale(value: unknown): "de" | "fr" {
-  return value === "fr" ? "fr" : "de";
+export function pickLocale(value: unknown): "de" | "fr" | "en" {
+  return value === "fr" || value === "en" ? value : "de";
 }
 
 /**
@@ -44,7 +44,8 @@ export function localeFromRequest(
   nextLocaleCookie: string | undefined,
   acceptLanguage: string | null,
 ) {
-  if (nextLocaleCookie === "de" || nextLocaleCookie === "fr") return nextLocaleCookie;
+  if (nextLocaleCookie === "de" || nextLocaleCookie === "fr" || nextLocaleCookie === "en")
+    return nextLocaleCookie;
   const ranked = (acceptLanguage ?? "")
     .split(",")
     .map((part) => {
@@ -53,7 +54,7 @@ export function localeFromRequest(
       return { lang: tag.slice(0, 2).toLowerCase(), q: Number.isFinite(q) ? q : 0 };
     })
     .sort((a, b) => b.q - a.q);
-  const found = ranked.find((r) => r.q > 0 && (r.lang === "de" || r.lang === "fr"));
+  const found = ranked.find((r) => r.q > 0 && ["de", "fr", "en"].includes(r.lang));
   return found ? pickLocale(found.lang) : "de";
 }
 

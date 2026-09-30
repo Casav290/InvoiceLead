@@ -29,7 +29,7 @@ export function PublicHeader() {
             <a
               key={link.href}
               href={link.href}
-              className="flex items-center border-r border-line-strong px-4 text-[13px] font-semibold text-ink-muted hover:text-ink"
+              className="flex items-center border-r border-line-strong px-3 text-[13px] font-semibold text-ink-muted hover:text-ink lg:px-4"
             >
               {link.label}
             </a>

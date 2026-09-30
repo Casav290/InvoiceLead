@@ -15,7 +15,7 @@ export function legalHtml(doc: LegalDoc, locale: string): string {
     process.cwd(),
     "content",
     "legal",
-    `${doc}-${locale === "fr" ? "fr" : "de"}.md`,
+    `${doc}-${locale === "fr" || locale === "en" ? locale : "de"}.md`,
   );
   return marked.parse(readFileSync(file, "utf8"), { async: false });
 }
