@@ -1164,7 +1164,9 @@
         "S3": "Steuerbare Umsätze",
         "S4": "Erhobene Sales Tax, abzuliefern"
       },
-      "titleUs": "Sales-Tax-Übersicht"
+      "titleUs": "Sales-Tax-Übersicht",
+      "xmlDownload": "Abrechnung im Format eCH-0217 herunterladen, für das ESTV-Portal",
+      "xmlNoUid": "Die eCH-0217-Datei braucht die UID des Unternehmens (Einstellungen)."
     },
     "reminders": {
       "title": "Mahnungen",

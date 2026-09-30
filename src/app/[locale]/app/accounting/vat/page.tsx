@@ -247,6 +247,21 @@ export default async function VatPage({ params, searchParams }: Props) {
             </table>
           </div>
 
+          {validated && organization.country === "CH" ? (
+            <p className="mt-3 text-[13px]">
+              {organization.uid ? (
+                <a
+                  href={`/${locale}/app/accounting/vat/xml?period=${selected.start}`}
+                  className="font-semibold text-accent-dark underline"
+                  data-testid="vat-xml"
+                >
+                  {t("xmlDownload")}
+                </a>
+              ) : (
+                <span className="text-ink-muted">{t("xmlNoUid")}</span>
+              )}
+            </p>
+          ) : null}
           {(figures["500"] ?? 0) > 0 ? (
             <p className="mt-3 text-[13px] text-ink-2">
               {t("payBy", { date: formatDate(form.due(selected.end)) })}

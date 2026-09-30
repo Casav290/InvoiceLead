@@ -134,6 +134,13 @@ test("comptabilité : pièce en attente, puis journal en partie double après mi
   await expect(page.getByText(/Décompte validé/)).toBeVisible();
   await expect(page.getByTestId("vat-status")).toContainText("Validé le");
   await expect(page.getByTestId("vat-validate")).toHaveCount(0);
+  const xml = await page.request.get(
+    (await page.getByTestId("vat-xml").getAttribute("href")) ?? "",
+  );
+  expect(xml.headers()["content-type"]).toContain("application/xml");
+  const body = await xml.text();
+  expect(body).toContain("<eCH-0097:uidOrganisationId>116281710</eCH-0097:uidOrganisationId>");
+  expect(body).toContain("<eCH-0217:payableTax>12.15</eCH-0217:payableTax>");
 });
 
 /** Référence SCOR de la facture émise, recalculée depuis son numéro (IBAN ordinaire, pas de QR-IBAN). */

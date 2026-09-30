@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Extrait minimal d'eCH-0058 v5 (cadre des messages), limité aux types qu'importe eCH-0217 :
+  businessReferenceIdType et sendingApplicationType. Sert seulement à valider le XML produit hors
+  ligne ; le schéma officiel est publié sur ech.ch.
+-->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:eCH-0058="http://www.ech.ch/xmlns/eCH-0058/5" targetNamespace="http://www.ech.ch/xmlns/eCH-0058/5" elementFormDefault="qualified" attributeFormDefault="unqualified">
+  <xs:simpleType name="businessReferenceIdType">
+    <xs:restriction base="xs:token">
+      <xs:maxLength value="50"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:complexType name="sendingApplicationType">
+    <xs:sequence>
+      <xs:element name="manufacturer">
+        <xs:simpleType><xs:restriction base="xs:token"><xs:minLength value="1"/><xs:maxLength value="30"/></xs:restriction></xs:simpleType>
+      </xs:element>
+      <xs:element name="product">
+        <xs:simpleType><xs:restriction base="xs:token"><xs:minLength value="1"/><xs:maxLength value="30"/></xs:restriction></xs:simpleType>
+      </xs:element>
+      <xs:element name="productVersion">
+        <xs:simpleType><xs:restriction base="xs:token"><xs:minLength value="1"/><xs:maxLength value="10"/></xs:restriction></xs:simpleType>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+</xs:schema>

@@ -1164,7 +1164,9 @@
         "S3": "Taxable sales",
         "S4": "Sales tax collected, to remit"
       },
-      "titleUs": "Sales tax report"
+      "titleUs": "Sales tax report",
+      "xmlDownload": "Download the return in eCH-0217 format, to file on the SFTA portal",
+      "xmlNoUid": "The eCH-0217 file needs the company's UID (settings)."
     },
     "reminders": {
       "title": "Payment reminders",

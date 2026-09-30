@@ -1,5 +1,6 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { expect, it } from "vitest";
+import { buildEch0217 } from "@/countries/ch/ech0217";
 import { buildCii } from "@/countries/de/cii";
 import type { Invoice, InvoiceLine } from "@/server/db/schema";
 import { renderInvoicePdf } from "@/server/invoice-pdf";
@@ -260,4 +261,44 @@ it("écrit des échantillons Factur-X français (EN 16931)", () => {
     expect("xml" in r ? "ok" : r.missing).toBe("ok");
     if ("xml" in r) writeFileSync(`${OUT}/${name}.xml`, r.xml);
   }
+});
+
+it("écrit des décomptes eCH-0217 (méthode effective et TDFN)", () => {
+  mkdirSync(OUT, { recursive: true });
+  const base = {
+    uid: "CHE116281710",
+    organisationName: "Atelier Muster GmbH",
+    periodStart: "2026-01-01",
+    periodEnd: "2026-03-31",
+    settlement: "agreed" as const,
+    netTaxRateBp: null,
+    businessReferenceId: "3f6c0e2a-0000-4000-8000-000000000001",
+    generatedAt: new Date("2026-04-10T08:00:00Z"),
+    productVersion: "1.0",
+  };
+  const effective = buildEch0217({
+    ...base,
+    figures: {
+      "200": 160000,
+      "220": 30000,
+      "230": 30000,
+      "303": 100000,
+      "303t": 8100,
+      "313": 30000,
+      "313t": 780,
+      "399": 8880,
+      "400": 810,
+      "405": 0,
+      "479": 810,
+    },
+  });
+  const tdfn = buildEch0217({
+    ...base,
+    settlement: "received",
+    netTaxRateBp: 620,
+    figures: { "200": 108100, "322": 108100, "322t": 6702, "399": 6702, collected: 8100 },
+  });
+  if (!effective || !tdfn) throw new Error("ech0217");
+  writeFileSync(`${OUT}/ech0217-effective.xml`, effective);
+  writeFileSync(`${OUT}/ech0217-tdfn.xml`, tdfn);
 });

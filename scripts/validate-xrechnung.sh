@@ -15,8 +15,11 @@ mkdir -p "$DIR"
 }
 rm -rf tmp/xrechnung "$DIR/out"
 XRECHNUNG_OUT=tmp/xrechnung npx vitest run --config vitest.einvoice.config.ts
+# Décomptes suisses eCH-0217, contre le schéma officiel (types importés en extrait minimal).
+xmllint --noout --schema docs/ech-0217/eCH-0217-1-0-local.xsd tmp/xrechnung/ech0217-*.xml
+
 java -jar "$DIR/validator/validationtool-1.5.0-standalone.jar" \
-  -s "$DIR/config/scenarios.xml" -r "$DIR/config" -o "$DIR/out" tmp/xrechnung/*.xml
+  -s "$DIR/config/scenarios.xml" -r "$DIR/config" -o "$DIR/out" $(ls tmp/xrechnung/*.xml | grep -v ech0217)
 
 # PDF ZUGFeRD : conformité PDF/A-3b avec veraPDF (récupéré par Maven s'il est installé).
 if command -v mvn >/dev/null; then

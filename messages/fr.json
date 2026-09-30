@@ -1164,7 +1164,9 @@
         "S3": "Ventes taxables",
         "S4": "Sales tax perçue, à reverser"
       },
-      "titleUs": "Relevé de sales tax"
+      "titleUs": "Relevé de sales tax",
+      "xmlDownload": "Télécharger le décompte au format eCH-0217, à déposer sur le portail de l'AFC",
+      "xmlNoUid": "Le fichier eCH-0217 demande le numéro IDE de l'entreprise (réglages)."
     },
     "reminders": {
       "title": "Relances",
