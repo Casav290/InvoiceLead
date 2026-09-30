@@ -17,3 +17,21 @@ rm -rf tmp/xrechnung "$DIR/out"
 XRECHNUNG_OUT=tmp/xrechnung npx vitest run --config vitest.einvoice.config.ts
 java -jar "$DIR/validator/validationtool-1.5.0-standalone.jar" \
   -s "$DIR/config/scenarios.xml" -r "$DIR/config" -o "$DIR/out" tmp/xrechnung/*.xml
+
+# PDF ZUGFeRD : conformité PDF/A-3b avec veraPDF (récupéré par Maven s'il est installé).
+if command -v mvn >/dev/null; then
+  VP="$DIR/verapdf"
+  if [ ! -d "$VP/lib" ]; then
+    mkdir -p "$VP"
+    cat > "$VP/pom.xml" <<'POM'
+<project xmlns="http://maven.apache.org/POM/4.0.0"><modelVersion>4.0.0</modelVersion>
+<groupId>x</groupId><artifactId>vp</artifactId><version>1</version>
+<dependencies><dependency><groupId>org.verapdf.apps</groupId><artifactId>greenfield-apps</artifactId><version>1.28.2</version></dependency></dependencies>
+</project>
+POM
+    (cd "$VP" && mvn -q dependency:copy-dependencies -DoutputDirectory=lib)
+  fi
+  java -cp "$VP/lib/*" org.verapdf.apps.GreenfieldCliWrapper --flavour 3b --format text tmp/xrechnung/zugferd.pdf
+else
+  echo "Maven absent : contrôle veraPDF du PDF ZUGFeRD sauté."
+fi

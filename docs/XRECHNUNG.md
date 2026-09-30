@@ -10,7 +10,7 @@ Le bouton « XRechnung (XML) » télécharge le XML seul, au standard XRechnung 
 
 `npm run validate:xrechnung` produit cinq échantillons (taux mélangés, avoir, petite entreprise § 19 UStG, autoliquidation vers la France, exportation vers la Suisse) et les passe au validateur officiel de la KoSIT (1.5.0, configuration XRechnung 3.0.2 du 20.6.2024) : schéma XSD, règles EN 16931 et règles allemandes. Java 11 ou plus est nécessaire. Résultat au 30.9.2026 : 5 acceptés, 0 rejeté, aucun avertissement.
 
-Le PDF/A-3 n'a pas encore été contrôlé par veraPDF. C'est à faire avant l'ouverture en Allemagne, avec un fichier réel téléchargé depuis l'application.
+Le même script rend un PDF ZUGFeRD et le passe à veraPDF 1.28.2 (profil PDF/A-3b), si Maven est installé pour le récupérer. Résultat au 30.9.2026 : PASS.
 
 ## Règles appliquées
 

@@ -2,6 +2,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { expect, it } from "vitest";
 import { buildCii } from "@/countries/de/cii";
 import type { Invoice, InvoiceLine } from "@/server/db/schema";
+import { renderInvoicePdf } from "@/server/invoice-pdf";
 
 /**
  * Échantillons XRechnung pour le validateur officiel KoSIT (scripts/validate-xrechnung.sh) :
@@ -151,4 +152,39 @@ it("écrit les échantillons XRechnung", () => {
     expect("xml" in r ? "ok" : r.missing).toBe("ok");
     if ("xml" in r) writeFileSync(`${OUT}/${name}.xml`, r.xml);
   }
+});
+
+it("écrit un PDF ZUGFeRD pour veraPDF", async () => {
+  mkdirSync(OUT, { recursive: true });
+  const inv = invoice({ netCents: 255997, vatCents: 47920, totalCents: 303917 });
+  const lines = [
+    line(1, "Beratung", 100000, "normal", 1900, "hour", 2500),
+    line(2, "Buch", 1999, "reduced", 700, "piece", 3000),
+  ];
+  const cii = buildCii(inv, lines, "zugferd");
+  if (!("xml" in cii)) throw new Error(cii.missing.join());
+  const pdf = await renderInvoicePdf(
+    inv,
+    lines,
+    {
+      invoice: "Rechnung",
+      issueDate: "Rechnungsdatum",
+      serviceDate: "Leistungsdatum",
+      dueDate: "Zahlbar bis",
+      description: "Beschreibung",
+      quantity: "Menge",
+      unitPrice: "Einzelpreis",
+      vat: "USt",
+      amount: "Betrag",
+      net: "Netto",
+      total: "Gesamt",
+      vatLine: (rate, base) => `USt ${rate} auf ${base}`,
+      payTo: (iban) => `Zahlbar auf ${iban}.`,
+      referenceLine: (ref) => `Referenz ${ref}`,
+      units: { hour: "Std.", piece: "Stk." },
+      scanToPay: "Mit der Banking-App scannen.",
+    },
+    cii,
+  );
+  writeFileSync(`${OUT}/zugferd.pdf`, pdf);
 });
