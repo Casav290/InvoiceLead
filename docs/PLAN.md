@@ -114,7 +114,7 @@ Principes :
 
 Tout objet métier porte `organization_id` ; les lectures et écritures passent par une couche de service qui injecte l'organisation de la session. La sécurité au niveau des lignes de Postgres viendra en seconde barrière avant l'ouverture.
 
-L'argent est en centimes entiers avec le code devise ; jamais de nombre à virgule. Affichage suisse : « 2'361.99 » en allemand, « 2 361.99 » en français.
+L'argent est en centimes entiers avec le code devise ; jamais de nombre à virgule. Affichage suisse identique dans les deux langues : « 2'361.99 », formaté sans `Intl` (dont les données changent selon la version de Node).
 
 Un document émis est figé : coordonnées et taux copiés au moment de l'émission, PDF archivé, correction par avoir.
 
