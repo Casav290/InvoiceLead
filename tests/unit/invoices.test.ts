@@ -301,6 +301,7 @@ describe("paiements et avoirs", () => {
       totalCents: total,
       creditedCents: 0,
       paidCents: 20_000,
+      chargesCents: 0,
       openCents: 24_862,
     });
     expect(paymentState(b, "2026-03-31", "2026-03-15")).toBe("partial");

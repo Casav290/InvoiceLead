@@ -429,7 +429,7 @@ export async function getInvoice(
 export type InvoiceRow = Pick<
   Invoice,
   "id" | "number" | "status" | "issueDate" | "dueDate" | "totalCents" | "currency"
-> & { contactName: string; paidCents: number; creditedCents: number };
+> & { contactName: string; paidCents: number; creditedCents: number; chargesCents: number };
 
 export async function listInvoices(
   database: Db,
@@ -452,6 +452,10 @@ export async function listInvoices(
         ),
       creditedCents:
         sql<number>`coalesce((select sum(c.total_cents) from invoices c where c.related_invoice_id = ${invoices.id} and c.kind = 'credit_note' and c.status = 'issued'), 0)::bigint`.mapWith(
+          Number,
+        ),
+      chargesCents:
+        sql<number>`coalesce((select sum(r.fee_cents + r.interest_cents) from invoice_reminders r where r.invoice_id = ${invoices.id} and r.waived_at is null), 0)::bigint`.mapWith(
           Number,
         ),
     })

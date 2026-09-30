@@ -43,6 +43,7 @@ export const ACCOUNT_ROLES = [
   "bank_fees",
   "exchange_difference",
   "exchange_gain",
+  "late_charges",
   "income_statement",
   "opening_balance",
 ] as const;

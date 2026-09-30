@@ -780,7 +780,11 @@
           "fxRate": "Cours invalide (nombre positif, par exemple 0.9412)."
         },
         "fxRate": "Cours du jour (1 {currency} en {home})",
-        "fxHint": "Vide : cours de référence de la BCE du jour du paiement. L'écart avec le cours de la facture est comptabilisé en différence de change."
+        "fxHint": "Vide : cours de référence de la BCE du jour du paiement. L'écart avec le cours de la facture est comptabilisé en différence de change.",
+        "chargesCents": "Frais et intérêts",
+        "chargesHint": "Frais de rappel et intérêts moratoires réclamés par les relances.",
+        "waive": "Renoncer aux frais",
+        "waived": "Frais et intérêts abandonnés."
       },
       "email": {
         "title": "Envoi",
@@ -1204,7 +1208,32 @@
         "subject3": "Dernier rappel : facture {number} de {company}",
         "body1": "Bonjour,\n\nSauf erreur de notre part, notre facture {number} échue le {due} n'a pas encore été réglée. Le montant ouvert est de {currency} {amount}.\n\nSi le paiement est en cours, merci de ne pas tenir compte de ce message.\n\nMeilleures salutations\n{company}",
         "body2": "Bonjour,\n\nMalgré notre premier rappel, notre facture {number} échue le {due} reste impayée. Nous vous prions de régler le montant ouvert de {currency} {amount} dans les 10 jours.\n\nMeilleures salutations\n{company}",
-        "body3": "Bonjour,\n\nNotre facture {number} échue le {due} est toujours impayée malgré nos rappels. Nous vous prions de régler le montant ouvert de {currency} {amount} sous 10 jours. Sans paiement, nous serons contraints d'engager d'autres démarches.\n\nMeilleures salutations\n{company}"
+        "body3": "Bonjour,\n\nNotre facture {number} échue le {due} est toujours impayée malgré nos rappels. Nous vous prions de régler le montant ouvert de {currency} {amount} sous 10 jours. Sans paiement, nous serons contraints d'engager d'autres démarches.\n\nMeilleures salutations\n{company}",
+        "charges": "Montant ouvert de la facture : {currency} {open}\nFrais de rappel et intérêts moratoires : {currency} {charges}\nTotal à régler : {currency} {total}"
+      },
+      "chargesLine": "Facture ouverte {open} · frais {fee} · intérêts {interest} · déjà réclamés {before}",
+      "settings": {
+        "title": "Réglages des relances",
+        "auto": "Envoyer les relances automatiquement",
+        "autoHint": "Chaque matin, les relances dues partent par e-mail aux clients qui ont une adresse. Les autres restent dans cette liste.",
+        "fee": "Frais de rappel dès la 2e relance ({currency})",
+        "feeHint": "Vide ou 0 : aucun frais. À prévoir dans vos conditions générales.",
+        "interest": "Intérêt moratoire annuel (%)",
+        "interestHint": {
+          "CH": "Vide : aucun intérêt. Taux légal en Suisse : 5 % (art. 104 CO).",
+          "DE": "Vide : aucun intérêt. Entre entreprises, 9 points au-dessus du taux de base (§ 288 BGB).",
+          "FR": "Vide : aucun intérêt. Au moins trois fois le taux légal, plus l’indemnité de 40 € (art. L441-10 C. com.).",
+          "GB": "Vide : aucun intérêt. Entre entreprises, 8 points au-dessus du taux de la Banque d’Angleterre.",
+          "US": "Vide : aucun intérêt. Le taux maximal dépend de l’État et du contrat."
+        },
+        "save": "Enregistrer les réglages",
+        "plan": "Les 2e et 3e relances, l'envoi automatique, les frais de rappel et les intérêts moratoires font partie de la formule Pro.",
+        "results": {
+          "saved": "Réglages des relances enregistrés.",
+          "plan": "Ces réglages font partie de la formule Pro.",
+          "invalidFee": "Frais invalides (montant positif, au plus deux décimales).",
+          "invalidRate": "Taux invalide (entre 0 et 20 %, par exemple 5)."
+        }
       }
     },
     "recurring": {

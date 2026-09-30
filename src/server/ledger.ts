@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { and, asc, desc, eq, gte, inArray, isNotNull, isNull, lte, sql } from "drizzle-orm";
 import type { AccountRole } from "@/countries/ch/chart-of-accounts";
 import { clearingAccount } from "@/countries/clearing";
+import { lateChargesAccount } from "@/countries/late-charges";
 import { convertDocument, paymentFx, toHome } from "@/lib/currencies";
 import { vatOf } from "@/lib/money";
 import type { Db } from "./db";
@@ -12,6 +13,7 @@ import {
   type Invoice,
   invoiceLines,
   invoicePayments,
+  invoiceReminders,
   invoices,
   journalEntries,
   journalLines,
@@ -37,6 +39,8 @@ export type EntryInput = {
     | "credit_note"
     | "payment"
     | "payment_reversal"
+    | "reminder"
+    | "reminder_waiver"
     | "bank"
     | "vat"
     | "closing"
@@ -349,6 +353,59 @@ export async function postPending(database: Db, who: Who): Promise<PostingSummar
     }
   }
 
+  // Frais de rappel et intérêts moratoires : créance contre produit financier, sans TVA.
+  const charges = await database
+    .select({ id: invoiceReminders.id })
+    .from(invoiceReminders)
+    .innerJoin(invoices, eq(invoices.id, invoiceReminders.invoiceId))
+    .where(
+      and(
+        eq(invoiceReminders.organizationId, who.organizationId),
+        isNull(invoiceReminders.journalEntryId),
+        isNull(invoiceReminders.waivedAt),
+        sql`${invoiceReminders.feeCents} + ${invoiceReminders.interestCents} > 0`,
+        isNotNull(invoices.journalEntryId),
+      ),
+    )
+    .orderBy(asc(invoiceReminders.sentAt));
+  if (charges.length > 0) await ensureLateChargesAccount(database, who.organizationId);
+  const chargeRoles = charges.length > 0 ? await roleAccounts(database, who.organizationId) : roles;
+  for (const c of charges) {
+    try {
+      const done = await database.transaction(async (tx) => {
+        const [row] = await tx
+          .select({ reminder: invoiceReminders, number: invoices.number })
+          .from(invoiceReminders)
+          .innerJoin(invoices, eq(invoices.id, invoiceReminders.invoiceId))
+          .where(eq(invoiceReminders.id, c.id))
+          .for("update", { of: invoiceReminders });
+        if (!row || row.reminder.journalEntryId || row.reminder.waivedAt) return false;
+        const amount = row.reminder.feeCents + row.reminder.interestCents;
+        if (!chargeRoles.receivable || !chargeRoles.late_charges) throw new LedgerError("noChart");
+        const entry = await appendEntry(tx as unknown as Db, who, {
+          entryDate: row.reminder.sentAt.toISOString().slice(0, 10),
+          description: `Mahnung ${row.reminder.level} / Rappel ${row.reminder.level} ${row.number}`,
+          sourceType: "reminder",
+          sourceId: row.reminder.id,
+          postings: [
+            { accountId: chargeRoles.receivable, amountCents: amount },
+            { accountId: chargeRoles.late_charges, amountCents: -amount },
+          ],
+        });
+        await tx
+          .update(invoiceReminders)
+          .set({ journalEntryId: entry.id })
+          .where(eq(invoiceReminders.id, c.id));
+        return true;
+      });
+      if (done) posted += 1;
+    } catch (e) {
+      if (!(e instanceof LedgerError)) throw e;
+      waiting += 1;
+      reason ??= reasonOf(e);
+    }
+  }
+
   // Pièces émises dont la facture elle-même attend encore : leurs paiements attendent aussi.
   const [blocked] = await database
     .select({ n: sql<number>`count(*)::int` })
@@ -465,6 +522,44 @@ async function foreignPayment(
   });
 }
 
+/**
+ * Plan installé avant les frais de rappel : le rôle est posé sur le compte du plan qui porte le numéro
+ * prévu, ou le compte est ajouté.
+ */
+async function ensureLateChargesAccount(database: Db, organizationId: string) {
+  const roles = await roleAccounts(database, organizationId);
+  if (roles.late_charges || !roles.receivable) return;
+  const [org] = await database
+    .select({ country: organizations.country })
+    .from(organizations)
+    .where(eq(organizations.id, organizationId));
+  const a = lateChargesAccount(org?.country);
+  const [existing] = await database
+    .update(accounts)
+    .set({ role: "late_charges" })
+    .where(
+      and(
+        eq(accounts.organizationId, organizationId),
+        eq(accounts.number, a.number),
+        isNull(accounts.role),
+      ),
+    )
+    .returning({ id: accounts.id });
+  if (existing) return;
+  await database
+    .insert(accounts)
+    .values({
+      organizationId,
+      number: a.number,
+      nameDe: a.de,
+      nameFr: a.fr,
+      nameEn: a.en ?? null,
+      type: a.type,
+      role: a.role ?? null,
+    })
+    .onConflictDoNothing();
+}
+
 export function paymentPostings(
   method: string,
   amountCents: number,
@@ -502,6 +597,18 @@ export async function reversePaymentEntry(
   paymentId: string,
   today: string,
 ) {
+  return reverseEntry(tx, who, entryId, "payment_reversal", paymentId, today);
+}
+
+/** Extourne une écriture à la date du jour (ou à sa date si l'exercice du jour n'est pas ouvert). */
+export async function reverseEntry(
+  tx: Db,
+  who: Who,
+  entryId: string,
+  sourceType: EntryInput["sourceType"],
+  sourceId: string,
+  today: string,
+) {
   const [original] = await tx
     .select()
     .from(journalEntries)
@@ -518,8 +625,8 @@ export async function reversePaymentEntry(
   return appendEntry(tx, who, {
     entryDate: date,
     description: `Storno / Extourne: ${original.description}`,
-    sourceType: "payment_reversal",
-    sourceId: paymentId,
+    sourceType,
+    sourceId,
     reversalOf: original.id,
     postings: lines.map((l) => ({
       accountId: l.accountId,

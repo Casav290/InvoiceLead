@@ -83,6 +83,12 @@ export const organizations = pgTable("organizations", {
   salesTaxRateBp: doublePrecision("sales_tax_rate_bp"),
   /** Compte Stripe connecté (Stripe Connect) qui reçoit les paiements en ligne des clients. */
   stripeAccountId: text("stripe_account_id"),
+  /** Relances envoyées chaque jour par la tâche quotidienne (formule Pro), sans clic. */
+  reminderAuto: boolean("reminder_auto").notNull().default(false),
+  /** Frais de rappel dès la deuxième relance, en centimes ; 0 : aucun. */
+  reminderFeeCents: bigint("reminder_fee_cents", { mode: "number" }).notNull().default(0),
+  /** Intérêt moratoire annuel en points de base (500 = 5 %, art. 104 CO) ; vide : aucun. */
+  lateInterestBp: doublePrecision("late_interest_bp"),
   fiscalYearStartMonth: integer("fiscal_year_start_month").notNull().default(1),
   settingsCompletedAt: timestamp("settings_completed_at", { withTimezone: true }),
   createdAt: createdAt(),
@@ -713,6 +719,14 @@ export const invoiceReminders = pgTable(
     sentTo: text("sent_to"),
     sentBy: uuid("sent_by").references(() => users.id, { onDelete: "set null" }),
     sentAt: timestamp("sent_at", { withTimezone: true }).notNull().defaultNow(),
+    /** Frais de rappel ajoutés par cette relance, dans la devise de la facture. */
+    feeCents: bigint("fee_cents", { mode: "number" }).notNull().default(0),
+    /** Intérêts moratoires courus jusqu'à cette relance (en plus de ceux des relances précédentes). */
+    interestCents: bigint("interest_cents", { mode: "number" }).notNull().default(0),
+    /** Écriture des frais et intérêts (créance contre produit financier). */
+    journalEntryId: uuid("journal_entry_id"),
+    /** Frais et intérêts abandonnés : ils ne sont plus dus, leur écriture est extournée. */
+    waivedAt: timestamp("waived_at", { withTimezone: true }),
   },
   (t) => [uniqueIndex("invoice_reminders_level_idx").on(t.invoiceId, t.level)],
 );

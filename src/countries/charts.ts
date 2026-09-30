@@ -10,6 +10,7 @@ import { clearingAccount } from "./clearing";
 import { CHART_ACCOUNTS_DE, TYPES_BY_CLASS_DE } from "./de/chart-of-accounts";
 import { CHART_ACCOUNTS_FR, TYPES_BY_CLASS_FR } from "./fr/chart-of-accounts";
 import { CHART_ACCOUNTS_GB, TYPES_BY_CLASS_GB } from "./gb/chart-of-accounts";
+import { lateChargesAccount } from "./late-charges";
 import { CHART_ACCOUNTS_US, TYPES_BY_CLASS_US } from "./us/chart-of-accounts";
 
 /** Plan comptable d'un pays : modèles, classes, et règles qui dépendent des numéros de compte. */
@@ -73,8 +74,8 @@ const GB: ChartPack = {
   typesByClass: TYPES_BY_CLASS_GB,
   classLabels: "classesGb",
   numberPattern: /^\d{4}$/,
-  // Ventes (classe 4) : case 6 de la déclaration.
-  isTurnover: (a) => a.type === "revenue" && /^4/.test(a.number),
+  // Ventes (classe 4) : case 6 de la déclaration, sauf les frais et intérêts de retard (hors champ).
+  isTurnover: (a) => a.type === "revenue" && /^4/.test(a.number) && a.number !== "4950",
   // Un seul compte de TVA déductible (case 4).
   inputVatRole: () => "vat_input_material",
 };
@@ -96,12 +97,19 @@ const PACKS: Record<string, ChartPack> = { CH, DE, FR, GB, US };
 
 export function chartPack(country: string | null | undefined): ChartPack {
   const pack = PACKS[country ?? "CH"] ?? CH;
-  // Tout plan installé reçoit le compte d'attente des paiements en ligne.
+  // Tout plan installé reçoit le compte d'attente des paiements en ligne et le compte des frais et
+  // intérêts de retard (rôle posé sur le compte du plan quand il existe déjà).
+  const late = lateChargesAccount(country);
   return {
     ...pack,
-    templateAccounts: (template) =>
-      [...pack.templateAccounts(template), clearingAccount(country)].sort((x, y) =>
+    templateAccounts: (template) => {
+      const base = pack.templateAccounts(template);
+      const withLate = base.some((a) => a.number === late.number)
+        ? base.map((a) => (a.number === late.number ? { ...a, role: late.role } : a))
+        : [...base, late];
+      return [...withLate, clearingAccount(country)].sort((x, y) =>
         x.number.localeCompare(y.number),
-      ),
+      );
+    },
   };
 }

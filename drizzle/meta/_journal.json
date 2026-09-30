@@ -197,6 +197,13 @@
       "when": 1790781449965,
       "tag": "0027_multi_currency",
       "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1790782354872,
+      "tag": "0028_reminder_charges",
+      "breakpoints": true
     }
   ]
 }

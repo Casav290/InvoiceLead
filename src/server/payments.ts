@@ -1,4 +1,4 @@
-import { and, asc, eq, sql } from "drizzle-orm";
+import { and, asc, eq, isNull, sql } from "drizzle-orm";
 import { parseAmountToCents } from "@/lib/amount-input";
 import { parseFxRate } from "@/lib/currencies";
 import { isIsoDate } from "@/lib/fiscal-year";
@@ -7,6 +7,7 @@ import {
   auditLog,
   type InvoicePayment,
   invoicePayments,
+  invoiceReminders,
   invoices,
   organizations,
 } from "./db/schema";
@@ -50,6 +51,8 @@ export type Balance = {
   totalCents: number;
   creditedCents: number;
   paidCents: number;
+  /** Frais de rappel et intérêts moratoires réclamés, et pas abandonnés. */
+  chargesCents?: number;
   openCents: number;
 };
 
@@ -61,17 +64,35 @@ async function paidCents(database: Db, invoiceId: string): Promise<number> {
   return Number(row?.sum ?? 0);
 }
 
-/** Solde d'une facture : total, moins les avoirs émis, moins les paiements reçus. */
+/** Frais de rappel et intérêts moratoires encore dus sur une facture. */
+export async function chargesCents(database: Db, invoiceId: string): Promise<number> {
+  const [row] = await database
+    .select({
+      sum: sql<
+        string | null
+      >`sum(${invoiceReminders.feeCents} + ${invoiceReminders.interestCents})`,
+    })
+    .from(invoiceReminders)
+    .where(and(eq(invoiceReminders.invoiceId, invoiceId), isNull(invoiceReminders.waivedAt)));
+  return Number(row?.sum ?? 0);
+}
+
+/**
+ * Solde d'une facture : total, moins les avoirs émis, moins les paiements reçus, plus les frais de
+ * rappel et intérêts réclamés par les relances.
+ */
 export async function invoiceBalance(database: Db, invoiceId: string, totalCents: number) {
-  const [credited, paid] = await Promise.all([
+  const [credited, paid, charges] = await Promise.all([
     creditedCents(database, invoiceId),
     paidCents(database, invoiceId),
+    chargesCents(database, invoiceId),
   ]);
   return {
     totalCents,
     creditedCents: credited,
     paidCents: paid,
-    openCents: totalCents - credited - paid,
+    chargesCents: charges,
+    openCents: totalCents - credited - paid + charges,
   } satisfies Balance;
 }
 

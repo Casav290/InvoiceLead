@@ -780,7 +780,11 @@
           "fxRate": "Ungültiger Kurs (positive Zahl, zum Beispiel 0.9412)."
         },
         "fxRate": "Tageskurs (1 {currency} in {home})",
-        "fxHint": "Leer: EZB-Referenzkurs des Zahlungsdatums. Die Abweichung zum Rechnungskurs wird als Kursdifferenz verbucht."
+        "fxHint": "Leer: EZB-Referenzkurs des Zahlungsdatums. Die Abweichung zum Rechnungskurs wird als Kursdifferenz verbucht.",
+        "chargesCents": "Gebühren und Zinsen",
+        "chargesHint": "Mit den Mahnungen geforderte Mahngebühren und Verzugszinsen.",
+        "waive": "Auf Gebühren verzichten",
+        "waived": "Gebühren und Zinsen erlassen."
       },
       "email": {
         "title": "Versand",
@@ -1204,7 +1208,32 @@
         "subject3": "Letzte Mahnung: Rechnung {number} von {company}",
         "body1": "Guten Tag\n\nGemäss unserer Buchhaltung ist unsere Rechnung {number}, fällig am {due}, noch offen. Der offene Betrag beträgt {currency} {amount}.\n\nFalls die Zahlung bereits unterwegs ist, betrachten Sie diese Nachricht bitte als gegenstandslos.\n\nFreundliche Grüsse\n{company}",
         "body2": "Guten Tag\n\nTrotz unserer Zahlungserinnerung ist unsere Rechnung {number}, fällig am {due}, weiterhin offen. Wir bitten Sie, den offenen Betrag von {currency} {amount} innert 10 Tagen zu begleichen.\n\nFreundliche Grüsse\n{company}",
-        "body3": "Guten Tag\n\nUnsere Rechnung {number}, fällig am {due}, ist trotz unserer Mahnungen noch offen. Bitte begleichen Sie den offenen Betrag von {currency} {amount} innert 10 Tagen. Andernfalls sehen wir uns gezwungen, weitere Schritte einzuleiten.\n\nFreundliche Grüsse\n{company}"
+        "body3": "Guten Tag\n\nUnsere Rechnung {number}, fällig am {due}, ist trotz unserer Mahnungen noch offen. Bitte begleichen Sie den offenen Betrag von {currency} {amount} innert 10 Tagen. Andernfalls sehen wir uns gezwungen, weitere Schritte einzuleiten.\n\nFreundliche Grüsse\n{company}",
+        "charges": "Offener Rechnungsbetrag: {currency} {open}\nMahngebühren und Verzugszinsen: {currency} {charges}\nZu bezahlen: {currency} {total}"
+      },
+      "chargesLine": "Offene Rechnung {open} · Gebühr {fee} · Zinsen {interest} · bereits gefordert {before}",
+      "settings": {
+        "title": "Mahneinstellungen",
+        "auto": "Mahnungen automatisch versenden",
+        "autoHint": "Jeden Morgen gehen fällige Mahnungen per E-Mail an Kunden mit Adresse. Die übrigen bleiben in dieser Liste.",
+        "fee": "Mahngebühr ab der 2. Mahnung ({currency})",
+        "feeHint": "Leer oder 0: keine Gebühr. In den AGB vorsehen.",
+        "interest": "Verzugszins pro Jahr (%)",
+        "interestHint": {
+          "CH": "Leer: kein Zins. Gesetzlicher Satz in der Schweiz: 5 % (Art. 104 OR).",
+          "DE": "Leer: kein Zins. Zwischen Unternehmen 9 Prozentpunkte über dem Basiszinssatz (§ 288 BGB).",
+          "FR": "Leer: kein Zins. Mindestens das Dreifache des gesetzlichen Satzes, dazu 40 € Pauschale (Art. L441-10 C. com.).",
+          "GB": "Leer: kein Zins. Zwischen Unternehmen 8 Prozentpunkte über dem Leitzins der Bank of England.",
+          "US": "Leer: kein Zins. Der Höchstsatz hängt vom Bundesstaat und vom Vertrag ab."
+        },
+        "save": "Einstellungen speichern",
+        "plan": "2. und 3. Mahnung, automatischer Versand, Mahngebühren und Verzugszinsen sind Teil des Pro-Abos.",
+        "results": {
+          "saved": "Mahneinstellungen gespeichert.",
+          "plan": "Diese Einstellungen sind Teil des Pro-Abos.",
+          "invalidFee": "Ungültige Gebühr (positiver Betrag, höchstens zwei Nachkommastellen).",
+          "invalidRate": "Ungültiger Satz (zwischen 0 und 20 %, zum Beispiel 5)."
+        }
       }
     },
     "recurring": {

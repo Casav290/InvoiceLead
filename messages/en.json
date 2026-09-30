@@ -780,7 +780,11 @@
           "fxRate": "Invalid rate (a positive number, for example 0.9412)."
         },
         "fxRate": "Day's rate (1 {currency} in {home})",
-        "fxHint": "Empty: ECB reference rate on the payment date. The difference from the invoice rate is booked as an exchange difference."
+        "fxHint": "Empty: ECB reference rate on the payment date. The difference from the invoice rate is booked as an exchange difference.",
+        "chargesCents": "Fees and interest",
+        "chargesHint": "Reminder fees and late payment interest charged with the reminders.",
+        "waive": "Waive fees",
+        "waived": "Fees and interest waived."
       },
       "email": {
         "title": "Sending",
@@ -1204,7 +1208,32 @@
         "subject3": "Final reminder: invoice {number} from {company}",
         "body1": "Hello,\n\nUnless we are mistaken, our invoice {number}, due on {due}, has not been paid yet. The outstanding amount is {currency} {amount}.\n\nIf payment is already on its way, please disregard this message.\n\nKind regards\n{company}",
         "body2": "Hello,\n\nDespite our first reminder, our invoice {number}, due on {due}, remains unpaid. Please pay the outstanding amount of {currency} {amount} within 10 days.\n\nKind regards\n{company}",
-        "body3": "Hello,\n\nOur invoice {number}, due on {due}, is still unpaid despite our reminders. Please pay the outstanding amount of {currency} {amount} within 10 days. Without payment, we will have to take further steps.\n\nKind regards\n{company}"
+        "body3": "Hello,\n\nOur invoice {number}, due on {due}, is still unpaid despite our reminders. Please pay the outstanding amount of {currency} {amount} within 10 days. Without payment, we will have to take further steps.\n\nKind regards\n{company}",
+        "charges": "Open invoice amount: {currency} {open}\nReminder fees and late payment interest: {currency} {charges}\nTotal due: {currency} {total}"
+      },
+      "chargesLine": "Invoice open {open} · fee {fee} · interest {interest} · already charged {before}",
+      "settings": {
+        "title": "Reminder settings",
+        "auto": "Send reminders automatically",
+        "autoHint": "Every morning, due reminders are emailed to customers with an address. The others stay in this list.",
+        "fee": "Reminder fee from the 2nd reminder ({currency})",
+        "feeHint": "Empty or 0: no fee. Include it in your terms and conditions.",
+        "interest": "Annual late payment interest (%)",
+        "interestHint": {
+          "CH": "Empty: no interest. Statutory rate in Switzerland: 5% (art. 104 CO).",
+          "DE": "Empty: no interest. Between businesses, 9 points above the base rate (§ 288 BGB).",
+          "FR": "Empty: no interest. At least three times the legal rate, plus the €40 fixed indemnity (art. L441-10 C. com.).",
+          "GB": "Empty: no interest. Between businesses, 8 points above the Bank of England base rate.",
+          "US": "Empty: no interest. The maximum rate depends on the state and the contract."
+        },
+        "save": "Save settings",
+        "plan": "2nd and 3rd reminders, automatic sending, reminder fees and late payment interest are part of the Pro plan.",
+        "results": {
+          "saved": "Reminder settings saved.",
+          "plan": "These settings are part of the Pro plan.",
+          "invalidFee": "Invalid fee (a positive amount, at most two decimals).",
+          "invalidRate": "Invalid rate (between 0 and 20%, for example 5)."
+        }
       }
     },
     "recurring": {

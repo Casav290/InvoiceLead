@@ -2,6 +2,7 @@ import { timingSafeEqual } from "node:crypto";
 import { db } from "@/server/db";
 import { env } from "@/server/env";
 import { runRecurring } from "@/server/recurring";
+import { runAutoReminders } from "@/server/reminders";
 import { sendWithDefaults } from "@/server/send";
 
 export const runtime = "nodejs";
@@ -15,12 +16,13 @@ function authorized(request: Request): boolean {
   return given.length === expected.length && timingSafeEqual(given, expected);
 }
 
-/** Tâche quotidienne (Vercel Cron) : factures récurrentes échues. */
+/** Tâche quotidienne (Vercel Cron) : factures récurrentes échues, puis relances automatiques. */
 export async function GET(request: Request) {
   if (!authorized(request)) return new Response("unauthorized", { status: 401 });
   const today = new Date().toISOString().slice(0, 10);
   const recurring = await runRecurring(db(), today, async (who, id) => {
     return (await sendWithDefaults(db(), who, id)) === "sent";
   });
-  return Response.json({ today, recurring });
+  const reminders = await runAutoReminders(db(), today);
+  return Response.json({ today, recurring, reminders });
 }

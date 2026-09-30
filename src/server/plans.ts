@@ -14,7 +14,8 @@ export type Feature =
   | "recurring"
   | "receipts"
   | "fiduciary"
-  | "multiCurrency";
+  | "multiCurrency"
+  | "reminders";
 
 type Limits = {
   invoicesPerMonth: number;
@@ -42,7 +43,15 @@ export const LIMITS: Record<Tier, Limits> = {
     contacts: UNLIMITED,
     receiptsPerMonth: 50,
     seats: 2,
-    features: ["bankImport", "vatReturn", "recurring", "receipts", "fiduciary", "multiCurrency"],
+    features: [
+      "bankImport",
+      "vatReturn",
+      "recurring",
+      "receipts",
+      "fiduciary",
+      "multiCurrency",
+      "reminders",
+    ],
     poweredBy: false,
   },
   proplus: {
@@ -50,7 +59,15 @@ export const LIMITS: Record<Tier, Limits> = {
     contacts: UNLIMITED,
     receiptsPerMonth: 300,
     seats: 5,
-    features: ["bankImport", "vatReturn", "recurring", "receipts", "fiduciary", "multiCurrency"],
+    features: [
+      "bankImport",
+      "vatReturn",
+      "recurring",
+      "receipts",
+      "fiduciary",
+      "multiCurrency",
+      "reminders",
+    ],
     poweredBy: false,
   },
 };

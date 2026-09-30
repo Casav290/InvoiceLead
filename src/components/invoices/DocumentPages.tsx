@@ -10,6 +10,7 @@ import {
   quoteOutcomeAction,
 } from "@/app/[locale]/app/invoices/actions";
 import { createRecurringAction } from "@/app/[locale]/app/invoices/recurring/actions";
+import { waiveChargesAction } from "@/app/[locale]/app/invoices/reminders/actions";
 import { fieldClass } from "@/components/forms/fields";
 import { InvoiceDocument } from "@/components/invoices/InvoiceDocument";
 import { InvoiceForm } from "@/components/invoices/InvoiceForm";
@@ -189,7 +190,8 @@ export async function DocumentListPage({
                               totalCents: r.totalCents,
                               paidCents: r.paidCents,
                               creditedCents: r.creditedCents,
-                              openCents: r.totalCents - r.paidCents - r.creditedCents,
+                              openCents:
+                                r.totalCents - r.paidCents - r.creditedCents + r.chargesCents,
                             },
                             r.dueDate,
                             today,
@@ -274,6 +276,7 @@ export async function DocumentDetailPage({
     error?: string;
     converted?: string;
     paid?: string;
+    waived?: string;
     from?: string;
   };
 }) {
@@ -305,15 +308,17 @@ export async function DocumentDetailPage({
   const tc = await getTranslations({ locale, namespace: "app.crmImport" });
   const notice = query.paid
     ? t("payments.saved")
-    : query.from === "crmlead" && draft
-      ? tc("fromCrm")
-      : query.converted
-        ? tk("converted")
-        : query.issued
-          ? tk("issued")
-          : query.saved
-            ? tk("saved")
-            : null;
+    : query.waived
+      ? t("payments.waived")
+      : query.from === "crmlead" && draft
+        ? tc("fromCrm")
+        : query.converted
+          ? tk("converted")
+          : query.issued
+            ? tk("issued")
+            : query.saved
+              ? tk("saved")
+              : null;
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-10 sm:px-8">
@@ -504,7 +509,15 @@ export async function DocumentDetailPage({
                 </span>
               </h2>
               <dl className="grid grid-cols-2 gap-x-4 gap-y-1 px-5 py-4 text-[14px] sm:grid-cols-4">
-                {(["totalCents", "creditedCents", "paidCents", "openCents"] as const).map((k) => (
+                {(
+                  [
+                    "totalCents",
+                    "creditedCents",
+                    "paidCents",
+                    ...(balance.chargesCents ? (["chargesCents"] as const) : []),
+                    "openCents",
+                  ] as const
+                ).map((k) => (
                   <div key={k}>
                     <dt className="text-[12px] text-ink-muted">{t(`payments.${k}`)}</dt>
                     <dd
@@ -515,11 +528,23 @@ export async function DocumentDetailPage({
                       }
                       data-testid={`balance-${k}`}
                     >
-                      {formatAmount(balance[k], countryPack(organization.country).amounts)}
+                      {formatAmount(balance[k] ?? 0, countryPack(organization.country).amounts)}
                     </dd>
                   </div>
                 ))}
               </dl>
+              {balance.chargesCents ? (
+                <form
+                  action={waiveChargesAction}
+                  className="flex flex-wrap items-center gap-3 border-t border-line px-5 py-3"
+                >
+                  {hidden}
+                  <p className="flex-1 text-[12px] text-ink-muted">{t("payments.chargesHint")}</p>
+                  <Button type="submit" variant="ghost" size="sm" data-testid="charges-waive">
+                    {t("payments.waive")}
+                  </Button>
+                </form>
+              ) : null}
               {payments.length > 0 ? (
                 <ul className="border-t border-line">
                   {payments.map((p) => (
