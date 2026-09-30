@@ -51,6 +51,13 @@ export default async function DashboardPage({ params }: { params: Promise<{ loca
                     {t("complete")}
                   </Link>
                 )
+              ) : step === "invoice" ? (
+                <Link
+                  href="/app/invoices/new"
+                  className="text-[13px] font-semibold text-accent-dark underline"
+                >
+                  {t("start")}
+                </Link>
               ) : null}
             </li>
           ))}

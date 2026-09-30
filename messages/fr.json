@@ -75,7 +75,8 @@
       "dashboard": "Tableau de bord",
       "settings": "Réglages",
       "contacts": "Contacts",
-      "products": "Articles"
+      "products": "Articles",
+      "invoices": "Factures"
     },
     "switcher": {
       "open": "Changer d'application",
@@ -105,7 +106,8 @@
       },
       "soon": "Ces écrans arrivent dans les prochaines versions.",
       "complete": "Compléter",
-      "done": "Fait"
+      "done": "Fait",
+      "start": "Commencer"
     },
     "noAccess": {
       "title": "Votre formule n'inclut pas InvoiceLead",
@@ -435,6 +437,124 @@
         "closed": "Clôturé"
       },
       "closingLater": "La clôture d'un exercice arrivera avec la comptabilité."
+    },
+    "invoices": {
+      "title": "Factures",
+      "new": "Nouvelle facture",
+      "edit": "Facture",
+      "back": "Toutes les factures",
+      "draft": "Brouillon",
+      "draftTitle": "Brouillon de facture",
+      "issuedTitle": "Facture {number}",
+      "status": {
+        "draft": "Brouillon",
+        "issued": "Émise"
+      },
+      "saved": "Brouillon enregistré.",
+      "issued": "Facture émise. Son numéro est définitif et elle ne peut plus être modifiée.",
+      "deleted": "Brouillon supprimé.",
+      "empty": "Aucune facture pour l'instant.",
+      "noCustomers": "Ajoutez d'abord un client.",
+      "addCustomer": "Nouveau contact",
+      "invalid": "Certains champs sont à corriger.",
+      "notEditable": "Cette facture n'est plus modifiable.",
+      "choose": "Choisir",
+      "freeLine": "Ligne libre (sans article)",
+      "saveDraft": "Enregistrer le brouillon",
+      "issue": "Émettre la facture",
+      "issueHint": "L'émission attribue le numéro suivant et fige la facture. Enregistrez d'abord vos dernières modifications.",
+      "deleteDraft": "Supprimer ce brouillon",
+      "completeCompany": "Compléter les données de l'entreprise",
+      "issueErrors": {
+        "companyIncomplete": "Les données de l'entreprise (adresse et IBAN) doivent être complètes avant d'émettre une facture.",
+        "vatChanged": "L'assujettissement à la TVA a changé depuis l'enregistrement. Enregistrez à nouveau le brouillon.",
+        "notDraft": "Cette facture est déjà émise.",
+        "notFound": "Facture introuvable."
+      },
+      "addLine": "Ajouter une ligne",
+      "removeLine": "Retirer",
+      "lineTotal": "Montant :",
+      "net": "Total hors TVA",
+      "total": "Total",
+      "totalWithVat": "Total TVA comprise",
+      "vatLine": "TVA {rate} sur {base}",
+      "columns": {
+        "number": "N°",
+        "customer": "Client",
+        "date": "Date",
+        "total": "Total (CHF)"
+      },
+      "sections": {
+        "customer": "Client",
+        "dates": "Dates",
+        "lines": "Lignes",
+        "texts": "Textes"
+      },
+      "fields": {
+        "contact": "Client",
+        "language": "Langue de la facture",
+        "title": "Titre",
+        "issueDate": "Date de facture",
+        "serviceDate": "Date de la prestation",
+        "dueDate": "Échéance",
+        "product": "Article",
+        "description": "Désignation",
+        "quantity": "Quantité",
+        "unit": "Unité",
+        "unitPrice": "Prix unitaire HT",
+        "vatCode": "TVA",
+        "introText": "Texte d'introduction",
+        "footerText": "Texte de fin"
+      },
+      "hints": {
+        "serviceDate": "Détermine le taux de TVA applicable.",
+        "dueDate": "Vide : selon le délai de paiement du client."
+      },
+      "languages": {
+        "de": "Allemand",
+        "fr": "Français"
+      },
+      "units": {
+        "hour": "h",
+        "day": "jour(s)",
+        "piece": "pce",
+        "flat": "forfait",
+        "km": "km",
+        "month": "mois"
+      },
+      "vatCodes": {
+        "normal": "Normal",
+        "reduced": "Réduit",
+        "lodging": "Hébergement",
+        "exempt": "Exclu",
+        "export": "Exportation"
+      },
+      "errors": {
+        "required": "Champ obligatoire.",
+        "tooLong": "Texte trop long.",
+        "date": "Date invalide.",
+        "dueBeforeIssue": "L'échéance précède la date de facture.",
+        "vatDate": "Aucun taux de TVA connu à cette date.",
+        "quantity": "Quantité invalide (au plus trois décimales, pas zéro).",
+        "amount": "Montant invalide (au plus deux décimales).",
+        "noLines": "Ajoutez au moins une ligne.",
+        "tooManyLines": "Cent lignes au plus."
+      },
+      "document": {
+        "invoice": "Facture",
+        "issueDate": "Date",
+        "serviceDate": "Prestation",
+        "dueDate": "Payable jusqu'au",
+        "description": "Désignation",
+        "quantity": "Quantité",
+        "unitPrice": "Prix unitaire",
+        "vat": "TVA",
+        "amount": "Montant",
+        "net": "Total hors TVA",
+        "vatLine": "TVA {rate} sur {base}",
+        "total": "Total",
+        "payTo": "À verser sur le compte {iban}."
+      }
     }
   },
   "footer": {

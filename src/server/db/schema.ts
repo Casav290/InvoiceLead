@@ -250,3 +250,102 @@ export const fiscalYears = pgTable(
 );
 
 export type FiscalYear = typeof fiscalYears.$inferSelect;
+
+/** Compteurs de numérotation sans trou, par organisation, type de pièce et année. */
+export const numberSequences = pgTable(
+  "number_sequences",
+  {
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    kind: text("kind").notNull(), // invoice | quote | credit_note
+    year: integer("year").notNull(),
+    lastValue: integer("last_value").notNull().default(0),
+  },
+  (t) => [primaryKey({ columns: [t.organizationId, t.kind, t.year] })],
+);
+
+/** Adresse figée sur une pièce émise : la facture reste telle qu'envoyée, même si le contact change. */
+export type PartySnapshot = {
+  name: string;
+  contactPerson?: string | null;
+  street: string | null;
+  buildingNumber: string | null;
+  postalCode: string | null;
+  town: string | null;
+  country: string;
+  uid?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  iban?: string | null;
+  qrIban?: string | null;
+  vatNumber?: string | null;
+};
+
+/**
+ * Facture. Brouillon modifiable, puis émise : elle reçoit alors son numéro et devient immuable (seule
+ * l'annulation par avoir la corrigera). Montants hors TVA, TVA et total en centimes.
+ */
+export const invoices = pgTable(
+  "invoices",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    contactId: uuid("contact_id")
+      .notNull()
+      .references(() => contacts.id, { onDelete: "restrict" }),
+    number: text("number"),
+    status: text("status").notNull().default("draft"), // draft | issued
+    language: text("language").notNull().default("de"),
+    currency: text("currency").notNull().default("CHF"),
+    title: text("title"),
+    introText: text("intro_text"),
+    footerText: text("footer_text"),
+    issueDate: date("issue_date", { mode: "string" }).notNull(),
+    serviceDate: date("service_date", { mode: "string" }).notNull(),
+    dueDate: date("due_date", { mode: "string" }).notNull(),
+    vatRegistered: boolean("vat_registered").notNull().default(false),
+    netCents: bigint("net_cents", { mode: "number" }).notNull().default(0),
+    vatCents: bigint("vat_cents", { mode: "number" }).notNull().default(0),
+    totalCents: bigint("total_cents", { mode: "number" }).notNull().default(0),
+    recipient: jsonb("recipient").$type<PartySnapshot>(),
+    sender: jsonb("sender").$type<PartySnapshot>(),
+    issuedAt: timestamp("issued_at", { withTimezone: true }),
+    createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    index("invoices_org_idx").on(t.organizationId, t.createdAt),
+    uniqueIndex("invoices_org_number_idx")
+      .on(t.organizationId, t.number)
+      .where(sql`${t.number} is not null`),
+  ],
+);
+
+export type Invoice = typeof invoices.$inferSelect;
+
+/** Ligne de facture. Désignation et prix copiés de l'article : modifier l'article ne change rien ici. */
+export const invoiceLines = pgTable(
+  "invoice_lines",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    invoiceId: uuid("invoice_id")
+      .notNull()
+      .references(() => invoices.id, { onDelete: "cascade" }),
+    position: integer("position").notNull(),
+    productId: uuid("product_id").references(() => products.id, { onDelete: "set null" }),
+    description: text("description").notNull(),
+    quantityMilli: bigint("quantity_milli", { mode: "number" }).notNull(),
+    unit: text("unit").notNull(),
+    unitPriceCents: bigint("unit_price_cents", { mode: "number" }).notNull(),
+    vatCode: text("vat_code"), // null si l'entreprise n'est pas assujettie
+    vatRateBp: integer("vat_rate_bp").notNull().default(0),
+    netCents: bigint("net_cents", { mode: "number" }).notNull(),
+  },
+  (t) => [uniqueIndex("invoice_lines_position_idx").on(t.invoiceId, t.position)],
+);
+
+export type InvoiceLine = typeof invoiceLines.$inferSelect;

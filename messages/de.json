@@ -75,7 +75,8 @@
       "dashboard": "Übersicht",
       "settings": "Einstellungen",
       "contacts": "Kontakte",
-      "products": "Artikel"
+      "products": "Artikel",
+      "invoices": "Rechnungen"
     },
     "switcher": {
       "open": "Anwendung wechseln",
@@ -105,7 +106,8 @@
       },
       "soon": "Diese Ansichten folgen in den nächsten Versionen.",
       "complete": "Ergänzen",
-      "done": "Erledigt"
+      "done": "Erledigt",
+      "start": "Starten"
     },
     "noAccess": {
       "title": "Ihr Abo enthält InvoiceLead nicht",
@@ -435,6 +437,124 @@
         "closed": "Abgeschlossen"
       },
       "closingLater": "Der Abschluss eines Geschäftsjahres folgt mit der Buchhaltung."
+    },
+    "invoices": {
+      "title": "Rechnungen",
+      "new": "Neue Rechnung",
+      "edit": "Rechnung",
+      "back": "Alle Rechnungen",
+      "draft": "Entwurf",
+      "draftTitle": "Rechnungsentwurf",
+      "issuedTitle": "Rechnung {number}",
+      "status": {
+        "draft": "Entwurf",
+        "issued": "Ausgestellt"
+      },
+      "saved": "Entwurf gespeichert.",
+      "issued": "Rechnung ausgestellt. Die Nummer ist definitiv, die Rechnung kann nicht mehr geändert werden.",
+      "deleted": "Entwurf gelöscht.",
+      "empty": "Noch keine Rechnungen.",
+      "noCustomers": "Erfassen Sie zuerst einen Kunden.",
+      "addCustomer": "Neuer Kontakt",
+      "invalid": "Einige Felder sind zu korrigieren.",
+      "notEditable": "Diese Rechnung kann nicht mehr geändert werden.",
+      "choose": "Auswählen",
+      "freeLine": "Freie Position (ohne Artikel)",
+      "saveDraft": "Entwurf speichern",
+      "issue": "Rechnung ausstellen",
+      "issueHint": "Beim Ausstellen erhält die Rechnung die nächste Nummer und wird unveränderlich. Speichern Sie zuerst Ihre letzten Änderungen.",
+      "deleteDraft": "Diesen Entwurf löschen",
+      "completeCompany": "Unternehmensdaten ergänzen",
+      "issueErrors": {
+        "companyIncomplete": "Die Unternehmensdaten (Adresse und IBAN) müssen vollständig sein, bevor Sie eine Rechnung ausstellen.",
+        "vatChanged": "Die MWST-Pflicht hat sich seit dem Speichern geändert. Speichern Sie den Entwurf erneut.",
+        "notDraft": "Diese Rechnung ist bereits ausgestellt.",
+        "notFound": "Rechnung nicht gefunden."
+      },
+      "addLine": "Position hinzufügen",
+      "removeLine": "Entfernen",
+      "lineTotal": "Betrag:",
+      "net": "Total exkl. MWST",
+      "total": "Total",
+      "totalWithVat": "Total inkl. MWST",
+      "vatLine": "MWST {rate} auf {base}",
+      "columns": {
+        "number": "Nr.",
+        "customer": "Kunde",
+        "date": "Datum",
+        "total": "Total (CHF)"
+      },
+      "sections": {
+        "customer": "Kunde",
+        "dates": "Daten",
+        "lines": "Positionen",
+        "texts": "Texte"
+      },
+      "fields": {
+        "contact": "Kunde",
+        "language": "Sprache der Rechnung",
+        "title": "Titel",
+        "issueDate": "Rechnungsdatum",
+        "serviceDate": "Leistungsdatum",
+        "dueDate": "Fällig am",
+        "product": "Artikel",
+        "description": "Bezeichnung",
+        "quantity": "Menge",
+        "unit": "Einheit",
+        "unitPrice": "Einzelpreis exkl. MWST",
+        "vatCode": "MWST",
+        "introText": "Einleitungstext",
+        "footerText": "Schlusstext"
+      },
+      "hints": {
+        "serviceDate": "Bestimmt den anwendbaren MWST-Satz.",
+        "dueDate": "Leer: gemäss Zahlungsfrist des Kunden."
+      },
+      "languages": {
+        "de": "Deutsch",
+        "fr": "Französisch"
+      },
+      "units": {
+        "hour": "Std.",
+        "day": "Tag(e)",
+        "piece": "Stk.",
+        "flat": "pauschal",
+        "km": "km",
+        "month": "Mt."
+      },
+      "vatCodes": {
+        "normal": "Normal",
+        "reduced": "Reduziert",
+        "lodging": "Beherbergung",
+        "exempt": "Ausgenommen",
+        "export": "Export"
+      },
+      "errors": {
+        "required": "Pflichtfeld.",
+        "tooLong": "Text zu lang.",
+        "date": "Ungültiges Datum.",
+        "dueBeforeIssue": "Das Fälligkeitsdatum liegt vor dem Rechnungsdatum.",
+        "vatDate": "Für dieses Datum ist kein MWST-Satz bekannt.",
+        "quantity": "Ungültige Menge (höchstens drei Dezimalstellen, nicht null).",
+        "amount": "Ungültiger Betrag (höchstens zwei Dezimalstellen).",
+        "noLines": "Erfassen Sie mindestens eine Position.",
+        "tooManyLines": "Höchstens hundert Positionen."
+      },
+      "document": {
+        "invoice": "Rechnung",
+        "issueDate": "Datum",
+        "serviceDate": "Leistung",
+        "dueDate": "Zahlbar bis",
+        "description": "Bezeichnung",
+        "quantity": "Menge",
+        "unitPrice": "Einzelpreis",
+        "vat": "MWST",
+        "amount": "Betrag",
+        "net": "Total exkl. MWST",
+        "vatLine": "MWST {rate} auf {base}",
+        "total": "Total",
+        "payTo": "Zahlbar auf das Konto {iban}."
+      }
     }
   },
   "footer": {

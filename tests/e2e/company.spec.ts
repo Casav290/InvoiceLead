@@ -5,9 +5,9 @@ test("réglages entreprise : erreurs signalées, saisie gardée, puis enregistre
   page,
 }) => {
   await login(page, "fr", {
-    sub: "sub-set",
-    email: "set@atelier.test",
-    org: "org-set",
+    sub: `sub-set-${Date.now()}`,
+    email: `set-${Date.now()}@atelier.test`,
+    org: `org-set-${Date.now()}`,
     org_name: "Set Sàrl",
   });
   await page.getByRole("link", { name: "Compléter" }).click();
