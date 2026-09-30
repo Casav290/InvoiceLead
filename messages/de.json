@@ -148,12 +148,14 @@
         "vatSettlement": "Abrechnung nach",
         "iban": "IBAN",
         "qrIban": "QR-IBAN",
-        "fiscalYearStartMonth": "Beginn des Geschäftsjahres"
+        "fiscalYearStartMonth": "Beginn des Geschäftsjahres",
+        "netTaxRate": "Saldosteuersatz (%)"
       },
       "hints": {
         "uid": "Format CHE-123.456.789, Prüfziffer wird kontrolliert.",
         "iban": "Normales Konto: Rechnungen mit SCOR-Referenz (RF…).",
-        "qrIban": "Optional: Rechnungen mit 27-stelliger QR-Referenz."
+        "qrIban": "Optional: Rechnungen mit 27-stelliger QR-Referenz.",
+        "netTaxRate": "Nur bei der Saldosteuersatzmethode: der von der ESTV bewilligte Satz, zum Beispiel 6,2."
       },
       "legalForms": {
         "sole_proprietorship": "Einzelunternehmen",
@@ -194,7 +196,8 @@
         "uidRequiredForVat": "Für MWST-pflichtige Firmen ist die UID-Nummer obligatorisch.",
         "iban": "Ungültige Schweizer oder Liechtensteiner IBAN.",
         "ibanIsQr": "Das ist eine QR-IBAN: bitte im Feld QR-IBAN erfassen.",
-        "notQrIban": "Das ist keine QR-IBAN (Institut 30000 bis 31999)."
+        "notQrIban": "Das ist keine QR-IBAN (Institut 30000 bis 31999).",
+        "netTaxRate": "Geben Sie den von der ESTV bewilligten Satz an (zwischen 0,1 und 15 %)."
       }
     },
     "contacts": {
@@ -881,7 +884,9 @@
         "pendingBank": "{count, plural, one {# Bankbewegung der Periode ist noch nicht bestätigt.} other {# Bankbewegungen der Periode sind noch nicht bestätigt.}}",
         "unposted": "{count, plural, one {# Rechnung der Periode ist noch nicht verbucht.} other {# Rechnungen der Periode sind noch nicht verbucht.}}",
         "inputWithoutReceipt": "{count, plural, one {# Ausgabe mit Vorsteuerabzug hat keinen zugeordneten Beleg.} other {# Ausgaben mit Vorsteuerabzug haben keinen zugeordneten Beleg.}}",
-        "alreadyValidated": "Diese Periode überschneidet sich mit einer bereits bestätigten Abrechnung."
+        "alreadyValidated": "Diese Periode überschneidet sich mit einer bereits bestätigten Abrechnung.",
+        "noNetTaxRate": "Geben Sie Ihren Saldosteuersatz in den Unternehmensdaten an.",
+        "inputUnderNetTaxRate": "In der Periode wurde Vorsteuer verbucht: Bei der Saldosteuersatzmethode ist sie nicht abziehbar."
       },
       "figures": {
         "200": "Total der vereinbarten Entgelte",
@@ -900,7 +905,11 @@
         "405": "Vorsteuer auf Investitionen und übrigem Betriebsaufwand",
         "479": "Total Vorsteuer",
         "500": "An die ESTV zu bezahlender Betrag",
-        "510": "Guthaben zu Ihren Gunsten"
+        "510": "Guthaben zu Ihren Gunsten",
+        "322": "Umsatz zum Saldosteuersatz",
+        "332": "Umsatz zum zweiten Saldosteuersatz",
+        "321": "Umsatz zum Saldosteuersatz (vor 2024)",
+        "331": "Umsatz zum zweiten Saldosteuersatz (vor 2024)"
       },
       "payBy": "An die ESTV zu bezahlen bis {date}.",
       "reviewIntro": "Der Assistent kann die Periode gegenlesen und auf Auffälliges hinweisen.",
@@ -910,7 +919,9 @@
       "reviewNothing": "Der Assistent hat nichts Ungewöhnliches gefunden.",
       "cannotValidate": "Klären Sie zuerst die roten Punkte.",
       "validateHint": "Mit der Bestätigung werden die Zahlen fixiert, und in dieser Periode kann nicht mehr gebucht werden.",
-      "validate": "Abrechnung bestätigen"
+      "validate": "Abrechnung bestätigen",
+      "semester": "H{q} {year}",
+      "tax": "Steuer"
     }
   },
   "footer": {

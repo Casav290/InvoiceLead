@@ -1,5 +1,6 @@
 import { and, eq, gte, inArray, isNull, lte, or, sql } from "drizzle-orm";
-import { RATE_FIGURES } from "@/countries/ch/vat-return";
+import { netRateFigure, RATE_FIGURES } from "@/countries/ch/vat-return";
+import { roundHalfAwayFromZero } from "@/lib/money";
 import { chatJson } from "./ai";
 import type { Db } from "./db";
 import {
@@ -21,6 +22,7 @@ import { appendEntry, LedgerError, roleAccounts } from "./ledger";
 type Who = { organizationId: string; userId: string };
 
 export type VatReturnDraft = {
+  method: "effective" | "net_tax_rate";
   figures: VatFigures;
   anomalies: VatAnomaly[];
   /** Base et TVA par taux, pour l'affichage détaillé. */
@@ -46,13 +48,16 @@ export async function draftVatReturn(
       vatRegistered: organizations.vatRegistered,
       vatMethod: organizations.vatMethod,
       vatSettlement: organizations.vatSettlement,
+      netTaxRateBp: organizations.netTaxRateBp,
     })
     .from(organizations)
     .where(eq(organizations.id, organizationId));
+  const method = org?.vatMethod === "net_tax_rate" ? "net_tax_rate" : "effective";
   if (!org?.vatRegistered) anomalies.push({ code: "notRegistered", severity: "block" });
-  else if (org.vatMethod !== "effective") anomalies.push({ code: "netTaxRate", severity: "block" });
   else if (org.vatSettlement === "received")
     anomalies.push({ code: "received", severity: "block" });
+  if (method === "net_tax_rate" && !org?.netTaxRateBp)
+    anomalies.push({ code: "noNetTaxRate", severity: "block" });
 
   const roles = await roleAccounts(database, organizationId);
   const inPeriod = and(
@@ -121,34 +126,65 @@ export async function draftVatReturn(
   const f289 = f220 + f230;
   const f299 = turnover - f289;
 
-  const rates = [...byRate.entries()]
-    .sort(([a], [b]) => b - a)
-    .map(([rateBp, v]) => ({
-      rateBp,
-      figure: RATE_FIGURES[rateBp] ?? "?",
-      baseCents: v.base,
-      taxCents: v.tax,
-    }));
-  const f399 = rates.reduce((s, r) => s + r.taxCents, 0);
-  const f479 = input400 + input405;
-  const figures: VatFigures = {
-    "200": turnover,
-    "220": f220,
-    "230": f230,
-    "289": f289,
-    "299": f299,
-    "399": f399,
-    "400": input400,
-    "405": input405,
-    "479": f479,
-    "500": Math.max(0, f399 - f479),
-    "510": Math.max(0, f479 - f399),
-  };
-  for (const r of rates) figures[r.figure] = r.baseCents;
+  const collected = [...byRate.values()].reduce((sum, v) => sum + v.tax, 0);
+  let rates: VatReturnDraft["rates"];
+  let figures: VatFigures;
+  if (method === "net_tax_rate") {
+    // TDFN : chiffre d'affaires TVA comprise, impôt au taux net, pas d'impôt préalable.
+    const gross200 = turnover + collected;
+    const taxable = gross200 - f289;
+    const rateBp = org?.netTaxRateBp ?? 0;
+    const figure = netRateFigure(end);
+    const tax = roundHalfAwayFromZero((taxable * rateBp) / 10_000) + 0;
+    rates = [{ rateBp, figure, baseCents: taxable, taxCents: tax }];
+    figures = {
+      "200": gross200,
+      "220": f220,
+      "230": f230,
+      "289": f289,
+      "299": taxable,
+      [figure]: taxable,
+      [`${figure}t`]: tax,
+      "399": tax,
+      "500": Math.max(0, tax),
+      "510": Math.max(0, -tax),
+      collected,
+    };
+    if (input400 + input405 !== 0)
+      anomalies.push({ code: "inputUnderNetTaxRate", severity: "warn" });
+  } else {
+    rates = [...byRate.entries()]
+      .sort(([a], [b]) => b - a)
+      .map(([rateBp, v]) => ({
+        rateBp,
+        figure: RATE_FIGURES[rateBp] ?? "?",
+        baseCents: v.base,
+        taxCents: v.tax,
+      }));
+    const f399 = collected;
+    const f479 = input400 + input405;
+    figures = {
+      "200": turnover,
+      "220": f220,
+      "230": f230,
+      "289": f289,
+      "299": f299,
+      "399": f399,
+      "400": input400,
+      "405": input405,
+      "479": f479,
+      "500": Math.max(0, f399 - f479),
+      "510": Math.max(0, f479 - f399),
+    };
+    for (const r of rates) {
+      figures[r.figure] = r.baseCents;
+      figures[`${r.figure}t`] = r.taxCents;
+    }
+  }
 
-  // Contrôles de cohérence.
-  const basesTotal = rates.reduce((s, r) => s + r.baseCents, 0);
-  if (Math.abs(basesTotal - f299) > 100)
+  // Contrôles de cohérence (méthode effective : les bases par taux font le chiffre imposable).
+  const basesTotal = [...byRate.values()].reduce((sum, v) => sum + v.base, 0);
+  if (method === "effective" && Math.abs(basesTotal - f299) > 100)
     anomalies.push({ code: "baseMismatch", severity: "warn", detail: String(basesTotal - f299) });
   const pendingBank = await database
     .select({ n: sql<number>`count(*)::int` })
@@ -211,7 +247,7 @@ export async function draftVatReturn(
     );
   if (overlap) anomalies.push({ code: "alreadyValidated", severity: "block" });
 
-  return { figures, anomalies, rates };
+  return { method, figures, anomalies, rates };
 }
 
 export async function listVatReturns(database: Db, organizationId: string) {
@@ -308,21 +344,35 @@ export async function validateVatReturn(
     !roles.vat_output ||
     !roles.vat_settlement ||
     !roles.vat_input_material ||
-    !roles.vat_input_invest
+    !roles.vat_input_invest ||
+    !roles.sales_deductions
   )
     return "noChart";
   const f = draft.figures;
   const net = (f["399"] ?? 0) - (f["479"] ?? 0);
+  // TDFN : la TVA encaissée sort de 2200, l'impôt dû va sur 2201, l'écart revient au chiffre
+  // d'affaires (déductions sur ventes).
+  const collected = f.collected ?? 0;
   try {
     await database.transaction(async (tx) => {
       const tdb = tx as unknown as Db;
       let entryId: string | null = null;
-      const postings = [
-        { accountId: roles.vat_output ?? "", amountCents: f["399"] ?? 0 },
-        { accountId: roles.vat_input_material ?? "", amountCents: -(f["400"] ?? 0) },
-        { accountId: roles.vat_input_invest ?? "", amountCents: -(f["405"] ?? 0) },
-        { accountId: roles.vat_settlement ?? "", amountCents: -net },
-      ];
+      const postings =
+        draft.method === "net_tax_rate"
+          ? [
+              { accountId: roles.vat_output ?? "", amountCents: collected },
+              { accountId: roles.vat_settlement ?? "", amountCents: -(f["399"] ?? 0) },
+              {
+                accountId: roles.sales_deductions ?? "",
+                amountCents: (f["399"] ?? 0) - collected,
+              },
+            ]
+          : [
+              { accountId: roles.vat_output ?? "", amountCents: f["399"] ?? 0 },
+              { accountId: roles.vat_input_material ?? "", amountCents: -(f["400"] ?? 0) },
+              { accountId: roles.vat_input_invest ?? "", amountCents: -(f["405"] ?? 0) },
+              { accountId: roles.vat_settlement ?? "", amountCents: -net },
+            ];
       if (postings.filter((p) => p.amountCents !== 0).length >= 2) {
         const entry = await appendEntry(tdb, who, {
           entryDate: end,

@@ -3,7 +3,7 @@ import { getTranslations } from "next-intl/server";
 import { AccountingNav } from "@/components/accounting/AccountingNav";
 import { VatReview } from "@/components/accounting/VatReview";
 import { Button } from "@/components/ui/button";
-import { FIGURE_ORDER, quartersBetween, vatDueDate } from "@/countries/ch/vat-return";
+import { FIGURE_ORDER, periodsBetween, TAXED_FIGURES, vatDueDate } from "@/countries/ch/vat-return";
 import { Link } from "@/i18n/navigation";
 import { formatDate } from "@/lib/fiscal-year";
 import { formatAmount } from "@/lib/money";
@@ -36,7 +36,9 @@ export default async function VatPage({ params, searchParams }: Props) {
   const today = new Date().toISOString().slice(0, 10);
   const years = await listFiscalYears(db(), organization.id);
   const firstStart = years.at(-1)?.startDate ?? `${today.slice(0, 4)}-01-01`;
-  const quarters = quartersBetween(firstStart, today).reverse();
+  // TDFN : décompte semestriel ; méthode effective : trimestriel.
+  const months = organization.vatMethod === "net_tax_rate" ? 6 : 3;
+  const quarters = periodsBetween(firstStart, today, months).reverse();
   const done = await listVatReturns(db(), organization.id);
   const doneByStart = new Map(done.map((r) => [r.periodStart, r]));
   const selected =
@@ -137,6 +139,7 @@ export default async function VatPage({ params, searchParams }: Props) {
                   <th className="w-16 px-3 py-2">{t("figure")}</th>
                   <th className="px-3 py-2">{t("label")}</th>
                   <th className="px-3 py-2 text-right">{t("amount")}</th>
+                  <th className="px-3 py-2 text-right">{t("tax")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -150,6 +153,9 @@ export default async function VatPage({ params, searchParams }: Props) {
                     <td className="px-3 py-2 [overflow-wrap:anywhere]">{t(`figures.${code}`)}</td>
                     <td className="px-3 py-2 text-right tabular-nums">
                       {formatAmount(figures[code] ?? 0)}
+                    </td>
+                    <td className="px-3 py-2 text-right tabular-nums">
+                      {TAXED_FIGURES.includes(code) ? formatAmount(figures[`${code}t`] ?? 0) : ""}
                     </td>
                   </tr>
                 ))}

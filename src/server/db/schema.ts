@@ -72,6 +72,8 @@ export const organizations = pgTable("organizations", {
   vatSettlement: text("vat_settlement"), // agreed | received
   iban: text("iban"),
   qrIban: text("qr_iban"),
+  /** Taux de la dette fiscale nette accordé par l'AFC (méthode TDFN), en points de base : 620 = 6,2 %. */
+  netTaxRateBp: integer("net_tax_rate_bp"),
   fiscalYearStartMonth: integer("fiscal_year_start_month").notNull().default(1),
   settingsCompletedAt: timestamp("settings_completed_at", { withTimezone: true }),
   createdAt: createdAt(),

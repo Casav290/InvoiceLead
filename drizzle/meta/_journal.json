@@ -113,6 +113,13 @@
       "when": 1790768784758,
       "tag": "0015_vat_returns",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1790769616027,
+      "tag": "0016_net_tax_rate",
+      "breakpoints": true
     }
   ]
 }

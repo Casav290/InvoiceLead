@@ -148,12 +148,14 @@
         "vatSettlement": "Décompte selon",
         "iban": "IBAN",
         "qrIban": "QR-IBAN",
-        "fiscalYearStartMonth": "Début de l'exercice"
+        "fiscalYearStartMonth": "Début de l'exercice",
+        "netTaxRate": "Taux de la dette fiscale nette (%)"
       },
       "hints": {
         "uid": "Format CHE-123.456.789, clé de contrôle vérifiée.",
         "iban": "Compte classique : factures avec référence SCOR (RF…).",
-        "qrIban": "Facultatif : factures avec référence QR à 27 chiffres."
+        "qrIban": "Facultatif : factures avec référence QR à 27 chiffres.",
+        "netTaxRate": "Seulement avec la méthode TDFN : le taux accordé par l'AFC, par exemple 6,2."
       },
       "legalForms": {
         "sole_proprietorship": "Raison individuelle",
@@ -194,7 +196,8 @@
         "uidRequiredForVat": "Le numéro IDE est obligatoire pour une entreprise inscrite à la TVA.",
         "iban": "IBAN suisse ou liechtensteinois invalide.",
         "ibanIsQr": "C'est un QR-IBAN : saisissez-le dans le champ QR-IBAN.",
-        "notQrIban": "Ce n'est pas un QR-IBAN (identifiant 30000 à 31999)."
+        "notQrIban": "Ce n'est pas un QR-IBAN (identifiant 30000 à 31999).",
+        "netTaxRate": "Indiquez le taux accordé par l'AFC (entre 0,1 et 15 %)."
       }
     },
     "contacts": {
@@ -881,7 +884,9 @@
         "pendingBank": "{count, plural, one {# mouvement bancaire de la période n'est pas encore validé.} other {# mouvements bancaires de la période ne sont pas encore validés.}}",
         "unposted": "{count, plural, one {# facture de la période n'est pas encore comptabilisée.} other {# factures de la période ne sont pas encore comptabilisées.}}",
         "inputWithoutReceipt": "{count, plural, one {# dépense déduit de l'impôt préalable sans justificatif rattaché.} other {# dépenses déduisent de l'impôt préalable sans justificatif rattaché.}}",
-        "alreadyValidated": "Cette période chevauche un décompte déjà validé."
+        "alreadyValidated": "Cette période chevauche un décompte déjà validé.",
+        "noNetTaxRate": "Indiquez votre taux de la dette fiscale nette dans les données de l'entreprise.",
+        "inputUnderNetTaxRate": "De l'impôt préalable a été comptabilisé dans la période : avec la méthode TDFN, il n'est pas déductible."
       },
       "figures": {
         "200": "Total des contre-prestations convenues",
@@ -900,7 +905,11 @@
         "405": "Impôt préalable sur les investissements et autres charges",
         "479": "Total de l'impôt préalable",
         "500": "Montant à payer à l'AFC",
-        "510": "Solde en votre faveur"
+        "510": "Solde en votre faveur",
+        "322": "Chiffre d'affaires au taux de la dette fiscale nette",
+        "332": "Chiffre d'affaires au second taux de la dette fiscale nette",
+        "321": "Chiffre d'affaires au taux net (avant 2024)",
+        "331": "Chiffre d'affaires au second taux net (avant 2024)"
       },
       "payBy": "À payer à l'AFC d'ici le {date}.",
       "reviewIntro": "L'assistant peut relire la période et signaler ce qui mérite votre attention.",
@@ -910,7 +919,9 @@
       "reviewNothing": "L'assistant n'a rien relevé d'inhabituel.",
       "cannotValidate": "Réglez d'abord les points en rouge.",
       "validateHint": "En validant, les chiffres sont figés et plus aucune écriture ne pourra être datée dans cette période.",
-      "validate": "Valider le décompte"
+      "validate": "Valider le décompte",
+      "semester": "S{q} {year}",
+      "tax": "Impôt"
     }
   },
   "footer": {

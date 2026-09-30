@@ -36,6 +36,7 @@ export type CompanyInput = {
   vatRegistered: boolean;
   vatMethod: (typeof VAT_METHODS)[number] | null;
   vatSettlement: (typeof VAT_SETTLEMENTS)[number] | null;
+  netTaxRateBp: number | null;
   iban: string | null;
   qrIban: string | null;
   fiscalYearStartMonth: number;
@@ -93,6 +94,15 @@ export function parseCompanyForm(
     vatMethod = null;
     vatSettlement = null;
   }
+  // Taux TDFN : « 6.2 » ou « 6,2 » (%), exigé seulement avec cette méthode.
+  const rateRaw = text(form, "netTaxRate").replace(",", ".").replace("%", "").trim();
+  let netTaxRateBp: number | null = null;
+  if (vatRegistered && vatMethod === "net_tax_rate") {
+    const n = Number(rateRaw);
+    if (!rateRaw || !/^\d{1,2}(\.\d{1,2})?$/.test(rateRaw) || n <= 0 || n > 15)
+      errors.netTaxRateBp = "netTaxRate";
+    else netTaxRateBp = Math.round(n * 100);
+  }
 
   const ibanRaw = optional(text(form, "iban"));
   const iban = ibanRaw ? normalizeIban(ibanRaw) : null;
@@ -130,6 +140,7 @@ export function parseCompanyForm(
       vatRegistered,
       vatMethod,
       vatSettlement,
+      netTaxRateBp,
       iban,
       qrIban,
       fiscalYearStartMonth,

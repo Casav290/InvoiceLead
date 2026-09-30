@@ -29,7 +29,8 @@ export function CompanyForm({
     round: 0,
   });
   const values = state.values ?? initial;
-  const error = (name: string) => state.errors?.[name as keyof typeof state.errors];
+  const error = (name: string) =>
+    state.errors?.[(name === "netTaxRate" ? "netTaxRateBp" : name) as keyof typeof state.errors];
 
   const field = ({
     name,
@@ -184,6 +185,7 @@ export function CompanyForm({
           </label>
           {select({ name: "vatMethod", options: VAT_METHODS, prefix: "vatMethods" })}
           {select({ name: "vatSettlement", options: VAT_SETTLEMENTS, prefix: "vatSettlements" })}
+          {field({ name: "netTaxRate" })}
         </>,
       )}
 

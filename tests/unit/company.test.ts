@@ -80,6 +80,17 @@ describe("formulaire entreprise", () => {
       form({ ...VALID, vatRegistered: "", uid: "", vatMethod: "effective" }),
     );
     expect(notRegistered.ok && notRegistered.data.vatMethod).toBeNull();
+
+    // Méthode TDFN : le taux accordé par l'AFC est exigé, « 6,2 » donne 620 points de base.
+    const tdfn = (netTaxRate: string) =>
+      parseCompanyForm(form({ ...VALID, vatMethod: "net_tax_rate", netTaxRate }));
+    const missing = tdfn("");
+    expect(!missing.ok && missing.errors.netTaxRateBp).toBe("netTaxRate");
+    const set = tdfn("6,2");
+    expect(set.ok && set.data.netTaxRateBp).toBe(620);
+    expect(tdfn("16").ok).toBe(false);
+    const effective = parseCompanyForm(form({ ...VALID, netTaxRate: "6.2" }));
+    expect(effective.ok && effective.data.netTaxRateBp).toBeNull();
   });
 });
 
