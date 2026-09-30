@@ -4,6 +4,7 @@ import { parseCamt } from "@/countries/ch/camt";
 import { createFirstFiscalYear, installChart } from "@/server/accounting";
 import { attachLeadIdentity } from "@/server/auth/attach";
 import { importEntries, proposeAll, validateConfident, validateTransaction } from "@/server/bank";
+import { counterpartyKey, listRules } from "@/server/booking-rules";
 import { createContact, parseContactForm } from "@/server/contacts";
 import {
   accounts,
@@ -276,5 +277,76 @@ describe("propositions et validation", () => {
     ).toBe("posted");
     expect(await validateTransaction(db, who, rows[2]?.id ?? "")).toBe("notFound");
     expect(await verifyChain(db, who.organizationId)).toMatchObject({ ok: true, count: 4 });
+  });
+});
+
+describe("règles apprises", () => {
+  it("normalisent la contrepartie", () => {
+    expect(counterpartyKey("Swisscom (Schweiz) AG")).toBe("swisscom schweiz");
+    expect(counterpartyKey("SWISSCOM SCHWEIZ AG")).toBe("swisscom schweiz");
+    expect(counterpartyKey("Café Müller Sàrl")).toBe("cafe muller");
+    expect(counterpartyKey("AG")).toBeNull();
+    expect(counterpartyKey(null)).toBeNull();
+  });
+
+  it("naissent d'une validation, se renforcent, se corrigent et proposent sans IA", async () => {
+    const a = await attachLeadIdentity(db, claims());
+    const who = { organizationId: a.organization.id, userId: a.user.id };
+    await installChart(db, who, "sole_proprietorship");
+    await createFirstFiscalYear(db, who, { start: "2026-01-01", extended: false });
+    const [internet] = await db.select().from(accounts).where(eq(accounts.number, "6510"));
+    const [it2] = await db.select().from(accounts).where(eq(accounts.number, "6570"));
+    const month = (m: string, party = "Swisscom (Schweiz) AG") =>
+      parseCamt(
+        camt053("CH9300762011623852957", [
+          {
+            id: `S${m}`,
+            date: `2026-${m}-05`,
+            amount: "107.70",
+            credit: false,
+            party,
+            text: "Abo",
+          },
+        ]),
+      ).entries;
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    await importEntries(db, who, month("01"));
+    await proposeAll(db, who, { language: "fr", useAi: false });
+    const [first] = await db.select().from(bankTransactions);
+    expect(first?.status).toBe("new");
+    await validateTransaction(db, who, first?.id ?? "", {
+      accountId: internet?.id ?? "",
+      vatCode: null,
+    });
+
+    await importEntries(db, who, month("02", "SWISSCOM SCHWEIZ AG"));
+    await proposeAll(db, who, { language: "fr", useAi: true });
+    expect(fetchMock).not.toHaveBeenCalled();
+    let rows = await db
+      .select()
+      .from(bankTransactions)
+      .where(eq(bankTransactions.status, "proposed"));
+    expect(rows[0]?.proposal).toMatchObject({
+      kind: "account",
+      accountId: internet?.id,
+      source: "rule",
+      confidence: 0.91,
+    });
+    await validateTransaction(db, who, rows[0]?.id ?? "");
+    expect((await listRules(db, who.organizationId))[0]?.rule.hits).toBe(2);
+
+    // Correction : un autre compte remplace la règle, qui repart à 1.
+    await importEntries(db, who, month("03"));
+    await proposeAll(db, who, { language: "fr", useAi: false });
+    rows = await db.select().from(bankTransactions).where(eq(bankTransactions.status, "proposed"));
+    expect(rows[0]?.proposal?.confidence).toBe(0.94);
+    await validateTransaction(db, who, rows[0]?.id ?? "", {
+      accountId: it2?.id ?? "",
+      vatCode: null,
+    });
+    const [rule] = await listRules(db, who.organizationId);
+    expect(rule).toMatchObject({ number: "6570", rule: { hits: 1, direction: "out" } });
   });
 });

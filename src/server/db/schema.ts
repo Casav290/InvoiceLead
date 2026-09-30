@@ -515,3 +515,33 @@ export const bankTransactions = pgTable(
 );
 
 export type BankTransaction = typeof bankTransactions.$inferSelect;
+
+/**
+ * Règle apprise des validations : telle contrepartie, dans tel sens, se comptabilise sur tel compte.
+ * Elle passe avant l'IA pour les mouvements suivants, et se renforce à chaque validation identique.
+ */
+export const bookingRules = pgTable(
+  "booking_rules",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    counterpartyKey: text("counterparty_key").notNull(),
+    counterpartyLabel: text("counterparty_label").notNull(),
+    direction: text("direction").notNull(), // in | out
+    accountId: uuid("account_id")
+      .notNull()
+      .references(() => accounts.id, { onDelete: "cascade" }),
+    vatCode: text("vat_code"),
+    hits: integer("hits").notNull().default(1),
+    updatedBy: uuid("updated_by").references(() => users.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    uniqueIndex("booking_rules_key_idx").on(t.organizationId, t.counterpartyKey, t.direction),
+  ],
+);
+
+export type BookingRule = typeof bookingRules.$inferSelect;

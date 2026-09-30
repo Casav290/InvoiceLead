@@ -781,6 +781,14 @@
         "lodging": "TVA hébergement",
         "exempt": "Exclu",
         "export": "Exportation"
+      },
+      "rules": {
+        "title": "Règles apprises",
+        "hint": "Retenues à chaque validation : la même contrepartie sera proposée sur le même compte, sans passer par l'IA.",
+        "in": "(entrées)",
+        "out": "(sorties)",
+        "hits": "{count, plural, one {validée # fois} other {validée # fois}}",
+        "delete": "Oublier"
       }
     }
   },

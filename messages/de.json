@@ -781,6 +781,14 @@
         "lodging": "MWST Beherbergung",
         "exempt": "Ausgenommen",
         "export": "Export"
+      },
+      "rules": {
+        "title": "Gelernte Regeln",
+        "hint": "Bei jeder Bestätigung gespeichert: Dieselbe Gegenpartei wird ohne KI auf dasselbe Konto vorgeschlagen.",
+        "in": "(Eingänge)",
+        "out": "(Ausgänge)",
+        "hits": "{count, plural, one {# Mal bestätigt} other {# Mal bestätigt}}",
+        "delete": "Vergessen"
       }
     }
   },

@@ -3,6 +3,7 @@ import type { BankEntry } from "@/countries/ch/camt";
 import { VAT_CODES, type VatCode, vatRateBp } from "@/countries/ch/vat";
 import { roundHalfAwayFromZero } from "@/lib/money";
 import { chatJson } from "./ai";
+import { counterpartyKey, directionOf, learnRule, ruleConfidence } from "./booking-rules";
 import type { Db } from "./db";
 import {
   accounts,
@@ -10,6 +11,7 @@ import {
   type BankProposal,
   type BankTransaction,
   bankTransactions,
+  bookingRules,
   contacts,
   invoices,
   organizations,
@@ -143,6 +145,31 @@ export async function proposeAll(
         source: "reference",
       });
     }
+  }
+
+  // Règles apprises des validations précédentes : même contrepartie, même sens, même compte.
+  const rules = await database
+    .select()
+    .from(bookingRules)
+    .where(eq(bookingRules.organizationId, who.organizationId));
+  for (const tx of pending) {
+    if (proposals.has(tx.id)) continue;
+    const key = counterpartyKey(tx.counterparty);
+    const rule = key
+      ? rules.find((r) => r.counterpartyKey === key && r.direction === directionOf(tx.amountCents))
+      : undefined;
+    if (!rule) continue;
+    proposals.set(tx.id, {
+      kind: "account",
+      accountId: rule.accountId,
+      vatCode: rule.vatCode,
+      confidence: ruleConfidence(rule),
+      explanation:
+        options.language === "fr"
+          ? `Comme les ${rule.hits} fois précédentes pour cette contrepartie.`
+          : `Wie die letzten ${rule.hits} Male bei dieser Gegenpartei.`,
+      source: "rule",
+    });
   }
 
   let aiError = false;
@@ -432,6 +459,12 @@ export async function validateTransaction(
     }
     throw e;
   }
+  await learnRule(database, who, {
+    counterparty: tx.counterparty,
+    amountCents: tx.amountCents,
+    accountId: proposal.accountId,
+    vatCode: proposal.vatCode,
+  });
   return "posted";
 }
 

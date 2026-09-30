@@ -9,9 +9,11 @@ import { listAccounts } from "@/server/accounting";
 import { aiConfigured } from "@/server/ai";
 import { requireAppSession } from "@/server/auth/guard";
 import { CONFIDENT, listBankTransactions } from "@/server/bank";
+import { listRules } from "@/server/booking-rules";
 import { db } from "@/server/db";
 import { listInvoices } from "@/server/invoices";
 import {
+  deleteRuleAction,
   ignoreBankAction,
   importStatementAction,
   proposeAction,
@@ -43,10 +45,11 @@ export default async function BankPage({ params, searchParams }: Props) {
   const { organization } = await requireAppSession(locale);
   const q = await searchParams;
   const t = await getTranslations({ locale, namespace: "app.bank" });
-  const [rows, chart, invoiceRows] = await Promise.all([
+  const [rows, chart, invoiceRows, rules] = await Promise.all([
     listBankTransactions(db(), organization.id),
     listAccounts(db(), organization.id),
     listInvoices(db(), organization.id, "invoice"),
+    listRules(db(), organization.id),
   ]);
   const accountName = new Map(
     chart.map((a) => [a.id, `${a.number} ${locale === "fr" ? a.nameFr : a.nameDe}`]),
@@ -277,6 +280,40 @@ export default async function BankPage({ params, searchParams }: Props) {
           })}
         </ul>
       )}
+
+      {rules.length > 0 ? (
+        <section className="mt-10" data-testid="bank-rules">
+          <h2 className="text-[20px]">{t("rules.title")}</h2>
+          <p className="mt-1 text-[13px] text-ink-muted">{t("rules.hint")}</p>
+          <ul className="mt-4 border border-line-strong bg-panel">
+            {rules.map(({ rule, number, nameDe, nameFr }) => (
+              <li
+                key={rule.id}
+                className="flex flex-wrap items-center gap-3 border-b border-line-soft px-4 py-2 text-[13px] last:border-b-0"
+              >
+                <span className="min-w-0 flex-1 [overflow-wrap:anywhere]">
+                  <span className="font-semibold">{rule.counterpartyLabel}</span>{" "}
+                  <span className="text-ink-muted">
+                    {rule.direction === "in" ? t("rules.in") : t("rules.out")}
+                  </span>
+                </span>
+                <span className="[overflow-wrap:anywhere]">
+                  {number} {locale === "fr" ? nameFr : nameDe}
+                  {rule.vatCode ? ` · ${t(`vat.${rule.vatCode}`)}` : ""}
+                </span>
+                <span className="text-ink-muted">{t("rules.hits", { count: rule.hits })}</span>
+                <form action={deleteRuleAction}>
+                  {hidden}
+                  <input type="hidden" name="id" value={rule.id} />
+                  <Button type="submit" variant="ghost" size="sm">
+                    {t("rules.delete")}
+                  </Button>
+                </form>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
 
       {done.length > 0 ? (
         <>

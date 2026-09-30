@@ -14,6 +14,7 @@ import {
   validateConfident,
   validateTransaction,
 } from "@/server/bank";
+import { deleteRule } from "@/server/booking-rules";
 import { db } from "@/server/db";
 import { postPending } from "@/server/ledger";
 
@@ -103,6 +104,18 @@ export async function ignoreBankAction(form: FormData) {
   const locale = pickLocale(form.get("locale"));
   const session = await requireAppSession(locale);
   await ignoreTransaction(
+    db(),
+    { organizationId: session.organization.id, userId: session.user.id },
+    String(form.get("id") ?? ""),
+  );
+  revalidatePath(`/${locale}/app/accounting/bank`);
+  redirect(`/${locale}/app/accounting/bank`);
+}
+
+export async function deleteRuleAction(form: FormData) {
+  const locale = pickLocale(form.get("locale"));
+  const session = await requireAppSession(locale);
+  await deleteRule(
     db(),
     { organizationId: session.organization.id, userId: session.user.id },
     String(form.get("id") ?? ""),

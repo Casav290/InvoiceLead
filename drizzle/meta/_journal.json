@@ -92,6 +92,13 @@
       "when": 1790760712906,
       "tag": "0012_bank_transactions",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1790762324974,
+      "tag": "0013_booking_rules",
+      "breakpoints": true
     }
   ]
 }
