@@ -607,6 +607,42 @@
           "required": "Pflichtfeld.",
           "tooLong": "Text zu lang."
         }
+      },
+      "email": {
+        "title": "Versand",
+        "to": "Empfänger",
+        "subject": "Betreff",
+        "message": "Nachricht",
+        "messageHint": "Der Link zur Online-Ansicht wird am Ende angefügt, das PDF wird mitgeschickt.",
+        "send": "Per E-Mail senden",
+        "sent": "E-Mail gesendet.",
+        "sentInfo": "Gesendet an {to} am {date}.",
+        "viewed": "Online angesehen.",
+        "notConfigured": "Der E-Mail-Versand ist noch nicht eingerichtet. Sie können den Link kopieren und selbst senden.",
+        "link": "Link zur Online-Ansicht",
+        "linkHint": "Ein Link für den Kunden, ohne Konto.",
+        "linkLabelField": "Link zur Online-Ansicht",
+        "linkLabel": "Online ansehen:",
+        "results": {
+          "notConfigured": "Der E-Mail-Versand ist nicht eingerichtet.",
+          "failed": "Der Versand ist fehlgeschlagen. Versuchen Sie es in einigen Minuten erneut.",
+          "notFound": "Beleg nicht gefunden."
+        },
+        "errors": {
+          "email": "Ungültige E-Mail-Adresse.",
+          "required": "Pflichtfeld.",
+          "tooLong": "Text zu lang."
+        },
+        "subjects": {
+          "invoice": "Rechnung {number} von {company}",
+          "quote": "Offerte {number} von {company}",
+          "credit_note": "Gutschrift {number} von {company}"
+        },
+        "bodies": {
+          "invoice": "Guten Tag\n\nIm Anhang finden Sie unsere Rechnung {number} über {currency} {amount}, zahlbar bis {due}.\n\nFreundliche Grüsse\n{company}",
+          "quote": "Guten Tag\n\nIm Anhang finden Sie unsere Offerte {number} über {currency} {amount}, gültig bis {due}.\n\nFreundliche Grüsse\n{company}",
+          "credit_note": "Guten Tag\n\nIm Anhang finden Sie unsere Gutschrift {number} über {currency} {amount}.\n\nFreundliche Grüsse\n{company}"
+        }
       }
     },
     "quotes": {
@@ -784,5 +820,9 @@
         "a": "Nein. Das Gratis-Abo verlangt keine Karte und ist zeitlich unbegrenzt."
       }
     ]
+  },
+  "shared": {
+    "download": "PDF herunterladen",
+    "poweredBy": "Versendet mit InvoiceLead"
   }
 }

@@ -607,6 +607,42 @@
           "required": "Champ obligatoire.",
           "tooLong": "Texte trop long."
         }
+      },
+      "email": {
+        "title": "Envoi",
+        "to": "Destinataire",
+        "subject": "Objet",
+        "message": "Message",
+        "messageHint": "Le lien de consultation en ligne est ajouté à la fin, et le PDF est joint.",
+        "send": "Envoyer par e-mail",
+        "sent": "E-mail envoyé.",
+        "sentInfo": "Envoyé à {to} le {date}.",
+        "viewed": "Consulté en ligne.",
+        "notConfigured": "L'envoi d'e-mails n'est pas encore configuré. Vous pouvez copier le lien de consultation et l'envoyer vous-même.",
+        "link": "Lien de consultation",
+        "linkHint": "Un lien à transmettre au client, sans compte à créer.",
+        "linkLabelField": "Lien de consultation en ligne",
+        "linkLabel": "Consulter en ligne :",
+        "results": {
+          "notConfigured": "L'envoi d'e-mails n'est pas configuré.",
+          "failed": "L'envoi a échoué. Réessayez dans quelques minutes.",
+          "notFound": "Pièce introuvable."
+        },
+        "errors": {
+          "email": "Adresse e-mail invalide.",
+          "required": "Champ obligatoire.",
+          "tooLong": "Texte trop long."
+        },
+        "subjects": {
+          "invoice": "Facture {number} de {company}",
+          "quote": "Devis {number} de {company}",
+          "credit_note": "Avoir {number} de {company}"
+        },
+        "bodies": {
+          "invoice": "Bonjour,\n\nVous trouverez ci-joint notre facture {number} d'un montant de {currency} {amount}, payable jusqu'au {due}.\n\nMeilleures salutations\n{company}",
+          "quote": "Bonjour,\n\nVous trouverez ci-joint notre devis {number} d'un montant de {currency} {amount}, valable jusqu'au {due}.\n\nMeilleures salutations\n{company}",
+          "credit_note": "Bonjour,\n\nVous trouverez ci-joint notre avoir {number} d'un montant de {currency} {amount}.\n\nMeilleures salutations\n{company}"
+        }
       }
     },
     "quotes": {
@@ -784,5 +820,9 @@
         "a": "Non. La formule Gratuite ne demande aucune carte et n'a pas de limite de durée."
       }
     ]
+  },
+  "shared": {
+    "download": "Télécharger le PDF",
+    "poweredBy": "Envoyé avec InvoiceLead"
   }
 }

@@ -14,6 +14,8 @@ const appEnv = {
   LEAD_ID_CLIENT_SECRET: "lid_test_secret",
   LEAD_ID_REDIRECT_URI: `http://localhost:${APP_PORT}/auth/lead/callback`,
   LEAD_ID_APP: "invoicelead",
+  RESEND_API_KEY: "re_test",
+  RESEND_API_URL: `http://localhost:${LEAD_PORT}/resend`,
   NEXT_TELEMETRY_DISABLED: "1",
 };
 

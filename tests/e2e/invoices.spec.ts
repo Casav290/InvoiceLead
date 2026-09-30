@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { login, setupBilling } from "./helpers";
+import { login, setupBilling, traitNetIssues } from "./helpers";
 
 test("facture : brouillon avec article et ligne libre, émission avec numéro, facture figée", async ({
   page,
@@ -83,4 +83,39 @@ test("facture : brouillon avec article et ligne libre, émission avec numéro, f
   await expect(page.getByTestId("payment-state")).toHaveText("Payée");
   await expect(page.getByTestId("balance-openCents")).toHaveText("0.00");
   await expect(page.getByTestId("payment-form")).toHaveCount(0);
+
+  // Envoi par e-mail, puis consultation par le lien, sans session.
+  await page.getByRole("link", { name: "Factures" }).first().click();
+  await page.getByRole("link", { name: `${year}-0001` }).click();
+  const send = page.getByTestId("send-form");
+  await send.getByLabel("Destinataire").fill("client@exemple.ch");
+  await expect(send.getByLabel("Objet")).toHaveValue(`Facture ${year}-0001 de Factures Sàrl`);
+  await page.getByTestId("send-submit").click();
+  await expect(page.getByText("E-mail envoyé.")).toBeVisible();
+  const emails = await (await page.request.get("http://localhost:4010/test/emails")).json();
+  const mail = emails.at(-1);
+  expect(mail.to).toEqual(["client@exemple.ch"]);
+  expect(mail.from).toBe('"Factures Sàrl" <factures@invoicelead.io>');
+  expect(mail.attachments[0].filename).toBe(`Facture-${year}-0001.pdf`);
+  const link = /Consulter en ligne\u202f: (\S+)/.exec(mail.text)?.[1] ?? "";
+  expect(link).toMatch(/\/fr\/d\/[A-Za-z0-9_-]{43}$/);
+
+  const visitor = await page.context().browser()?.newContext();
+  if (!visitor) throw new Error("navigateur");
+  const guest = await visitor.newPage();
+  await guest.goto(new URL(link).pathname);
+  await expect(guest.getByTestId("invoice-document")).toContainText(`Facture ${year}-0001`);
+  await guest.setViewportSize({ width: 320, height: 640 });
+  expect(await traitNetIssues(guest)).toEqual([]);
+  const shared = await guest.request.get(
+    (await guest.getByTestId("shared-pdf").getAttribute("href")) ?? "",
+  );
+  expect(shared.headers()["content-type"]).toBe("application/pdf");
+  await guest.goto("/fr/d/jeton-inconnu-jeton-inconnu-jeton-inconnu-00000");
+  await expect(guest.getByTestId("invoice-document")).toHaveCount(0);
+  await visitor.close();
+
+  await page.reload();
+  await expect(page.getByTestId("sent-info")).toContainText("client@exemple.ch");
+  await expect(page.getByTestId("sent-info")).toContainText("Consulté en ligne.");
 });

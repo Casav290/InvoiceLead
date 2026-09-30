@@ -5,11 +5,13 @@
  *
  *   node tests/support/fake-lead-id.mjs            (port 4010)
  *   POST /test/next-user  {sub,email,name,org,org_name,org_role,access}  choisit la prochaine personne
+ *   POST /resend/emails   imite l'API d'envoi de Resend (clé « re_test ») ; GET /test/emails les relit
  */
 import { createHash, createSign, generateKeyPairSync, randomBytes } from "node:crypto";
 import { createServer } from "node:http";
 
 const PORT = Number(process.env.FAKE_LEAD_ID_PORT ?? 4010);
+const emails = [];
 const ISSUER = `http://localhost:${PORT}`;
 const CLIENT_ID = process.env.LEAD_ID_CLIENT_ID ?? "invoicelead";
 const CLIENT_SECRET = process.env.LEAD_ID_CLIENT_SECRET ?? "lid_test_secret";
@@ -177,6 +179,14 @@ createServer(async (req, res) => {
     nextUser = { ...defaultUser, ...JSON.parse((await readBody(req)) || "{}") };
     return send(res, 200, { ok: true });
   }
+
+  if (url.pathname === "/resend/emails" && req.method === "POST") {
+    if (req.headers.authorization !== "Bearer re_test") return send(res, 401, { error: "key" });
+    const mail = JSON.parse((await readBody(req)) || "{}");
+    emails.push(mail);
+    return send(res, 200, { id: `em_${emails.length}` });
+  }
+  if (url.pathname === "/test/emails") return send(res, 200, emails);
 
   if (url.pathname === "/test/logouts") return send(res, 200, logouts);
   if (url.pathname === "/health") return send(res, 200, { ok: true });

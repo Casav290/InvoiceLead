@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import { requireAppSession } from "@/server/auth/guard";
 import { pickLocale } from "@/server/auth/login-cookie";
 import { db } from "@/server/db";
@@ -19,6 +20,8 @@ import {
   updateInvoice,
 } from "@/server/invoices";
 import { addPayment, deletePayment, parsePaymentForm } from "@/server/payments";
+import { parseSendForm, sendDocument } from "@/server/send";
+import { enableShareLink, shareUrl } from "@/server/sharing";
 
 const kindOf = (form: FormData): DocumentKind => {
   const k = form.get("kind");
@@ -183,4 +186,48 @@ export async function deletePaymentAction(form: FormData) {
   );
   revalidatePath(`/${locale}/app/invoices`);
   redirect(`/${locale}/app/invoices/${id}`);
+}
+
+export type SendFormState = {
+  status: "idle" | "invalid" | "sent" | "notConfigured" | "failed" | "notFound";
+  errors?: Record<string, string>;
+  values?: Record<string, string>;
+  round: number;
+};
+
+export async function sendDocumentAction(
+  prev: SendFormState,
+  form: FormData,
+): Promise<SendFormState> {
+  const locale = pickLocale(form.get("locale"));
+  const session = await requireAppSession(locale);
+  const id = String(form.get("id") ?? "");
+  const values = Object.fromEntries(
+    [...form.entries()].filter(([k]) => !k.startsWith("$")).map(([k, v]) => [k, String(v)]),
+  );
+  const round = prev.round + 1;
+  const parsed = parseSendForm(form);
+  if (!parsed.ok) return { status: "invalid", errors: parsed.errors, values, round };
+  const language = String(form.get("language") ?? "de") === "fr" ? "fr" : "de";
+  const t = await getTranslations({ locale: language, namespace: "app.invoices.email" });
+  const result = await sendDocument(
+    db(),
+    { organizationId: session.organization.id, userId: session.user.id },
+    id,
+    parsed.data,
+    t("linkLabel"),
+  );
+  revalidatePath(`/${locale}/app`, "layout");
+  return { status: result, values: result === "sent" ? undefined : values, round };
+}
+
+export type LinkState = { url?: string; round: number };
+
+export async function shareLinkAction(prev: LinkState, form: FormData): Promise<LinkState> {
+  const locale = pickLocale(form.get("locale"));
+  const session = await requireAppSession(locale);
+  const id = String(form.get("id") ?? "");
+  const token = await enableShareLink(db(), session.organization.id, id);
+  const language = String(form.get("language") ?? "de") === "fr" ? "fr" : "de";
+  return { url: token ? shareUrl(language, token) : undefined, round: prev.round + 1 };
 }

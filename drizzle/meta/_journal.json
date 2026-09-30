@@ -71,6 +71,13 @@
       "when": 1790756316376,
       "tag": "0009_credit_notes_payments",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1790757385097,
+      "tag": "0010_sharing",
+      "breakpoints": true
     }
   ]
 }

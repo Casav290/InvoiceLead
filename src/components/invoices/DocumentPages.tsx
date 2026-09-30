@@ -12,6 +12,7 @@ import {
 import { InvoiceDocument } from "@/components/invoices/InvoiceDocument";
 import { InvoiceForm } from "@/components/invoices/InvoiceForm";
 import { PaymentForm } from "@/components/invoices/PaymentForm";
+import { SendPanel } from "@/components/invoices/SendPanel";
 import { Button } from "@/components/ui/button";
 import { Link } from "@/i18n/navigation";
 import { formatDate } from "@/lib/fiscal-year";
@@ -19,6 +20,7 @@ import { formatQuantity } from "@/lib/invoice-math";
 import { formatAmount } from "@/lib/money";
 import { requireAppSession } from "@/server/auth/guard";
 import { db } from "@/server/db";
+import { emailConfigured } from "@/server/email";
 import { invoiceOptions } from "@/server/invoice-options";
 import { type DocumentKind, getInvoice, listInvoices } from "@/server/invoices";
 import { invoiceBalance, listPayments, paymentState } from "@/server/payments";
@@ -41,6 +43,26 @@ const ERRORS = [
   "contact",
   "creditTooHigh",
 ];
+
+/** Objet et message proposés, dans la langue de la pièce. */
+async function emailDefaults(
+  invoice: import("@/server/db/schema").Invoice,
+  to: string | null,
+): Promise<{ to: string; subject: string; message: string }> {
+  const te = await getTranslations({ locale: invoice.language, namespace: "app.invoices.email" });
+  const values = {
+    number: invoice.number ?? "",
+    company: invoice.sender?.name ?? "",
+    amount: formatAmount(invoice.totalCents),
+    currency: invoice.currency,
+    due: formatDate(invoice.dueDate),
+  };
+  return {
+    to: to ?? "",
+    subject: te(`subjects.${invoice.kind}`, values),
+    message: te(`bodies.${invoice.kind}`, values),
+  };
+}
 
 export async function documentMetadata(
   locale: string,
@@ -383,6 +405,21 @@ export async function DocumentDetailPage({
               </form>
             ) : null}
           </div>
+          <SendPanel
+            locale={locale}
+            id={invoice.id}
+            language={invoice.language}
+            configured={emailConfigured()}
+            sentInfo={
+              invoice.sentAt
+                ? t("email.sentInfo", {
+                    to: invoice.sentTo ?? "",
+                    date: formatDate(invoice.sentAt.toISOString().slice(0, 10)),
+                  }) + (invoice.viewedAt ? ` ${t("email.viewed")}` : "")
+                : null
+            }
+            defaults={await emailDefaults(invoice, found.contact.email)}
+          />
           {balance ? (
             <section
               className="mb-6 border border-line-strong bg-panel"

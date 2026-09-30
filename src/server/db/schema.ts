@@ -322,6 +322,11 @@ export const invoices = pgTable(
     sender: jsonb("sender").$type<PartySnapshot>(),
     /** Référence de paiement de la QR-facture (QRR avec un QR-IBAN, sinon SCOR « RF… »), fixée à l'émission. */
     paymentReference: text("payment_reference"),
+    /** Empreinte SHA-256 du jeton du lien de consultation en ligne ; le jeton lui-même n'est jamais stocké. */
+    publicTokenHash: text("public_token_hash"),
+    sentAt: timestamp("sent_at", { withTimezone: true }),
+    sentTo: text("sent_to"),
+    viewedAt: timestamp("viewed_at", { withTimezone: true }),
     issuedAt: timestamp("issued_at", { withTimezone: true }),
     createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
     createdAt: createdAt(),
@@ -330,6 +335,7 @@ export const invoices = pgTable(
   (t) => [
     index("invoices_org_idx").on(t.organizationId, t.kind, t.createdAt),
     index("invoices_related_idx").on(t.relatedInvoiceId),
+    uniqueIndex("invoices_public_token_idx").on(t.publicTokenHash),
     uniqueIndex("invoices_org_number_idx")
       .on(t.organizationId, t.number)
       .where(sql`${t.number} is not null`),
