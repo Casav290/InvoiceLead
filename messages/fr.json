@@ -1081,6 +1081,20 @@
       "wrongEmail": "Cette invitation a été envoyée à une autre adresse que {email}. Connectez-vous avec le bon Compte Lead.",
       "logout": "Changer de compte",
       "accept": "Accepter l'invitation"
+    },
+    "crmImport": {
+      "title": "Lead gagné dans CRMlead",
+      "subtitle": "Relisez ce que CRMlead transmet. Le client est repris s'il existe déjà (même fiche, même e-mail ou même nom), sinon créé.",
+      "invalid": "Ce lien CRMlead est incomplet ou illisible. Relancez la création depuis CRMlead.",
+      "contactLimit": "Votre formule a atteint sa limite de contacts. Passez à Pro pour ajouter ce client.",
+      "quote": "Devis",
+      "invoice": "Facture",
+      "net": "Total hors TVA",
+      "hint": "Un brouillon est créé ; vous pourrez le modifier avant de l'émettre. Un même lead ne donne qu'une pièce.",
+      "forbidden": "Votre rôle ne permet pas de créer des factures.",
+      "createQuote": "Créer le devis",
+      "createInvoice": "Créer la facture",
+      "fromCrm": "Brouillon créé depuis CRMlead. Vérifiez-le, puis émettez-le."
     }
   },
   "footer": {

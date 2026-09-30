@@ -168,11 +168,16 @@ export const contacts = pgTable(
     uid: text("uid"),
     paymentTermDays: integer("payment_term_days").notNull().default(30),
     notes: text("notes"),
+    /** Fiche d'origine dans une autre application de la famille, « crmlead:<id> ». */
+    externalRef: text("external_ref"),
     archivedAt: timestamp("archived_at", { withTimezone: true }),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
-  (t) => [index("contacts_org_name_idx").on(t.organizationId, sql`lower(${t.name})`)],
+  (t) => [
+    index("contacts_org_name_idx").on(t.organizationId, sql`lower(${t.name})`),
+    index("contacts_org_external_idx").on(t.organizationId, t.externalRef),
+  ],
 );
 
 export type Contact = typeof contacts.$inferSelect;
@@ -337,6 +342,8 @@ export const invoices = pgTable(
     viewedAt: timestamp("viewed_at", { withTimezone: true }),
     /** Écriture comptable de l'émission ; vide tant que la pièce n'est pas comptabilisée. */
     journalEntryId: uuid("journal_entry_id"),
+    /** Origine dans une autre application de la famille, « crmlead:<id du lead> » : évite les doublons. */
+    externalRef: text("external_ref"),
     issuedAt: timestamp("issued_at", { withTimezone: true }),
     createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
     createdAt: createdAt(),
@@ -349,6 +356,9 @@ export const invoices = pgTable(
     uniqueIndex("invoices_org_number_idx")
       .on(t.organizationId, t.number)
       .where(sql`${t.number} is not null`),
+    uniqueIndex("invoices_org_external_idx")
+      .on(t.organizationId, t.externalRef)
+      .where(sql`${t.externalRef} is not null`),
   ],
 );
 

@@ -3,7 +3,13 @@ import { DocumentDetailPage, documentMetadata } from "@/components/invoices/Docu
 
 type Props = {
   params: Promise<{ locale: string; id: string }>;
-  searchParams: Promise<{ saved?: string; issued?: string; error?: string; converted?: string }>;
+  searchParams: Promise<{
+    saved?: string;
+    issued?: string;
+    error?: string;
+    converted?: string;
+    from?: string;
+  }>;
 };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {

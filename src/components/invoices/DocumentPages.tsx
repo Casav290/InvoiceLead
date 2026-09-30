@@ -262,7 +262,14 @@ export async function DocumentDetailPage({
   locale: string;
   kind: DocumentKind;
   id: string;
-  query: { saved?: string; issued?: string; error?: string; converted?: string; paid?: string };
+  query: {
+    saved?: string;
+    issued?: string;
+    error?: string;
+    converted?: string;
+    paid?: string;
+    from?: string;
+  };
 }) {
   const { organization } = await requireAppSession(locale);
   const found = await getInvoice(db(), organization.id, id);
@@ -284,15 +291,18 @@ export async function DocumentDetailPage({
       <input type="hidden" name="kind" value={kind} />
     </>
   );
+  const tc = await getTranslations({ locale, namespace: "app.crmImport" });
   const notice = query.paid
     ? t("payments.saved")
-    : query.converted
-      ? tk("converted")
-      : query.issued
-        ? tk("issued")
-        : query.saved
-          ? tk("saved")
-          : null;
+    : query.from === "crmlead" && draft
+      ? tc("fromCrm")
+      : query.converted
+        ? tk("converted")
+        : query.issued
+          ? tk("issued")
+          : query.saved
+            ? tk("saved")
+            : null;
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-10 sm:px-8">

@@ -1081,6 +1081,20 @@
       "wrongEmail": "Diese Einladung ging an eine andere Adresse als {email}. Melden Sie sich mit dem richtigen Lead-Konto an.",
       "logout": "Konto wechseln",
       "accept": "Einladung annehmen"
+    },
+    "crmImport": {
+      "title": "Gewonnener Lead aus CRMlead",
+      "subtitle": "Prüfen Sie, was CRMlead übermittelt. Der Kunde wird übernommen, wenn er schon existiert (gleiche Karte, gleiche E-Mail oder gleicher Name), sonst neu angelegt.",
+      "invalid": "Dieser CRMlead-Link ist unvollständig oder unlesbar. Starten Sie die Erstellung erneut in CRMlead.",
+      "contactLimit": "Ihr Abo hat die Kontaktgrenze erreicht. Wechseln Sie zu Pro, um diesen Kunden hinzuzufügen.",
+      "quote": "Offerte",
+      "invoice": "Rechnung",
+      "net": "Total ohne MWST",
+      "hint": "Es wird ein Entwurf erstellt, den Sie vor dem Ausstellen ändern können. Ein Lead ergibt nur ein Dokument.",
+      "forbidden": "Ihre Rolle erlaubt keine Rechnungen.",
+      "createQuote": "Offerte erstellen",
+      "createInvoice": "Rechnung erstellen",
+      "fromCrm": "Entwurf aus CRMlead erstellt. Prüfen und dann ausstellen."
     }
   },
   "footer": {
