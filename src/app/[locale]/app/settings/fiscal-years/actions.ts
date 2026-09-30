@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { createFirstFiscalYear, openNextFiscalYear } from "@/server/accounting";
 import { requireAppSession } from "@/server/auth/guard";
 import { pickLocale } from "@/server/auth/login-cookie";
+import { closeFiscalYear } from "@/server/closing";
 import { db } from "@/server/db";
 
 export async function openFirstFiscalYearAction(form: FormData) {
@@ -31,4 +32,18 @@ export async function openNextFiscalYearAction(form: FormData) {
   const path = `/${locale}/app/settings/fiscal-years`;
   revalidatePath(path);
   redirect(typeof result === "string" ? path : `${path}?opened=1`);
+}
+
+export async function closeFiscalYearAction(form: FormData) {
+  const locale = pickLocale(form.get("locale"));
+  const session = await requireAppSession(locale);
+  const path = `/${locale}/app/settings/fiscal-years`;
+  if (form.get("confirm") !== "on") redirect(`${path}?closeError=confirm`);
+  const result = await closeFiscalYear(
+    db(),
+    { organizationId: session.organization.id, userId: session.user.id },
+    String(form.get("id") ?? ""),
+  );
+  revalidatePath(`/${locale}/app`, "layout");
+  redirect(result.ok ? `${path}?closed=1` : `${path}?closeError=${result.reason}`);
 }

@@ -441,7 +441,23 @@
         "open": "Ouvert",
         "closed": "Clôturé"
       },
-      "closingLater": "La clôture d'un exercice arrivera avec la comptabilité."
+      "closingLater": "Un exercice se clôture une fois terminé, depuis cette page.",
+      "closedNotice": "Exercice clôturé. Le résultat est passé au capital et les soldes du bilan sont repris à l'ouverture de l'exercice suivant.",
+      "closeTitle": "Clôturer l'exercice {period}",
+      "closeHint": "Le résultat est viré au compte de bénéfice ou perte de l'exercice, les soldes du bilan sont repris dans l'exercice suivant (ouvert au besoin), et plus aucune écriture ne pourra être datée dans l'exercice clôturé.",
+      "closeConfirm": "J'ai vérifié les rapports et je clôture définitivement cet exercice.",
+      "close": "Clôturer l'exercice",
+      "closeErrors": {
+        "confirm": "Cochez la confirmation pour clôturer.",
+        "forbidden": "Seuls les administrateurs et les managers peuvent clôturer.",
+        "earlierOpen": "Clôturez d'abord l'exercice précédent.",
+        "unposted": "{count, plural, one {# pièce de l'exercice n'est pas encore comptabilisée.} other {# pièces de l'exercice ne sont pas encore comptabilisées.}}",
+        "pendingBank": "{count, plural, one {# mouvement bancaire de l'exercice attend encore une validation.} other {# mouvements bancaires de l'exercice attendent encore une validation.}}",
+        "noChart": "Le plan comptable n'a pas de compte de résultat de l'exercice.",
+        "alreadyClosed": "Cet exercice est déjà clôturé.",
+        "notFound": "Exercice introuvable.",
+        "blocked": "La clôture n'a pas pu se faire."
+      }
     },
     "invoices": {
       "title": "Factures",

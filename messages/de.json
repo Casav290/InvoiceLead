@@ -441,7 +441,23 @@
         "open": "Offen",
         "closed": "Abgeschlossen"
       },
-      "closingLater": "Der Abschluss eines Geschäftsjahres folgt mit der Buchhaltung."
+      "closingLater": "Ein Geschäftsjahr wird nach seinem Ende hier abgeschlossen.",
+      "closedNotice": "Geschäftsjahr abgeschlossen. Das Ergebnis ist ins Eigenkapital übertragen, die Bilanzsalden sind ins nächste Geschäftsjahr eröffnet.",
+      "closeTitle": "Geschäftsjahr {period} abschliessen",
+      "closeHint": "Das Ergebnis wird auf das Konto Jahresgewinn oder -verlust gebucht, die Bilanzsalden werden ins nächste Geschäftsjahr übernommen (bei Bedarf eröffnet), und im abgeschlossenen Jahr kann nicht mehr gebucht werden.",
+      "closeConfirm": "Ich habe die Auswertungen geprüft und schliesse dieses Geschäftsjahr definitiv ab.",
+      "close": "Geschäftsjahr abschliessen",
+      "closeErrors": {
+        "confirm": "Bestätigen Sie den Abschluss mit dem Häkchen.",
+        "forbidden": "Nur Administratoren und Manager können abschliessen.",
+        "earlierOpen": "Schliessen Sie zuerst das vorherige Geschäftsjahr ab.",
+        "unposted": "{count, plural, one {# Beleg des Geschäftsjahres ist noch nicht verbucht.} other {# Belege des Geschäftsjahres sind noch nicht verbucht.}}",
+        "pendingBank": "{count, plural, one {# Bankbewegung des Geschäftsjahres wartet noch auf Bestätigung.} other {# Bankbewegungen des Geschäftsjahres warten noch auf Bestätigung.}}",
+        "noChart": "Dem Kontenplan fehlt das Konto Jahresgewinn oder -verlust.",
+        "alreadyClosed": "Dieses Geschäftsjahr ist bereits abgeschlossen.",
+        "notFound": "Geschäftsjahr nicht gefunden.",
+        "blocked": "Der Abschluss war nicht möglich."
+      }
     },
     "invoices": {
       "title": "Rechnungen",

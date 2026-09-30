@@ -37,6 +37,8 @@ export type EntryInput = {
     | "payment_reversal"
     | "bank"
     | "vat"
+    | "closing"
+    | "opening"
     | "manual";
   sourceId?: string | null;
   reversalOf?: string | null;

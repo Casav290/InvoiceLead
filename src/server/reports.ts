@@ -1,4 +1,4 @@
-import { and, asc, eq, sql } from "drizzle-orm";
+import { and, asc, eq, ne, sql } from "drizzle-orm";
 import type { Db } from "./db";
 import { type Account, accounts, journalEntries, journalLines } from "./db/schema";
 
@@ -31,6 +31,9 @@ export async function accountBalances(
       and(
         eq(journalEntries.organizationId, organizationId),
         eq(journalEntries.fiscalYearId, fiscalYearId),
+        // L'écriture de clôture solde les charges et produits dans le capital : les rapports
+        // l'ignorent, sinon le compte de résultat de l'exercice clôturé serait vide.
+        ne(journalEntries.sourceType, "closing"),
       ),
     )
     .groupBy(accounts.id)

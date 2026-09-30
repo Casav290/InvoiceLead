@@ -6,13 +6,18 @@ import { Button } from "@/components/ui/button";
 import { fiscalYearContaining, formatDate, nextFiscalYear } from "@/lib/fiscal-year";
 import { listFiscalYears } from "@/server/accounting";
 import { requireAppSession } from "@/server/auth/guard";
+import { closingChecks } from "@/server/closing";
 import { canEditSettings } from "@/server/company";
 import { db } from "@/server/db";
-import { openFirstFiscalYearAction, openNextFiscalYearAction } from "./actions";
+import {
+  closeFiscalYearAction,
+  openFirstFiscalYearAction,
+  openNextFiscalYearAction,
+} from "./actions";
 
 type Props = {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ opened?: string; error?: string }>;
+  searchParams: Promise<{ opened?: string; error?: string; closed?: string; closeError?: string }>;
 };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -24,11 +29,17 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function FiscalYearsPage({ params, searchParams }: Props) {
   const { locale } = await params;
   const { user, organization } = await requireAppSession(locale);
-  const { opened, error } = await searchParams;
+  const { opened, error, closed, closeError } = await searchParams;
   const editable = await canEditSettings(db(), organization.id, user.id);
   const t = await getTranslations({ locale, namespace: "app.fiscalYears" });
   const years = await listFiscalYears(db(), organization.id);
   const latest = years[0];
+  // Seul le plus ancien exercice ouvert peut être clôturé, et seulement une fois terminé.
+  const toClose = [...years].reverse().find((y) => y.status === "open");
+  const closable =
+    toClose && toClose.endDate < new Date().toISOString().slice(0, 10) ? toClose : null;
+  const checks =
+    closable && editable ? await closingChecks(db(), organization.id, closable.id) : [];
   const next = latest ? nextFiscalYear(latest.endDate) : null;
   const today = new Date().toISOString().slice(0, 10);
   const suggestedStart = fiscalYearContaining(today, organization.fiscalYearStartMonth).start;
@@ -139,7 +150,61 @@ export default async function FiscalYearsPage({ params, searchParams }: Props) {
               </span>
             </form>
           ) : null}
-          <p className="mt-6 text-[13px] text-ink-muted">{t("closingLater")}</p>
+          {closed ? (
+            <p
+              role="status"
+              className="mt-6 border border-ok-fg bg-ok-bg px-4 py-3 text-[13px] text-ok-fg"
+            >
+              {t("closedNotice")}
+            </p>
+          ) : null}
+          {closeError ? (
+            <p
+              role="alert"
+              className="mt-6 border border-hot-fg bg-hot-bg px-4 py-3 text-[13px] text-hot-fg"
+            >
+              {t.has(`closeErrors.${closeError}`)
+                ? t(`closeErrors.${closeError}`)
+                : t("closeErrors.blocked")}
+            </p>
+          ) : null}
+          {closable && editable ? (
+            <form
+              action={closeFiscalYearAction}
+              className="mt-6 space-y-3 border border-line-strong bg-panel px-5 py-4"
+              data-testid="close-year"
+            >
+              <input type="hidden" name="locale" value={locale} />
+              <input type="hidden" name="id" value={closable.id} />
+              <p className="text-[14px] font-semibold">
+                {t("closeTitle", { period: period(closable.startDate, closable.endDate) })}
+              </p>
+              <p className="text-[13px] text-ink-2">{t("closeHint")}</p>
+              {checks.length > 0 ? (
+                <ul className="space-y-1 text-[13px] text-hot-fg">
+                  {checks.map((c) => (
+                    <li key={c.code}>{t(`closeErrors.${c.code}`, { count: c.count ?? 0 })}</li>
+                  ))}
+                </ul>
+              ) : (
+                <>
+                  <label className="flex items-start gap-3 text-[13px]">
+                    <input
+                      type="checkbox"
+                      name="confirm"
+                      className="mt-0.5 h-4 w-4 shrink-0 accent-accent"
+                    />
+                    <span>{t("closeConfirm")}</span>
+                  </label>
+                  <Button type="submit" variant="secondary" data-testid="close-year-submit">
+                    {t("close")}
+                  </Button>
+                </>
+              )}
+            </form>
+          ) : (
+            <p className="mt-6 text-[13px] text-ink-muted">{t("closingLater")}</p>
+          )}
         </>
       )}
     </div>
