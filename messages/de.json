@@ -1,0 +1,116 @@
+{
+  "meta": {
+    "title": "InvoiceLead, Offerten, QR-Rechnungen und Schweizer Buchhaltung",
+    "description": "Offerten, konforme QR-Rechnungen, automatische Mahnungen und doppelte Buchhaltung für Selbständige und KMU in der Schweiz. Kostenlos starten."
+  },
+  "nav": {
+    "features": "Funktionen",
+    "family": "Lead-Familie",
+    "login": "Anmelden",
+    "cta": "Kostenlos starten",
+    "language": "Sprache"
+  },
+  "home": {
+    "kicker": "Neu in der Lead-Familie",
+    "title": "Offerten, Rechnungen und Buchhaltung, erledigt vor Feierabend.",
+    "subtitle": "InvoiceLead erstellt Ihre Offerten, verschickt konforme QR-Rechnungen, mahnt offene Beträge und führt Ihre Schweizer Buchhaltung. Für Selbständige wie für KMU, kostenlos starten.",
+    "ctaPrimary": "Kostenlos starten",
+    "ctaSecondary": "Funktionen ansehen",
+    "featuresTitle": "Alles, was Sie brauchen, um bezahlt zu werden, und nicht mehr",
+    "features": {
+      "quotes": {
+        "title": "Von der Offerte zur Rechnung mit einem Klick",
+        "body": "Eine angenommene Offerte wird zur Auftragsbestätigung und dann zur Rechnung, ohne erneute Eingabe."
+      },
+      "qr": {
+        "title": "QR-Rechnungen nach Schweizer Standard",
+        "body": "QR-Zahlteil nach SIX-Norm, strukturierte Adressen, QR- oder SCOR-Referenz."
+      },
+      "reminders": {
+        "title": "Automatische Mahnungen",
+        "body": "Drei Mahnstufen mit eigenen Gebühren und Fristen, zum richtigen Zeitpunkt verschickt."
+      },
+      "accounting": {
+        "title": "Doppelte Buchhaltung",
+        "body": "KMU-Kontenrahmen, Buchungen direkt aus Rechnungen und Zahlungen, Bilanz und Erfolgsrechnung."
+      },
+      "vat": {
+        "title": "Schweizer MWST im Griff",
+        "body": "Sätze 8,1 %, 2,6 % und 3,8 %, effektive Methode oder Saldosteuersatz, Abrechnung vorbereitet."
+      },
+      "team": {
+        "title": "Das ganze Team, inklusive Treuhand",
+        "body": "Mehrere Benutzer pro Firma, mit einem einzigen Konto für alle Lead-Anwendungen."
+      }
+    },
+    "familyTitle": "Ein Konto, alle Ihre Lead-Anwendungen",
+    "familyBody": "Scanlead erfasst Ihre Messekontakte, CRMlead begleitet sie bis zum Abschluss, InvoiceLead verrechnet und kassiert. Ein einziges Lead-Konto für den Wechsel zwischen ihnen.",
+    "preview": {
+      "position": "Position",
+      "qty": "Menge",
+      "subtotal": "Zwischentotal",
+      "vat": "MWST 8,1 %",
+      "total": "Total",
+      "payment": "Zahlteil",
+      "rows": ["Beratung, September", "Lancierungs-Workshop", "Reisespesen"],
+      "hours": "Std."
+    }
+  },
+  "auth": {
+    "loginTitle": "Bei InvoiceLead anmelden",
+    "loginSubtitle": "InvoiceLead verwendet Ihr Lead-Konto, dasselbe wie für Scanlead und CRMlead.",
+    "signupTitle": "Konto erstellen",
+    "signupSubtitle": "Mit dem Lead-Konto nutzen Sie InvoiceLead und alle Anwendungen der Familie. Im nächsten Schritt können Sie «Konto erstellen» wählen.",
+    "leadButton": "Mit meinem Lead-Konto anmelden",
+    "noAccountYet": "Noch kein Konto? Mit derselben Schaltfläche erstellen Sie eines.",
+    "errors": {
+      "lead": "Die Anmeldung beim Lead-Konto hat nicht geklappt. Bitte erneut versuchen.",
+      "session": "Die Anmeldeanfrage ist abgelaufen. Bitte erneut versuchen."
+    }
+  },
+  "app": {
+    "nav": {
+      "dashboard": "Übersicht"
+    },
+    "switcher": {
+      "open": "Anwendung wechseln",
+      "title": "Lead-Anwendungen",
+      "current": "Hier",
+      "openLink": "Öffnen",
+      "soon": "Demnächst",
+      "upgrade": "Upgrade"
+    },
+    "user": {
+      "logout": "Abmelden",
+      "plan": "Abo"
+    },
+    "dashboard": {
+      "title": "Guten Tag {name}",
+      "subtitle": "Ihr Bereich {org} ist bereit.",
+      "nextTitle": "Nächste Schritte",
+      "next": {
+        "company": "Firmendaten ergänzen (UID, MWST, IBAN)",
+        "contacts": "Kunden importieren",
+        "invoice": "Erste QR-Rechnung erstellen"
+      },
+      "soon": "Diese Ansichten folgen in den nächsten Versionen."
+    },
+    "noAccess": {
+      "title": "Ihr Abo enthält InvoiceLead nicht",
+      "body": "Ihre Organisation {org} hat noch keinen Zugang zu InvoiceLead. Wechseln Sie zu einem Abo, das InvoiceLead enthält.",
+      "upgrade": "Upgrade",
+      "logout": "Abmelden"
+    }
+  },
+  "footer": {
+    "product": "Produkt",
+    "home": "Startseite",
+    "family": "Lead-Familie",
+    "account": "Konto",
+    "login": "Anmelden",
+    "signup": "Registrieren",
+    "scanlead": "Scanlead, Leaderfassung an Messen",
+    "crmlead": "CRMlead, das CRM für Ihre Kontakte",
+    "features": "Funktionen"
+  }
+}

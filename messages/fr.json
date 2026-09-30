@@ -1,0 +1,116 @@
+{
+  "meta": {
+    "title": "InvoiceLead, devis, factures QR et comptabilité suisse",
+    "description": "Devis, factures QR conformes, relances automatiques et comptabilité en partie double pour indépendants et PME suisses. Gratuit pour démarrer."
+  },
+  "nav": {
+    "features": "Fonctions",
+    "family": "Famille Lead",
+    "login": "Connexion",
+    "cta": "Commencer gratuitement",
+    "language": "Langue"
+  },
+  "home": {
+    "kicker": "Nouveau dans la famille Lead",
+    "title": "Devis, factures et comptabilité, bouclés avant la fin de journée.",
+    "subtitle": "InvoiceLead prépare vos devis, émet des factures QR conformes, relance les impayés et tient votre comptabilité suisse. Pour les indépendants comme pour les PME, gratuit pour démarrer.",
+    "ctaPrimary": "Commencer gratuitement",
+    "ctaSecondary": "Voir les fonctions",
+    "featuresTitle": "Tout ce qu'il faut pour être payé, et rien de plus",
+    "features": {
+      "quotes": {
+        "title": "Du devis à la facture en un clic",
+        "body": "Un devis accepté devient confirmation puis facture, sans rien ressaisir."
+      },
+      "qr": {
+        "title": "Factures QR au standard suisse",
+        "body": "Section paiement QR conforme à la norme SIX, adresses structurées, référence QR ou SCOR."
+      },
+      "reminders": {
+        "title": "Relances automatiques",
+        "body": "Trois niveaux de rappel, frais et délais à votre main, envoyés au bon moment."
+      },
+      "accounting": {
+        "title": "Comptabilité en partie double",
+        "body": "Plan comptable PME, écritures créées par vos factures et paiements, bilan et compte de résultat."
+      },
+      "vat": {
+        "title": "TVA suisse maîtrisée",
+        "body": "Taux 8,1 %, 2,6 % et 3,8 %, méthode effective ou taux de la dette fiscale nette, décompte préparé."
+      },
+      "team": {
+        "title": "Toute l'équipe, et votre fiduciaire",
+        "body": "Plusieurs utilisateurs par entreprise, avec un seul compte pour toutes les applications Lead."
+      }
+    },
+    "familyTitle": "Un compte, toutes vos applications Lead",
+    "familyBody": "Scanlead capte vos contacts de salon, CRMlead les suit jusqu'à la vente, InvoiceLead facture et encaisse. Un seul Compte Lead pour passer de l'une à l'autre.",
+    "preview": {
+      "position": "Position",
+      "qty": "Qté",
+      "subtotal": "Sous-total",
+      "vat": "TVA 8,1 %",
+      "total": "Total",
+      "payment": "Section paiement",
+      "rows": ["Conseil, septembre", "Atelier de lancement", "Frais de déplacement"],
+      "hours": "h"
+    }
+  },
+  "auth": {
+    "loginTitle": "Connexion à InvoiceLead",
+    "loginSubtitle": "InvoiceLead utilise votre Compte Lead, le même que pour Scanlead et CRMlead.",
+    "signupTitle": "Créer votre compte",
+    "signupSubtitle": "Le Compte Lead vous ouvre InvoiceLead et toutes les applications de la famille. L'écran suivant propose « Créer un compte ».",
+    "leadButton": "Se connecter avec mon compte Lead",
+    "noAccountYet": "Pas encore de compte ? Le même bouton permet d'en créer un.",
+    "errors": {
+      "lead": "La connexion au Compte Lead n'a pas abouti. Réessayez.",
+      "session": "La demande de connexion a expiré. Réessayez."
+    }
+  },
+  "app": {
+    "nav": {
+      "dashboard": "Tableau de bord"
+    },
+    "switcher": {
+      "open": "Changer d'application",
+      "title": "Applications Lead",
+      "current": "Ici",
+      "openLink": "Ouvrir",
+      "soon": "Bientôt",
+      "upgrade": "Mettre à niveau"
+    },
+    "user": {
+      "logout": "Se déconnecter",
+      "plan": "Formule"
+    },
+    "dashboard": {
+      "title": "Bonjour {name}",
+      "subtitle": "Votre espace {org} est prêt.",
+      "nextTitle": "Prochaines étapes",
+      "next": {
+        "company": "Compléter les données de l'entreprise (IDE, TVA, IBAN)",
+        "contacts": "Importer vos clients",
+        "invoice": "Émettre votre première facture QR"
+      },
+      "soon": "Ces écrans arrivent dans les prochaines versions."
+    },
+    "noAccess": {
+      "title": "Votre formule n'inclut pas InvoiceLead",
+      "body": "Votre organisation {org} n'a pas encore accès à InvoiceLead. Passez à une formule qui l'inclut pour continuer.",
+      "upgrade": "Mettre à niveau",
+      "logout": "Se déconnecter"
+    }
+  },
+  "footer": {
+    "product": "Produit",
+    "home": "Accueil",
+    "family": "Famille Lead",
+    "account": "Compte",
+    "login": "Connexion",
+    "signup": "Inscription",
+    "scanlead": "Scanlead, la capture de leads sur les salons",
+    "crmlead": "CRMlead, le CRM qui suit vos contacts",
+    "features": "Fonctions"
+  }
+}

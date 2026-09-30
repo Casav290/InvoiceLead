@@ -1,0 +1,106 @@
+@import "tailwindcss";
+
+/*
+ * InvoiceLead, visuel « Trait net » v1 commun aux applications Lead (Scanlead, CRMlead).
+ * Angles vifs, aucune ombre, aucun dégradé, une seule police (Archivo), une seule couleur d'action.
+ * Les arrondis et les ombres sont retirés du thème : `rounded-lg` ou `shadow-md` n'existent plus.
+ */
+@theme {
+  --color-*: initial;
+  --radius-*: initial;
+  --shadow-*: initial;
+  --inset-shadow-*: initial;
+  --drop-shadow-*: initial;
+  --text-shadow-*: initial;
+
+  --font-sans: "Archivo Variable", "Archivo", system-ui, sans-serif;
+  --font-mono: Menlo, ui-monospace, monospace;
+
+  --color-white: #ffffff;
+  --color-black: #000000;
+
+  /* Fonds */
+  --color-app: #eceae7;
+  --color-panel: #ffffff;
+  --color-paper: #fffdf9;
+  --color-muted: #f2f0ee;
+  --color-head: #f7f5f3;
+  --color-strip: #f4f2ef;
+  --color-rowhover: #f4f8ff;
+
+  /* Traits */
+  --color-line-strong: #cfcac4;
+  --color-line: #e7e4e0;
+  --color-line-soft: #eeebe7;
+  --color-line-cell: #f4f1ee;
+
+  /* Encres */
+  --color-ink: #1b1a19;
+  --color-ink-2: #44403c;
+  --color-ink-3: #57534e;
+  --color-ink-muted: #67625c;
+
+  /* Action : la couleur d'InvoiceLead */
+  --color-accent: #2563eb;
+  --color-accent-dark: #1d4ed8;
+  --color-accent-pale: #dbeafe;
+  --color-accent-veil: #eff6ff;
+
+  /* Compte Lead et applications sœurs */
+  --color-lead: #0e6d6e;
+  --color-lead-dark: #0b5a5c;
+  --color-scanlead: #2563eb;
+  --color-crmlead: #0f6e70;
+
+  /* Statuts : le rouge dit l'urgence, jamais l'issue */
+  --color-hot: #dc2626;
+  --color-hot-bg: #fee2e2;
+  --color-hot-fg: #b91c1c;
+  --color-warm: #ea580c;
+  --color-warm-bg: #ffedd5;
+  --color-warm-fg: #c2410c;
+  --color-cold: #0284c7;
+  --color-cold-bg: #e0f2fe;
+  --color-cold-fg: #0369a1;
+  --color-ok: #16a34a;
+  --color-ok-bg: #dcfce7;
+  --color-ok-fg: #15803d;
+}
+
+@layer base {
+  *,
+  ::before,
+  ::after {
+    border-color: var(--color-line);
+  }
+  body {
+    background: var(--color-app);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  h1,
+  h2 {
+    letter-spacing: -0.025em;
+    word-spacing: 0.06em;
+    font-weight: 800;
+  }
+  h3 {
+    font-weight: 700;
+  }
+  ::selection {
+    background: var(--color-accent-pale);
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+  /* Sur téléphone, un champ sous 16 px fait zoomer Safari au premier toucher. */
+  @media (max-width: 640px), (pointer: coarse) {
+    input,
+    select,
+    textarea {
+      font-size: 16px;
+    }
+  }
+}

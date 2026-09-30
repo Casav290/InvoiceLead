@@ -1,0 +1,106 @@
+import { sql } from "drizzle-orm";
+import {
+  bigserial,
+  boolean,
+  index,
+  jsonb,
+  pgTable,
+  primaryKey,
+  text,
+  timestamp,
+  uniqueIndex,
+  uuid,
+} from "drizzle-orm/pg-core";
+
+const createdAt = () => timestamp("created_at", { withTimezone: true }).notNull().defaultNow();
+const updatedAt = () => timestamp("updated_at", { withTimezone: true }).notNull().defaultNow();
+
+/** Personne. Rattachée au Compte Lead par `lead_sub`, jamais par l'email seul. */
+export const users = pgTable(
+  "users",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    leadSub: text("lead_sub").unique(),
+    email: text("email").notNull(),
+    name: text("name").notNull().default(""),
+    locale: text("locale").notNull().default("de"),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [uniqueIndex("users_email_lower_idx").on(sql`lower(${t.email})`)],
+);
+
+/** Entreprise cliente (organisation du Compte Lead). Toutes les données métier y sont rattachées. */
+export const organizations = pgTable("organizations", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  leadOrg: text("lead_org").unique(),
+  name: text("name").notNull(),
+  country: text("country").notNull().default("CH"),
+  currency: text("currency").notNull().default("CHF"),
+  defaultLocale: text("default_locale").notNull().default("de"),
+  leadPlan: text("lead_plan").notNull().default("free"),
+  hasAccess: boolean("has_access").notNull().default(false),
+  entitlements: jsonb("entitlements"),
+  entitlementsAt: timestamp("entitlements_at", { withTimezone: true }),
+  createdAt: createdAt(),
+  updatedAt: updatedAt(),
+});
+
+/** Appartenance d'une personne à une organisation, avec son rôle Lead (admin, manager, user). */
+export const memberships = pgTable(
+  "memberships",
+  {
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    role: text("role").notNull().default("user"),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.organizationId, t.userId] }),
+    index("memberships_user_idx").on(t.userId),
+  ],
+);
+
+/** Session locale. L'identifiant est l'empreinte SHA-256 du jeton du cookie, jamais le jeton lui-même. */
+export const sessions = pgTable(
+  "sessions",
+  {
+    id: text("id").primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    idToken: text("id_token"),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    createdAt: createdAt(),
+    lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("sessions_user_idx").on(t.userId), index("sessions_expires_idx").on(t.expiresAt)],
+);
+
+/** Journal des actions sensibles, conservé avec l'organisation. */
+export const auditLog = pgTable(
+  "audit_log",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    organizationId: uuid("organization_id").references(() => organizations.id, {
+      onDelete: "set null",
+    }),
+    userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
+    action: text("action").notNull(),
+    entity: text("entity"),
+    entityId: text("entity_id"),
+    data: jsonb("data"),
+    createdAt: createdAt(),
+  },
+  (t) => [index("audit_log_org_idx").on(t.organizationId, t.createdAt)],
+);
+
+export type User = typeof users.$inferSelect;
+export type Organization = typeof organizations.$inferSelect;
