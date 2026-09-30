@@ -2,6 +2,7 @@ import "server-only";
 import { eq } from "drizzle-orm";
 import { getTranslations } from "next-intl/server";
 import { buildCii } from "@/countries/de/cii";
+import { EU_COUNTRIES } from "@/countries/eu";
 import { db } from "./db";
 import { type Invoice, type InvoiceLine, organizations } from "./db/schema";
 import { renderInvoicePdf } from "./invoice-pdf";
@@ -28,17 +29,26 @@ export async function buildDocumentPdf(
     .from(organizations)
     .where(eq(organizations.id, invoice.organizationId));
   const poweredBy = org && LIMITS[tierOf(org)].poweredBy ? t("poweredBy") : undefined;
-  const germany = invoice.sender?.country === "DE";
-  const taxNote = !germany
-    ? undefined
-    : !invoice.vatRegistered
-      ? t("smallBusinessDe")
-      : lines.some((l) => l.vatCode === "export")
-        ? t("reverseChargeDe")
-        : undefined;
-  // Allemagne : facture et avoir en ZUGFeRD (PDF/A-3 avec le XML EN 16931), si les données suffisent.
+  const country = invoice.sender?.country;
+  const germany = country === "DE";
+  const exportLines = lines.some((l) => l.vatCode === "export");
+  const toEu = EU_COUNTRIES.has(invoice.recipient?.country ?? "");
+  const notes: string[] = [];
+  if (germany) {
+    if (!invoice.vatRegistered) notes.push(t("smallBusinessDe"));
+    else if (exportLines) notes.push(t("reverseChargeDe"));
+  }
+  if (country === "FR") {
+    // Mentions obligatoires françaises : régime de TVA, puis pénalités de retard (art. L441-10 C. com.).
+    if (!invoice.vatRegistered) notes.push(t("franchiseFr"));
+    else if (exportLines) notes.push(t(toEu ? "reverseChargeFr" : "outsideEuFr"));
+    if (invoice.kind === "invoice") notes.push(t("latePaymentFr"));
+  }
+  const taxNote = notes.length > 0 ? notes.join("\n") : undefined;
+  // Allemagne et France : facture et avoir en ZUGFeRD / Factur-X (PDF/A-3 avec le XML EN 16931).
+  const einvoicing = germany || country === "FR";
   const cii =
-    germany && invoice.kind !== "quote" ? buildCii(invoice, lines, "zugferd", related) : null;
+    einvoicing && invoice.kind !== "quote" ? buildCii(invoice, lines, "zugferd", related) : null;
   const einvoice = cii && "xml" in cii ? { xml: cii.xml } : undefined;
   const pdf = await renderInvoicePdf(
     invoice,

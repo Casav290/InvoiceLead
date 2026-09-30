@@ -188,3 +188,76 @@ it("écrit un PDF ZUGFeRD pour veraPDF", async () => {
   );
   writeFileSync(`${OUT}/zugferd.pdf`, pdf);
 });
+
+it("écrit des échantillons Factur-X français (EN 16931)", () => {
+  mkdirSync(OUT, { recursive: true });
+  const fr = {
+    ...sender,
+    name: "Atelier Durand SAS",
+    street: "Rue de Rivoli",
+    postalCode: "75001",
+    town: "Paris",
+    country: "FR",
+    uid: "FR40303265045",
+    taxNumber: "30326504500003",
+  };
+  const client = {
+    ...buyer,
+    name: "Client SARL",
+    postalCode: "69001",
+    town: "Lyon",
+    country: "FR",
+  };
+  const cases: [string, Invoice, InvoiceLine[]][] = [
+    [
+      "fr-taux",
+      invoice({
+        sender: fr,
+        recipient: client,
+        netCents: 130000,
+        vatCents: 22550,
+        totalCents: 152550,
+      } as Partial<Invoice>),
+      [
+        line(1, "Conseil", 100000, "normal", 2000),
+        line(2, "Hébergement", 20000, "lodging", 1000),
+        line(3, "Livre", 10000, "reduced", 550),
+      ],
+    ],
+    [
+      "fr-franchise",
+      invoice({
+        vatRegistered: false,
+        sender: { ...fr, uid: null },
+        recipient: client,
+        netCents: 50000,
+        vatCents: 0,
+        totalCents: 50000,
+      } as Partial<Invoice>),
+      [line(1, "Prestation", 50000, "normal", 0)],
+    ],
+    [
+      "fr-avoir",
+      invoice({
+        kind: "credit_note",
+        number: "G-2026-0002",
+        sender: fr,
+        recipient: client,
+        netCents: 100000,
+        vatCents: 20000,
+        totalCents: 120000,
+      } as Partial<Invoice>),
+      [line(1, "Avoir", 100000, "normal", 2000)],
+    ],
+  ];
+  for (const [name, inv, lines] of cases) {
+    const r = buildCii(
+      inv,
+      lines,
+      "zugferd",
+      inv.kind === "credit_note" ? { number: "2026-0001" } : null,
+    );
+    expect("xml" in r ? "ok" : r.missing).toBe("ok");
+    if ("xml" in r) writeFileSync(`${OUT}/${name}.xml`, r.xml);
+  }
+});

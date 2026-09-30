@@ -35,6 +35,8 @@ export function formatUid(uid: string): string {
 export function vatNumberLabel(uid: string, locale: string): string {
   // Allemagne : USt-IdNr. « DE123456789 », même libellé en allemand et en français.
   if (uid.startsWith("DE")) return `USt-IdNr. ${uid}`;
+  // France : numéro de TVA intracommunautaire.
+  if (uid.startsWith("FR")) return `${locale.startsWith("fr") ? "N° TVA" : "USt-IdNr."} ${uid}`;
   const suffix = locale.startsWith("fr") ? "TVA" : locale.startsWith("it") ? "IVA" : "MWST";
   return `${formatUid(uid)} ${suffix}`;
 }

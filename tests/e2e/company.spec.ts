@@ -25,7 +25,7 @@ test("réglages entreprise : erreurs signalées, saisie gardée, puis enregistre
 
   await expect(page.getByText("Certains champs sont à corriger.")).toBeVisible();
   await expect(
-    page.getByText("Code postal invalide (4 chiffres en Suisse, 5 en Allemagne)."),
+    page.getByText("Code postal invalide (4 chiffres en Suisse, 5 en Allemagne et en France)."),
   ).toBeVisible();
   await expect(page.getByText("Numéro IDE invalide (format ou clé de contrôle).")).toBeVisible();
   await expect(page.getByTestId("company-form").getByLabel("Rue")).toHaveValue("Rue du Lac");

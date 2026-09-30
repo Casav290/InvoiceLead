@@ -1,8 +1,9 @@
 import { computeTotals } from "@/lib/invoice-math";
 import type { Invoice, InvoiceLine } from "@/server/db/schema";
+import { EU_COUNTRIES } from "../eu";
 
 /**
- * Facture électronique allemande au format CII (UN/CEFACT Cross Industry Invoice), conforme à la
+ * Facture électronique allemande ou française au format CII (UN/CEFACT Cross Industry Invoice), conforme à la
  * norme EN 16931 : XML seul pour XRechnung, ou intégré au PDF/A-3 pour ZUGFeRD (profil EN 16931).
  * À faire passer par le validateur KoSIT avant l'ouverture en Allemagne.
  */
@@ -23,9 +24,7 @@ const UNIT_CODES: Record<string, string> = {
   month: "MON",
 };
 
-const EU = new Set(
-  "AT BE BG CY CZ DE DK EE ES FI FR GR HR HU IE IT LT LU LV MT NL PL PT RO SE SI SK".split(" "),
-);
+const EU = EU_COUNTRIES;
 
 const esc = (v: string) =>
   v.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -37,13 +36,35 @@ const rate = (bp: number) => (bp / 100).toFixed(2).replace(/\.?0+$/, "") || "0";
 
 type Category = { code: "S" | "E" | "AE" | "G"; reason?: string };
 
+/** Motifs d'exonération dans la langue du pays du vendeur. */
+const REASONS = {
+  DE: {
+    small: "Kleinunternehmer gemäß § 19 UStG",
+    exempt: "Steuerfreie Leistung (§ 4 UStG)",
+    reverse: "Steuerschuldnerschaft des Leistungsempfängers",
+    export: "Ausfuhr in ein Drittland",
+    creditTerms: "Gutschrift: Betrag wird erstattet oder verrechnet.",
+  },
+  FR: {
+    small: "TVA non applicable, art. 293 B du CGI",
+    exempt: "Exonération de TVA",
+    reverse: "Autoliquidation",
+    export: "Exportation hors de l'Union européenne",
+    creditTerms: "Avoir : montant remboursé ou imputé.",
+  },
+};
+
+const reasonsOf = (invoice: Invoice) =>
+  invoice.sender?.country === "FR" ? REASONS.FR : REASONS.DE;
+
 function categoryOf(line: InvoiceLine, invoice: Invoice): Category {
-  if (!invoice.vatRegistered) return { code: "E", reason: "Kleinunternehmer gemäß § 19 UStG" };
-  if (line.vatCode === "exempt") return { code: "E", reason: "Steuerfreie Leistung (§ 4 UStG)" };
+  const r = reasonsOf(invoice);
+  if (!invoice.vatRegistered) return { code: "E", reason: r.small };
+  if (line.vatCode === "exempt") return { code: "E", reason: r.exempt };
   if (line.vatCode === "export") {
     return EU.has(invoice.recipient?.country ?? "")
-      ? { code: "AE", reason: "Steuerschuldnerschaft des Leistungsempfängers" }
-      : { code: "G", reason: "Ausfuhr in ein Drittland" };
+      ? { code: "AE", reason: r.reverse }
+      : { code: "G", reason: r.export };
   }
   return { code: "S" };
 }
@@ -109,20 +130,27 @@ function party(
     ? `<ram:URIUniversalCommunication><ram:URIID schemeID="EM">${esc(p.email)}</ram:URIID></ram:URIUniversalCommunication>`
     : "";
   const vatId = p.uid && /^[A-Z]{2}/.test(p.uid) ? p.uid : null;
+  const french = p.country === "FR";
   const tax = [
     vatId
       ? `<ram:SpecifiedTaxRegistration><ram:ID schemeID="VA">${esc(vatId)}</ram:ID></ram:SpecifiedTaxRegistration>`
       : "",
-    p.taxNumber
-      ? `<ram:SpecifiedTaxRegistration><ram:ID schemeID="FC">${esc(p.taxNumber)}</ram:ID></ram:SpecifiedTaxRegistration>`
+    // Steuernummer allemande ; en France, le SIREN seulement sans numéro de TVA (franchise en base).
+    p.taxNumber && (!french || !vatId)
+      ? `<ram:SpecifiedTaxRegistration><ram:ID schemeID="FC">${esc(french ? p.taxNumber.slice(0, 9) : p.taxNumber)}</ram:ID></ram:SpecifiedTaxRegistration>`
       : "",
   ].join("");
+  // France : SIREN (9 premiers chiffres du SIRET) comme immatriculation légale, schéma 0002.
+  const legal =
+    french && p.taxNumber
+      ? `<ram:SpecifiedLegalOrganization><ram:ID schemeID="0002">${esc(p.taxNumber.slice(0, 9))}</ram:ID></ram:SpecifiedLegalOrganization>`
+      : "";
   // Sans USt-IdNr., la Steuernummer sert aussi d'identifiant du vendeur (BR-CO-26).
   const id =
     tag === "SellerTradeParty" && !vatId && p.taxNumber
       ? `<ram:ID>${esc(p.taxNumber)}</ram:ID>`
       : "";
-  return `<ram:${tag}>${id}<ram:Name>${esc(p.name)}</ram:Name>${contact}<ram:PostalTradeAddress>${address}</ram:PostalTradeAddress>${uri}${tax}</ram:${tag}>`;
+  return `<ram:${tag}>${id}<ram:Name>${esc(p.name)}</ram:Name>${legal}${contact}<ram:PostalTradeAddress>${address}</ram:PostalTradeAddress>${uri}${tax}</ram:${tag}>`;
 }
 
 /** XML CII de la pièce émise, ou la liste des champs manquants. */
@@ -172,7 +200,7 @@ export function buildCii(
     : "";
   // Un avoir aussi porte des conditions (BR-CO-25) : le montant est remboursé ou imputé.
   const terms = creditNote
-    ? "<ram:SpecifiedTradePaymentTerms><ram:Description>Gutschrift: Betrag wird erstattet oder verrechnet.</ram:Description></ram:SpecifiedTradePaymentTerms>"
+    ? `<ram:SpecifiedTradePaymentTerms><ram:Description>${esc(reasonsOf(invoice).creditTerms)}</ram:Description></ram:SpecifiedTradePaymentTerms>`
     : invoice.dueDate
       ? `<ram:SpecifiedTradePaymentTerms><ram:DueDateDateTime>${date(invoice.dueDate)}</ram:DueDateDateTime></ram:SpecifiedTradePaymentTerms>`
       : "";

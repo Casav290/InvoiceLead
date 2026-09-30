@@ -161,7 +161,9 @@
         "netTaxRate": "Taux de la dette fiscale nette (%)",
         "country": "Pays du siège",
         "ustId": "USt-IdNr.",
-        "taxNumber": "Steuernummer"
+        "taxNumber": "Steuernummer",
+        "frVatId": "Numéro de TVA intracommunautaire",
+        "siret": "SIRET"
       },
       "hints": {
         "uid": "Format CHE-123.456.789, clé de contrôle vérifiée.",
@@ -169,7 +171,9 @@
         "qrIban": "Facultatif : factures avec référence QR à 27 chiffres.",
         "netTaxRate": "Seulement avec la méthode TDFN : le taux accordé par l'AFC, par exemple 6,2.",
         "ustId": "Format DE123456789, clé de contrôle vérifiée.",
-        "taxNumber": "Numéro fiscal du Finanzamt, par exemple 12/345/67890. USt-IdNr. ou Steuernummer : l'un des deux est obligatoire."
+        "taxNumber": "Numéro fiscal du Finanzamt, par exemple 12/345/67890. USt-IdNr. ou Steuernummer : l'un des deux est obligatoire.",
+        "frVatId": "Format FR + 2 chiffres + SIREN, clé vérifiée. Facultatif en franchise en base.",
+        "siret": "14 chiffres (ou SIREN à 9 chiffres), clé de contrôle vérifiée. Obligatoire sur chaque facture."
       },
       "legalForms": {
         "sole_proprietorship": "Raison individuelle",
@@ -180,7 +184,14 @@
         "other": "Autre",
         "ug": "UG (haftungsbeschränkt)",
         "ek": "Kaufmann (e.K.)",
-        "gbr": "GbR"
+        "gbr": "GbR",
+        "ei": "Entreprise individuelle (EI)",
+        "micro": "Micro-entreprise",
+        "eurl": "EURL",
+        "sarl": "SARL",
+        "sas": "SAS",
+        "sasu": "SASU",
+        "sa": "SA"
       },
       "vatMethods": {
         "effective": "Méthode effective",
@@ -207,7 +218,7 @@
       "errors": {
         "required": "Champ obligatoire.",
         "tooLong": "Texte trop long.",
-        "postalCode": "Code postal invalide (4 chiffres en Suisse, 5 en Allemagne).",
+        "postalCode": "Code postal invalide (4 chiffres en Suisse, 5 en Allemagne et en France).",
         "email": "Adresse e-mail invalide.",
         "uid": "Numéro IDE invalide (format ou clé de contrôle).",
         "uidRequiredForVat": "Le numéro IDE est obligatoire pour une entreprise inscrite à la TVA.",
@@ -218,11 +229,15 @@
         "ustId": "USt-IdNr. invalide (DE suivi de 9 chiffres, clé de contrôle).",
         "countryLocked": "Le pays ne change plus une fois une pièce émise.",
         "taxNumber": "Steuernummer invalide (10 à 13 chiffres).",
-        "taxIdRequired": "Indiquez l'USt-IdNr. ou la Steuernummer : l'un des deux figure sur chaque facture."
+        "taxIdRequired": "Indiquez l'USt-IdNr. ou la Steuernummer : l'un des deux figure sur chaque facture.",
+        "frVatId": "Numéro de TVA invalide (FR, clé à 2 chiffres, SIREN).",
+        "siret": "SIRET ou SIREN invalide (clé de contrôle).",
+        "siretRequired": "Le SIRET est obligatoire sur les factures françaises."
       },
       "countries": {
         "CH": "Suisse",
-        "DE": "Allemagne"
+        "DE": "Allemagne",
+        "FR": "France"
       }
     },
     "contacts": {
@@ -629,7 +644,11 @@
         "poweredBy": "Créé avec InvoiceLead · invoicelead.io",
         "smallBusinessDe": "Conformément au § 19 UStG, aucune taxe sur le chiffre d'affaires n'est facturée (petite entreprise).",
         "reverseChargeDe": "Autoliquidation : la taxe est due par le destinataire de la prestation (Steuerschuldnerschaft des Leistungsempfängers).",
-        "scanToPay": "Scannez ce code avec votre application bancaire pour payer par virement SEPA."
+        "scanToPay": "Scannez ce code avec votre application bancaire pour payer par virement SEPA.",
+        "franchiseFr": "TVA non applicable, art. 293 B du CGI.",
+        "reverseChargeFr": "Autoliquidation : TVA due par le preneur (art. 283-2 du CGI).",
+        "outsideEuFr": "TVA non applicable, art. 259-1 du CGI.",
+        "latePaymentFr": "En cas de retard de paiement : pénalités au taux de trois fois l'intérêt légal et indemnité forfaitaire pour frais de recouvrement de 40 €. Pas d'escompte pour paiement anticipé."
       },
       "docTitle": "Facture",
       "docDue": "Payable jusqu'au",

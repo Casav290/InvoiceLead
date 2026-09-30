@@ -1,11 +1,12 @@
 import { type VatCode, vatRateBp as vatRateBpCh } from "./ch/vat";
 import { vatRateBpDe } from "./de/vat";
+import { vatRateBpFr } from "./fr/vat";
 
 /**
  * Pays pris en charge. Chaque pack pays porte ses taux datés, sa devise, son bulletin de paiement et
  * le format des montants ; la comptabilité et la TVA restent suisses tant que le pack ne les a pas.
  */
-export const COUNTRIES = ["CH", "DE"] as const;
+export const COUNTRIES = ["CH", "DE", "FR"] as const;
 export type Country = (typeof COUNTRIES)[number];
 
 export type CountryPack = {
@@ -13,8 +14,8 @@ export type CountryPack = {
   currency: "CHF" | "EUR";
   /** Bulletin imprimé sous la facture : QR-facture suisse, ou code GiroCode (EPC) de virement SEPA. */
   paymentSlip: "qr-bill" | "epc-qr";
-  /** Montants : 1'234.50 en Suisse, 1.234,50 en Allemagne. */
-  amounts: "ch" | "de";
+  /** Montants : 1'234.50 en Suisse, 1.234,50 en Allemagne, 1 234,50 en France. */
+  amounts: "ch" | "de" | "fr";
   /** Comptabilité en partie double, décompte TVA et import bancaire camt disponibles. */
   accounting: boolean;
   vatRateBp: (code: VatCode, serviceDate: string) => number;
@@ -36,6 +37,14 @@ const PACKS: Record<Country, CountryPack> = {
     amounts: "de",
     accounting: true,
     vatRateBp: vatRateBpDe,
+  },
+  FR: {
+    code: "FR",
+    currency: "EUR",
+    paymentSlip: "epc-qr",
+    amounts: "fr",
+    accounting: false,
+    vatRateBp: vatRateBpFr,
   },
 };
 

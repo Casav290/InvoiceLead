@@ -517,7 +517,7 @@ export async function issueInvoice(database: Db, who: Who, id: string): Promise<
       qrIban: org.qrIban,
       vatNumber:
         org.vatRegistered && org.uid ? vatNumberLabel(org.uid, row.invoice.language) : null,
-      taxNumber: org.country === "DE" ? org.taxNumber : null,
+      taxNumber: org.country === "DE" || org.country === "FR" ? org.taxNumber : null,
     };
     const number = formatInvoiceNumber(year, seq.value, kind);
     const [issued] = await tx

@@ -162,6 +162,15 @@ export function renderInvoicePdf(
   const F = pdfa
     ? { regular: "Archivo", bold: "Archivo-Bold" }
     : { regular: "Helvetica", bold: "Helvetica-Bold" };
+  if (!pdfa) {
+    // Les polices standard du PDF n'ont pas l'espace fine insécable (U+202F) de la typographie
+    // française : elle devient une espace insécable ordinaire, qu'elles savent dessiner.
+    const text = doc.text.bind(doc) as (...args: unknown[]) => PDFKit.PDFDocument;
+    (doc as unknown as { text: (...args: unknown[]) => PDFKit.PDFDocument }).text = (
+      value: unknown,
+      ...rest: unknown[]
+    ) => text(typeof value === "string" ? value.replaceAll("\u202f", "\u00a0") : value, ...rest);
+  }
   if (pdfa) {
     doc.registerFont(F.regular, ARCHIVO_REGULAR);
     doc.registerFont(F.bold, ARCHIVO_BOLD);
@@ -192,7 +201,8 @@ export function renderInvoicePdf(
     const contact = [sender.email, sender.phone].filter(Boolean).join("  ·  ");
     if (contact) doc.text(contact);
     if (sender.vatNumber) doc.text(sender.vatNumber);
-    if (sender.taxNumber) doc.text(`Steuernummer ${sender.taxNumber}`);
+    if (sender.taxNumber)
+      doc.text(`${sender.country === "FR" ? "SIRET" : "Steuernummer"} ${sender.taxNumber}`);
     doc.fillColor(INK);
   }
 

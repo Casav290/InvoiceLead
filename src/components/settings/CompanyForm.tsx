@@ -9,8 +9,9 @@ import { cn } from "@/lib/utils";
 const LEGAL_FORMS: Record<string, string[]> = {
   CH: ["sole_proprietorship", "gmbh", "ag", "partnership", "association", "other"],
   DE: ["sole_proprietorship", "ek", "gbr", "ug", "gmbh", "ag", "association", "other"],
+  FR: ["ei", "micro", "eurl", "sarl", "sas", "sasu", "sa", "association", "other"],
 };
-const COUNTRIES = ["CH", "DE"];
+const COUNTRIES = ["CH", "DE", "FR"];
 const VAT_METHODS = ["effective", "net_tax_rate"];
 const VAT_SETTLEMENTS = ["agreed", "received"];
 const MONTHS = Array.from({ length: 12 }, (_, i) => String(i + 1));
@@ -35,7 +36,7 @@ export function CompanyForm({
   const values = state.values ?? initial;
   // Le pays change les champs proposés : IDE ou USt-IdNr., QR-IBAN et TDFN seulement en Suisse.
   const [country, setCountry] = useState(values.country || "CH");
-  const swiss = country !== "DE";
+  const swiss = country === "CH";
   const error = (name: string) =>
     state.errors?.[(name === "netTaxRate" ? "netTaxRateBp" : name) as keyof typeof state.errors];
 
@@ -190,8 +191,13 @@ export function CompanyForm({
             options: LEGAL_FORMS[country] ?? LEGAL_FORMS.CH ?? [],
             prefix: "legalForms",
           })}
-          {field({ name: swiss ? "uid" : "ustId", formName: "uid" })}
-          {swiss ? null : field({ name: "taxNumber" })}
+          {field({
+            name: country === "DE" ? "ustId" : country === "FR" ? "frVatId" : "uid",
+            formName: "uid",
+          })}
+          {swiss
+            ? null
+            : field({ name: country === "FR" ? "siret" : "taxNumber", formName: "taxNumber" })}
         </>,
       )}
 
