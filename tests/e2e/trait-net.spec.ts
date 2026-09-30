@@ -45,6 +45,9 @@ for (const size of WIDTHS) {
       await page.keyboard.press("Escape");
       await page.getByTestId("user-menu").click();
       expect(await traitNetIssues(page)).toEqual([]);
+      await page.keyboard.press("Escape");
+      await page.goto("/de/app/settings/company");
+      expect(await traitNetIssues(page)).toEqual([]);
     });
 
     test("écran sans accès", async ({ page }) => {

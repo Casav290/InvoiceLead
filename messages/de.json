@@ -54,11 +54,7 @@
       "vat": "MWST 8,1 %",
       "total": "Total",
       "payment": "Zahlteil",
-      "rows": [
-        "Beratung, September",
-        "Lancierungs-Workshop",
-        "Reisespesen"
-      ],
+      "rows": ["Beratung, September", "Lancierungs-Workshop", "Reisespesen"],
       "hours": "Std."
     }
   },
@@ -76,7 +72,8 @@
   },
   "app": {
     "nav": {
-      "dashboard": "Übersicht"
+      "dashboard": "Übersicht",
+      "settings": "Einstellungen"
     },
     "switcher": {
       "open": "Anwendung wechseln",
@@ -104,13 +101,95 @@
         "contacts": "Kunden importieren",
         "invoice": "Erste QR-Rechnung erstellen"
       },
-      "soon": "Diese Ansichten folgen in den nächsten Versionen."
+      "soon": "Diese Ansichten folgen in den nächsten Versionen.",
+      "complete": "Ergänzen",
+      "done": "Erledigt"
     },
     "noAccess": {
       "title": "Ihr Abo enthält InvoiceLead nicht",
       "body": "Ihre Organisation {org} hat noch keinen Zugang zu InvoiceLead. Wechseln Sie zu einem Abo, das InvoiceLead enthält.",
       "upgrade": "Upgrade",
       "logout": "Abmelden"
+    },
+    "company": {
+      "title": "Firma",
+      "subtitle": "Diese Angaben erscheinen auf Ihren Offerten, Rechnungen und QR-Rechnungen.",
+      "readOnly": "Nur Administratoren und Verantwortliche können diese Einstellungen ändern.",
+      "save": "Speichern",
+      "saved": "Einstellungen gespeichert.",
+      "invalid": "Einige Felder müssen korrigiert werden.",
+      "choose": "Auswählen…",
+      "sections": {
+        "identity": "Identität",
+        "address": "Adresse und Kontakt",
+        "vat": "MWST",
+        "bank": "Bankkonto",
+        "fiscalYear": "Geschäftsjahr"
+      },
+      "fields": {
+        "legalName": "Firmenname",
+        "legalForm": "Rechtsform",
+        "uid": "UID-Nummer",
+        "street": "Strasse",
+        "buildingNumber": "Hausnummer",
+        "postalCode": "PLZ",
+        "town": "Ort",
+        "email": "E-Mail",
+        "phone": "Telefon",
+        "website": "Website",
+        "vatRegistered": "Im MWST-Register eingetragen",
+        "vatMethod": "Abrechnungsmethode",
+        "vatSettlement": "Abrechnung nach",
+        "iban": "IBAN",
+        "qrIban": "QR-IBAN",
+        "fiscalYearStartMonth": "Beginn des Geschäftsjahres"
+      },
+      "hints": {
+        "uid": "Format CHE-123.456.789, Prüfziffer wird kontrolliert.",
+        "iban": "Normales Konto: Rechnungen mit SCOR-Referenz (RF…).",
+        "qrIban": "Optional: Rechnungen mit 27-stelliger QR-Referenz."
+      },
+      "legalForms": {
+        "sole_proprietorship": "Einzelunternehmen",
+        "gmbh": "GmbH",
+        "ag": "AG",
+        "partnership": "Personengesellschaft",
+        "association": "Verein",
+        "other": "Andere"
+      },
+      "vatMethods": {
+        "effective": "Effektive Methode",
+        "net_tax_rate": "Saldosteuersatzmethode"
+      },
+      "vatSettlements": {
+        "agreed": "Vereinbarte Entgelte",
+        "received": "Vereinnahmte Entgelte"
+      },
+      "months": {
+        "1": "Januar",
+        "2": "Februar",
+        "3": "März",
+        "4": "April",
+        "5": "Mai",
+        "6": "Juni",
+        "7": "Juli",
+        "8": "August",
+        "9": "September",
+        "10": "Oktober",
+        "11": "November",
+        "12": "Dezember"
+      },
+      "errors": {
+        "required": "Pflichtfeld.",
+        "tooLong": "Text zu lang.",
+        "postalCode": "Schweizer PLZ mit 4 Ziffern.",
+        "email": "Ungültige E-Mail-Adresse.",
+        "uid": "Ungültige UID-Nummer (Format oder Prüfziffer).",
+        "uidRequiredForVat": "Für MWST-pflichtige Firmen ist die UID-Nummer obligatorisch.",
+        "iban": "Ungültige Schweizer oder Liechtensteiner IBAN.",
+        "ibanIsQr": "Das ist eine QR-IBAN: bitte im Feld QR-IBAN erfassen.",
+        "notQrIban": "Das ist keine QR-IBAN (Institut 30000 bis 31999)."
+      }
     }
   },
   "footer": {

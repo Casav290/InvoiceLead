@@ -3,6 +3,7 @@ import {
   bigserial,
   boolean,
   index,
+  integer,
   jsonb,
   pgTable,
   primaryKey,
@@ -50,6 +51,25 @@ export const organizations = pgTable("organizations", {
   hasAccess: boolean("has_access").notNull().default(false),
   entitlements: jsonb("entitlements"),
   entitlementsAt: timestamp("entitlements_at", { withTimezone: true }),
+
+  // Données de l'entreprise (réglages), reprises sur les devis, factures et QR-factures.
+  legalName: text("legal_name"),
+  legalForm: text("legal_form"), // sole_proprietorship | gmbh | ag | partnership | association | other
+  street: text("street"),
+  buildingNumber: text("building_number"),
+  postalCode: text("postal_code"),
+  town: text("town"),
+  email: text("email"),
+  phone: text("phone"),
+  website: text("website"),
+  uid: text("uid"), // CHE123456789, sans séparateurs
+  vatRegistered: boolean("vat_registered").notNull().default(false),
+  vatMethod: text("vat_method"), // effective | net_tax_rate
+  vatSettlement: text("vat_settlement"), // agreed | received
+  iban: text("iban"),
+  qrIban: text("qr_iban"),
+  fiscalYearStartMonth: integer("fiscal_year_start_month").notNull().default(1),
+  settingsCompletedAt: timestamp("settings_completed_at", { withTimezone: true }),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
 });

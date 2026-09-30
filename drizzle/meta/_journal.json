@@ -15,6 +15,13 @@
       "when": 1790743779273,
       "tag": "0001_email_not_unique_when_linked",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1790749400443,
+      "tag": "0002_company_settings",
+      "breakpoints": true
     }
   ]
 }

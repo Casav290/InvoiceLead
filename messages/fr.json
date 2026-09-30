@@ -54,11 +54,7 @@
       "vat": "TVA 8,1 %",
       "total": "Total",
       "payment": "Section paiement",
-      "rows": [
-        "Conseil, septembre",
-        "Atelier de lancement",
-        "Frais de déplacement"
-      ],
+      "rows": ["Conseil, septembre", "Atelier de lancement", "Frais de déplacement"],
       "hours": "h"
     }
   },
@@ -76,7 +72,8 @@
   },
   "app": {
     "nav": {
-      "dashboard": "Tableau de bord"
+      "dashboard": "Tableau de bord",
+      "settings": "Réglages"
     },
     "switcher": {
       "open": "Changer d'application",
@@ -104,13 +101,95 @@
         "contacts": "Importer vos clients",
         "invoice": "Émettre votre première facture QR"
       },
-      "soon": "Ces écrans arrivent dans les prochaines versions."
+      "soon": "Ces écrans arrivent dans les prochaines versions.",
+      "complete": "Compléter",
+      "done": "Fait"
     },
     "noAccess": {
       "title": "Votre formule n'inclut pas InvoiceLead",
       "body": "Votre organisation {org} n'a pas encore accès à InvoiceLead. Passez à une formule qui l'inclut pour continuer.",
       "upgrade": "Mettre à niveau",
       "logout": "Se déconnecter"
+    },
+    "company": {
+      "title": "Entreprise",
+      "subtitle": "Ces données figurent sur vos devis, factures et QR-factures.",
+      "readOnly": "Seuls les administrateurs et les responsables peuvent modifier ces réglages.",
+      "save": "Enregistrer",
+      "saved": "Réglages enregistrés.",
+      "invalid": "Certains champs sont à corriger.",
+      "choose": "Choisir…",
+      "sections": {
+        "identity": "Identité",
+        "address": "Adresse et contact",
+        "vat": "TVA",
+        "bank": "Compte bancaire",
+        "fiscalYear": "Exercice comptable"
+      },
+      "fields": {
+        "legalName": "Raison sociale",
+        "legalForm": "Forme juridique",
+        "uid": "Numéro IDE",
+        "street": "Rue",
+        "buildingNumber": "Numéro",
+        "postalCode": "NPA",
+        "town": "Localité",
+        "email": "E-mail",
+        "phone": "Téléphone",
+        "website": "Site web",
+        "vatRegistered": "Entreprise inscrite au registre TVA",
+        "vatMethod": "Méthode de décompte",
+        "vatSettlement": "Décompte selon",
+        "iban": "IBAN",
+        "qrIban": "QR-IBAN",
+        "fiscalYearStartMonth": "Début de l'exercice"
+      },
+      "hints": {
+        "uid": "Format CHE-123.456.789, clé de contrôle vérifiée.",
+        "iban": "Compte classique : factures avec référence SCOR (RF…).",
+        "qrIban": "Facultatif : factures avec référence QR à 27 chiffres."
+      },
+      "legalForms": {
+        "sole_proprietorship": "Raison individuelle",
+        "gmbh": "Sàrl",
+        "ag": "SA",
+        "partnership": "Société de personnes",
+        "association": "Association",
+        "other": "Autre"
+      },
+      "vatMethods": {
+        "effective": "Méthode effective",
+        "net_tax_rate": "Taux de la dette fiscale nette (TDFN)"
+      },
+      "vatSettlements": {
+        "agreed": "Contre-prestations convenues",
+        "received": "Contre-prestations reçues"
+      },
+      "months": {
+        "1": "janvier",
+        "2": "février",
+        "3": "mars",
+        "4": "avril",
+        "5": "mai",
+        "6": "juin",
+        "7": "juillet",
+        "8": "août",
+        "9": "septembre",
+        "10": "octobre",
+        "11": "novembre",
+        "12": "décembre"
+      },
+      "errors": {
+        "required": "Champ obligatoire.",
+        "tooLong": "Texte trop long.",
+        "postalCode": "NPA suisse à 4 chiffres.",
+        "email": "Adresse e-mail invalide.",
+        "uid": "Numéro IDE invalide (format ou clé de contrôle).",
+        "uidRequiredForVat": "Le numéro IDE est obligatoire pour une entreprise inscrite à la TVA.",
+        "iban": "IBAN suisse ou liechtensteinois invalide.",
+        "ibanIsQr": "C'est un QR-IBAN : saisissez-le dans le champ QR-IBAN.",
+        "notQrIban": "Ce n'est pas un QR-IBAN (identifiant 30000 à 31999)."
+      }
     }
   },
   "footer": {

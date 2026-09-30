@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
+import { Link } from "@/i18n/navigation";
 import { requireAppSession } from "@/server/auth/guard";
 
 const NEXT_STEPS = ["company", "contacts", "invoice"] as const;
@@ -38,7 +39,19 @@ export default async function DashboardPage({ params }: { params: Promise<{ loca
               <span className="flex h-7 w-7 shrink-0 items-center justify-center border border-line-strong text-[12px] font-extrabold text-ink-3">
                 {i + 1}
               </span>
-              <span className="text-[14px]">{t(`next.${step}`)}</span>
+              <span className="flex-1 text-[14px]">{t(`next.${step}`)}</span>
+              {step === "company" ? (
+                organization.settingsCompletedAt ? (
+                  <span className="text-[12px] font-semibold text-ok-fg">{t("done")}</span>
+                ) : (
+                  <Link
+                    href="/app/settings/company"
+                    className="text-[13px] font-semibold text-accent-dark underline"
+                  >
+                    {t("complete")}
+                  </Link>
+                )
+              ) : null}
             </li>
           ))}
         </ol>
