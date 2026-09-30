@@ -4,6 +4,8 @@ import createNextIntlPlugin from "next-intl/plugin";
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   typedRoutes: false,
+  // Relevés bancaires camt.053 envoyés par formulaire : jusqu'à 5 Mo.
+  experimental: { serverActions: { bodySizeLimit: "6mb" } },
   serverExternalPackages: ["pg", "pdfkit", "swissqrbill"],
   async headers() {
     return [

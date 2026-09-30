@@ -463,3 +463,55 @@ export const journalLines = pgTable(
 );
 
 export type JournalLine = typeof journalLines.$inferSelect;
+
+/**
+ * Proposition de comptabilisation d'un mouvement bancaire : règlement d'une facture (trouvé par la
+ * référence QR ou par l'IA) ou écriture sur un compte, avec le degré de certitude et l'explication.
+ */
+export type BankProposal =
+  | {
+      kind: "invoice";
+      invoiceId: string;
+      confidence: number;
+      explanation: string;
+      source: "reference" | "ai";
+    }
+  | {
+      kind: "account";
+      accountId: string;
+      vatCode: string | null;
+      confidence: number;
+      explanation: string;
+      source: "ai" | "rule";
+    };
+
+/** Mouvement d'un relevé bancaire importé, en attente de validation humaine. */
+export const bankTransactions = pgTable(
+  "bank_transactions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    externalId: text("external_id").notNull(),
+    bookingDate: date("booking_date", { mode: "string" }).notNull(),
+    amountCents: bigint("amount_cents", { mode: "number" }).notNull(),
+    currency: text("currency").notNull().default("CHF"),
+    counterparty: text("counterparty"),
+    reference: text("reference"),
+    text: text("text"),
+    status: text("status").notNull().default("new"), // new | proposed | posted | ignored
+    proposal: jsonb("proposal").$type<BankProposal>(),
+    journalEntryId: uuid("journal_entry_id"),
+    paymentId: uuid("payment_id"),
+    validatedBy: uuid("validated_by").references(() => users.id, { onDelete: "set null" }),
+    validatedAt: timestamp("validated_at", { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    uniqueIndex("bank_transactions_org_external_idx").on(t.organizationId, t.externalId),
+    index("bank_transactions_org_status_idx").on(t.organizationId, t.status, t.bookingDate),
+  ],
+);
+
+export type BankTransaction = typeof bankTransactions.$inferSelect;

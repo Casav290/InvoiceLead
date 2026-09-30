@@ -6,6 +6,7 @@
  *   node tests/support/fake-lead-id.mjs            (port 4010)
  *   POST /test/next-user  {sub,email,name,org,org_name,org_role,access}  choisit la prochaine personne
  *   POST /resend/emails   imite l'API d'envoi de Resend (clé « re_test ») ; GET /test/emails les relit
+ *   POST /ai/chat/completions  faux assistant comptable : chaque sortie d'argent va en frais bancaires
  */
 import { createHash, createSign, generateKeyPairSync, randomBytes } from "node:crypto";
 import { createServer } from "node:http";
@@ -187,6 +188,24 @@ createServer(async (req, res) => {
     return send(res, 200, { id: `em_${emails.length}` });
   }
   if (url.pathname === "/test/emails") return send(res, 200, emails);
+
+  if (url.pathname === "/ai/chat/completions" && req.method === "POST") {
+    if (req.headers.authorization !== "Bearer ai_test") return send(res, 401, { error: "key" });
+    const body = JSON.parse((await readBody(req)) || "{}");
+    const payload = JSON.parse(body.messages?.[1]?.content ?? "{}");
+    const results = (payload.transactions ?? []).map((t) =>
+      t.direction === "out"
+        ? {
+            id: t.id,
+            account: "6940",
+            vat: null,
+            confidence: 0.95,
+            explanation: "Frais bancaires.",
+          }
+        : { id: t.id, account: null, vat: null, confidence: 0.2, explanation: "Inconnu." },
+    );
+    return send(res, 200, { choices: [{ message: { content: JSON.stringify({ results }) } }] });
+  }
 
   if (url.pathname === "/test/logouts") return send(res, 200, logouts);
   if (url.pathname === "/health") return send(res, 200, { ok: true });

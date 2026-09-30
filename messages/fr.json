@@ -726,6 +726,61 @@
         "account": "Compte",
         "debit": "Débit",
         "credit": "Crédit"
+      },
+      "tabs": {
+        "label": "Sections de la comptabilité",
+        "bank": "Banque",
+        "journal": "Journal"
+      }
+    },
+    "bank": {
+      "title": "Banque",
+      "subtitle": "Importez le relevé de votre banque : l'assistant propose l'écriture de chaque mouvement, vous vérifiez et validez.",
+      "imported": "{count, plural, =0 {Aucun nouveau mouvement} one {# mouvement importé} other {# mouvements importés}}{duplicates, plural, =0 {.} one { (# déjà connu).} other { (# déjà connus).}}",
+      "validatedCount": "{count, plural, =0 {Aucune écriture validée.} one {# écriture validée.} other {# écritures validées.}}",
+      "errors": {
+        "file": "Choisissez un fichier de relevé (5 Mo au plus).",
+        "format": "Ce fichier n'est pas un relevé camt.053 lisible.",
+        "tooHigh": "Le montant dépasse le solde ouvert de la facture.",
+        "noChart": "Installez d'abord le plan comptable.",
+        "noFiscalYear": "Aucun exercice ouvert ne couvre la date de ce mouvement.",
+        "noProposal": "Choisissez d'abord un compte.",
+        "notFound": "Mouvement introuvable ou déjà traité."
+      },
+      "aiError": "L'assistant n'a pas pu répondre. Les mouvements restent à proposer ; réessayez plus tard.",
+      "aiOff": "L'assistant comptable n'est pas encore activé : seuls les paiements de factures reconnus par leur référence QR sont proposés automatiquement.",
+      "file": "Relevé bancaire (camt.053)",
+      "fileHint": "Fichier XML exporté depuis l'e-banking (« camt.053 » ou « relevé ISO 20022 »).",
+      "import": "Importer",
+      "toReview": "{count, plural, =0 {Rien à valider} one {# mouvement à valider} other {# mouvements à valider}}",
+      "propose": "Proposer les écritures",
+      "validateConfident": "Valider les {count} propositions sûres",
+      "nothing": "Tous les mouvements sont traités.",
+      "noSuggestion": "Aucune proposition : choisissez le compte.",
+      "paysInvoice": "Paiement de la facture {invoice}",
+      "confidence": "Certitude {value} %",
+      "validate": "Valider",
+      "ignore": "Ignorer",
+      "correct": "Choisir un autre compte",
+      "account": "Compte",
+      "choose": "Choisir",
+      "vatLabel": "TVA comprise",
+      "noVat": "Sans TVA",
+      "validateChoice": "Valider ce choix",
+      "unknownParty": "Contrepartie inconnue",
+      "done": "Déjà traités",
+      "status": {
+        "posted": "Comptabilisé",
+        "ignored": "Ignoré",
+        "new": "Nouveau",
+        "proposed": "Proposé"
+      },
+      "vat": {
+        "normal": "TVA normale",
+        "reduced": "TVA réduite",
+        "lodging": "TVA hébergement",
+        "exempt": "Exclu",
+        "export": "Exportation"
       }
     }
   },

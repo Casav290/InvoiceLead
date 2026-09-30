@@ -14,6 +14,11 @@ const schema = z.object({
   RESEND_API_KEY: z.string().min(1).optional(),
   RESEND_API_URL: z.url().default("https://api.resend.com"),
   EMAIL_FROM: z.string().min(3).default("InvoiceLead <factures@invoicelead.io>"),
+  // Assistant comptable : API compatible OpenAI (Z.ai GLM par défaut). Sans clé, seules les règles
+  // sûres (références QR des factures) proposent des écritures.
+  AI_API_KEY: z.string().min(1).optional(),
+  AI_BASE_URL: z.url().default("https://api.z.ai/api/paas/v4"),
+  AI_MODEL: z.string().min(1).default("glm-4.6"),
 });
 
 export type Env = z.infer<typeof schema>;

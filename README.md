@@ -41,5 +41,5 @@ et tout débordement horizontal.
 
 Voir `.env.example`. Sur Vercel : `DATABASE_URL` (chaîne « pooled » de Neon), `APP_URL`,
 `SESSION_SECRET`, `LEAD_ID_ISSUER`, `LEAD_ID_CLIENT_ID`, `LEAD_ID_CLIENT_SECRET`,
-`LEAD_ID_REDIRECT_URI`, `LEAD_ID_APP`. Facultatives : `RESEND_API_KEY` (envoi des e-mails par Resend ; sans elle, seul le lien de consultation est proposé) et `EMAIL_FROM` (par défaut `InvoiceLead <factures@invoicelead.io>`). Le script `vercel-build` applique les migrations avant le build,
+`LEAD_ID_REDIRECT_URI`, `LEAD_ID_APP`. Facultatives : `RESEND_API_KEY` (envoi des e-mails par Resend ; sans elle, seul le lien de consultation est proposé) et `EMAIL_FROM` (par défaut `InvoiceLead <factures@invoicelead.io>`), puis `AI_API_KEY` pour l'assistant comptable (API compatible OpenAI, Z.ai GLM par défaut ; `AI_BASE_URL` et `AI_MODEL` pour en changer). Le script `vercel-build` applique les migrations avant le build,
 en production seulement ; une prévisualisation ne migre que si `ALLOW_PREVIEW_MIGRATIONS=1` (base dédiée).

@@ -1,10 +1,13 @@
-import { expect, test } from "@playwright/test";
+import { expect, type Page, test } from "@playwright/test";
+import { scorReference } from "../../src/countries/ch/qr-reference";
+import { camt053 } from "../support/camt";
 import { login, setupBilling } from "./helpers";
 
 test("comptabilité : pièce en attente, puis journal en partie double après mise en place", async ({
   page,
 }) => {
   const run = Date.now();
+  const today = new Date().toISOString().slice(0, 10);
   await login(page, "fr", {
     sub: `sub-led-${run}`,
     email: `led-${run}@atelier.test`,
@@ -47,4 +50,58 @@ test("comptabilité : pièce en attente, puis journal en partie double après mi
     "Chaîne d'empreintes vérifiée sur 1 écriture.",
   );
   await expect(page.getByTestId("unposted")).toHaveCount(0);
+
+  // Relevé bancaire : le paiement est rapproché par sa référence, les frais par l'assistant.
+  const reference = (await page.request.get("/fr/app/invoices")).ok()
+    ? await invoiceReference(page)
+    : "";
+  await page.goto("/fr/app/accounting/bank");
+  await page.getByLabel("Relevé bancaire (camt.053)").setInputFiles({
+    name: "releve.xml",
+    mimeType: "application/xml",
+    buffer: Buffer.from(
+      camt053("CH9300762011623852957", [
+        {
+          id: `P${run}`,
+          date: today,
+          amount: "162.15",
+          credit: true,
+          party: "Client SA",
+          reference,
+        },
+        {
+          id: `F${run}`,
+          date: today,
+          amount: "5.00",
+          credit: false,
+          party: "Banque",
+          text: "Frais de tenue de compte",
+        },
+      ]),
+    ),
+  });
+  await page.getByTestId("bank-import").click();
+  await expect(page.getByText("2 mouvements importés.")).toBeVisible();
+  const proposals = page.getByTestId("bank-proposal");
+  await expect(proposals).toHaveCount(2);
+  await expect(page.getByTestId("bank-review")).toContainText("Paiement de la facture");
+  await expect(page.getByTestId("bank-review")).toContainText("6940");
+  await page.getByTestId("bank-validate-confident").click();
+  await expect(page.getByText("2 écritures validées.")).toBeVisible();
+  await expect(page.getByText("Tous les mouvements sont traités.")).toBeVisible();
+
+  await page.getByRole("link", { name: "Journal" }).click();
+  await expect(page.getByTestId("journal")).toContainText("6940");
+  await expect(page.getByTestId("chain-status")).toHaveText(
+    "Chaîne d'empreintes vérifiée sur 3 écritures.",
+  );
+  await page.goto("/fr/app/invoices");
+  await expect(page.getByRole("row", { name: /Client SA/ })).toContainText("Payée");
 });
+
+/** Référence SCOR de la facture émise, recalculée depuis son numéro (IBAN ordinaire, pas de QR-IBAN). */
+async function invoiceReference(page: Page): Promise<string> {
+  await page.goto("/fr/app/invoices");
+  const number = await page.getByRole("row", { name: /Client SA/ }).getByRole("link").textContent();
+  return scorReference((number ?? "").trim());
+}

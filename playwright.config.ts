@@ -16,6 +16,8 @@ const appEnv = {
   LEAD_ID_APP: "invoicelead",
   RESEND_API_KEY: "re_test",
   RESEND_API_URL: `http://localhost:${LEAD_PORT}/resend`,
+  AI_API_KEY: "ai_test",
+  AI_BASE_URL: `http://localhost:${LEAD_PORT}/ai`,
   NEXT_TELEMETRY_DISABLED: "1",
 };
 

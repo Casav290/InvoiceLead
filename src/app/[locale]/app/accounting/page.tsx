@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
+import { AccountingNav } from "@/components/accounting/AccountingNav";
 import { Button } from "@/components/ui/button";
 import { Link } from "@/i18n/navigation";
 import { formatDate } from "@/lib/fiscal-year";
@@ -37,6 +38,7 @@ export default async function AccountingPage({ params, searchParams }: Props) {
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-10 sm:px-8">
+      <AccountingNav />
       <h1 className="text-[28px] leading-tight">{t("title")}</h1>
       <p className="mt-2 text-[15px] text-ink-muted">{t("subtitle")}</p>
 

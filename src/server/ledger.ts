@@ -29,7 +29,7 @@ export type Posting = {
 export type EntryInput = {
   entryDate: string;
   description: string;
-  sourceType: "invoice" | "credit_note" | "payment" | "payment_reversal" | "manual";
+  sourceType: "invoice" | "credit_note" | "payment" | "payment_reversal" | "bank" | "manual";
   sourceId?: string | null;
   reversalOf?: string | null;
   postings: Posting[];

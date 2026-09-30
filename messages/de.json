@@ -726,6 +726,61 @@
         "account": "Konto",
         "debit": "Soll",
         "credit": "Haben"
+      },
+      "tabs": {
+        "label": "Bereiche der Buchhaltung",
+        "bank": "Bank",
+        "journal": "Journal"
+      }
+    },
+    "bank": {
+      "title": "Bank",
+      "subtitle": "Importieren Sie den Kontoauszug Ihrer Bank: Der Assistent schlägt für jede Bewegung die Buchung vor, Sie prüfen und bestätigen.",
+      "imported": "{count, plural, =0 {Keine neue Bewegung} one {# Bewegung importiert} other {# Bewegungen importiert}}{duplicates, plural, =0 {.} one { (# bereits bekannt).} other { (# bereits bekannt).}}",
+      "validatedCount": "{count, plural, =0 {Keine Buchung bestätigt.} one {# Buchung bestätigt.} other {# Buchungen bestätigt.}}",
+      "errors": {
+        "file": "Wählen Sie eine Auszugsdatei (höchstens 5 MB).",
+        "format": "Diese Datei ist kein lesbarer camt.053-Auszug.",
+        "tooHigh": "Der Betrag übersteigt den offenen Betrag der Rechnung.",
+        "noChart": "Richten Sie zuerst den Kontenplan ein.",
+        "noFiscalYear": "Kein offenes Geschäftsjahr umfasst das Datum dieser Bewegung.",
+        "noProposal": "Wählen Sie zuerst ein Konto.",
+        "notFound": "Bewegung nicht gefunden oder bereits verarbeitet."
+      },
+      "aiError": "Der Assistent konnte nicht antworten. Die Bewegungen bleiben offen; versuchen Sie es später erneut.",
+      "aiOff": "Der Buchhaltungsassistent ist noch nicht aktiviert: Automatisch vorgeschlagen werden nur Rechnungszahlungen, die an ihrer QR-Referenz erkannt werden.",
+      "file": "Kontoauszug (camt.053)",
+      "fileHint": "XML-Datei aus dem E-Banking («camt.053» oder «ISO-20022-Auszug»).",
+      "import": "Importieren",
+      "toReview": "{count, plural, =0 {Nichts zu bestätigen} one {# Bewegung zu bestätigen} other {# Bewegungen zu bestätigen}}",
+      "propose": "Buchungen vorschlagen",
+      "validateConfident": "Die {count} sicheren Vorschläge bestätigen",
+      "nothing": "Alle Bewegungen sind verarbeitet.",
+      "noSuggestion": "Kein Vorschlag: Wählen Sie das Konto.",
+      "paysInvoice": "Zahlung der Rechnung {invoice}",
+      "confidence": "Sicherheit {value} %",
+      "validate": "Bestätigen",
+      "ignore": "Ignorieren",
+      "correct": "Anderes Konto wählen",
+      "account": "Konto",
+      "choose": "Auswählen",
+      "vatLabel": "Inkl. MWST",
+      "noVat": "Ohne MWST",
+      "validateChoice": "Diese Wahl bestätigen",
+      "unknownParty": "Unbekannte Gegenpartei",
+      "done": "Bereits verarbeitet",
+      "status": {
+        "posted": "Verbucht",
+        "ignored": "Ignoriert",
+        "new": "Neu",
+        "proposed": "Vorgeschlagen"
+      },
+      "vat": {
+        "normal": "MWST Normalsatz",
+        "reduced": "MWST reduziert",
+        "lodging": "MWST Beherbergung",
+        "exempt": "Ausgenommen",
+        "export": "Export"
       }
     }
   },
