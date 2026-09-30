@@ -1,6 +1,6 @@
 import { and, eq, gte, inArray, isNull, lte, or, sql } from "drizzle-orm";
 import { netRateFigure, RATE_FIGURES } from "@/countries/ch/vat-return";
-import { roundHalfAwayFromZero } from "@/lib/money";
+import { roundHalfAwayFromZero, vatOf } from "@/lib/money";
 import { chatJson } from "./ai";
 import type { Db } from "./db";
 import {
@@ -8,6 +8,7 @@ import {
   auditLog,
   bankTransactions,
   invoiceLines,
+  invoicePayments,
   invoices,
   journalEntries,
   journalLines,
@@ -54,8 +55,6 @@ export async function draftVatReturn(
     .where(eq(organizations.id, organizationId));
   const method = org?.vatMethod === "net_tax_rate" ? "net_tax_rate" : "effective";
   if (!org?.vatRegistered) anomalies.push({ code: "notRegistered", severity: "block" });
-  else if (org.vatSettlement === "received")
-    anomalies.push({ code: "received", severity: "block" });
   if (method === "net_tax_rate" && !org?.netTaxRateBp)
     anomalies.push({ code: "noNetTaxRate", severity: "block" });
 
@@ -88,7 +87,12 @@ export async function draftVatReturn(
   const byRate = new Map<number, { base: number; tax: number }>();
   let input400 = 0;
   let input405 = 0;
+  // Contre-prestations reçues : la TVA des factures devient due au paiement, pas à l'émission.
+  const received = org?.vatSettlement === "received";
   for (const l of lines) {
+    const fromDocument = l.sourceType === "invoice" || l.sourceType === "credit_note";
+    if (received && fromDocument && (l.type === "revenue" || l.accountId === roles.vat_output))
+      continue;
     if (l.type === "revenue" && /^[37]/.test(l.number)) {
       const amount = l.credit - l.debit;
       turnover += amount;
@@ -121,7 +125,51 @@ export async function draftVatReturn(
         eq(invoiceLines.vatCode, "export"),
       ),
     );
-  const f220 = Number(exports?.net ?? 0);
+  let f220 = received ? 0 : Number(exports?.net ?? 0);
+  if (received) {
+    // Chaque paiement reçu dans la période emporte sa part de chaque taux de la facture payée.
+    const paid = await database
+      .select({
+        invoiceId: invoicePayments.invoiceId,
+        amount: invoicePayments.amountCents,
+        total: invoices.totalCents,
+      })
+      .from(invoicePayments)
+      .innerJoin(invoices, eq(invoices.id, invoicePayments.invoiceId))
+      .where(
+        and(
+          eq(invoicePayments.organizationId, organizationId),
+          gte(invoicePayments.paidOn, start),
+          lte(invoicePayments.paidOn, end),
+        ),
+      );
+    for (const p of paid) {
+      if (p.total <= 0) continue;
+      const groups = await database
+        .select({
+          rateBp: invoiceLines.vatRateBp,
+          code: invoiceLines.vatCode,
+          net: sql<string>`sum(${invoiceLines.netCents})`,
+        })
+        .from(invoiceLines)
+        .where(eq(invoiceLines.invoiceId, p.invoiceId))
+        .groupBy(invoiceLines.vatRateBp, invoiceLines.vatCode);
+      for (const g of groups) {
+        const share = (cents: number) => roundHalfAwayFromZero((cents * p.amount) / p.total) + 0;
+        const net = share(Number(g.net));
+        turnover += net;
+        if (!g.rateBp) {
+          zeroRated += net;
+          if (g.code === "export") f220 += net;
+          continue;
+        }
+        const r = byRate.get(g.rateBp) ?? { base: 0, tax: 0 };
+        r.base += net;
+        r.tax += share(vatOf(Number(g.net), g.rateBp));
+        byRate.set(g.rateBp, r);
+      }
+    }
+  }
   const f230 = zeroRated - f220;
   const f289 = f220 + f230;
   const f299 = turnover - f289;

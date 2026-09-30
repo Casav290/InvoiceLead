@@ -15,6 +15,7 @@ import {
 } from "@/server/db/schema";
 import { createInvoice, issueInvoice, parseInvoiceForm } from "@/server/invoices";
 import { postPending, verifyChain } from "@/server/ledger";
+import { addPayment } from "@/server/payments";
 import { draftVatReturn, validateVatReturn } from "@/server/vat-return";
 import { camt053 } from "../support/camt";
 import { claims } from "../support/claims";
@@ -300,5 +301,90 @@ describe("décompte TVA au taux de la dette fiscale nette", () => {
       { n: "2201", d: 0, c: 7974 },
       { n: "3800", d: 0, c: 646 },
     ]);
+  });
+});
+
+describe("décompte TVA selon les contre-prestations reçues", () => {
+  it("ne doit la TVA d'une facture qu'au prorata de ce qui est payé dans la période", async () => {
+    const a = await attachLeadIdentity(db, claims());
+    const who = { organizationId: a.organization.id, userId: a.user.id };
+    await db
+      .update(organizations)
+      .set({
+        vatRegistered: true,
+        vatMethod: "effective",
+        vatSettlement: "received",
+        uid: "CHE116281710",
+        legalName: "Atelier Muster",
+        street: "Bahnhofstrasse",
+        postalCode: "8001",
+        town: "Zürich",
+        iban: "CH9300762011623852957",
+        settingsCompletedAt: new Date(),
+      })
+      .where(eq(organizations.id, a.organization.id));
+    await installChart(db, who, "sole_proprietorship");
+    await createFirstFiscalYear(db, who, { start: "2026-01-01", extended: false });
+    const c = parseContactForm(
+      form({
+        kind: "company",
+        isCustomer: "on",
+        name: "Kunde AG",
+        language: "de",
+        country: "CH",
+        paymentTermDays: "30",
+      }),
+    );
+    if (!c.ok) throw new Error("contact");
+    const contact = await createContact(db, who, c.data);
+    const r = parseInvoiceForm(
+      form({
+        contactId: contact.id,
+        language: "de",
+        issueDate: "2026-02-10",
+        "line.description": ["Beratung", "Buch"],
+        "line.quantity": ["1", "1"],
+        "line.unit": ["flat", "piece"],
+        "line.unitPrice": ["1000", "200"],
+        "line.vatCode": ["normal", "reduced"],
+        "line.productId": ["", ""],
+      }),
+      { vatRegistered: true },
+    );
+    if (!r.ok) throw new Error("facture");
+    const draft = await createInvoice(db, who, r.data);
+    if (typeof draft !== "object" || !draft) throw new Error("brouillon");
+    const invoice = await issueInvoice(db, who, draft.id);
+    if (typeof invoice !== "object") throw new Error(invoice);
+    expect(invoice.totalCents).toBe(128_620);
+    // Moitié payée au premier trimestre, le reste au deuxième.
+    await addPayment(db, who, invoice.id, {
+      paidOn: "2026-03-20",
+      amountCents: 64_310,
+      method: "bank",
+      note: null,
+    });
+    await addPayment(db, who, invoice.id, {
+      paidOn: "2026-04-15",
+      amountCents: 64_310,
+      method: "bank",
+      note: null,
+    });
+    await postPending(db, who);
+
+    const q1 = await draftVatReturn(db, who.organizationId, "2026-01-01", "2026-03-31");
+    expect(q1.anomalies).toEqual([]);
+    expect(q1.figures).toMatchObject({
+      "200": 60_000,
+      "299": 60_000,
+      "303": 50_000,
+      "303t": 4050,
+      "313": 10_000,
+      "313t": 260,
+      "399": 4310,
+    });
+    const q2 = await draftVatReturn(db, who.organizationId, "2026-04-01", "2026-06-30");
+    expect(q2.figures["399"]).toBe(4310);
+    expect(await validateVatReturn(db, who, "2026-01-01", "2026-03-31")).toBe("validated");
   });
 });

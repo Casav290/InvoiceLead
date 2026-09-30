@@ -876,7 +876,7 @@
     },
     "vat": {
       "title": "MWST",
-      "subtitle": "Quartalsabrechnung aus dem Journal (effektive Methode). Prüfen Sie, lassen Sie sie bei Bedarf vom Assistenten gegenlesen und bestätigen Sie: Die Zahlen übertragen Sie unverändert ins Formular der ESTV.",
+      "subtitle": "Abrechnung aus dem Journal, nach der Methode (effektiv oder Saldosteuersatz) und der Abrechnungsart (vereinbart oder vereinnahmt) aus den Unternehmensdaten. Prüfen Sie, lassen Sie sie bei Bedarf vom Assistenten gegenlesen und bestätigen Sie: Die Zahlen übertragen Sie unverändert ins Formular der ESTV.",
       "validatedNotice": "Abrechnung bestätigt. Die Periode ist im Journal abgeschlossen, die MWST ist auf das Abrechnungskonto 2201 übertragen.",
       "errors": {
         "blocked": "Die Abrechnung kann nicht bestätigt werden, solange blockierende Punkte offen sind.",
@@ -894,8 +894,6 @@
       "amount": "CHF",
       "anomalies": {
         "notRegistered": "Das Unternehmen ist nicht im MWST-Register eingetragen (Unternehmenseinstellungen).",
-        "netTaxRate": "Die Saldosteuersatzmethode wird noch nicht unterstützt.",
-        "received": "Die Abrechnung nach vereinnahmten Entgelten wird noch nicht unterstützt.",
         "baseMismatch": "Der steuerbare Umsatz stimmt nicht genau mit den Bemessungsgrundlagen überein: Prüfen Sie Ertragsbuchungen ohne MWST.",
         "pendingBank": "{count, plural, one {# Bankbewegung der Periode ist noch nicht bestätigt.} other {# Bankbewegungen der Periode sind noch nicht bestätigt.}}",
         "unposted": "{count, plural, one {# Rechnung der Periode ist noch nicht verbucht.} other {# Rechnungen der Periode sind noch nicht verbucht.}}",

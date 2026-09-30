@@ -876,7 +876,7 @@
     },
     "vat": {
       "title": "TVA",
-      "subtitle": "Décompte trimestriel préparé à partir du journal (méthode effective). Vérifiez, faites relire par l'assistant si vous le souhaitez, puis validez : les chiffres se reportent tels quels sur le formulaire de l'AFC.",
+      "subtitle": "Décompte préparé à partir du journal, selon la méthode (effective ou TDFN) et le mode (convenu ou reçu) choisis dans les données de l'entreprise. Vérifiez, faites relire par l'assistant si vous le souhaitez, puis validez : les chiffres se reportent tels quels sur le formulaire de l'AFC.",
       "validatedNotice": "Décompte validé. La période est close au journal, et la TVA est virée sur le compte de décompte 2201.",
       "errors": {
         "blocked": "Le décompte ne peut pas être validé tant que des points bloquants subsistent.",
@@ -894,8 +894,6 @@
       "amount": "CHF",
       "anomalies": {
         "notRegistered": "L'entreprise n'est pas inscrite au registre TVA (réglages de l'entreprise).",
-        "netTaxRate": "La méthode des taux de la dette fiscale nette n'est pas encore prise en charge.",
-        "received": "Le décompte selon les contre-prestations reçues n'est pas encore pris en charge.",
         "baseMismatch": "Le chiffre d'affaires imposable ne correspond pas exactement aux bases des taux : vérifiez les écritures de produits sans TVA.",
         "pendingBank": "{count, plural, one {# mouvement bancaire de la période n'est pas encore validé.} other {# mouvements bancaires de la période ne sont pas encore validés.}}",
         "unposted": "{count, plural, one {# facture de la période n'est pas encore comptabilisée.} other {# factures de la période ne sont pas encore comptabilisées.}}",
