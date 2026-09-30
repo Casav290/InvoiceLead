@@ -2,12 +2,21 @@ import { expect, test } from "@playwright/test";
 import { login, traitNetIssues } from "./helpers";
 
 const WIDTHS = [
+  { width: 320, height: 640 },
   { width: 390, height: 844 },
   { width: 820, height: 1180 },
   { width: 1280, height: 800 },
 ];
 
-const PUBLIC_PAGES = ["/de", "/fr", "/de/login", "/fr/login", "/de/signup", "/fr/signup"];
+const PUBLIC_PAGES = [
+  "/de",
+  "/fr",
+  "/de/login",
+  "/fr/login",
+  "/de/signup",
+  "/fr/signup",
+  "/fr/nexiste-pas",
+];
 
 for (const size of WIDTHS) {
   test.describe(`Trait net à ${size.width} px`, () => {
@@ -31,13 +40,18 @@ for (const size of WIDTHS) {
     });
 
     test("écran sans accès", async ({ page }) => {
-      await login(page, "fr", {
-        sub: `sub-na-${size.width}`,
-        email: `na${size.width}@libre.test`,
-        org: `org-na-${size.width}`,
-        org_name: "Libre Sàrl",
-        access: false,
-      });
+      await login(
+        page,
+        "fr",
+        {
+          sub: `sub-na-${size.width}`,
+          email: `na${size.width}@libre.test`,
+          org: `org-na-${size.width}`,
+          org_name: "Libre Sàrl",
+          access: false,
+        },
+        "**/fr/no-access",
+      );
       expect(await traitNetIssues(page)).toEqual([]);
     });
   });

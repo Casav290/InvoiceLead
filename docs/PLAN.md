@@ -21,7 +21,7 @@ On reprend les fonctions et la logique de conversion de bexio, jamais ses textes
 | Langues | Allemand et français au lancement |
 | Domaine | invoicelead.io, déjà réservé chez Porkbun |
 | Code et hébergement | GitHub `Casav290/InvoiceLead`, Vercel |
-| Base | Neon, projet `tiny-shape-39858234` (« InvoiceLead »), branche `production`, région `aws-us-east-2` (Ohio), Postgres 18 |
+| Base | Neon, projet `tiny-shape-39858234` (« InvoiceLead »), branche `production`, région `aws-us-east-2` (Ohio), Postgres 18 ; fonctions Vercel en `cle1` (Cleveland), à côté |
 | Visuel | Trait net v1, repris des jetons de CRMlead et de Scanlead (section 5) |
 
 ## 3. Ce qu'on reprend de bexio, et quand
@@ -55,7 +55,7 @@ On reprend les fonctions et la logique de conversion de bexio, jamais ses textes
 | Police | Archivo (variable), servie avec l'application | Aucune requête vers Google au chargement |
 | Traductions | next-intl 4, adresses `/de/…` et `/fr/…` | |
 | Base | Neon Postgres, pilote `pg` avec un pool par instance (Fluid compute) | |
-| Accès aux données | Drizzle ORM, migrations SQL versionnées dans `drizzle/` | Appliquées par `vercel-build` avant chaque build |
+| Accès aux données | Drizzle ORM, migrations SQL versionnées dans `drizzle/` | Appliquées par `vercel-build` en production seulement, par la connexion directe (`DATABASE_URL_UNPOOLED`) |
 | Connexion | Compte Lead, kit `leadId.ts` de CRMlead copié tel quel | Session locale de 12 h, jeton stocké haché |
 | Neon Auth | Activé à la création du projet (`neon.ts`), **pas utilisé** pour la connexion | Peut être retiré si le Compte Lead reste la seule entrée |
 | Neon Functions | Fonction `api` déployée (exemple `hello.ts`) | Candidat pour les tâches planifiées (relances, récurrences) via les déclencheurs cron |
@@ -150,7 +150,9 @@ Déjà en place (migration `0000_init`) :
 
 QR-facture : norme SIX IG 2.3, en vigueur depuis le 21.11.2025 et valable jusqu'en novembre 2027 ; adresses structurées obligatoires ; IBAN avec référence SCOR, ou QR-IBAN avec référence QR (27 chiffres, modulo 10 récursif). Validation par l'outil SIX avant l'ouverture.
 
-TVA, taux : 8,1 %, 2,6 % et 3,8 % depuis le 1.1.2024, stockés avec leurs dates de validité ; le taux dépend de la date de la prestation. Votation le 29.11.2026 sur un taux normal de 8,5 % et un taux hébergement de 4,0 % dès 2028 ; une hausse « armée » est aussi en discussion pour 2029. Veille à tenir.
+TVA, taux : 8,1 %, 2,6 % et 3,8 % depuis le 1.1.2024, stockés avec leurs dates de validité ; le taux dépend de la date de la prestation. Hausses en préparation, dates encore incertaines : financement de la 13e rente AVS (taux normal 8,5 %, probablement dès 2028, votation annoncée pour le 29.11.2026), hausse « armée » en débat (dès 2029 selon le Conseil des États), prolongation du taux hébergement au-delà de 2027. Veille à tenir, rien n'est codé en dur.
+
+TVA, méthodes : effective, ou taux de la dette fiscale nette (TDFN) avec, depuis 2025, un taux par activité dépassant 10 % du chiffre d'affaires (plus de limite à deux taux) ; passage TDFN vers effective après une période, effective vers TDFN après trois ans.
 
 TVA, décompte : formulaire par chiffres (200, 205, 220, 221, 225, 230, 235, 280, 289, 299, 303, 313, 343, 383, 399, 400, 405, 410, 415, 420, 479, 500/510, 900/910 ; 322/323… pour le taux de la dette fiscale nette). Dépôt électronique obligatoire depuis 2025 sur le portail AFC, par fichier XML **eCH-0217 V2.0.0** : pas d'API de dépôt direct, InvoiceLead produit le fichier et guide le dépôt. Périodes : trimestrielle (effective), semestrielle (TDFN), annuelle sur demande depuis 2025. Seuil d'assujettissement 100'000 CHF ; une entreprise non inscrite ne doit pas afficher de TVA (art. 27).
 
@@ -195,7 +197,7 @@ Règle d'Ève : une fonction à la fois, terminée et mise en ligne avant la sui
 
 | Lot | Contenu | Terminé quand | État |
 |---|---|---|---|
-| 0. Fondations | Next.js 16, Trait net, de/fr, Drizzle, connexion Compte Lead, coquille de l'application, CI, audit Playwright | Connexion de bout en bout contre un faux Compte Lead, 50 contrôles verts | fait (PR #1) |
+| 0. Fondations | Next.js 16, Trait net, de/fr, Drizzle, connexion Compte Lead, coquille de l'application, CI, audit Playwright | Connexion de bout en bout contre un faux Compte Lead, 76 contrôles verts (28 unitaires, 48 de bout en bout), revue adversariale appliquée | fait (PR #1) |
 | 1. Mise en ligne | Vercel, domaine invoicelead.io, Compte Lead réel (client déclaré dans CRMlead), pages légales, tarifs, FAQ | Connexion réelle sur invoicelead.io | à faire |
 | 2. Entreprise et référentiels | Réglages entreprise, contacts, articles, taux TVA datés, plan comptable (2 modèles), exercices | Une entreprise configurée avec son plan comptable | |
 | 3. Devis et factures | Devis, confirmation, facture, avoir, numérotation, PDF avec QR-facture, envoi, facture en ligne, paiements saisis, écritures automatiques | Une vraie facture QR payée dans une app bancaire, écritures justes | |

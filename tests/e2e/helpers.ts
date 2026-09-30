@@ -13,14 +13,19 @@ export type FakeUser = {
 };
 
 /** Connexion complète par le faux Compte Lead, depuis l'écran de connexion. */
-export async function login(page: Page, locale: "de" | "fr" = "de", user?: FakeUser) {
+export async function login(
+  page: Page,
+  locale: "de" | "fr" = "de",
+  user?: FakeUser,
+  landing = `**/${locale}/app`,
+) {
   if (user) {
     const res = await page.request.post(`${LEAD}/test/next-user`, { data: user });
     expect(res.ok()).toBeTruthy();
   }
   await page.goto(`/${locale}/login`);
   await page.getByTestId("lead-login").click();
-  await page.waitForURL(`**/${locale}/app`);
+  await page.waitForURL(landing);
 }
 
 /** Relevé « Trait net » : police, arrondis, ombres, dégradés, débordement horizontal. */

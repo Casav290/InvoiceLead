@@ -36,7 +36,7 @@
       },
       "vat": {
         "title": "TVA suisse maîtrisée",
-        "body": "Taux 8,1 %, 2,6 % et 3,8 %, méthode effective ou taux de la dette fiscale nette, décompte préparé."
+        "body": "Taux 8,1 %, 2,6 % et 3,8 %, méthode effective ou taux de la dette fiscale nette, décompte préparé."
       },
       "team": {
         "title": "Toute l'équipe, et votre fiduciaire",
@@ -49,7 +49,7 @@
       "position": "Position",
       "qty": "Qté",
       "subtotal": "Sous-total",
-      "vat": "TVA 8,1 %",
+      "vat": "TVA 8,1 %",
       "total": "Total",
       "payment": "Section paiement",
       "rows": ["Conseil, septembre", "Atelier de lancement", "Frais de déplacement"],
@@ -60,9 +60,9 @@
     "loginTitle": "Connexion à InvoiceLead",
     "loginSubtitle": "InvoiceLead utilise votre Compte Lead, le même que pour Scanlead et CRMlead.",
     "signupTitle": "Créer votre compte",
-    "signupSubtitle": "Le Compte Lead vous ouvre InvoiceLead et toutes les applications de la famille. L'écran suivant propose « Créer un compte ».",
+    "signupSubtitle": "Le Compte Lead vous ouvre InvoiceLead et toutes les applications de la famille. L'écran suivant propose « Créer un compte ».",
     "leadButton": "Se connecter avec mon compte Lead",
-    "noAccountYet": "Pas encore de compte ? Le même bouton permet d'en créer un.",
+    "noAccountYet": "Pas encore de compte ? Le même bouton permet d'en créer un.",
     "errors": {
       "lead": "La connexion au Compte Lead n'a pas abouti. Réessayez.",
       "session": "La demande de connexion a expiré. Réessayez."
@@ -82,7 +82,12 @@
     },
     "user": {
       "logout": "Se déconnecter",
-      "plan": "Formule"
+      "planLine": "Formule : <strong>{plan}</strong>",
+      "plans": {
+        "free": "Gratuit",
+        "pro": "Pro",
+        "pro_plus": "Pro+"
+      }
     },
     "dashboard": {
       "title": "Bonjour {name}",
@@ -112,5 +117,10 @@
     "scanlead": "Scanlead, la capture de leads sur les salons",
     "crmlead": "CRMlead, le CRM qui suit vos contacts",
     "features": "Fonctions"
+  },
+  "notFound": {
+    "title": "Page introuvable",
+    "body": "Cette adresse n'existe pas, ou plus, sur InvoiceLead.",
+    "home": "Retour à l'accueil"
   }
 }

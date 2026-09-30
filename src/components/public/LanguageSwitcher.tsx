@@ -20,7 +20,9 @@ export function LanguageSwitcher({ className }: { className?: string }) {
           aria-current={l === locale ? "true" : undefined}
           className={cn(
             "flex items-center px-2 text-[12px] font-bold uppercase",
-            l === locale ? "text-accent" : "text-ink-muted hover:text-ink",
+            l === locale
+              ? "text-accent-dark underline decoration-2 underline-offset-4"
+              : "text-ink-muted hover:text-ink",
           )}
         >
           {l}

@@ -31,7 +31,12 @@ export function LeadLoginPanel({
             {t(`errors.${error}`)}
           </p>
         ) : null}
-        <Button asChild variant="lead" size="lg" className="w-full">
+        <Button
+          asChild
+          variant="lead"
+          size="lg"
+          className="h-auto min-h-12 w-full px-4 py-3 text-center whitespace-normal sm:px-6"
+        >
           <a href={`/auth/lead/start?locale=${locale}`} data-testid="lead-login">
             {t("leadButton")}
           </a>

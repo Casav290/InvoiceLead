@@ -30,3 +30,37 @@ export function openLogin(cookie: string | undefined, secret: string): SavedLogi
 export function pickLocale(value: unknown): "de" | "fr" {
   return value === "fr" ? "fr" : "de";
 }
+
+/**
+ * Langue d'une requête sans demande de connexion en cours : cookie de langue de next-intl d'abord,
+ * puis la première langue connue de l'en-tête Accept-Language, sinon l'allemand.
+ */
+export function localeFromRequest(
+  nextLocaleCookie: string | undefined,
+  acceptLanguage: string | null,
+) {
+  if (nextLocaleCookie === "de" || nextLocaleCookie === "fr") return nextLocaleCookie;
+  const ranked = (acceptLanguage ?? "")
+    .split(",")
+    .map((part) => {
+      const [tag = "", ...params] = part.trim().split(";");
+      const q = Number(params.find((p) => p.trim().startsWith("q="))?.split("=")[1] ?? 1);
+      return { lang: tag.slice(0, 2).toLowerCase(), q: Number.isFinite(q) ? q : 0 };
+    })
+    .sort((a, b) => b.q - a.q);
+  const found = ranked.find((r) => r.q > 0 && (r.lang === "de" || r.lang === "fr"));
+  return found ? pickLocale(found.lang) : "de";
+}
+
+/** Ce qu'on peut journaliser d'une erreur de connexion, sans données personnelles ni jeton. */
+export function describeLoginError(error: unknown): string {
+  if (error instanceof Error && error.message.startsWith("lead_id:")) return error.message;
+  const cause = (error as { cause?: { code?: unknown; constraint?: unknown } } | null)?.cause;
+  return [
+    error instanceof Error ? error.name : "error",
+    typeof cause?.code === "string" ? cause.code : null,
+    typeof cause?.constraint === "string" ? cause.constraint : null,
+  ]
+    .filter(Boolean)
+    .join(" ");
+}

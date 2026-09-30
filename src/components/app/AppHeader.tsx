@@ -9,16 +9,20 @@ export function AppHeader({
   locale,
   orgName,
   user,
-  plan,
+  planCode,
+  planName,
   apps,
 }: {
   locale: string;
   orgName: string;
   user: { name: string; email: string };
-  plan: string;
+  planCode: string;
+  planName: string;
   apps: LeadAppItem[];
 }) {
   const t = useTranslations("app.nav");
+  const tPlans = useTranslations("app.user.plans");
+  const planLabel = tPlans.has(planCode) ? tPlans(planCode) : planName;
   return (
     <header className="border-b border-line-strong bg-panel">
       <div className="flex min-h-[52px] items-stretch px-3 sm:px-5">
@@ -48,7 +52,7 @@ export function AppHeader({
             {orgName}
           </span>
           <AppSwitcher items={apps} />
-          <UserMenu name={user.name} email={user.email} plan={plan} locale={locale} />
+          <UserMenu name={user.name} email={user.email} planLabel={planLabel} locale={locale} />
         </div>
       </div>
     </header>

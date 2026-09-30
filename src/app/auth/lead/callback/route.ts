@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { type NextRequest, NextResponse } from "next/server";
 import { LOGIN_COOKIE, LOGIN_COOKIE_PATH, SESSION_COOKIE } from "@/lib/cookies";
 import { attachLeadIdentity } from "@/server/auth/attach";
-import { openLogin } from "@/server/auth/login-cookie";
+import { describeLoginError, localeFromRequest, openLogin } from "@/server/auth/login-cookie";
 import { cookieOptions, createSession, SESSION_HOURS } from "@/server/auth/session";
 import { db } from "@/server/db";
 import { env } from "@/server/env";
@@ -13,8 +13,11 @@ export const dynamic = "force-dynamic";
 /** Retour du Compte Lead : vérifie le jeton, rattache la personne, ouvre la session locale. */
 export async function GET(request: NextRequest) {
   const { APP_URL, SESSION_SECRET } = env();
-  const saved = openLogin((await cookies()).get(LOGIN_COOKIE)?.value, SESSION_SECRET);
-  const locale = saved?.locale ?? "de";
+  const store = await cookies();
+  const saved = openLogin(store.get(LOGIN_COOKIE)?.value, SESSION_SECRET);
+  const locale =
+    saved?.locale ??
+    localeFromRequest(store.get("NEXT_LOCALE")?.value, request.headers.get("accept-language"));
 
   const done = (url: string) => {
     const response = NextResponse.redirect(url, 303);
@@ -44,7 +47,7 @@ export async function GET(request: NextRequest) {
     response.cookies.set(SESSION_COOKIE, session.token, cookieOptions(SESSION_HOURS * 3600));
     return response;
   } catch (error) {
-    console.error("[lead-id] callback", error instanceof Error ? error.message : error);
+    console.error("[lead-id] callback", describeLoginError(error));
     return done(`${APP_URL}/${locale}/login?erreur=lead`);
   }
 }

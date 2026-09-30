@@ -27,7 +27,15 @@ export const users = pgTable(
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
-  (t) => [uniqueIndex("users_email_lower_idx").on(sql`lower(${t.email})`)],
+  (t) => [
+    // L'identité se rattache par `lead_sub`. Deux comptes Lead peuvent donc porter la même adresse
+    // (compte recréé, boîte réattribuée, adresse non vérifiée) sans jamais bloquer une connexion.
+    // L'unicité ne vaut que pour les personnes pas encore rattachées au Compte Lead.
+    index("users_email_lower_idx").on(sql`lower(${t.email})`),
+    uniqueIndex("users_email_unlinked_idx")
+      .on(sql`lower(${t.email})`)
+      .where(sql`${t.leadSub} is null`),
+  ],
 );
 
 /** Entreprise cliente (organisation du Compte Lead). Toutes les données métier y sont rattachées. */

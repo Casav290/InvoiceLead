@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { randomToken, sha256Hex, sign, unsign } from "@/server/auth/crypto";
-import { openLogin, pickLocale, sealLogin } from "@/server/auth/login-cookie";
+import {
+  describeLoginError,
+  localeFromRequest,
+  openLogin,
+  pickLocale,
+  sealLogin,
+} from "@/server/auth/login-cookie";
 
 const SECRET = "s".repeat(40);
 
@@ -47,5 +53,36 @@ describe("cookie de connexion", () => {
     expect(pickLocale("fr")).toBe("fr");
     expect(pickLocale("en")).toBe("de");
     expect(pickLocale(null)).toBe("de");
+  });
+});
+
+describe("langue d'une requête sans demande en cours", () => {
+  it("préfère le cookie de langue, puis Accept-Language, sinon l'allemand", () => {
+    expect(localeFromRequest("fr", "de-CH")).toBe("fr");
+    expect(localeFromRequest(undefined, "fr-CH,fr;q=0.9,de;q=0.8")).toBe("fr");
+    expect(localeFromRequest(undefined, "en-US,de;q=0.5,fr;q=0.7")).toBe("fr");
+    expect(localeFromRequest(undefined, "en-US")).toBe("de");
+    expect(localeFromRequest("it", null)).toBe("de");
+    expect(localeFromRequest(undefined, "fr;q=0")).toBe("de");
+  });
+});
+
+describe("journal des erreurs de connexion", () => {
+  it("garde les messages du kit Lead", () => {
+    expect(describeLoginError(new Error("lead_id:state_mismatch"))).toBe("lead_id:state_mismatch");
+  });
+
+  it("ne recopie jamais le message d'une erreur de base (paramètres, jetons)", () => {
+    const error = Object.assign(
+      new Error("Failed query: insert ... params: ada@x.test,eyJhbGciOi..."),
+      {
+        name: "DrizzleQueryError",
+        cause: { code: "23505", constraint: "users_email_unlinked_idx" },
+      },
+    );
+    const logged = describeLoginError(error);
+    expect(logged).toBe("DrizzleQueryError 23505 users_email_unlinked_idx");
+    expect(logged).not.toContain("ada@");
+    expect(describeLoginError("chaîne")).toBe("error");
   });
 });

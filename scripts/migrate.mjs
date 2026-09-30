@@ -6,13 +6,16 @@
  *   exemple une branche Neon par PR). Sinon on ne touche à rien : une PR non fusionnée ne doit jamais
  *   modifier la base de production.
  * - Hors Vercel (local, CI) : migre si DATABASE_URL est présent.
+ *
+ * Connexion directe (DATABASE_URL_UNPOOLED, posée par Neon) de préférence : le pooler de Neon ne convient
+ * pas aux migrations. À défaut, DATABASE_URL.
  */
 import { drizzle } from "drizzle-orm/node-postgres";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 import pg from "pg";
 
 const env = process.env.VERCEL_ENV;
-const url = process.env.DATABASE_URL;
+const url = process.env.DATABASE_URL_UNPOOLED || process.env.DATABASE_URL;
 
 if (env === "preview" && process.env.ALLOW_PREVIEW_MIGRATIONS !== "1") {
   console.log("[migrate] prévisualisation : migrations ignorées (ALLOW_PREVIEW_MIGRATIONS absent)");

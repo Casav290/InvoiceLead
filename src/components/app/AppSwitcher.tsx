@@ -62,14 +62,15 @@ export function AppSwitcher({ items }: { items: LeadAppItem[] }) {
                 <span className="text-[12px] text-ink-muted">{label}</span>
               </>
             );
-            const rowClass = "flex items-center gap-2.5 px-2 py-2 outline-none";
+            const rowClass =
+              "flex items-center gap-2.5 px-2 py-2 outline-hidden data-[highlighted]:bg-accent-veil data-[highlighted]:outline-2 data-[highlighted]:outline-accent data-[highlighted]:-outline-offset-2";
             if (item.href) {
               return (
                 <DropdownMenu.Item key={item.code} asChild>
                   <a
                     href={item.href}
                     data-testid={`application-switcher-${item.code}`}
-                    className={cn(rowClass, "cursor-pointer data-[highlighted]:bg-muted")}
+                    className={cn(rowClass, "cursor-pointer")}
                   >
                     {inner}
                   </a>

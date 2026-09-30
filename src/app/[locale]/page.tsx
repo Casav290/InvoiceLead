@@ -1,6 +1,4 @@
-import { useTranslations } from "next-intl";
-import { setRequestLocale } from "next-intl/server";
-import { use } from "react";
+import { useLocale, useTranslations } from "next-intl";
 import { AppMark } from "@/components/brand/AppMark";
 import { PublicFooter } from "@/components/public/PublicFooter";
 import { PublicHeader } from "@/components/public/PublicHeader";
@@ -10,9 +8,8 @@ import { formatAmount, formatMoney, vatOf } from "@/lib/money";
 
 const FEATURES = ["quotes", "qr", "reminders", "accounting", "vat", "team"] as const;
 
-export default function HomePage({ params }: { params: Promise<{ locale: string }> }) {
-  const { locale } = use(params);
-  setRequestLocale(locale);
+export default function HomePage() {
+  const locale = useLocale();
   const t = useTranslations("home");
   return (
     <div className="flex min-h-screen flex-col">
@@ -21,7 +18,7 @@ export default function HomePage({ params }: { params: Promise<{ locale: string 
         <section className="border-b border-line-strong">
           <div className="mx-auto grid max-w-6xl gap-10 px-4 py-14 sm:px-8 md:grid-cols-[1.1fr_1fr] md:py-20">
             <div>
-              <p className="mb-4 inline-block border border-accent px-2 py-1 text-[11px] font-extrabold tracking-[0.08em] text-accent uppercase">
+              <p className="mb-4 inline-block border border-accent-dark px-2 py-1 text-[11px] font-extrabold tracking-[0.08em] text-accent-dark uppercase">
                 {t("kicker")}
               </p>
               <h1 className="text-[34px] leading-[1.08] sm:text-[46px]">{t("title")}</h1>
@@ -139,7 +136,7 @@ function InvoicePreview({ locale }: { locale: string }) {
           <p className="font-extrabold">{t("payment")}</p>
           <p className="text-ink-muted">CH93 0076 2011 6238 5295 7</p>
           <p className="text-ink-muted">RF18 5390 0754 7034</p>
-          <p className="font-bold">{formatMoney(total, locale)}</p>
+          <p className="font-bold">CHF {formatAmount(total).replaceAll("'", " ")}</p>
         </div>
       </div>
     </div>

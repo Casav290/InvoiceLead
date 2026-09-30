@@ -52,6 +52,6 @@
     "check": "npm run lint && npm run typecheck && npm test"
   },
   "engines": {
-    "node": ">=22"
+    "node": "22.x"
   }
 }

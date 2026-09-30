@@ -23,4 +23,10 @@ describe("montants", () => {
     expect(vatOf(10_000, 260)).toBe(260);
     expect(vatOf(0, 810)).toBe(0);
   });
+
+  it("arrondit un avoir comme la facture qu'il annule", () => {
+    expect(vatOf(-218_500, 810)).toBe(-17_699);
+    expect(vatOf(-218_500, 810)).toBe(-vatOf(218_500, 810));
+    expect(Object.is(vatOf(-0, 810), 0)).toBe(true);
+  });
 });

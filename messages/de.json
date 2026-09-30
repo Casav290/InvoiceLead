@@ -82,7 +82,12 @@
     },
     "user": {
       "logout": "Abmelden",
-      "plan": "Abo"
+      "planLine": "Abo: <strong>{plan}</strong>",
+      "plans": {
+        "free": "Gratis",
+        "pro": "Pro",
+        "pro_plus": "Pro+"
+      }
     },
     "dashboard": {
       "title": "Guten Tag {name}",
@@ -112,5 +117,10 @@
     "scanlead": "Scanlead, Leaderfassung an Messen",
     "crmlead": "CRMlead, das CRM für Ihre Kontakte",
     "features": "Funktionen"
+  },
+  "notFound": {
+    "title": "Seite nicht gefunden",
+    "body": "Diese Adresse gibt es bei InvoiceLead nicht, oder nicht mehr.",
+    "home": "Zur Startseite"
   }
 }

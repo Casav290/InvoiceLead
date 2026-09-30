@@ -1,22 +1,30 @@
-import { getTranslations, setRequestLocale } from "next-intl/server";
-import { getSession } from "@/server/auth/session";
+import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
+import { requireAppSession } from "@/server/auth/guard";
 
 const NEXT_STEPS = ["company", "contacts", "invoice"] as const;
 
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: "app.nav" });
+  return { title: t("dashboard"), robots: { index: false } };
+}
+
 export default async function DashboardPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
-  setRequestLocale(locale);
-  const session = await getSession();
+  const { user, organization } = await requireAppSession(locale);
   const t = await getTranslations({ locale, namespace: "app.dashboard" });
-  const firstName = (session?.user.name || session?.user.email || "").split(/\s+/)[0] ?? "";
+  const firstName = (user.name || user.email).split(/\s+/)[0] ?? "";
   return (
     <div className="mx-auto max-w-5xl px-4 py-10 sm:px-8">
       <h1 className="text-[28px] leading-tight" data-testid="dashboard-title">
         {t("title", { name: firstName })}
       </h1>
-      <p className="mt-2 text-[15px] text-ink-muted">
-        {t("subtitle", { org: session?.organization.name ?? "" })}
-      </p>
+      <p className="mt-2 text-[15px] text-ink-muted">{t("subtitle", { org: organization.name })}</p>
       <section className="mt-8 border border-line-strong bg-panel">
         <h2 className="border-b border-line bg-head px-5 py-3 text-[10.5px] font-extrabold tracking-[0.09em] text-ink-muted uppercase">
           {t("nextTitle")}

@@ -19,7 +19,7 @@ export function PublicHeader() {
           className="flex min-h-12 w-full shrink-0 items-center gap-2.5 border-b border-line sm:min-h-0 sm:w-auto sm:border-r sm:border-b-0 sm:border-line-strong sm:pr-5"
         >
           <AppMark label="IL" />
-          <span className="text-[16px] font-extrabold tracking-[-0.025em] text-accent">
+          <span className="text-[16px] font-extrabold tracking-[-0.025em] text-accent-dark">
             InvoiceLead
           </span>
         </Link>
@@ -34,7 +34,7 @@ export function PublicHeader() {
             </a>
           ))}
         </nav>
-        <div className="flex w-full items-center justify-between py-2 sm:ml-auto sm:w-auto sm:justify-start sm:py-0">
+        <div className="flex w-full flex-wrap items-center justify-between gap-y-2 py-2 sm:ml-auto sm:w-auto sm:flex-nowrap sm:justify-start sm:py-0">
           <LanguageSwitcher className="border-r border-line-strong pr-1 sm:self-stretch sm:px-2" />
           <Link
             href="/login"
@@ -44,7 +44,7 @@ export function PublicHeader() {
           </Link>
           <Link
             href="/signup"
-            className="ml-2 whitespace-nowrap bg-accent px-3 py-2 text-[12px] font-bold text-white hover:bg-accent-dark sm:ml-3 sm:px-4 sm:text-[13px]"
+            className="ml-2 bg-accent px-3 py-2 text-center text-[12px] font-bold text-white hover:bg-accent-dark sm:ml-3 sm:px-4 sm:text-[13px] sm:whitespace-nowrap"
           >
             {t("cta")}
           </Link>

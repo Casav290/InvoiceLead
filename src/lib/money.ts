@@ -20,7 +20,15 @@ export function formatMoney(cents: number, locale?: string, currency = "CHF"): s
   return `${currency} ${formatAmount(cents, locale)}`;
 }
 
-/** TVA d'un montant hors taxe, arrondie au centime (arrondi commercial). `rateBp` en points de base : 810 = 8,1 %. */
+/**
+ * Arrondi commercial au centime, symétrique : la moitié s'éloigne de zéro, pour les avoirs comme pour
+ * les factures (Math.round arrondirait −0,5 vers zéro et fausserait un avoir d'un centime).
+ */
+export function roundHalfAwayFromZero(value: number): number {
+  return Math.sign(value) * Math.round(Math.abs(value));
+}
+
+/** TVA d'un montant hors taxe, arrondie au centime. `rateBp` en points de base : 810 = 8,1 %. */
 export function vatOf(netCents: number, rateBp: number): number {
-  return Math.round((netCents * rateBp) / 10_000);
+  return roundHalfAwayFromZero((netCents * rateBp) / 10_000) + 0;
 }

@@ -53,8 +53,43 @@ describe("rattachement au Compte Lead", () => {
     expect(verified.user.id).toBe(local?.id);
 
     await t.reset();
-    await db.insert(users).values({ email: "ada@atelier.test", name: "Ada" });
-    await expect(attachLeadIdentity(db, claims({ email_verified: false }))).rejects.toThrow();
+    const [unlinked] = await db
+      .insert(users)
+      .values({ email: "ada@atelier.test", name: "Ada" })
+      .returning();
+    const unverified = await attachLeadIdentity(db, claims({ email_verified: false }));
+    expect(unverified.user.id).not.toBe(unlinked?.id);
+    const [still] = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, unlinked?.id ?? ""));
+    expect(still?.leadSub).toBeNull();
+  });
+
+  it("une adresse non vérifiée ne bloque jamais son vrai propriétaire", async () => {
+    const mallory = await attachLeadIdentity(
+      db,
+      claims({
+        sub: "sub-mallory",
+        email: "Target@Corp.test",
+        email_verified: false,
+        org: "org-m",
+      }),
+    );
+    const target = await attachLeadIdentity(
+      db,
+      claims({ sub: "sub-target", email: "target@corp.test", org: "org-t", org_name: "Corp AG" }),
+    );
+    expect(target.user.id).not.toBe(mallory.user.id);
+    expect(target.user.leadSub).toBe("sub-target");
+    expect(target.organization.name).toBe("Corp AG");
+  });
+
+  it("un compte Lead recréé (nouveau sub, même adresse) garde l'accès à son organisation", async () => {
+    const before = await attachLeadIdentity(db, claims());
+    const after = await attachLeadIdentity(db, claims({ sub: "sub-ada-2" }));
+    expect(after.user.id).not.toBe(before.user.id);
+    expect(after.organization.id).toBe(before.organization.id);
   });
 
   it("partage l'organisation entre ses membres", async () => {
