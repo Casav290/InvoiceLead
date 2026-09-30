@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 const ITEMS = [
   { href: "/app", key: "dashboard", exact: true },
   { href: "/app/contacts", key: "contacts", exact: false },
+  { href: "/app/products", key: "products", exact: false },
   { href: "/app/settings/company", key: "settings", exact: false },
 ] as const;
 
@@ -23,7 +24,7 @@ export function AppNav() {
             href={item.href}
             aria-current={active ? "page" : undefined}
             className={cn(
-              "flex min-h-10 items-center border-r border-line-strong px-3 text-[13px] font-semibold sm:px-4",
+              "flex min-h-10 min-w-0 flex-1 items-center justify-center border-r border-line-strong px-1 text-center text-[11px] font-semibold last:border-r-0 sm:flex-none sm:px-4 sm:text-[13px] sm:last:border-r",
               active
                 ? "border-b-2 border-b-accent text-accent-dark"
                 : "text-ink-muted hover:text-ink",

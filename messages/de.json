@@ -74,7 +74,8 @@
     "nav": {
       "dashboard": "Übersicht",
       "settings": "Einstellungen",
-      "contacts": "Kontakte"
+      "contacts": "Kontakte",
+      "products": "Artikel"
     },
     "switcher": {
       "open": "Anwendung wechseln",
@@ -269,6 +270,62 @@
         "uid": "Ungültige UID-Nummer (Format oder Prüfziffer).",
         "paymentTerm": "Zwischen 0 und 365 Tagen.",
         "role": "Kunde, Lieferant oder beides ankreuzen."
+      }
+    },
+    "products": {
+      "title": "Artikel",
+      "new": "Neuer Artikel",
+      "edit": "Artikel bearbeiten",
+      "save": "Speichern",
+      "archive": "Artikel archivieren",
+      "saved": "Artikel gespeichert.",
+      "archived": "Artikel archiviert.",
+      "invalid": "Einige Felder müssen korrigiert werden.",
+      "search": "Name oder Artikelnummer suchen",
+      "searchButton": "Suchen",
+      "empty": "Noch keine Artikel. Erfassen Sie Ihre Leistungen und Produkte.",
+      "noResults": "Kein Artikel entspricht dieser Suche.",
+      "columns": {
+        "name": "Bezeichnung",
+        "unit": "Einheit",
+        "price": "Preis exkl. MWST (CHF)",
+        "vat": "MWST"
+      },
+      "sections": {
+        "product": "Artikel",
+        "price": "Preis und MWST"
+      },
+      "fields": {
+        "name": "Bezeichnung",
+        "sku": "Artikelnummer",
+        "unit": "Einheit",
+        "description": "Beschreibung",
+        "unitPrice": "Einzelpreis exkl. MWST (CHF)",
+        "vatCode": "MWST-Satz"
+      },
+      "hints": {
+        "unitPrice": "Zum Beispiel 1'200.50. Der Satz richtet sich nach dem Datum der Leistung."
+      },
+      "units": {
+        "hour": "Stunde",
+        "day": "Tag",
+        "piece": "Stück",
+        "flat": "Pauschale",
+        "km": "Kilometer",
+        "month": "Monat"
+      },
+      "vatCodes": {
+        "normal": "Normalsatz (8,1 %)",
+        "reduced": "Reduzierter Satz (2,6 %)",
+        "lodging": "Beherbergung (3,8 %)",
+        "exempt": "Von der Steuer ausgenommen",
+        "export": "Steuerbefreit (Export)"
+      },
+      "errors": {
+        "required": "Pflichtfeld.",
+        "tooLong": "Text zu lang.",
+        "amount": "Ungültiger Betrag (höchstens zwei Dezimalstellen).",
+        "skuTaken": "Diese Artikelnummer wird bereits verwendet."
       }
     }
   },

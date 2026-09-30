@@ -74,7 +74,8 @@
     "nav": {
       "dashboard": "Tableau de bord",
       "settings": "Réglages",
-      "contacts": "Contacts"
+      "contacts": "Contacts",
+      "products": "Articles"
     },
     "switcher": {
       "open": "Changer d'application",
@@ -269,6 +270,62 @@
         "uid": "Numéro IDE invalide (format ou clé de contrôle).",
         "paymentTerm": "Entre 0 et 365 jours.",
         "role": "Cochez client, fournisseur ou les deux."
+      }
+    },
+    "products": {
+      "title": "Articles",
+      "new": "Nouvel article",
+      "edit": "Modifier l'article",
+      "save": "Enregistrer",
+      "archive": "Archiver cet article",
+      "saved": "Article enregistré.",
+      "archived": "Article archivé.",
+      "invalid": "Certains champs sont à corriger.",
+      "search": "Rechercher un nom ou une référence",
+      "searchButton": "Rechercher",
+      "empty": "Aucun article pour l'instant. Ajoutez vos prestations et produits.",
+      "noResults": "Aucun article ne correspond à cette recherche.",
+      "columns": {
+        "name": "Désignation",
+        "unit": "Unité",
+        "price": "Prix HT (CHF)",
+        "vat": "TVA"
+      },
+      "sections": {
+        "product": "Article",
+        "price": "Prix et TVA"
+      },
+      "fields": {
+        "name": "Désignation",
+        "sku": "Référence",
+        "unit": "Unité",
+        "description": "Description",
+        "unitPrice": "Prix unitaire hors TVA (CHF)",
+        "vatCode": "Taux de TVA"
+      },
+      "hints": {
+        "unitPrice": "Par exemple 1'200.50. Le taux appliqué dépend de la date de la prestation."
+      },
+      "units": {
+        "hour": "Heure",
+        "day": "Jour",
+        "piece": "Pièce",
+        "flat": "Forfait",
+        "km": "Kilomètre",
+        "month": "Mois"
+      },
+      "vatCodes": {
+        "normal": "Taux normal (8,1 %)",
+        "reduced": "Taux réduit (2,6 %)",
+        "lodging": "Hébergement (3,8 %)",
+        "exempt": "Exclu du champ de l'impôt",
+        "export": "Exonéré (exportation)"
+      },
+      "errors": {
+        "required": "Champ obligatoire.",
+        "tooLong": "Texte trop long.",
+        "amount": "Montant invalide (au plus deux décimales).",
+        "skuTaken": "Cette référence est déjà utilisée par un autre article."
       }
     }
   },

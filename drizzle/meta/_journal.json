@@ -29,6 +29,13 @@
       "when": 1790750601491,
       "tag": "0003_contacts",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1790750877505,
+      "tag": "0004_products",
+      "breakpoints": true
     }
   ]
 }
