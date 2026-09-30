@@ -730,7 +730,8 @@
       "tabs": {
         "label": "Sections de la comptabilité",
         "bank": "Banque",
-        "journal": "Journal"
+        "journal": "Journal",
+        "receipts": "Justificatifs"
       }
     },
     "bank": {
@@ -789,6 +790,34 @@
         "out": "(sorties)",
         "hits": "{count, plural, one {validée # fois} other {validée # fois}}",
         "delete": "Oublier"
+      }
+    },
+    "receipts": {
+      "title": "Justificatifs",
+      "subtitle": "Déposez vos factures fournisseurs et tickets (PDF ou photo). L'assistant les lit et les rattache au paiement correspondant du relevé bancaire.",
+      "added": "{count, plural, =0 {Aucun justificatif ajouté} one {# justificatif ajouté} other {# justificatifs ajoutés}}{rejected, plural, =0 {.} one { (# refusé : doublon, format ou taille).} other { (# refusés : doublons, format ou taille).}}",
+      "errors": {
+        "unreadable": "Ce PDF est une image scannée : déposez plutôt une photo nette du document.",
+        "failed": "L'assistant n'a pas pu lire ce justificatif. Réessayez plus tard.",
+        "notFound": "Justificatif introuvable."
+      },
+      "aiOff": "L'assistant n'est pas encore activé : les justificatifs sont conservés, et seront lus une fois l'assistant configuré.",
+      "files": "Factures ou tickets",
+      "filesHint": "PDF, JPEG, PNG ou WebP, 10 Mo au plus par fichier, 20 fichiers à la fois.",
+      "upload": "Déposer",
+      "empty": "Aucun justificatif pour l'instant.",
+      "invoiceNumber": "facture {number}",
+      "vat": "TVA {amount}",
+      "account": "compte {number}",
+      "matchedHint": "Rattaché à un paiement : il reste à valider l'écriture dans « Banque ».",
+      "read": "Lire",
+      "reread": "Relire",
+      "status": {
+        "new": "À lire",
+        "read": "Lu, paiement pas encore trouvé",
+        "error": "Illisible",
+        "matched": "Rattaché",
+        "posted": "Comptabilisé"
       }
     }
   },

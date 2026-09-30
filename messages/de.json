@@ -730,7 +730,8 @@
       "tabs": {
         "label": "Bereiche der Buchhaltung",
         "bank": "Bank",
-        "journal": "Journal"
+        "journal": "Journal",
+        "receipts": "Belege"
       }
     },
     "bank": {
@@ -789,6 +790,34 @@
         "out": "(Ausgänge)",
         "hits": "{count, plural, one {# Mal bestätigt} other {# Mal bestätigt}}",
         "delete": "Vergessen"
+      }
+    },
+    "receipts": {
+      "title": "Belege",
+      "subtitle": "Laden Sie Lieferantenrechnungen und Quittungen hoch (PDF oder Foto). Der Assistent liest sie und ordnet sie der passenden Zahlung im Kontoauszug zu.",
+      "added": "{count, plural, =0 {Kein Beleg hinzugefügt} one {# Beleg hinzugefügt} other {# Belege hinzugefügt}}{rejected, plural, =0 {.} one { (# abgelehnt: Duplikat, Format oder Grösse).} other { (# abgelehnt: Duplikate, Format oder Grösse).}}",
+      "errors": {
+        "unreadable": "Dieses PDF ist ein gescanntes Bild: Laden Sie stattdessen ein scharfes Foto des Dokuments hoch.",
+        "failed": "Der Assistent konnte diesen Beleg nicht lesen. Versuchen Sie es später erneut.",
+        "notFound": "Beleg nicht gefunden."
+      },
+      "aiOff": "Der Assistent ist noch nicht aktiviert: Die Belege werden aufbewahrt und gelesen, sobald er eingerichtet ist.",
+      "files": "Rechnungen oder Quittungen",
+      "filesHint": "PDF, JPEG, PNG oder WebP, höchstens 10 MB pro Datei, 20 Dateien auf einmal.",
+      "upload": "Hochladen",
+      "empty": "Noch keine Belege.",
+      "invoiceNumber": "Rechnung {number}",
+      "vat": "MWST {amount}",
+      "account": "Konto {number}",
+      "matchedHint": "Einer Zahlung zugeordnet: Die Buchung ist unter «Bank» noch zu bestätigen.",
+      "read": "Lesen",
+      "reread": "Erneut lesen",
+      "status": {
+        "new": "Zu lesen",
+        "read": "Gelesen, Zahlung noch nicht gefunden",
+        "error": "Unlesbar",
+        "matched": "Zugeordnet",
+        "posted": "Verbucht"
       }
     }
   },

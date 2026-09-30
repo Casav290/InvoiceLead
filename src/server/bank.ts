@@ -15,6 +15,7 @@ import {
   contacts,
   invoices,
   organizations,
+  receipts,
 } from "./db/schema";
 import { appendEntry, LedgerError, type Posting, postPending, roleAccounts } from "./ledger";
 import { addPayment, invoiceBalance } from "./payments";
@@ -450,6 +451,11 @@ export async function validateTransaction(
           validatedAt: new Date(),
         })
         .where(eq(bankTransactions.id, id));
+      // Le justificatif rattaché devient la pièce de cette écriture.
+      await t
+        .update(receipts)
+        .set({ status: "posted", journalEntryId: entry.id })
+        .where(eq(receipts.bankTransactionId, id));
     });
   } catch (e) {
     if (e instanceof LedgerError) {

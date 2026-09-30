@@ -17,6 +17,7 @@ import {
 import { deleteRule } from "@/server/booking-rules";
 import { db } from "@/server/db";
 import { postPending } from "@/server/ledger";
+import { matchReceipts, readReceipt, uploadReceipt } from "@/server/receipts";
 
 export async function postPendingAction(form: FormData) {
   const locale = pickLocale(form.get("locale"));
@@ -50,6 +51,7 @@ export async function importStatementAction(form: FormData) {
     language: locale === "fr" ? "fr" : "de",
     useAi: aiConfigured(),
   });
+  await matchReceipts(db(), who, locale === "fr" ? "fr" : "de");
   revalidatePath(path);
   const q = new URLSearchParams({
     imported: String(result.imported),
@@ -122,4 +124,42 @@ export async function deleteRuleAction(form: FormData) {
   );
   revalidatePath(`/${locale}/app/accounting/bank`);
   redirect(`/${locale}/app/accounting/bank`);
+}
+
+export async function uploadReceiptsAction(form: FormData) {
+  const locale = pickLocale(form.get("locale"));
+  const session = await requireAppSession(locale);
+  const who = { organizationId: session.organization.id, userId: session.user.id };
+  const language = locale === "fr" ? "fr" : "de";
+  const files = form.getAll("files").filter((f): f is File => f instanceof File && f.size > 0);
+  let added = 0;
+  let rejected = 0;
+  for (const file of files.slice(0, 20)) {
+    const result = await uploadReceipt(db(), who, {
+      name: file.name,
+      type: file.type,
+      bytes: Buffer.from(await file.arrayBuffer()),
+    });
+    if (typeof result === "string") {
+      rejected += 1;
+      continue;
+    }
+    added += 1;
+    if (aiConfigured()) await readReceipt(db(), who, result.id, language);
+  }
+  revalidatePath(`/${locale}/app/accounting`, "layout");
+  redirect(`/${locale}/app/accounting/receipts?added=${added}&rejected=${rejected}`);
+}
+
+export async function readReceiptAction(form: FormData) {
+  const locale = pickLocale(form.get("locale"));
+  const session = await requireAppSession(locale);
+  const result = await readReceipt(
+    db(),
+    { organizationId: session.organization.id, userId: session.user.id },
+    String(form.get("id") ?? ""),
+    locale === "fr" ? "fr" : "de",
+  );
+  revalidatePath(`/${locale}/app/accounting`, "layout");
+  redirect(`/${locale}/app/accounting/receipts${result === "read" ? "" : `?error=${result}`}`);
 }

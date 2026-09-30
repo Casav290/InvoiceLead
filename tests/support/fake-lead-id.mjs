@@ -192,6 +192,25 @@ createServer(async (req, res) => {
   if (url.pathname === "/ai/chat/completions" && req.method === "POST") {
     if (req.headers.authorization !== "Bearer ai_test") return send(res, 401, { error: "key" });
     const body = JSON.parse((await readBody(req)) || "{}");
+    const system = String(body.messages?.[0]?.content ?? "");
+    if (system.includes("receipts")) {
+      // Lecture de justificatif : le faux modèle relit le montant et le fournisseur dans le texte.
+      const text = String(body.messages?.[1]?.content ?? "");
+      const total = /Total CHF ([\d.]+)/.exec(text)?.[1] ?? null;
+      const answer = {
+        supplier: text.split("\n")[0]?.trim() || null,
+        date: /(\d{4}-\d{2}-\d{2})/.exec(text)?.[1] ?? null,
+        total,
+        currency: "CHF",
+        vat: null,
+        vat_code: null,
+        invoice_number: "F-1",
+        description: "Frais de tenue de compte",
+        account: "6940",
+        confidence: 0.95,
+      };
+      return send(res, 200, { choices: [{ message: { content: JSON.stringify(answer) } }] });
+    }
     const payload = JSON.parse(body.messages?.[1]?.content ?? "{}");
     const results = (payload.transactions ?? []).map((t) =>
       t.direction === "out"

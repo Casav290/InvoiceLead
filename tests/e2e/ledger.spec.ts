@@ -1,6 +1,7 @@
 import { expect, type Page, test } from "@playwright/test";
 import { scorReference } from "../../src/countries/ch/qr-reference";
 import { camt053 } from "../support/camt";
+import { samplePdf } from "../support/pdf";
 import { login, setupBilling } from "./helpers";
 
 test("comptabilité : pièce en attente, puis journal en partie double après mise en place", async ({
@@ -51,10 +52,19 @@ test("comptabilité : pièce en attente, puis journal en partie double après mi
   );
   await expect(page.getByTestId("unposted")).toHaveCount(0);
 
-  // Relevé bancaire : le paiement est rapproché par sa référence, les frais par l'assistant.
-  const reference = (await page.request.get("/fr/app/invoices")).ok()
-    ? await invoiceReference(page)
-    : "";
+  // Justificatif des frais, déposé avant le relevé : lu tout de suite, rattaché à l'import.
+  await page.goto("/fr/app/accounting/receipts");
+  await page.getByLabel("Factures ou tickets").setInputFiles({
+    name: "frais.pdf",
+    mimeType: "application/pdf",
+    buffer: await samplePdf(["Banque Cantonale", `Date ${today}`, "Total CHF 5.00"]),
+  });
+  await page.getByTestId("receipts-upload").click();
+  await expect(page.getByText("1 justificatif ajouté.")).toBeVisible();
+  await expect(page.getByTestId("receipt-status")).toHaveText("Lu, paiement pas encore trouvé");
+
+  // Relevé bancaire : le paiement est rapproché par sa référence, les frais par leur justificatif.
+  const reference = await invoiceReference(page);
   await page.goto("/fr/app/accounting/bank");
   await page.getByLabel("Relevé bancaire (camt.053)").setInputFiles({
     name: "releve.xml",
@@ -86,6 +96,7 @@ test("comptabilité : pièce en attente, puis journal en partie double après mi
   await expect(proposals).toHaveCount(2);
   await expect(page.getByTestId("bank-review")).toContainText("Paiement de la facture");
   await expect(page.getByTestId("bank-review")).toContainText("6940");
+  await expect(page.getByTestId("bank-review")).toContainText("Justificatif de Banque Cantonale");
   await page.getByTestId("bank-validate-confident").click();
   await expect(page.getByText("2 écritures validées.")).toBeVisible();
   await expect(page.getByText("Tous les mouvements sont traités.")).toBeVisible();
@@ -97,6 +108,8 @@ test("comptabilité : pièce en attente, puis journal en partie double après mi
   );
   await page.goto("/fr/app/invoices");
   await expect(page.getByRole("row", { name: /Client SA/ })).toContainText("Payée");
+  await page.goto("/fr/app/accounting/receipts");
+  await expect(page.getByTestId("receipt-status")).toHaveText("Comptabilisé");
 });
 
 /** Référence SCOR de la facture émise, recalculée depuis son numéro (IBAN ordinaire, pas de QR-IBAN). */

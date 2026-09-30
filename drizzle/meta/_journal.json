@@ -99,6 +99,13 @@
       "when": 1790762324974,
       "tag": "0013_booking_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1790763801330,
+      "tag": "0014_receipts",
+      "breakpoints": true
     }
   ]
 }

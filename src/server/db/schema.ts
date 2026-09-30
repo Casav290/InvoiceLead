@@ -4,6 +4,7 @@ import {
   bigserial,
   boolean,
   check,
+  customType,
   date,
   index,
   integer,
@@ -482,7 +483,7 @@ export type BankProposal =
       vatCode: string | null;
       confidence: number;
       explanation: string;
-      source: "ai" | "rule";
+      source: "ai" | "rule" | "receipt";
     };
 
 /** Mouvement d'un relevé bancaire importé, en attente de validation humaine. */
@@ -545,3 +546,65 @@ export const bookingRules = pgTable(
 );
 
 export type BookingRule = typeof bookingRules.$inferSelect;
+
+const bytea = customType<{ data: Buffer; driverData: Buffer }>({ dataType: () => "bytea" });
+
+/**
+ * Fichiers gardés en base quand le stockage objet (Neon Object Storage) n'est pas configuré :
+ * environnement local, tests, ou production avant l'activation du stockage.
+ */
+export const storedFiles = pgTable("stored_files", {
+  key: text("key").primaryKey(),
+  organizationId: uuid("organization_id")
+    .notNull()
+    .references(() => organizations.id, { onDelete: "cascade" }),
+  contentType: text("content_type").notNull(),
+  bytes: bytea("bytes").notNull(),
+  createdAt: createdAt(),
+});
+
+/** Données lues sur un justificatif par l'assistant. Montants en centimes. */
+export type ReceiptExtraction = {
+  supplier: string | null;
+  date: string | null;
+  totalCents: number | null;
+  currency: string | null;
+  vatCents: number | null;
+  vatCode: string | null;
+  invoiceNumber: string | null;
+  description: string | null;
+  accountNumber: string | null;
+  confidence: number;
+};
+
+/**
+ * Justificatif déposé (facture fournisseur, ticket). Lu par l'assistant, puis rattaché au mouvement
+ * bancaire qui le paie ; il sert de preuve à l'écriture et en améliore la proposition.
+ */
+export const receipts = pgTable(
+  "receipts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    fileKey: text("file_key").notNull(),
+    filename: text("filename").notNull(),
+    contentType: text("content_type").notNull(),
+    sizeBytes: integer("size_bytes").notNull(),
+    sha256: text("sha256").notNull(),
+    status: text("status").notNull().default("new"), // new | read | error | matched | posted
+    extraction: jsonb("extraction").$type<ReceiptExtraction>(),
+    bankTransactionId: uuid("bank_transaction_id"),
+    journalEntryId: uuid("journal_entry_id"),
+    uploadedBy: uuid("uploaded_by").references(() => users.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    uniqueIndex("receipts_org_sha_idx").on(t.organizationId, t.sha256),
+    index("receipts_org_status_idx").on(t.organizationId, t.status),
+    index("receipts_bank_tx_idx").on(t.bankTransactionId),
+  ],
+);
+
+export type Receipt = typeof receipts.$inferSelect;

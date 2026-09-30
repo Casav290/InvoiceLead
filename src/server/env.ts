@@ -19,6 +19,13 @@ const schema = z.object({
   AI_API_KEY: z.string().min(1).optional(),
   AI_BASE_URL: z.url().default("https://api.z.ai/api/paas/v4"),
   AI_MODEL: z.string().min(1).default("glm-4.6"),
+  /** Modèle capable de lire une image (photo de ticket, facture scannée). */
+  AI_VISION_MODEL: z.string().min(1).default("glm-4.5v"),
+  // Neon Object Storage (variables AWS standard). Sans elles, les fichiers sont gardés en base.
+  AWS_ENDPOINT_URL_S3: z.url().optional(),
+  AWS_ACCESS_KEY_ID: z.string().min(1).optional(),
+  AWS_SECRET_ACCESS_KEY: z.string().min(1).optional(),
+  RECEIPTS_BUCKET: z.string().min(1).default("receipts"),
 });
 
 export type Env = z.infer<typeof schema>;
