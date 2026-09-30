@@ -469,7 +469,18 @@
         "7": "7 Weitere Erträge und Aufwendungen",
         "9": "9 Vortrags- und Abschlusskonten"
       },
-      "subtitleDe": "Kontenrahmen SKR04 (DATEV), Klassen 0 bis 9. Die Systemkonten werden von den automatischen Buchungen verwendet."
+      "subtitleDe": "Kontenrahmen SKR04 (DATEV), Klassen 0 bis 9. Die Systemkonten werden von den automatischen Buchungen verwendet.",
+      "classesFr": {
+        "1": "1 Kapital",
+        "2": "2 Anlagevermögen",
+        "3": "3 Vorräte",
+        "4": "4 Forderungen und Verbindlichkeiten",
+        "5": "5 Finanzkonten",
+        "6": "6 Aufwand",
+        "7": "7 Ertrag",
+        "8": "8 Sonderkonten"
+      },
+      "subtitleFr": "Französischer Kontenrahmen (PCG), sechsstellige Nummern. Die Systemkonten werden von den automatischen Buchungen verwendet."
     },
     "fiscalYears": {
       "title": "Geschäftsjahre",
@@ -998,7 +1009,8 @@
         "inputWithoutReceipt": "{count, plural, one {# Ausgabe mit Vorsteuerabzug hat keinen zugeordneten Beleg.} other {# Ausgaben mit Vorsteuerabzug haben keinen zugeordneten Beleg.}}",
         "alreadyValidated": "Diese Periode überschneidet sich mit einer bereits bestätigten Abrechnung.",
         "noNetTaxRate": "Geben Sie Ihren Saldosteuersatz in den Unternehmensdaten an.",
-        "inputUnderNetTaxRate": "In der Periode wurde Vorsteuer verbucht: Bei der Saldosteuersatzmethode ist sie nicht abziehbar."
+        "inputUnderNetTaxRate": "In der Periode wurde Vorsteuer verbucht: Bei der Saldosteuersatzmethode ist sie nicht abziehbar.",
+        "exportsSplit": "Exporte oder Leistungen ins Ausland stehen in E2: teilen Sie sie auf E1 (ausserhalb der EU), E2 (EU-Leistungen) und F2 (innergemeinschaftliche Lieferungen) auf und reichen Sie bei Bedarf die DES ein."
       },
       "figures": {
         "200": "Total der vereinbarten Entgelte",
@@ -1043,6 +1055,20 @@
         "48": "Kz 48 · Steuerfreie Umsätze ohne Vorsteuerabzug",
         "66": "Kz 66 · Abziehbare Vorsteuerbeträge",
         "83": "Kz 83 · Verbleibende Vorauszahlung (negativ: Erstattung)"
+      },
+      "figuresFr": {
+        "A1": "A1 · Steuerpflichtige Verkäufe und Leistungen (netto)",
+        "E2": "E2 · Übrige nicht steuerbare Umsätze (auf E1, E2, F2 aufteilen)",
+        "08": "08 · Normalsatz 20 %",
+        "9B": "9B · Ermässigter Satz 10 %",
+        "09": "09 · Ermässigter Satz 5,5 %",
+        "OT": "Andere Sätze",
+        "16": "16 · Total geschuldete MWST",
+        "19": "19 · Vorsteuer auf Anlagen",
+        "20": "20 · Vorsteuer auf übrige Waren und Leistungen",
+        "23": "23 · Total Vorsteuer",
+        "28": "28 · Geschuldete Netto-MWST",
+        "25": "25 · MWST-Guthaben"
       }
     },
     "reminders": {

@@ -67,7 +67,13 @@ export default async function AccountsPage({ params, searchParams }: Props) {
         ) : null}
       </div>
       <p className="mt-2 text-[15px] text-ink-muted">
-        {t(organization.country === "DE" ? "subtitleDe" : "subtitle")}
+        {t(
+          organization.country === "DE"
+            ? "subtitleDe"
+            : organization.country === "FR"
+              ? "subtitleFr"
+              : "subtitle",
+        )}
       </p>
       {saved || installed ? (
         <p

@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { login } from "./helpers";
 
-test("entreprise française : facture en euros à 20 %, SIRET, Factur-X, comptabilité annoncée", async ({
+test("entreprise française : facture en euros à 20 %, SIRET, Factur-X, PCG et CA3", async ({
   page,
 }) => {
   const run = Date.now();
@@ -57,6 +57,26 @@ test("entreprise française : facture en euros à 20 %, SIRET, Factur-X, comptab
   expect(pdf.headers()["content-type"]).toBe("application/pdf");
   expect((await pdf.body()).toString("latin1")).toContain("factur-x.xml");
 
+  // Comptabilité PCG : plan, exercice, écritures automatiques, puis CA3 du trimestre.
+  await page.goto("/fr/app/settings/accounts");
+  await page.getByTestId("chart-install").click();
+  await expect(page.locator("body")).toContainText("Plan comptable général");
+  await expect(page.locator("body")).toContainText("Prestations de services");
+  await page.goto("/fr/app/settings/fiscal-years");
+  await page.getByTestId("fiscal-year-first").click();
   await page.goto("/fr/app/accounting");
-  await expect(page.getByTestId("accounting-unavailable")).toContainText("France");
+  await page.getByTestId("post-pending").click();
+  const journal = page.getByTestId("journal");
+  await expect(journal).toContainText("411000");
+  await expect(journal).toContainText("706000");
+  await expect(journal).toContainText("445710");
+  await expect(journal).toContainText("1\u00a0200,00");
+
+  const today = new Date().toISOString().slice(0, 10);
+  const month = Number(today.slice(5, 7));
+  const quarterStart = `${today.slice(0, 4)}-${String(month - ((month - 1) % 3)).padStart(2, "0")}-01`;
+  await page.goto(`/fr/app/accounting/vat?period=${quarterStart}`);
+  await expect(page.getByTestId("figure-A1")).toContainText("1\u00a0000,00");
+  await expect(page.getByTestId("figure-08")).toContainText("200,00");
+  await expect(page.getByTestId("figure-28")).toContainText("200,00");
 });

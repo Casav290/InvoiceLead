@@ -469,7 +469,18 @@
         "7": "7 Autres produits et charges",
         "9": "9 Reports et clôture"
       },
-      "subtitleDe": "Plan comptable SKR04 (DATEV), classes 0 à 9. Les comptes système sont utilisés par les écritures automatiques."
+      "subtitleDe": "Plan comptable SKR04 (DATEV), classes 0 à 9. Les comptes système sont utilisés par les écritures automatiques.",
+      "classesFr": {
+        "1": "1 Capitaux",
+        "2": "2 Immobilisations",
+        "3": "3 Stocks",
+        "4": "4 Tiers",
+        "5": "5 Financiers",
+        "6": "6 Charges",
+        "7": "7 Produits",
+        "8": "8 Comptes spéciaux"
+      },
+      "subtitleFr": "Plan comptable général (PCG), numéros à six chiffres. Les comptes système sont utilisés par les écritures automatiques."
     },
     "fiscalYears": {
       "title": "Exercices comptables",
@@ -998,7 +1009,8 @@
         "inputWithoutReceipt": "{count, plural, one {# dépense déduit de l'impôt préalable sans justificatif rattaché.} other {# dépenses déduisent de l'impôt préalable sans justificatif rattaché.}}",
         "alreadyValidated": "Cette période chevauche un décompte déjà validé.",
         "noNetTaxRate": "Indiquez votre taux de la dette fiscale nette dans les données de l'entreprise.",
-        "inputUnderNetTaxRate": "De l'impôt préalable a été comptabilisé dans la période : avec la méthode TDFN, il n'est pas déductible."
+        "inputUnderNetTaxRate": "De l'impôt préalable a été comptabilisé dans la période : avec la méthode TDFN, il n'est pas déductible.",
+        "exportsSplit": "Des exportations ou prestations à l'étranger figurent en E2 : ventilez-les entre E1 (hors UE), E2 (prestations UE) et F2 (livraisons intracommunautaires), et déposez la DES si besoin."
       },
       "figures": {
         "200": "Total des contre-prestations convenues",
@@ -1043,6 +1055,20 @@
         "48": "Kz 48 · Chiffre d'affaires exonéré sans déduction",
         "66": "Kz 66 · Taxe déductible (Vorsteuer)",
         "83": "Kz 83 · Solde à payer (négatif : remboursement)"
+      },
+      "figuresFr": {
+        "A1": "A1 · Ventes et prestations de services imposables (HT)",
+        "E2": "E2 · Autres opérations non imposables (à ventiler E1, E2, F2)",
+        "08": "08 · Taux normal 20 %",
+        "9B": "9B · Taux réduit 10 %",
+        "09": "09 · Taux réduit 5,5 %",
+        "OT": "Autres taux",
+        "16": "16 · Total de la TVA brute due",
+        "19": "19 · TVA déductible sur immobilisations",
+        "20": "20 · TVA déductible sur autres biens et services",
+        "23": "23 · Total TVA déductible",
+        "28": "28 · TVA nette due",
+        "25": "25 · Crédit de TVA"
       }
     },
     "reminders": {

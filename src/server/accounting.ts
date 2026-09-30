@@ -106,8 +106,8 @@ export function parseAccountForm(
 ): { ok: true; data: AccountInput } | { ok: false; errors: AccountErrors } {
   const errors: AccountErrors = {};
   const number = text(form, "number");
-  // Classes 1 à 9 en Suisse ; le SKR04 allemand commence à la classe 0.
-  if (!(country === "DE" ? /^\d{4}$/ : /^[1-9]\d{3}$/).test(number)) errors.number = "number";
+  // Classes 1 à 9 en Suisse, 0 à 9 en Allemagne (SKR04), numéros à six chiffres en France (PCG).
+  if (!chartPack(country).numberPattern.test(number)) errors.number = "number";
 
   // Une seule langue suffit : l'autre reprend le même libellé, à traduire plus tard.
   let nameDe = text(form, "nameDe");

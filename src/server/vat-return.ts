@@ -2,6 +2,7 @@ import { and, eq, gte, inArray, isNull, lte, or, sql } from "drizzle-orm";
 import { netRateFigure, RATE_FIGURES } from "@/countries/ch/vat-return";
 import { chartPack } from "@/countries/charts";
 import { ustvaFigures } from "@/countries/de/vat-return";
+import { ca3Figures } from "@/countries/fr/vat-return";
 import { roundHalfAwayFromZero, vatOf } from "@/lib/money";
 import { chatJson } from "./ai";
 import type { Db } from "./db";
@@ -57,8 +58,11 @@ export async function draftVatReturn(
     .from(organizations)
     .where(eq(organizations.id, organizationId));
   const germany = org?.country === "DE";
+  const france = org?.country === "FR";
+  const swiss = !germany && !france;
   const chart = chartPack(org?.country);
-  const method = !germany && org?.vatMethod === "net_tax_rate" ? "net_tax_rate" : "effective";
+  // La TDFN n'existe qu'en Suisse.
+  const method = swiss && org?.vatMethod === "net_tax_rate" ? "net_tax_rate" : "effective";
   if (!org?.vatRegistered) anomalies.push({ code: "notRegistered", severity: "block" });
   if (method === "net_tax_rate" && !org?.netTaxRateBp)
     anomalies.push({ code: "noNetTaxRate", severity: "block" });
@@ -205,6 +209,24 @@ export async function draftVatReturn(
     };
     if (input400 + input405 !== 0)
       anomalies.push({ code: "inputUnderNetTaxRate", severity: "warn" });
+  } else if (france) {
+    rates = [...byRate.entries()]
+      .sort(([a], [b]) => b - a)
+      .map(([rateBp, v]) => ({
+        rateBp,
+        figure: rateBp === 2000 ? "08" : rateBp === 1000 ? "9B" : rateBp === 550 ? "09" : "OT",
+        baseCents: v.base,
+        taxCents: v.tax,
+      }));
+    figures = ca3Figures({
+      byRate,
+      exports: f220,
+      exempt: f230,
+      inputVat: input400 + input405,
+      inputInvest: input405,
+    });
+    // Exportations hors UE (E1), prestations UE (E2) et livraisons intracommunautaires (F2) : à ventiler.
+    if (f220 !== 0) anomalies.push({ code: "exportsSplit", severity: "warn" });
   } else if (germany) {
     rates = [...byRate.entries()]
       .sort(([a], [b]) => b - a)
@@ -252,7 +274,7 @@ export async function draftVatReturn(
 
   // Contrôles de cohérence (méthode effective : les bases par taux font le chiffre imposable).
   const basesTotal = [...byRate.values()].reduce((sum, v) => sum + v.base, 0);
-  if (!germany && method === "effective" && Math.abs(basesTotal - f299) > 100)
+  if (swiss && method === "effective" && Math.abs(basesTotal - f299) > 100)
     anomalies.push({ code: "baseMismatch", severity: "warn", detail: String(basesTotal - f299) });
   const pendingBank = await database
     .select({ n: sql<number>`count(*)::int` })
@@ -362,14 +384,17 @@ export async function aiReview(
     .from(organizations)
     .where(eq(organizations.id, organizationId));
   const germany = org?.country === "DE";
+  const france = org?.country === "FR";
   const raw = await chatJson([
     {
       role: "system",
       content: [
         germany
           ? "You review a German small business VAT pre-return (Umsatzsteuer-Voranmeldung) before a human validates it."
-          : "You review a Swiss SME VAT return (effective method) before a human validates it.",
-        `Point out only concrete, checkable issues: expenses booked without input VAT that usually carry ${germany ? "German" : "Swiss"} VAT, input VAT on items that are exempt (insurance, salaries, bank fees, taxes), unusual amounts, possible private expenses.`,
+          : france
+            ? "You review a French small business VAT return (CA3) before a human validates it."
+            : "You review a Swiss SME VAT return (effective method) before a human validates it.",
+        `Point out only concrete, checkable issues: expenses booked without input VAT that usually carry ${germany ? "German" : france ? "French" : "Swiss"} VAT, input VAT on items that are exempt (insurance, salaries, bank fees, taxes), unusual amounts, possible private expenses.`,
         `Write at most 5 short points in ${language === "fr" ? "French" : "Swiss German (no ß)"}, understandable by a non-accountant.`,
         'Answer JSON only: {"points":["..."]}. Return {"points":[]} when nothing stands out.',
       ].join("\n"),
