@@ -73,7 +73,8 @@
   "app": {
     "nav": {
       "dashboard": "Übersicht",
-      "settings": "Einstellungen"
+      "settings": "Einstellungen",
+      "contacts": "Kontakte"
     },
     "switcher": {
       "open": "Anwendung wechseln",
@@ -189,6 +190,85 @@
         "iban": "Ungültige Schweizer oder Liechtensteiner IBAN.",
         "ibanIsQr": "Das ist eine QR-IBAN: bitte im Feld QR-IBAN erfassen.",
         "notQrIban": "Das ist keine QR-IBAN (Institut 30000 bis 31999)."
+      }
+    },
+    "contacts": {
+      "title": "Kontakte",
+      "new": "Neuer Kontakt",
+      "edit": "Kontakt bearbeiten",
+      "save": "Speichern",
+      "archive": "Kontakt archivieren",
+      "saved": "Kontakt gespeichert.",
+      "archived": "Kontakt archiviert.",
+      "invalid": "Einige Felder müssen korrigiert werden.",
+      "search": "Name, E-Mail oder Ort suchen",
+      "searchButton": "Suchen",
+      "empty": "Noch keine Kontakte. Erfassen Sie Ihren ersten Kunden.",
+      "noResults": "Kein Kontakt entspricht dieser Suche.",
+      "columns": {
+        "name": "Name",
+        "town": "Ort",
+        "email": "E-Mail",
+        "role": "Rolle"
+      },
+      "roles": {
+        "customer": "Kunde",
+        "supplier": "Lieferant"
+      },
+      "sections": {
+        "identity": "Identität",
+        "address": "Adresse",
+        "billing": "Fakturierung"
+      },
+      "fields": {
+        "kind": "Art",
+        "name": "Name oder Firma",
+        "contactPerson": "Kontaktperson",
+        "role": "Rolle",
+        "isCustomer": "Kunde",
+        "isSupplier": "Lieferant",
+        "uid": "UID-Nummer",
+        "email": "E-Mail",
+        "phone": "Telefon",
+        "street": "Strasse",
+        "buildingNumber": "Hausnummer",
+        "postalCode": "PLZ",
+        "town": "Ort",
+        "country": "Land",
+        "language": "Dokumentsprache",
+        "paymentTermDays": "Zahlungsfrist (Tage)",
+        "notes": "Interne Notizen"
+      },
+      "hints": {
+        "street": "Adresse optional, aber vollständig, sobald begonnen: Die QR-Rechnung verlangt sie strukturiert.",
+        "uid": "Optional. Format CHE-123.456.789."
+      },
+      "kinds": {
+        "company": "Firma",
+        "person": "Person"
+      },
+      "languages": {
+        "de": "Deutsch",
+        "fr": "Französisch",
+        "it": "Italienisch",
+        "en": "Englisch"
+      },
+      "countries": {
+        "CH": "Schweiz",
+        "LI": "Liechtenstein",
+        "DE": "Deutschland",
+        "FR": "Frankreich",
+        "IT": "Italien",
+        "AT": "Österreich"
+      },
+      "errors": {
+        "required": "Pflichtfeld.",
+        "tooLong": "Text zu lang.",
+        "email": "Ungültige E-Mail-Adresse.",
+        "postalCode": "PLZ mit 4 Ziffern.",
+        "uid": "Ungültige UID-Nummer (Format oder Prüfziffer).",
+        "paymentTerm": "Zwischen 0 und 365 Tagen.",
+        "role": "Kunde, Lieferant oder beides ankreuzen."
       }
     }
   },

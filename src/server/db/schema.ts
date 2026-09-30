@@ -132,3 +132,36 @@ export const auditLog = pgTable(
 
 export type User = typeof users.$inferSelect;
 export type Organization = typeof organizations.$inferSelect;
+
+/** Client ou fournisseur d'une organisation. L'adresse est structurée, comme l'exige la QR-facture. */
+export const contacts = pgTable(
+  "contacts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    kind: text("kind").notNull().default("company"), // company | person
+    isCustomer: boolean("is_customer").notNull().default(true),
+    isSupplier: boolean("is_supplier").notNull().default(false),
+    name: text("name").notNull(), // raison sociale, ou « Prénom Nom »
+    contactPerson: text("contact_person"),
+    email: text("email"),
+    phone: text("phone"),
+    street: text("street"),
+    buildingNumber: text("building_number"),
+    postalCode: text("postal_code"),
+    town: text("town"),
+    country: text("country").notNull().default("CH"),
+    language: text("language").notNull().default("de"), // langue des documents : de | fr | it | en
+    uid: text("uid"),
+    paymentTermDays: integer("payment_term_days").notNull().default(30),
+    notes: text("notes"),
+    archivedAt: timestamp("archived_at", { withTimezone: true }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [index("contacts_org_name_idx").on(t.organizationId, sql`lower(${t.name})`)],
+);
+
+export type Contact = typeof contacts.$inferSelect;

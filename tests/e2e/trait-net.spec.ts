@@ -48,6 +48,10 @@ for (const size of WIDTHS) {
       await page.keyboard.press("Escape");
       await page.goto("/de/app/settings/company");
       expect(await traitNetIssues(page)).toEqual([]);
+      await page.goto("/de/app/contacts");
+      expect(await traitNetIssues(page)).toEqual([]);
+      await page.goto("/de/app/contacts/new");
+      expect(await traitNetIssues(page)).toEqual([]);
     });
 
     test("écran sans accès", async ({ page }) => {

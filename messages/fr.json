@@ -73,7 +73,8 @@
   "app": {
     "nav": {
       "dashboard": "Tableau de bord",
-      "settings": "Réglages"
+      "settings": "Réglages",
+      "contacts": "Contacts"
     },
     "switcher": {
       "open": "Changer d'application",
@@ -189,6 +190,85 @@
         "iban": "IBAN suisse ou liechtensteinois invalide.",
         "ibanIsQr": "C'est un QR-IBAN : saisissez-le dans le champ QR-IBAN.",
         "notQrIban": "Ce n'est pas un QR-IBAN (identifiant 30000 à 31999)."
+      }
+    },
+    "contacts": {
+      "title": "Contacts",
+      "new": "Nouveau contact",
+      "edit": "Modifier le contact",
+      "save": "Enregistrer",
+      "archive": "Archiver ce contact",
+      "saved": "Contact enregistré.",
+      "archived": "Contact archivé.",
+      "invalid": "Certains champs sont à corriger.",
+      "search": "Rechercher un nom, un e-mail, une localité",
+      "searchButton": "Rechercher",
+      "empty": "Aucun contact pour l'instant. Créez votre premier client.",
+      "noResults": "Aucun contact ne correspond à cette recherche.",
+      "columns": {
+        "name": "Nom",
+        "town": "Localité",
+        "email": "E-mail",
+        "role": "Rôle"
+      },
+      "roles": {
+        "customer": "Client",
+        "supplier": "Fournisseur"
+      },
+      "sections": {
+        "identity": "Identité",
+        "address": "Adresse",
+        "billing": "Facturation"
+      },
+      "fields": {
+        "kind": "Type",
+        "name": "Nom ou raison sociale",
+        "contactPerson": "Personne de contact",
+        "role": "Rôle",
+        "isCustomer": "Client",
+        "isSupplier": "Fournisseur",
+        "uid": "Numéro IDE",
+        "email": "E-mail",
+        "phone": "Téléphone",
+        "street": "Rue",
+        "buildingNumber": "Numéro",
+        "postalCode": "NPA",
+        "town": "Localité",
+        "country": "Pays",
+        "language": "Langue des documents",
+        "paymentTermDays": "Délai de paiement (jours)",
+        "notes": "Notes internes"
+      },
+      "hints": {
+        "street": "Adresse facultative, mais complète si commencée : la QR-facture l'exige structurée.",
+        "uid": "Facultatif. Format CHE-123.456.789."
+      },
+      "kinds": {
+        "company": "Entreprise",
+        "person": "Personne"
+      },
+      "languages": {
+        "de": "Allemand",
+        "fr": "Français",
+        "it": "Italien",
+        "en": "Anglais"
+      },
+      "countries": {
+        "CH": "Suisse",
+        "LI": "Liechtenstein",
+        "DE": "Allemagne",
+        "FR": "France",
+        "IT": "Italie",
+        "AT": "Autriche"
+      },
+      "errors": {
+        "required": "Champ obligatoire.",
+        "tooLong": "Texte trop long.",
+        "email": "Adresse e-mail invalide.",
+        "postalCode": "NPA à 4 chiffres.",
+        "uid": "Numéro IDE invalide (format ou clé de contrôle).",
+        "paymentTerm": "Entre 0 et 365 jours.",
+        "role": "Cochez client, fournisseur ou les deux."
       }
     }
   },
