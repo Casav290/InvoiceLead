@@ -33,7 +33,7 @@ export async function saveAccount(
     [...form.entries()].filter(([k]) => !k.startsWith("$")).map(([k, v]) => [k, String(v)]),
   );
   const round = prev.round + 1;
-  const parsed = parseAccountForm(form);
+  const parsed = parseAccountForm(form, session.organization.country);
   if (!parsed.ok) return { status: "invalid", errors: parsed.errors, values, round };
   const result = id
     ? await updateAccount(db(), who, id, parsed.data)

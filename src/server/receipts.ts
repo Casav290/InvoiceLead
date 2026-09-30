@@ -8,6 +8,7 @@ import {
   accounts,
   auditLog,
   bankTransactions,
+  organizations,
   type Receipt,
   type ReceiptExtraction,
   receipts,
@@ -118,19 +119,31 @@ export async function readReceipt(
   if (!row || row.status === "posted") return "notFound";
   const file = await getFile(database, who.organizationId, row.fileKey);
   if (!file) return "notFound";
+  const [org] = await database
+    .select({ country: organizations.country })
+    .from(organizations)
+    .where(eq(organizations.id, who.organizationId));
+  const germany = org?.country === "DE";
   const chart = await database
-    .select({ number: accounts.number, nameDe: accounts.nameDe, type: accounts.type })
+    .select({
+      number: accounts.number,
+      nameDe: accounts.nameDe,
+      type: accounts.type,
+      role: accounts.role,
+    })
     .from(accounts)
     .where(and(eq(accounts.organizationId, who.organizationId), eq(accounts.active, true)));
   const expenseChart = chart
-    .filter((a) => /^[1-8]/.test(a.number) && (a.type === "expense" || a.number.startsWith("1")))
+    .filter((a) => a.type === "expense" || (a.type === "asset" && !a.role))
     .map((a) => `${a.number} ${a.nameDe}`)
     .join("\n");
 
   const instructions = [
-    "You read Swiss supplier invoices and receipts for bookkeeping.",
+    "You read supplier invoices and receipts (Switzerland or Germany) for bookkeeping.",
     'Answer with JSON only: {"supplier":"...","date":"YYYY-MM-DD","total":"123.45","currency":"CHF","vat":"8.07","vat_code":"normal|reduced|lodging|exempt|null","invoice_number":"...","description":"...","account":"6510","confidence":0.9}',
-    "total is the amount to pay including VAT. vat is the VAT amount shown (null if none). vat_code: Swiss VAT rate applied (8.1 % normal, 2.6 % reduced, 3.8 % lodging).",
+    germany
+      ? "total is the amount to pay including VAT. vat is the VAT amount shown (null if none). vat_code: German VAT rate applied (19 % normal, 7 % reduced)."
+      : "total is the amount to pay including VAT. vat is the VAT amount shown (null if none). vat_code: Swiss VAT rate applied (8.1 % normal, 2.6 % reduced, 3.8 % lodging).",
     `description: a few words in ${language === "fr" ? "French" : "Swiss German (no ß)"}. account: the best expense account from this chart:`,
     expenseChart,
     "confidence: your probability (0 to 1) that total, date and account are right.",

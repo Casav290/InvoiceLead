@@ -1,5 +1,7 @@
 import { and, eq, gte, inArray, isNull, lte, or, sql } from "drizzle-orm";
 import { netRateFigure, RATE_FIGURES } from "@/countries/ch/vat-return";
+import { chartPack } from "@/countries/charts";
+import { ustvaFigures } from "@/countries/de/vat-return";
 import { roundHalfAwayFromZero, vatOf } from "@/lib/money";
 import { chatJson } from "./ai";
 import type { Db } from "./db";
@@ -50,10 +52,13 @@ export async function draftVatReturn(
       vatMethod: organizations.vatMethod,
       vatSettlement: organizations.vatSettlement,
       netTaxRateBp: organizations.netTaxRateBp,
+      country: organizations.country,
     })
     .from(organizations)
     .where(eq(organizations.id, organizationId));
-  const method = org?.vatMethod === "net_tax_rate" ? "net_tax_rate" : "effective";
+  const germany = org?.country === "DE";
+  const chart = chartPack(org?.country);
+  const method = !germany && org?.vatMethod === "net_tax_rate" ? "net_tax_rate" : "effective";
   if (!org?.vatRegistered) anomalies.push({ code: "notRegistered", severity: "block" });
   if (method === "net_tax_rate" && !org?.netTaxRateBp)
     anomalies.push({ code: "noNetTaxRate", severity: "block" });
@@ -93,7 +98,7 @@ export async function draftVatReturn(
     const fromDocument = l.sourceType === "invoice" || l.sourceType === "credit_note";
     if (received && fromDocument && (l.type === "revenue" || l.accountId === roles.vat_output))
       continue;
-    if (l.type === "revenue" && /^[37]/.test(l.number)) {
+    if (chart.isTurnover(l)) {
       const amount = l.credit - l.debit;
       turnover += amount;
       if (!l.rateBp) zeroRated += amount;
@@ -200,6 +205,21 @@ export async function draftVatReturn(
     };
     if (input400 + input405 !== 0)
       anomalies.push({ code: "inputUnderNetTaxRate", severity: "warn" });
+  } else if (germany) {
+    rates = [...byRate.entries()]
+      .sort(([a], [b]) => b - a)
+      .map(([rateBp, v]) => ({
+        rateBp,
+        figure: rateBp === 1900 ? "81" : rateBp === 700 ? "86" : "35",
+        baseCents: v.base,
+        taxCents: v.tax,
+      }));
+    figures = ustvaFigures({
+      byRate,
+      exports: f220,
+      exempt: f230,
+      inputVat: input400 + input405,
+    });
   } else {
     rates = [...byRate.entries()]
       .sort(([a], [b]) => b - a)
@@ -232,7 +252,7 @@ export async function draftVatReturn(
 
   // Contrôles de cohérence (méthode effective : les bases par taux font le chiffre imposable).
   const basesTotal = [...byRate.values()].reduce((sum, v) => sum + v.base, 0);
-  if (method === "effective" && Math.abs(basesTotal - f299) > 100)
+  if (!germany && method === "effective" && Math.abs(basesTotal - f299) > 100)
     anomalies.push({ code: "baseMismatch", severity: "warn", detail: String(basesTotal - f299) });
   const pendingBank = await database
     .select({ n: sql<number>`count(*)::int` })
@@ -337,12 +357,19 @@ export async function aiReview(
     )
     .orderBy(sql`${journalLines.debitCents} desc`)
     .limit(40);
+  const [org] = await database
+    .select({ country: organizations.country })
+    .from(organizations)
+    .where(eq(organizations.id, organizationId));
+  const germany = org?.country === "DE";
   const raw = await chatJson([
     {
       role: "system",
       content: [
-        "You review a Swiss SME VAT return (effective method) before a human validates it.",
-        "Point out only concrete, checkable issues: expenses booked without input VAT that usually carry Swiss VAT, input VAT on items that are exempt (insurance, salaries, bank fees, taxes), unusual amounts, possible private expenses.",
+        germany
+          ? "You review a German small business VAT pre-return (Umsatzsteuer-Voranmeldung) before a human validates it."
+          : "You review a Swiss SME VAT return (effective method) before a human validates it.",
+        `Point out only concrete, checkable issues: expenses booked without input VAT that usually carry ${germany ? "German" : "Swiss"} VAT, input VAT on items that are exempt (insurance, salaries, bank fees, taxes), unusual amounts, possible private expenses.`,
         `Write at most 5 short points in ${language === "fr" ? "French" : "Swiss German (no ß)"}, understandable by a non-accountant.`,
         'Answer JSON only: {"points":["..."]}. Return {"points":[]} when nothing stands out.',
       ].join("\n"),
@@ -392,11 +419,12 @@ export async function validateVatReturn(
     !roles.vat_output ||
     !roles.vat_settlement ||
     !roles.vat_input_material ||
-    !roles.vat_input_invest ||
     !roles.sales_deductions
   )
     return "noChart";
   const f = draft.figures;
+  // Le plan allemand n'a qu'un compte de Vorsteuer : pas de chiffre 405 à virer.
+  if (!roles.vat_input_invest && (f["405"] ?? 0) !== 0) return "noChart";
   const net = (f["399"] ?? 0) - (f["479"] ?? 0);
   // TDFN : la TVA encaissée sort de 2200, l'impôt dû va sur 2201, l'écart revient au chiffre
   // d'affaires (déductions sur ventes).
@@ -405,7 +433,7 @@ export async function validateVatReturn(
     await database.transaction(async (tx) => {
       const tdb = tx as unknown as Db;
       let entryId: string | null = null;
-      const postings =
+      const all =
         draft.method === "net_tax_rate"
           ? [
               { accountId: roles.vat_output ?? "", amountCents: collected },
@@ -417,11 +445,15 @@ export async function validateVatReturn(
             ]
           : [
               { accountId: roles.vat_output ?? "", amountCents: f["399"] ?? 0 },
-              { accountId: roles.vat_input_material ?? "", amountCents: -(f["400"] ?? 0) },
+              {
+                accountId: roles.vat_input_material ?? "",
+                amountCents: -(f["400"] ?? f["66"] ?? 0),
+              },
               { accountId: roles.vat_input_invest ?? "", amountCents: -(f["405"] ?? 0) },
               { accountId: roles.vat_settlement ?? "", amountCents: -net },
             ];
-      if (postings.filter((p) => p.amountCents !== 0).length >= 2) {
+      const postings = all.filter((p) => p.amountCents !== 0);
+      if (postings.length >= 2) {
         const entry = await appendEntry(tdb, who, {
           entryDate: end,
           description: `MWST-Abrechnung / Décompte TVA ${start} – ${end}`,

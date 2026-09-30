@@ -438,7 +438,19 @@
         "typeForClass": "Ce type ne convient pas à la classe du compte.",
         "numberTaken": "Ce numéro est déjà utilisé.",
         "systemInactive": "Un compte système reste actif."
-      }
+      },
+      "classesDe": {
+        "0": "0 Immobilisations",
+        "1": "1 Actif circulant",
+        "2": "2 Capitaux propres",
+        "3": "3 Dettes",
+        "4": "4 Produits d'exploitation",
+        "5": "5 Matières et prestations de tiers",
+        "6": "6 Charges d'exploitation",
+        "7": "7 Autres produits et charges",
+        "9": "9 Reports et clôture"
+      },
+      "subtitleDe": "Plan comptable SKR04 (DATEV), classes 0 à 9. Les comptes système sont utilisés par les écritures automatiques."
     },
     "fiscalYears": {
       "title": "Exercices comptables",
@@ -984,7 +996,16 @@
       "validate": "Valider le décompte",
       "semester": "S{q} {year}",
       "tax": "Impôt",
-      "planOnly": "Le décompte TVA préparé et validé dans InvoiceLead est compris dans la formule Pro. Vous pouvez consulter les chiffres ci-dessous."
+      "planOnly": "Le décompte TVA préparé et validé dans InvoiceLead est compris dans la formule Pro. Vous pouvez consulter les chiffres ci-dessous.",
+      "figuresDe": {
+        "81": "Kz 81 · Prestations imposables à 19 %",
+        "86": "Kz 86 · Prestations imposables à 7 %",
+        "35": "Kz 35/36 · Prestations à d'autres taux",
+        "21": "Kz 21 · Prestations non imposables en Allemagne (autre pays de l'UE)",
+        "48": "Kz 48 · Chiffre d'affaires exonéré sans déduction",
+        "66": "Kz 66 · Taxe déductible (Vorsteuer)",
+        "83": "Kz 83 · Solde à payer (négatif : remboursement)"
+      }
     },
     "reminders": {
       "title": "Relances",

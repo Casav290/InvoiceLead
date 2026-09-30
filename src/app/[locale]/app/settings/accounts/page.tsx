@@ -10,6 +10,7 @@ import {
   CHART_TEMPLATES,
   templateForLegalForm,
 } from "@/countries/ch/chart-of-accounts";
+import { chartPack } from "@/countries/charts";
 import { Link } from "@/i18n/navigation";
 import { listAccounts } from "@/server/accounting";
 import { requireAppSession } from "@/server/auth/guard";
@@ -65,7 +66,9 @@ export default async function AccountsPage({ params, searchParams }: Props) {
           </Button>
         ) : null}
       </div>
-      <p className="mt-2 text-[15px] text-ink-muted">{t("subtitle")}</p>
+      <p className="mt-2 text-[15px] text-ink-muted">
+        {t(organization.country === "DE" ? "subtitleDe" : "subtitle")}
+      </p>
       {saved || installed ? (
         <p
           role="status"
@@ -114,7 +117,7 @@ export default async function AccountsPage({ params, searchParams }: Props) {
           {[...byClass.entries()].map(([cls, list]) => (
             <section key={cls} className="border border-line-strong bg-panel">
               <h2 className="border-b border-line bg-head px-4 py-2.5 text-[10.5px] font-extrabold tracking-[0.09em] text-ink-muted uppercase">
-                {t(`classes.${cls}`)}
+                {t(`${chartPack(organization.country).classLabels}.${cls}`)}
               </h2>
               <table className="w-full table-fixed text-left text-[14px]">
                 <thead className="sr-only">

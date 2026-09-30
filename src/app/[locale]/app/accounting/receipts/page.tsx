@@ -3,6 +3,7 @@ import { getTranslations } from "next-intl/server";
 import { AccountingNav } from "@/components/accounting/AccountingNav";
 import { PlanNotice } from "@/components/app/PlanNotice";
 import { Button } from "@/components/ui/button";
+import { countryPack } from "@/countries";
 import { formatDate } from "@/lib/fiscal-year";
 import { formatAmount } from "@/lib/money";
 import { aiConfigured } from "@/server/ai";
@@ -28,6 +29,7 @@ const ERRORS = ["unreadable", "failed", "notFound", "plan"];
 export default async function ReceiptsPage({ params, searchParams }: Props) {
   const { locale } = await params;
   const { organization } = await requireAppSession(locale);
+  const style = countryPack(organization.country).amounts;
   const q = await searchParams;
   const t = await getTranslations({ locale, namespace: "app.receipts" });
   const rows = await listReceipts(db(), organization.id);
@@ -112,7 +114,7 @@ export default async function ReceiptsPage({ params, searchParams }: Props) {
                   </span>
                   {x?.totalCents ? (
                     <span className="font-extrabold tabular-nums">
-                      {x.currency ?? "CHF"} {formatAmount(x.totalCents)}
+                      {x.currency ?? organization.currency} {formatAmount(x.totalCents, style)}
                     </span>
                   ) : null}
                   <span
@@ -127,7 +129,7 @@ export default async function ReceiptsPage({ params, searchParams }: Props) {
                     {[
                       x.date ? formatDate(x.date) : null,
                       x.invoiceNumber ? t("invoiceNumber", { number: x.invoiceNumber }) : null,
-                      x.vatCents ? t("vat", { amount: formatAmount(x.vatCents) }) : null,
+                      x.vatCents ? t("vat", { amount: formatAmount(x.vatCents, style) }) : null,
                       x.accountNumber ? t("account", { number: x.accountNumber }) : null,
                       x.description,
                     ]

@@ -4,7 +4,14 @@ import { AccountingNav } from "@/components/accounting/AccountingNav";
 import { VatReview } from "@/components/accounting/VatReview";
 import { PlanNotice } from "@/components/app/PlanNotice";
 import { Button } from "@/components/ui/button";
+import { countryPack } from "@/countries";
 import { FIGURE_ORDER, periodsBetween, TAXED_FIGURES, vatDueDate } from "@/countries/ch/vat-return";
+import {
+  DE_ALWAYS_SHOWN,
+  DE_FIGURE_ORDER,
+  DE_TAXED_FIGURES,
+  ustvaDueDate,
+} from "@/countries/de/vat-return";
 import { Link } from "@/i18n/navigation";
 import { formatDate } from "@/lib/fiscal-year";
 import { formatAmount } from "@/lib/money";
@@ -39,7 +46,27 @@ export default async function VatPage({ params, searchParams }: Props) {
   const years = await listFiscalYears(db(), organization.id);
   const firstStart = years.at(-1)?.startDate ?? `${today.slice(0, 4)}-01-01`;
   // TDFN : décompte semestriel ; méthode effective : trimestriel.
-  const months = organization.vatMethod === "net_tax_rate" ? 6 : 3;
+  const germany = organization.country === "DE";
+  const style = countryPack(organization.country).amounts;
+  const months = !germany && organization.vatMethod === "net_tax_rate" ? 6 : 3;
+  // Formulaire du pays : décompte AFC ou Umsatzsteuer-Voranmeldung.
+  const form = germany
+    ? {
+        order: DE_FIGURE_ORDER as readonly string[],
+        taxed: DE_TAXED_FIGURES,
+        always: DE_ALWAYS_SHOWN,
+        bold: ["83"],
+        labels: "figuresDe",
+        due: ustvaDueDate,
+      }
+    : {
+        order: FIGURE_ORDER as readonly string[],
+        taxed: TAXED_FIGURES,
+        always: ["200", "299", "399", "479"],
+        bold: ["299", "399", "479", "500", "510"],
+        labels: "figures",
+        due: vatDueDate,
+      };
   const quarters = periodsBetween(firstStart, today, months).reverse();
   const done = await listVatReturns(db(), organization.id);
   const doneByStart = new Map(done.map((r) => [r.periodStart, r]));
@@ -56,9 +83,8 @@ export default async function VatPage({ params, searchParams }: Props) {
   const anomalies: VatAnomaly[] = validated?.anomalies ?? draft?.anomalies ?? [];
   const allowed = hasFeature(organization, "vatReturn");
   const blocking = !allowed || anomalies.some((a) => a.severity === "block");
-  const shown = FIGURE_ORDER.filter(
-    (code) =>
-      code in figures && (figures[code] !== 0 || ["200", "299", "399", "479"].includes(code)),
+  const shown = form.order.filter(
+    (code) => code in figures && (figures[code] !== 0 || form.always.includes(code)),
   );
 
   return (
@@ -152,16 +178,20 @@ export default async function VatPage({ params, searchParams }: Props) {
                 {shown.map((code) => (
                   <tr
                     key={code}
-                    className={`border-b border-line-soft last:border-b-0 ${["299", "399", "479", "500", "510"].includes(code) ? "font-extrabold" : ""}`}
+                    className={`border-b border-line-soft last:border-b-0 ${form.bold.includes(code) ? "font-extrabold" : ""}`}
                     data-testid={`figure-${code}`}
                   >
                     <td className="px-3 py-2 tabular-nums">{code}</td>
-                    <td className="px-3 py-2 [overflow-wrap:anywhere]">{t(`figures.${code}`)}</td>
-                    <td className="px-3 py-2 text-right tabular-nums">
-                      {formatAmount(figures[code] ?? 0)}
+                    <td className="px-3 py-2 [overflow-wrap:anywhere]">
+                      {t(`${form.labels}.${code}`)}
                     </td>
                     <td className="px-3 py-2 text-right tabular-nums">
-                      {TAXED_FIGURES.includes(code) ? formatAmount(figures[`${code}t`] ?? 0) : ""}
+                      {formatAmount(figures[code] ?? 0, style)}
+                    </td>
+                    <td className="px-3 py-2 text-right tabular-nums">
+                      {form.taxed.includes(code)
+                        ? formatAmount(figures[`${code}t`] ?? 0, style)
+                        : ""}
                     </td>
                   </tr>
                 ))}
@@ -171,7 +201,7 @@ export default async function VatPage({ params, searchParams }: Props) {
 
           {(figures["500"] ?? 0) > 0 ? (
             <p className="mt-3 text-[13px] text-ink-2">
-              {t("payBy", { date: formatDate(vatDueDate(selected.end)) })}
+              {t("payBy", { date: formatDate(form.due(selected.end)) })}
             </p>
           ) : null}
 

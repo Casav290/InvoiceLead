@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { AccountingNav } from "@/components/accounting/AccountingNav";
 import { YearPicker } from "@/components/accounting/YearPicker";
+import { countryPack } from "@/countries";
 import { Link } from "@/i18n/navigation";
 import { formatDate } from "@/lib/fiscal-year";
 import { formatAmount } from "@/lib/money";
@@ -25,6 +26,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function LedgerPage({ params, searchParams }: Props) {
   const { locale, accountId } = await params;
   const { organization } = await requireAppSession(locale);
+  const style = countryPack(organization.country).amounts;
   const q = await searchParams;
   const t = await getTranslations({ locale, namespace: "app.reports" });
   const years = await listFiscalYears(db(), organization.id);
@@ -82,13 +84,13 @@ export default async function LedgerPage({ params, searchParams }: Props) {
                   <td className="px-3 py-1.5 tabular-nums">{l.number}</td>
                   <td className="px-3 py-1.5 [overflow-wrap:anywhere]">{l.description}</td>
                   <td className="px-3 py-1.5 text-right tabular-nums">
-                    {l.debitCents ? formatAmount(l.debitCents) : ""}
+                    {l.debitCents ? formatAmount(l.debitCents, style) : ""}
                   </td>
                   <td className="px-3 py-1.5 text-right tabular-nums">
-                    {l.creditCents ? formatAmount(l.creditCents) : ""}
+                    {l.creditCents ? formatAmount(l.creditCents, style) : ""}
                   </td>
                   <td className="px-3 py-1.5 text-right font-semibold tabular-nums">
-                    {formatAmount(l.runningCents)}
+                    {formatAmount(l.runningCents, style)}
                   </td>
                 </tr>
               ))}

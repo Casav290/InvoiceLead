@@ -3,10 +3,9 @@ import {
   type AccountType,
   accountClass,
   type ChartTemplate,
-  TYPES_BY_CLASS,
-  templateAccounts,
 } from "@/countries/ch/chart-of-accounts";
 import { VAT_CODES, type VatCode } from "@/countries/ch/vat";
+import { chartPack } from "@/countries/charts";
 import { firstFiscalYear, isIsoDate, nextFiscalYear } from "@/lib/fiscal-year";
 import { canSetUpAccounting } from "./company";
 import type { Db } from "./db";
@@ -54,8 +53,8 @@ export async function installChart(
   if (!(await canSetUpAccounting(database, who.organizationId, who.userId))) return "forbidden";
   return database.transaction(async (tx) => {
     // Verrou sur l'organisation : deux installations simultanées ne peuvent pas se croiser.
-    await tx
-      .select({ id: organizations.id })
+    const [org] = await tx
+      .select({ id: organizations.id, country: organizations.country })
       .from(organizations)
       .where(eq(organizations.id, who.organizationId))
       .for("update");
@@ -65,7 +64,7 @@ export async function installChart(
       .where(eq(accounts.organizationId, who.organizationId))
       .limit(1);
     if (existing) return "exists";
-    const rows = templateAccounts(template);
+    const rows = chartPack(org?.country).templateAccounts(template);
     await tx.insert(accounts).values(
       rows.map((a) => ({
         organizationId: who.organizationId,
@@ -103,10 +102,12 @@ const text = (form: FormData, key: string) => String(form.get(key) ?? "").trim()
 
 export function parseAccountForm(
   form: FormData,
+  country: string | null = "CH",
 ): { ok: true; data: AccountInput } | { ok: false; errors: AccountErrors } {
   const errors: AccountErrors = {};
   const number = text(form, "number");
-  if (!/^[1-9]\d{3}$/.test(number)) errors.number = "number";
+  // Classes 1 à 9 en Suisse ; le SKR04 allemand commence à la classe 0.
+  if (!(country === "DE" ? /^\d{4}$/ : /^[1-9]\d{3}$/).test(number)) errors.number = "number";
 
   // Une seule langue suffit : l'autre reprend le même libellé, à traduire plus tard.
   let nameDe = text(form, "nameDe");
@@ -118,7 +119,7 @@ export function parseAccountForm(
   if (nameFr.length > 100) errors.nameFr = "tooLong";
 
   const type = text(form, "type") as AccountType;
-  const allowed = TYPES_BY_CLASS[accountClass(number)] ?? [];
+  const allowed = chartPack(country).typesByClass[accountClass(number)] ?? [];
   if (!allowed.includes(type)) errors.type = errors.number ? "required" : "typeForClass";
 
   const vatRaw = text(form, "vatCode");

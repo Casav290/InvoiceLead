@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { login } from "./helpers";
 
-test("entreprise allemande : facture en euros à 19 %, GiroCode, comptabilité annoncée", async ({
+test("entreprise allemande : facture en euros à 19 %, GiroCode, SKR04 et UStVA", async ({
   page,
 }) => {
   const run = Date.now();
@@ -58,13 +58,26 @@ test("entreprise allemande : facture en euros à 19 %, GiroCode, comptabilité a
   const response = await page.request.get((await pdfLink.getAttribute("href")) ?? "");
   expect(response.headers()["content-type"]).toBe("application/pdf");
 
+  // Comptabilité SKR04 : plan, exercice, écritures automatiques, puis UStVA du trimestre.
+  await page.goto("/fr/app/settings/accounts");
+  await page.getByTestId("chart-install").click();
+  await expect(page.locator("body")).toContainText("Plan comptable SKR04");
+  await expect(page.locator("body")).toContainText("Produits soumis à 19");
+  await page.goto("/fr/app/settings/fiscal-years");
+  await page.getByTestId("fiscal-year-first").click();
   await page.goto("/fr/app/accounting");
-  await expect(page.getByTestId("accounting-unavailable")).toContainText("Allemagne");
-  await page.goto("/fr/app/settings/company");
-  await page.getByTestId("company-country").selectOption("CH");
-  await page.getByTestId("company-save").click();
-  // Les champs allemands ne passent pas les contrôles suisses : rien n'est enregistré.
-  await expect(page.getByText("Numéro IDE invalide", { exact: false })).toBeVisible();
-  await page.goto("/fr/app/accounting");
-  await expect(page.getByTestId("accounting-unavailable")).toBeVisible();
+  await page.getByTestId("post-pending").click();
+  const journal = page.getByTestId("journal");
+  await expect(journal).toContainText("1200");
+  await expect(journal).toContainText("4400");
+  await expect(journal).toContainText("3800");
+  await expect(journal).toContainText("1.190,00");
+
+  const today = new Date().toISOString().slice(0, 10);
+  const month = Number(today.slice(5, 7));
+  const quarterStart = `${today.slice(0, 4)}-${String(month - ((month - 1) % 3)).padStart(2, "0")}-01`;
+  await page.goto(`/fr/app/accounting/vat?period=${quarterStart}`);
+  await expect(page.getByTestId("figure-81")).toContainText("1.000,00");
+  await expect(page.getByTestId("figure-81")).toContainText("190,00");
+  await expect(page.getByTestId("figure-83")).toContainText("190,00");
 });

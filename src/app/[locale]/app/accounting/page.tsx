@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { AccountingNav } from "@/components/accounting/AccountingNav";
 import { Button } from "@/components/ui/button";
+import { countryPack } from "@/countries";
 import { Link } from "@/i18n/navigation";
 import { formatDate } from "@/lib/fiscal-year";
 import { formatAmount } from "@/lib/money";
@@ -25,6 +26,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function AccountingPage({ params, searchParams }: Props) {
   const { locale } = await params;
   const { organization } = await requireAppSession(locale);
+  const style = countryPack(organization.country).amounts;
   const query = await searchParams;
   const t = await getTranslations({ locale, namespace: "app.accountingHome" });
   const [years, chart, unposted, chain] = await Promise.all([
@@ -178,10 +180,10 @@ export default async function AccountingPage({ params, searchParams }: Props) {
                       <span className="text-ink-2">{locale === "fr" ? l.nameFr : l.nameDe}</span>
                     </td>
                     <td className="px-3 py-1.5 text-right tabular-nums">
-                      {l.debitCents ? formatAmount(l.debitCents) : ""}
+                      {l.debitCents ? formatAmount(l.debitCents, style) : ""}
                     </td>
                     <td className="px-3 py-1.5 text-right tabular-nums">
-                      {l.creditCents ? formatAmount(l.creditCents) : ""}
+                      {l.creditCents ? formatAmount(l.creditCents, style) : ""}
                     </td>
                   </tr>
                 ))}

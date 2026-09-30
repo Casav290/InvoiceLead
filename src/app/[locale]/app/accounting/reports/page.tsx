@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { AccountingNav } from "@/components/accounting/AccountingNav";
 import { YearPicker } from "@/components/accounting/YearPicker";
+import { countryPack } from "@/countries";
+import { chartPack } from "@/countries/charts";
 import { Link } from "@/i18n/navigation";
 import { formatDate } from "@/lib/fiscal-year";
 import { formatAmount } from "@/lib/money";
@@ -33,9 +35,13 @@ const th =
 export default async function ReportsPage({ params, searchParams }: Props) {
   const { locale } = await params;
   const { organization } = await requireAppSession(locale);
+  const style = countryPack(organization.country).amounts;
   const q = await searchParams;
   const t = await getTranslations({ locale, namespace: "app.reports" });
-  const tc = await getTranslations({ locale, namespace: "app.accounts.classes" });
+  const tc = await getTranslations({
+    locale,
+    namespace: `app.accounts.${chartPack(organization.country).classLabels}`,
+  });
   const years = await listFiscalYears(db(), organization.id);
   const year = years.find((y) => y.id === q.year) ?? years[0];
   const balances = year ? await accountBalances(db(), organization.id, year.id) : [];
@@ -53,7 +59,7 @@ export default async function ReportsPage({ params, searchParams }: Props) {
         </Link>
       </td>
       <td className="px-3 py-1.5 text-right tabular-nums whitespace-nowrap">
-        {formatAmount(amount)}
+        {formatAmount(amount, style)}
       </td>
     </tr>
   );
@@ -62,7 +68,7 @@ export default async function ReportsPage({ params, searchParams }: Props) {
       <tr className="bg-strip">
         <td className="px-3 py-2 font-semibold">{label}</td>
         <td className="px-3 py-2 text-right font-semibold tabular-nums">
-          {formatAmount(g.totalCents)}
+          {formatAmount(g.totalCents, style)}
         </td>
       </tr>
       {g.rows.map((b) => accountRow(b))}
@@ -111,7 +117,7 @@ export default async function ReportsPage({ params, searchParams }: Props) {
                       className="px-3 py-2.5 text-right font-extrabold tabular-nums"
                       data-testid="result"
                     >
-                      {formatAmount(income.resultCents)}
+                      {formatAmount(income.resultCents, style)}
                     </td>
                   </tr>
                 </tfoot>
@@ -135,7 +141,7 @@ export default async function ReportsPage({ params, searchParams }: Props) {
                     <tr className="border-t-2 border-ink">
                       <td className="px-3 py-2.5 font-extrabold">{t("totalAssets")}</td>
                       <td className="px-3 py-2.5 text-right font-extrabold tabular-nums">
-                        {formatAmount(sheet.assetsCents)}
+                        {formatAmount(sheet.assetsCents, style)}
                       </td>
                     </tr>
                   </tfoot>
@@ -154,14 +160,14 @@ export default async function ReportsPage({ params, searchParams }: Props) {
                     <tr className="bg-strip">
                       <td className="px-3 py-2 font-semibold">{t("equity")}</td>
                       <td className="px-3 py-2 text-right font-semibold tabular-nums">
-                        {formatAmount(sheet.equityCents)}
+                        {formatAmount(sheet.equityCents, style)}
                       </td>
                     </tr>
                     {sheet.equity.map((b) => accountRow(b))}
                     <tr className="border-b border-line-soft">
                       <td className="px-3 py-1.5 italic">{t("currentResult")}</td>
                       <td className="px-3 py-1.5 text-right tabular-nums">
-                        {formatAmount(sheet.resultCents)}
+                        {formatAmount(sheet.resultCents, style)}
                       </td>
                     </tr>
                   </tbody>
@@ -169,7 +175,7 @@ export default async function ReportsPage({ params, searchParams }: Props) {
                     <tr className="border-t-2 border-ink">
                       <td className="px-3 py-2.5 font-extrabold">{t("totalLiabilities")}</td>
                       <td className="px-3 py-2.5 text-right font-extrabold tabular-nums">
-                        {formatAmount(sheet.liabilitiesCents + sheet.equityCents)}
+                        {formatAmount(sheet.liabilitiesCents + sheet.equityCents, style)}
                       </td>
                     </tr>
                   </tfoot>
@@ -205,10 +211,10 @@ export default async function ReportsPage({ params, searchParams }: Props) {
                         </Link>
                       </td>
                       <td className="px-3 py-1.5 text-right tabular-nums">
-                        {formatAmount(b.debitCents)}
+                        {formatAmount(b.debitCents, style)}
                       </td>
                       <td className="px-3 py-1.5 text-right tabular-nums">
-                        {formatAmount(b.creditCents)}
+                        {formatAmount(b.creditCents, style)}
                       </td>
                     </tr>
                   ))}
@@ -217,10 +223,16 @@ export default async function ReportsPage({ params, searchParams }: Props) {
                   <tr className="border-t-2 border-ink font-extrabold">
                     <td className="px-3 py-2.5">{t("total")}</td>
                     <td className="px-3 py-2.5 text-right tabular-nums">
-                      {formatAmount(balances.reduce((s, b) => s + b.debitCents, 0))}
+                      {formatAmount(
+                        balances.reduce((s, b) => s + b.debitCents, 0),
+                        style,
+                      )}
                     </td>
                     <td className="px-3 py-2.5 text-right tabular-nums">
-                      {formatAmount(balances.reduce((s, b) => s + b.creditCents, 0))}
+                      {formatAmount(
+                        balances.reduce((s, b) => s + b.creditCents, 0),
+                        style,
+                      )}
                     </td>
                   </tr>
                 </tfoot>

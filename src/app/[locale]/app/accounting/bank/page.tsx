@@ -3,6 +3,7 @@ import { getTranslations } from "next-intl/server";
 import { AccountingNav } from "@/components/accounting/AccountingNav";
 import { PlanNotice } from "@/components/app/PlanNotice";
 import { Button } from "@/components/ui/button";
+import { countryPack } from "@/countries";
 import { VAT_CODES } from "@/countries/ch/vat";
 import { formatDate } from "@/lib/fiscal-year";
 import { formatAmount } from "@/lib/money";
@@ -55,6 +56,7 @@ const ERRORS = [
 export default async function BankPage({ params, searchParams }: Props) {
   const { locale } = await params;
   const { organization } = await requireAppSession(locale);
+  const style = countryPack(organization.country).amounts;
   const q = await searchParams;
   const t = await getTranslations({ locale, namespace: "app.bank" });
   const [rows, chart, invoiceRows, rules] = await Promise.all([
@@ -198,7 +200,7 @@ export default async function BankPage({ params, searchParams }: Props) {
                   </span>
                   <span className="font-extrabold tabular-nums">
                     {r.amountCents > 0 ? "+" : ""}
-                    {formatAmount(r.amountCents)}
+                    {formatAmount(r.amountCents, style)}
                   </span>
                 </div>
                 {r.text ? (
@@ -343,7 +345,7 @@ export default async function BankPage({ params, searchParams }: Props) {
                     </td>
                     <td className="px-3 py-2 [overflow-wrap:anywhere]">{r.counterparty ?? ""}</td>
                     <td className="px-3 py-2 text-right tabular-nums">
-                      {formatAmount(r.amountCents)}
+                      {formatAmount(r.amountCents, style)}
                     </td>
                     <td className="px-3 py-2 text-ink-2">{t(`status.${r.status}`)}</td>
                   </tr>

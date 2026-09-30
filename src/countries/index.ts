@@ -34,7 +34,7 @@ const PACKS: Record<Country, CountryPack> = {
     currency: "EUR",
     paymentSlip: "epc-qr",
     amounts: "de",
-    accounting: false,
+    accounting: true,
     vatRateBp: vatRateBpDe,
   },
 };

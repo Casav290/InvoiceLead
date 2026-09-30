@@ -1,6 +1,8 @@
 import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
+import { countryPack } from "@/countries";
 import type { BankEntry } from "@/countries/ch/camt";
-import { VAT_CODES, type VatCode, vatRateBp } from "@/countries/ch/vat";
+import { VAT_CODES, type VatCode } from "@/countries/ch/vat";
+import { chartPack } from "@/countries/charts";
 import { roundHalfAwayFromZero } from "@/lib/money";
 import { chatJson } from "./ai";
 import { counterpartyKey, directionOf, learnRule, ruleConfidence } from "./booking-rules";
@@ -186,11 +188,12 @@ export async function proposeAll(
         vatRegistered: organizations.vatRegistered,
         vatMethod: organizations.vatMethod,
         legalForm: organizations.legalForm,
+        country: organizations.country,
       })
       .from(organizations)
       .where(eq(organizations.id, who.organizationId));
     const usable = chart.filter(
-      (a) => !a.number.startsWith("9") && a.role !== "bank" && a.role !== "cash",
+      (a) => a.type !== "closing" && a.role !== "bank" && a.role !== "cash",
     );
     for (let i = 0; i < rest.length; i += 20) {
       const batch = rest.slice(i, i + 20);
@@ -199,6 +202,7 @@ export async function proposeAll(
           language: options.language,
           vatRegistered: !!org?.vatRegistered && org.vatMethod === "effective",
           legalForm: org?.legalForm ?? null,
+          country: org?.country ?? "CH",
         });
         for (const [key, a] of answer) {
           const tx = batch[key];
@@ -257,14 +261,17 @@ async function askAi(
   batch: BankTransaction[],
   chart: { number: string; nameDe: string; nameFr: string; type: string; role: string | null }[],
   open: OpenInvoice[],
-  ctx: { language: "de" | "fr"; vatRegistered: boolean; legalForm: string | null },
+  ctx: { language: "de" | "fr"; vatRegistered: boolean; legalForm: string | null; country: string },
 ): Promise<Map<number, AiAnswer>> {
+  const germany = ctx.country === "DE";
   const system = [
-    "You are the bookkeeping assistant of a Swiss SME using the Swiss KMU chart of accounts.",
+    germany
+      ? "You are the bookkeeping assistant of a German small business using the DATEV SKR04 chart of accounts."
+      : "You are the bookkeeping assistant of a Swiss SME using the Swiss KMU chart of accounts.",
     "For each bank transaction, decide EITHER which open customer invoice it pays (incoming money only) OR which account of the chart it must be booked against (the bank side is booked automatically).",
     "Only use invoice numbers and account numbers from the lists given. Never use class 9 accounts.",
     ctx.vatRegistered
-      ? "The company is VAT registered (effective method): set vat to the Swiss VAT code the amount includes (normal, reduced, lodging) or null when there is no VAT (bank fees, salaries, social insurance, insurance premiums, taxes, private withdrawals, transfers)."
+      ? `The company is VAT registered: set vat to the ${germany ? "German VAT code the amount includes (normal 19 %, reduced 7 %)" : "Swiss VAT code the amount includes (normal, reduced, lodging)"} or null when there is no VAT (bank fees, salaries, social insurance, insurance premiums, taxes, private withdrawals, transfers).`
       : "The company is not VAT registered: always set vat to null.",
     ctx.legalForm === "sole_proprietorship"
       ? "Private withdrawals and deposits of the owner go to the private account."
@@ -326,13 +333,17 @@ export async function bankPostings(
     .where(and(eq(accounts.id, accountId), eq(accounts.organizationId, organizationId)));
   if (!account) throw new LedgerError("noAccount");
   const [org] = await database
-    .select({ vatRegistered: organizations.vatRegistered, vatMethod: organizations.vatMethod })
+    .select({
+      vatRegistered: organizations.vatRegistered,
+      vatMethod: organizations.vatMethod,
+      country: organizations.country,
+    })
     .from(organizations)
     .where(eq(organizations.id, organizationId));
   const counter = -tx.amountCents;
   const rate =
     vatCode && org?.vatRegistered && org.vatMethod === "effective"
-      ? vatRateBp(vatCode, tx.bookingDate)
+      ? countryPack(org.country).vatRateBp(vatCode, tx.bookingDate)
       : 0;
   if (rate === 0) {
     return [
@@ -346,9 +357,7 @@ export async function bankPostings(
   const isRevenue = account.type === "revenue";
   const vatAccount = isRevenue
     ? roles.vat_output
-    : account.number.startsWith("4")
-      ? roles.vat_input_material
-      : roles.vat_input_invest;
+    : roles[chartPack(org?.country).inputVatRole(account)];
   if (!vatAccount) throw new LedgerError("noChart");
   return [
     { accountId: roles.bank, amountCents: tx.amountCents },

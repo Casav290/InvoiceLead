@@ -55,7 +55,7 @@ describe("pack Allemagne", () => {
     expect(countryPack("DE")).toMatchObject({
       currency: "EUR",
       paymentSlip: "epc-qr",
-      accounting: false,
+      accounting: true,
     });
     expect(countryPack("XX").code).toBe("CH");
   });

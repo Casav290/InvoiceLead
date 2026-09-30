@@ -438,7 +438,19 @@
         "typeForClass": "Dieser Typ passt nicht zur Kontoklasse.",
         "numberTaken": "Diese Nummer ist bereits vergeben.",
         "systemInactive": "Ein Systemkonto bleibt aktiv."
-      }
+      },
+      "classesDe": {
+        "0": "0 Anlagevermögen",
+        "1": "1 Umlaufvermögen",
+        "2": "2 Eigenkapital",
+        "3": "3 Fremdkapital",
+        "4": "4 Betriebliche Erträge",
+        "5": "5 Material und Fremdleistungen",
+        "6": "6 Betriebliche Aufwendungen",
+        "7": "7 Weitere Erträge und Aufwendungen",
+        "9": "9 Vortrags- und Abschlusskonten"
+      },
+      "subtitleDe": "Kontenrahmen SKR04 (DATEV), Klassen 0 bis 9. Die Systemkonten werden von den automatischen Buchungen verwendet."
     },
     "fiscalYears": {
       "title": "Geschäftsjahre",
@@ -984,7 +996,16 @@
       "validate": "Abrechnung bestätigen",
       "semester": "H{q} {year}",
       "tax": "Steuer",
-      "planOnly": "Die in InvoiceLead vorbereitete und bestätigte MWST-Abrechnung ist im Pro-Abo enthalten. Die Zahlen unten können Sie einsehen."
+      "planOnly": "Die in InvoiceLead vorbereitete und bestätigte MWST-Abrechnung ist im Pro-Abo enthalten. Die Zahlen unten können Sie einsehen.",
+      "figuresDe": {
+        "81": "Kz 81 · Steuerpflichtige Umsätze zu 19 %",
+        "86": "Kz 86 · Steuerpflichtige Umsätze zu 7 %",
+        "35": "Kz 35/36 · Umsätze zu anderen Steuersätzen",
+        "21": "Kz 21 · Nicht steuerbare sonstige Leistungen (EU)",
+        "48": "Kz 48 · Steuerfreie Umsätze ohne Vorsteuerabzug",
+        "66": "Kz 66 · Abziehbare Vorsteuerbeträge",
+        "83": "Kz 83 · Verbleibende Vorauszahlung (negativ: Erstattung)"
+      }
     },
     "reminders": {
       "title": "Mahnungen",
