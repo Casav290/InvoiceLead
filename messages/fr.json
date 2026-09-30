@@ -413,7 +413,8 @@
       "company": "Entreprise",
       "accounts": "Plan comptable",
       "fiscalYears": "Exercices",
-      "team": "Équipe"
+      "team": "Équipe",
+      "payments": "Paiement en ligne"
     },
     "accounts": {
       "title": "Plan comptable",
@@ -753,7 +754,8 @@
         "methods": {
           "bank": "Virement",
           "cash": "Espèces",
-          "other": "Autre"
+          "other": "Autre",
+          "online": "En ligne (Stripe)"
         },
         "states": {
           "open": "Ouverte",
@@ -1307,6 +1309,23 @@
       "send": "Envoyer",
       "sent": "Merci, votre avis est bien arrivé.",
       "invalid": "Écrivez quelques mots avant d'envoyer."
+    },
+    "onlinePayments": {
+      "title": "Paiement en ligne",
+      "subtitle": "Vos clients paient une facture depuis son lien, par carte, TWINT, SEPA ou ACH selon ce que votre compte Stripe accepte. L'argent va directement sur votre compte Stripe.",
+      "notConfigured": "Le paiement en ligne n'est pas encore activé sur InvoiceLead.",
+      "notLinked": "Aucun compte Stripe relié.",
+      "linked": "Compte Stripe relié : {account}.",
+      "connect": "Relier mon compte Stripe",
+      "disconnect": "Détacher",
+      "connected": "Compte Stripe relié.",
+      "disconnected": "Compte Stripe détaché.",
+      "howItWorks": "Chaque paiement reçu est enregistré sur la facture et comptabilisé sur le compte d'attente du prestataire ; le versement de Stripe sur votre banque le solde, et le reste correspond aux frais.",
+      "errors": {
+        "state": "Le retour de Stripe n'a pas pu être vérifié. Recommencez.",
+        "denied": "La liaison a été annulée sur Stripe.",
+        "failed": "Stripe n'a pas confirmé la liaison. Réessayez plus tard."
+      }
     }
   },
   "footer": {
@@ -1432,6 +1451,9 @@
   },
   "shared": {
     "download": "Télécharger le PDF",
-    "poweredBy": "Envoyé avec InvoiceLead"
+    "poweredBy": "Envoyé avec InvoiceLead",
+    "pay": "Payer en ligne",
+    "paid": "Merci. Le paiement est en cours de confirmation ; la facture passera à « payée » dès que Stripe l'aura confirmé.",
+    "payError": "Le paiement en ligne n'a pas pu démarrer. Réessayez ou payez par virement."
   }
 }

@@ -183,6 +183,13 @@
       "when": 1790779007936,
       "tag": "0025_rate_precision",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1790780094429,
+      "tag": "0026_online_payments",
+      "breakpoints": true
     }
   ]
 }

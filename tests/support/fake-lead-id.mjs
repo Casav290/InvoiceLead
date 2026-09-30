@@ -53,6 +53,9 @@ function send(res, status, body, headers = {}) {
   res.end(typeof body === "string" ? body : JSON.stringify(body));
 }
 
+/** Sessions Checkout créées, pour les tests. */
+const checkouts = [];
+
 async function readBody(req) {
   let data = "";
   for await (const chunk of req) data += chunk;
@@ -191,6 +194,31 @@ createServer(async (req, res) => {
     return send(res, 200, { id: `em_${emails.length}` });
   }
   if (url.pathname === "/test/emails") return send(res, 200, emails);
+
+  // Faux Stripe : autorisation Connect (acceptée d'office), échange du code, sessions Checkout.
+  if (url.pathname === "/stripe-connect/oauth/authorize") {
+    const back = new URL(url.searchParams.get("redirect_uri") ?? "/");
+    back.searchParams.set("code", "ac_test");
+    back.searchParams.set("state", url.searchParams.get("state") ?? "");
+    res.writeHead(302, { Location: back.toString() });
+    return res.end();
+  }
+  if (url.pathname === "/stripe-connect/oauth/token" && req.method === "POST") {
+    if (req.headers.authorization !== "Bearer sk_test_e2e") return send(res, 401, { error: "key" });
+    return send(res, 200, { stripe_user_id: "acct_e2e", livemode: false });
+  }
+  if (url.pathname === "/stripe/v1/checkout/sessions" && req.method === "POST") {
+    if (req.headers.authorization !== "Bearer sk_test_e2e") return send(res, 401, { error: "key" });
+    const form = Object.fromEntries(new URLSearchParams(await readBody(req)));
+    const id = `cs_test_${Date.now()}_${checkouts.length + 1}`;
+    checkouts.push({ id, account: req.headers["stripe-account"], form });
+    return send(res, 200, { id, url: `http://localhost:${PORT}/stripe/checkout/${id}` });
+  }
+  if (url.pathname.startsWith("/stripe/checkout/")) {
+    res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+    return res.end("<!doctype html><title>Stripe Checkout</title><h1>Stripe Checkout (test)</h1>");
+  }
+  if (url.pathname === "/test/checkouts") return send(res, 200, checkouts);
 
   if (url.pathname === "/ai/chat/completions" && req.method === "POST") {
     if (req.headers.authorization !== "Bearer ai_test") return send(res, 401, { error: "key" });

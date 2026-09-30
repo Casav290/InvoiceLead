@@ -290,6 +290,7 @@ async function askAi(
     ctx.legalForm === "sole_proprietorship"
       ? "Private withdrawals and deposits of the owner go to the private account."
       : "",
+    "Payouts from Stripe or another payment provider settle online payments already recorded: book them against the payment provider clearing account, never against revenue.",
     "confidence is your probability (0 to 1) that the booking is right. Be honest: below 0.6 when unsure.",
     `explanation: one short sentence in ${aiLanguageName(ctx.language)} a non-accountant understands.`,
     'Answer with JSON only: {"results":[{"id":"t1","invoice":null,"account":"6570","vat":"normal","confidence":0.9,"explanation":"..."}]}',

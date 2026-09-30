@@ -81,6 +81,8 @@ export const organizations = pgTable("organizations", {
   netTaxRateBp: integer("net_tax_rate_bp"),
   /** États-Unis : taux combiné de sales tax (État, comté, ville), en points de base. */
   salesTaxRateBp: doublePrecision("sales_tax_rate_bp"),
+  /** Compte Stripe connecté (Stripe Connect) qui reçoit les paiements en ligne des clients. */
+  stripeAccountId: text("stripe_account_id"),
   fiscalYearStartMonth: integer("fiscal_year_start_month").notNull().default(1),
   settingsCompletedAt: timestamp("settings_completed_at", { withTimezone: true }),
   createdAt: createdAt(),
@@ -416,14 +418,19 @@ export const invoicePayments = pgTable(
       .references(() => invoices.id, { onDelete: "restrict" }),
     paidOn: date("paid_on", { mode: "string" }).notNull(),
     amountCents: bigint("amount_cents", { mode: "number" }).notNull(),
-    method: text("method").notNull().default("bank"), // bank | cash | other
+    method: text("method").notNull().default("bank"), // bank | cash | online | other
     note: text("note"),
+    /** Paiement en ligne : identifiant chez le prestataire (session Stripe), unique pour l'idempotence. */
+    externalRef: text("external_ref"),
     journalEntryId: uuid("journal_entry_id"),
     createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
     createdAt: createdAt(),
   },
   (t) => [
     index("invoice_payments_invoice_idx").on(t.invoiceId),
+    uniqueIndex("invoice_payments_external_idx")
+      .on(t.externalRef)
+      .where(sql`${t.externalRef} is not null`),
     check("invoice_payments_positive", sql`${t.amountCents} > 0`),
   ],
 );

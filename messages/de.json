@@ -413,7 +413,8 @@
       "company": "Unternehmen",
       "accounts": "Kontenplan",
       "fiscalYears": "Geschäftsjahre",
-      "team": "Team"
+      "team": "Team",
+      "payments": "Online-Zahlung"
     },
     "accounts": {
       "title": "Kontenplan",
@@ -753,7 +754,8 @@
         "methods": {
           "bank": "Überweisung",
           "cash": "Bar",
-          "other": "Andere"
+          "other": "Andere",
+          "online": "Online (Stripe)"
         },
         "states": {
           "open": "Offen",
@@ -1307,6 +1309,23 @@
       "send": "Senden",
       "sent": "Danke, Ihr Feedback ist angekommen.",
       "invalid": "Schreiben Sie ein paar Worte, bevor Sie senden."
+    },
+    "onlinePayments": {
+      "title": "Online-Zahlung",
+      "subtitle": "Ihre Kunden bezahlen eine Rechnung über ihren Link, per Karte, TWINT, SEPA oder ACH, je nachdem, was Ihr Stripe-Konto akzeptiert. Das Geld geht direkt auf Ihr Stripe-Konto.",
+      "notConfigured": "Die Online-Zahlung ist in InvoiceLead noch nicht aktiviert.",
+      "notLinked": "Kein Stripe-Konto verbunden.",
+      "linked": "Stripe-Konto verbunden: {account}.",
+      "connect": "Mein Stripe-Konto verbinden",
+      "disconnect": "Trennen",
+      "connected": "Stripe-Konto verbunden.",
+      "disconnected": "Stripe-Konto getrennt.",
+      "howItWorks": "Jede Zahlung wird auf der Rechnung erfasst und auf das Transferkonto des Zahlungsdienstleisters gebucht; die Auszahlung von Stripe auf Ihre Bank gleicht es aus, der Rest sind die Gebühren.",
+      "errors": {
+        "state": "Die Rückmeldung von Stripe konnte nicht geprüft werden. Bitte erneut versuchen.",
+        "denied": "Die Verbindung wurde bei Stripe abgebrochen.",
+        "failed": "Stripe hat die Verbindung nicht bestätigt. Versuchen Sie es später erneut."
+      }
     }
   },
   "footer": {
@@ -1432,6 +1451,9 @@
   },
   "shared": {
     "download": "PDF herunterladen",
-    "poweredBy": "Versendet mit InvoiceLead"
+    "poweredBy": "Versendet mit InvoiceLead",
+    "pay": "Online bezahlen",
+    "paid": "Danke. Die Zahlung wird bestätigt; die Rechnung gilt als bezahlt, sobald Stripe sie bestätigt hat.",
+    "payError": "Die Online-Zahlung konnte nicht gestartet werden. Versuchen Sie es erneut oder zahlen Sie per Überweisung."
   }
 }

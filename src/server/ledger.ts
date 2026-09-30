@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { and, asc, desc, eq, gte, inArray, isNotNull, isNull, lte, sql } from "drizzle-orm";
 import type { AccountRole } from "@/countries/ch/chart-of-accounts";
+import { clearingAccount } from "@/countries/clearing";
 import { vatOf } from "@/lib/money";
 import type { Db } from "./db";
 import {
@@ -246,6 +247,7 @@ export async function postPending(database: Db, who: Who): Promise<PostingSummar
   let posted = 0;
   let waiting = 0;
   let reason: PostingSummary["reason"] = null;
+  await ensureClearingAccount(database, who.organizationId);
   const roles = await roleAccounts(database, who.organizationId);
 
   const docs = await database
@@ -358,12 +360,52 @@ export async function postPending(database: Db, who: Who): Promise<PostingSummar
   return { posted, waiting, reason };
 }
 
+/**
+ * Plan installé avant l'arrivée des paiements en ligne : le compte d'attente est ajouté au premier
+ * paiement en ligne à comptabiliser.
+ */
+async function ensureClearingAccount(database: Db, organizationId: string) {
+  const [online] = await database
+    .select({ id: invoicePayments.id })
+    .from(invoicePayments)
+    .where(
+      and(
+        eq(invoicePayments.organizationId, organizationId),
+        eq(invoicePayments.method, "online"),
+        isNull(invoicePayments.journalEntryId),
+      ),
+    )
+    .limit(1);
+  if (!online) return;
+  const roles = await roleAccounts(database, organizationId);
+  if (roles.payment_clearing || !roles.bank) return;
+  const [org] = await database
+    .select({ country: organizations.country })
+    .from(organizations)
+    .where(eq(organizations.id, organizationId));
+  const a = clearingAccount(org?.country);
+  await database
+    .insert(accounts)
+    .values({
+      organizationId,
+      number: a.number,
+      nameDe: a.de,
+      nameFr: a.fr,
+      nameEn: a.en ?? null,
+      type: a.type,
+      role: a.role ?? null,
+    })
+    .onConflictDoNothing();
+}
+
 export function paymentPostings(
   method: string,
   amountCents: number,
   roles: Partial<Record<AccountRole, string>>,
 ): Posting[] {
-  const money = method === "cash" ? roles.cash : roles.bank;
+  // Paiement en ligne : il attend sur le compte du prestataire jusqu'au versement sur la banque.
+  const money =
+    method === "cash" ? roles.cash : method === "online" ? roles.payment_clearing : roles.bank;
   if (!money || !roles.receivable) throw new LedgerError("noChart");
   return [
     { accountId: money, amountCents },

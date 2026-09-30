@@ -413,7 +413,8 @@
       "company": "Company",
       "accounts": "Chart of accounts",
       "fiscalYears": "Fiscal years",
-      "team": "Team"
+      "team": "Team",
+      "payments": "Online payments"
     },
     "accounts": {
       "title": "Chart of accounts",
@@ -753,7 +754,8 @@
         "methods": {
           "bank": "Bank transfer",
           "cash": "Cash",
-          "other": "Other"
+          "other": "Other",
+          "online": "Online (Stripe)"
         },
         "states": {
           "open": "Open",
@@ -1307,6 +1309,23 @@
       "send": "Send",
       "sent": "Thank you, your feedback has arrived.",
       "invalid": "Write a few words before sending."
+    },
+    "onlinePayments": {
+      "title": "Online payments",
+      "subtitle": "Your customers pay an invoice from its link, by card, TWINT, SEPA or ACH depending on what your Stripe account accepts. The money goes straight to your Stripe account.",
+      "notConfigured": "Online payments are not yet enabled on InvoiceLead.",
+      "notLinked": "No Stripe account linked.",
+      "linked": "Linked Stripe account: {account}.",
+      "connect": "Link my Stripe account",
+      "disconnect": "Unlink",
+      "connected": "Stripe account linked.",
+      "disconnected": "Stripe account unlinked.",
+      "howItWorks": "Each payment is recorded on the invoice and posted to the payment provider clearing account; the Stripe payout to your bank clears it, and what remains is the fees.",
+      "errors": {
+        "state": "Stripe's response could not be verified. Please try again.",
+        "denied": "The link was cancelled on Stripe.",
+        "failed": "Stripe did not confirm the link. Try again later."
+      }
     }
   },
   "footer": {
@@ -1432,6 +1451,9 @@
   },
   "shared": {
     "download": "Download PDF",
-    "poweredBy": "Sent with InvoiceLead"
+    "poweredBy": "Sent with InvoiceLead",
+    "pay": "Pay online",
+    "paid": "Thank you. The payment is being confirmed; the invoice will show as paid as soon as Stripe confirms it.",
+    "payError": "The online payment could not start. Try again or pay by bank transfer."
   }
 }

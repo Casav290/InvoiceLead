@@ -35,6 +35,13 @@ const schema = z.object({
   BETA_ALLOWLIST: z.string().optional(),
   /** Adresse qui reçoit les avis envoyés depuis l'application. */
   FEEDBACK_EMAIL: z.email().optional(),
+  // Paiement en ligne par Stripe Connect : chaque entreprise relie son propre compte Stripe, l'argent
+  // ne transite jamais par InvoiceLead. Sans ces variables, le paiement en ligne reste masqué.
+  STRIPE_SECRET_KEY: z.string().min(1).optional(),
+  STRIPE_CONNECT_CLIENT_ID: z.string().min(1).optional(),
+  STRIPE_WEBHOOK_SECRET: z.string().min(1).optional(),
+  STRIPE_API_URL: z.url().default("https://api.stripe.com"),
+  STRIPE_CONNECT_URL: z.url().default("https://connect.stripe.com"),
 });
 
 export type Env = z.infer<typeof schema>;

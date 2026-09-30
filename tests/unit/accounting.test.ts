@@ -6,6 +6,7 @@ import {
   templateAccounts,
   templateForLegalForm,
 } from "@/countries/ch/chart-of-accounts";
+import { chartPack } from "@/countries/charts";
 import {
   firstFiscalYear,
   fiscalYearContaining,
@@ -94,7 +95,7 @@ describe("plan comptable PME", () => {
     expect(await installChart(db, whoA, "corporation")).toBe("installed");
     expect(await installChart(db, whoA, "sole_proprietorship")).toBe("exists");
     const rows = await listAccounts(db, a.organization.id);
-    expect(rows).toHaveLength(templateAccounts("corporation").length);
+    expect(rows).toHaveLength(chartPack("CH").templateAccounts("corporation").length);
     expect(await listAccounts(db, b.organization.id)).toHaveLength(0);
 
     const input = {

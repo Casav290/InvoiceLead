@@ -6,6 +6,7 @@ import {
   TYPES_BY_CLASS,
   templateAccounts,
 } from "./ch/chart-of-accounts";
+import { clearingAccount } from "./clearing";
 import { CHART_ACCOUNTS_DE, TYPES_BY_CLASS_DE } from "./de/chart-of-accounts";
 import { CHART_ACCOUNTS_FR, TYPES_BY_CLASS_FR } from "./fr/chart-of-accounts";
 import { CHART_ACCOUNTS_GB, TYPES_BY_CLASS_GB } from "./gb/chart-of-accounts";
@@ -94,5 +95,13 @@ const US: ChartPack = {
 const PACKS: Record<string, ChartPack> = { CH, DE, FR, GB, US };
 
 export function chartPack(country: string | null | undefined): ChartPack {
-  return PACKS[country ?? "CH"] ?? CH;
+  const pack = PACKS[country ?? "CH"] ?? CH;
+  // Tout plan installé reçoit le compte d'attente des paiements en ligne.
+  return {
+    ...pack,
+    templateAccounts: (template) =>
+      [...pack.templateAccounts(template), clearingAccount(country)].sort((x, y) =>
+        x.number.localeCompare(y.number),
+      ),
+  };
 }

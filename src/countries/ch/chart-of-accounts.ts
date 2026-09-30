@@ -24,6 +24,7 @@ export type ChartTemplate = (typeof CHART_TEMPLATES)[number];
 export const ACCOUNT_ROLES = [
   "cash",
   "bank",
+  "payment_clearing",
   "receivable",
   "vat_input_material",
   "vat_input_invest",

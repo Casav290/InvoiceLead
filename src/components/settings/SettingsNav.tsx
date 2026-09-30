@@ -9,6 +9,7 @@ const ITEMS = [
   { href: "/app/settings/accounts", key: "accounts" },
   { href: "/app/settings/fiscal-years", key: "fiscalYears" },
   { href: "/app/settings/team", key: "team" },
+  { href: "/app/settings/payments", key: "payments" },
 ] as const;
 
 /** Onglets des réglages : entreprise, plan comptable, exercices, équipe. */

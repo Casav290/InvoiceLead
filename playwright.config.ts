@@ -19,6 +19,11 @@ const appEnv = {
   AI_API_KEY: "ai_test",
   CRON_SECRET: "cron-secret-for-tests-only",
   AI_BASE_URL: `http://localhost:${LEAD_PORT}/ai`,
+  STRIPE_SECRET_KEY: "sk_test_e2e",
+  STRIPE_CONNECT_CLIENT_ID: "ca_test_e2e",
+  STRIPE_WEBHOOK_SECRET: "whsec_e2e",
+  STRIPE_API_URL: `http://localhost:${LEAD_PORT}/stripe`,
+  STRIPE_CONNECT_URL: `http://localhost:${LEAD_PORT}/stripe-connect`,
   NEXT_TELEMETRY_DISABLED: "1",
 };
 
