@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { AccountingNav } from "@/components/accounting/AccountingNav";
+import { PlanNotice } from "@/components/app/PlanNotice";
 import { Button } from "@/components/ui/button";
 import { VAT_CODES } from "@/countries/ch/vat";
 import { formatDate } from "@/lib/fiscal-year";
@@ -12,6 +13,7 @@ import { CONFIDENT, listBankTransactions } from "@/server/bank";
 import { listRules } from "@/server/booking-rules";
 import { db } from "@/server/db";
 import { listInvoices } from "@/server/invoices";
+import { hasFeature, upgradeUrl } from "@/server/plans";
 import {
   deleteRuleAction,
   ignoreBankAction,
@@ -47,6 +49,7 @@ const ERRORS = [
   "noProposal",
   "notFound",
   "vatPeriodClosed",
+  "plan",
 ];
 
 export default async function BankPage({ params, searchParams }: Props) {
@@ -118,6 +121,9 @@ export default async function BankPage({ params, searchParams }: Props) {
         </p>
       )}
 
+      {hasFeature(organization, "bankImport") ? null : (
+        <PlanNotice locale={locale} message={t("planOnly")} href={upgradeUrl(organization)} />
+      )}
       <form
         action={importStatementAction}
         className="mt-6 flex flex-wrap items-end gap-3 border border-line-strong bg-panel px-5 py-4"

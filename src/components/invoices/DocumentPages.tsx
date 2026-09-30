@@ -26,6 +26,7 @@ import { emailConfigured } from "@/server/email";
 import { invoiceOptions } from "@/server/invoice-options";
 import { type DocumentKind, getInvoice, listInvoices } from "@/server/invoices";
 import { invoiceBalance, listPayments, paymentState } from "@/server/payments";
+import { hasFeature } from "@/server/plans";
 import { addMonths } from "@/server/recurring";
 import { listReminders } from "@/server/reminders";
 
@@ -47,6 +48,8 @@ const ERRORS = [
   "contact",
   "creditTooHigh",
   "closed",
+  "planLimit",
+  "recurring",
 ];
 
 /** Objet et message proposés, dans la langue de la pièce. */
@@ -522,7 +525,7 @@ export async function DocumentDetailPage({
               ) : null}
             </section>
           ) : null}
-          {kind === "invoice" ? (
+          {kind === "invoice" && hasFeature(organization, "recurring") ? (
             <details
               className="mb-6 border border-line-strong bg-panel px-5 py-3"
               data-testid="recurring-panel"

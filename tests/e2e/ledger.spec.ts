@@ -14,6 +14,7 @@ test("comptabilité : pièce en attente, puis journal en partie double après mi
     email: `led-${run}@atelier.test`,
     org: `org-led-${run}`,
     org_name: "Journal Sàrl",
+    plan: "pro",
   });
   await setupBilling(page);
 

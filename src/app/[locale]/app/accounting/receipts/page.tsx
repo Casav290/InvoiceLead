@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { AccountingNav } from "@/components/accounting/AccountingNav";
+import { PlanNotice } from "@/components/app/PlanNotice";
 import { Button } from "@/components/ui/button";
 import { formatDate } from "@/lib/fiscal-year";
 import { formatAmount } from "@/lib/money";
 import { aiConfigured } from "@/server/ai";
 import { requireAppSession } from "@/server/auth/guard";
 import { db } from "@/server/db";
+import { hasFeature, upgradeUrl } from "@/server/plans";
 import { listReceipts } from "@/server/receipts";
 import { readReceiptAction, uploadReceiptsAction } from "../actions";
 
@@ -21,7 +23,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return { title: t("title"), robots: { index: false } };
 }
 
-const ERRORS = ["unreadable", "failed", "notFound"];
+const ERRORS = ["unreadable", "failed", "notFound", "plan"];
 
 export default async function ReceiptsPage({ params, searchParams }: Props) {
   const { locale } = await params;
@@ -59,6 +61,9 @@ export default async function ReceiptsPage({ params, searchParams }: Props) {
         </p>
       )}
 
+      {hasFeature(organization, "receipts") ? null : (
+        <PlanNotice locale={locale} message={t("planOnly")} href={upgradeUrl(organization)} />
+      )}
       <form
         action={uploadReceiptsAction}
         className="mt-6 flex flex-wrap items-end gap-3 border border-line-strong bg-panel px-5 py-4"

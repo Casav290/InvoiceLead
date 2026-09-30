@@ -17,6 +17,7 @@ import {
 import { deleteRule } from "@/server/booking-rules";
 import { db } from "@/server/db";
 import { postPending } from "@/server/ledger";
+import { hasFeature, limitReached } from "@/server/plans";
 import { matchReceipts, readReceipt, uploadReceipt } from "@/server/receipts";
 import { aiReview, draftVatReturn, validateVatReturn } from "@/server/vat-return";
 
@@ -39,6 +40,7 @@ export async function importStatementAction(form: FormData) {
   const who = { organizationId: session.organization.id, userId: session.user.id };
   const file = form.get("statement");
   const path = `/${locale}/app/accounting/bank`;
+  if (!hasFeature(session.organization, "bankImport")) redirect(`${path}?error=plan`);
   if (!(file instanceof File) || file.size === 0 || file.size > 5_000_000)
     redirect(`${path}?error=file`);
   let statement: ReturnType<typeof parseCamt>;
@@ -133,9 +135,15 @@ export async function uploadReceiptsAction(form: FormData) {
   const who = { organizationId: session.organization.id, userId: session.user.id };
   const language = locale === "fr" ? "fr" : "de";
   const files = form.getAll("files").filter((f): f is File => f instanceof File && f.size > 0);
+  if (!hasFeature(session.organization, "receipts"))
+    redirect(`/${locale}/app/accounting/receipts?error=plan`);
   let added = 0;
   let rejected = 0;
   for (const file of files.slice(0, 20)) {
+    if (await limitReached(db(), session.organization, "receipt")) {
+      rejected += 1;
+      continue;
+    }
     const result = await uploadReceipt(db(), who, {
       name: file.name,
       type: file.type,
@@ -170,6 +178,8 @@ export async function validateVatAction(form: FormData) {
   const session = await requireAppSession(locale);
   const start = String(form.get("start") ?? "");
   const end = String(form.get("end") ?? "");
+  if (!hasFeature(session.organization, "vatReturn"))
+    redirect(`/${locale}/app/accounting/vat?period=${start}&error=plan`);
   const result = await validateVatReturn(
     db(),
     { organizationId: session.organization.id, userId: session.user.id },

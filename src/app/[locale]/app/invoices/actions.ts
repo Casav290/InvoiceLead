@@ -21,6 +21,7 @@ import {
 } from "@/server/invoices";
 import { postPending } from "@/server/ledger";
 import { addPayment, deletePayment, parsePaymentForm } from "@/server/payments";
+import { limitReached } from "@/server/plans";
 
 /** Comptabilise ce qui peut l'être ; une panne ici ne doit jamais bloquer la facturation. */
 async function postQuietly(who: { organizationId: string; userId: string }) {
@@ -85,6 +86,8 @@ export async function issueInvoiceAction(form: FormData) {
   const session = await requireAppSession(locale);
   const id = String(form.get("id") ?? "");
   const path = `/${locale}/app/${section(kindOf(form))}`;
+  if (kindOf(form) === "invoice" && (await limitReached(db(), session.organization, "invoice")))
+    redirect(`${path}/${id}?error=planLimit`);
   const result = await issueInvoice(
     db(),
     { organizationId: session.organization.id, userId: session.user.id },

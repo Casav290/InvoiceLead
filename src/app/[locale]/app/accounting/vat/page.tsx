@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { AccountingNav } from "@/components/accounting/AccountingNav";
 import { VatReview } from "@/components/accounting/VatReview";
+import { PlanNotice } from "@/components/app/PlanNotice";
 import { Button } from "@/components/ui/button";
 import { FIGURE_ORDER, periodsBetween, TAXED_FIGURES, vatDueDate } from "@/countries/ch/vat-return";
 import { Link } from "@/i18n/navigation";
@@ -12,6 +13,7 @@ import { aiConfigured } from "@/server/ai";
 import { requireAppSession } from "@/server/auth/guard";
 import { db } from "@/server/db";
 import type { VatAnomaly, VatFigures } from "@/server/db/schema";
+import { hasFeature, upgradeUrl } from "@/server/plans";
 import { draftVatReturn, listVatReturns } from "@/server/vat-return";
 import { validateVatAction } from "../actions";
 
@@ -26,7 +28,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return { title: t("title"), robots: { index: false } };
 }
 
-const ERRORS = ["blocked", "noFiscalYear", "noChart"];
+const ERRORS = ["blocked", "noFiscalYear", "noChart", "plan"];
 
 export default async function VatPage({ params, searchParams }: Props) {
   const { locale } = await params;
@@ -52,7 +54,8 @@ export default async function VatPage({ params, searchParams }: Props) {
       : null;
   const figures: VatFigures = validated?.figures ?? draft?.figures ?? {};
   const anomalies: VatAnomaly[] = validated?.anomalies ?? draft?.anomalies ?? [];
-  const blocking = anomalies.some((a) => a.severity === "block");
+  const allowed = hasFeature(organization, "vatReturn");
+  const blocking = !allowed || anomalies.some((a) => a.severity === "block");
   const shown = FIGURE_ORDER.filter(
     (code) =>
       code in figures && (figures[code] !== 0 || ["200", "299", "399", "479"].includes(code)),
@@ -81,6 +84,9 @@ export default async function VatPage({ params, searchParams }: Props) {
         </p>
       ) : null}
 
+      {allowed ? null : (
+        <PlanNotice locale={locale} message={t("planOnly")} href={upgradeUrl(organization)} />
+      )}
       <nav aria-label={t("periods")} className="mt-6 flex flex-wrap gap-2">
         {quarters.slice(0, 8).map((p) => {
           const active = p.start === selected?.start;

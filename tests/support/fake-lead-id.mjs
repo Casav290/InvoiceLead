@@ -4,7 +4,7 @@
  * tests ne prouveraient rien du branchement réel (même principe que les faux fournisseurs de CRMlead).
  *
  *   node tests/support/fake-lead-id.mjs            (port 4010)
- *   POST /test/next-user  {sub,email,name,org,org_name,org_role,access}  choisit la prochaine personne
+ *   POST /test/next-user  {sub,email,name,org,org_name,org_role,access,plan}  choisit la prochaine personne
  *   POST /resend/emails   imite l'API d'envoi de Resend (clé « re_test ») ; GET /test/emails les relit
  *   POST /ai/chat/completions  faux assistant comptable : chaque sortie d'argent va en frais bancaires
  */
@@ -126,7 +126,10 @@ createServer(async (req, res) => {
       org_name: u.org_name,
       org_role: u.org_role,
       lead: {
-        plan: { code: "free", name: "Gratuit", rank: 0, seats: 1 },
+        plan:
+          u.plan === "pro"
+            ? { code: "pro", name: "Pro", rank: 1, seats: 2 }
+            : { code: "free", name: "Gratuit", rank: 0, seats: 1 },
         apps: {
           scanlead: {
             access: true,

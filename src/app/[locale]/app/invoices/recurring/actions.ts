@@ -5,12 +5,15 @@ import { redirect } from "next/navigation";
 import { requireAppSession } from "@/server/auth/guard";
 import { pickLocale } from "@/server/auth/login-cookie";
 import { db } from "@/server/db";
+import { hasFeature } from "@/server/plans";
 import { createRecurring, deleteRecurring, setRecurringActive } from "@/server/recurring";
 
 export async function createRecurringAction(form: FormData) {
   const locale = pickLocale(form.get("locale"));
   const session = await requireAppSession(locale);
   const id = String(form.get("id") ?? "");
+  if (!hasFeature(session.organization, "recurring"))
+    redirect(`/${locale}/app/invoices/${id}?error=planLimit`);
   const result = await createRecurring(
     db(),
     { organizationId: session.organization.id, userId: session.user.id },

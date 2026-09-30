@@ -12,9 +12,10 @@ import {
   updateContact,
 } from "@/server/contacts";
 import { db } from "@/server/db";
+import { limitReached } from "@/server/plans";
 
 export type ContactFormState = {
-  status: "idle" | "invalid" | "notFound";
+  status: "idle" | "invalid" | "notFound" | "planLimit";
   errors?: ContactErrors;
   values?: Record<string, string>;
   round: number;
@@ -37,6 +38,8 @@ export async function saveContact(
   if (id) {
     if (!(await updateContact(db(), who, id, parsed.data))) return { status: "notFound", round };
   } else {
+    if (await limitReached(db(), session.organization, "contact"))
+      return { status: "planLimit", values, round };
     await createContact(db(), who, parsed.data);
   }
   revalidatePath(`/${locale}/app/contacts`);

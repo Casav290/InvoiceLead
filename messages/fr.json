@@ -277,7 +277,8 @@
         "uid": "Numéro IDE invalide (format ou clé de contrôle).",
         "paymentTerm": "Entre 0 et 365 jours.",
         "role": "Cochez client, fournisseur ou les deux."
-      }
+      },
+      "planLimit": "La formule gratuite compte 50 contacts au plus. Passez à Pro pour en ajouter d'autres."
     },
     "products": {
       "title": "Articles",
@@ -497,7 +498,9 @@
         "notConvertible": "Ce devis ne peut plus être transformé en facture.",
         "contact": "Le client de ce devis a été archivé.",
         "creditTooHigh": "L'avoir dépasse le montant qui reste à créditer sur la facture.",
-        "closed": "Ce paiement est déjà comptabilisé dans un exercice fermé : il ne peut plus être supprimé."
+        "closed": "Ce paiement est déjà comptabilisé dans un exercice fermé : il ne peut plus être supprimé.",
+        "planLimit": "Vous avez atteint les 10 factures du mois de la formule gratuite. Passez à Pro pour facturer sans limite.",
+        "recurring": "La récurrence n'a pas pu être enregistrée."
       },
       "addLine": "Ajouter une ligne",
       "removeLine": "Retirer",
@@ -780,7 +783,8 @@
         "noFiscalYear": "Aucun exercice ouvert ne couvre la date de ce mouvement.",
         "noProposal": "Choisissez d'abord un compte.",
         "notFound": "Mouvement introuvable ou déjà traité.",
-        "vatPeriodClosed": "Cette date tombe dans une période TVA déjà validée : l'écriture ne peut plus y entrer."
+        "vatPeriodClosed": "Cette date tombe dans une période TVA déjà validée : l'écriture ne peut plus y entrer.",
+        "plan": "L'import des relevés est réservé à la formule Pro."
       },
       "aiError": "L'assistant n'a pas pu répondre. Les mouvements restent à proposer ; réessayez plus tard.",
       "aiOff": "L'assistant comptable n'est pas encore activé : seuls les paiements de factures reconnus par leur référence QR sont proposés automatiquement.",
@@ -824,7 +828,8 @@
         "out": "(sorties)",
         "hits": "{count, plural, one {validée # fois} other {validée # fois}}",
         "delete": "Oublier"
-      }
+      },
+      "planOnly": "L'import des relevés bancaires et les propositions de l'assistant sont compris dans la formule Pro."
     },
     "receipts": {
       "title": "Justificatifs",
@@ -833,7 +838,8 @@
       "errors": {
         "unreadable": "Ce PDF est une image scannée : déposez plutôt une photo nette du document.",
         "failed": "L'assistant n'a pas pu lire ce justificatif. Réessayez plus tard.",
-        "notFound": "Justificatif introuvable."
+        "notFound": "Justificatif introuvable.",
+        "plan": "La lecture des justificatifs est réservée aux formules Pro et Pro+."
       },
       "aiOff": "L'assistant n'est pas encore activé : les justificatifs sont conservés, et seront lus une fois l'assistant configuré.",
       "files": "Factures ou tickets",
@@ -852,7 +858,8 @@
         "error": "Illisible",
         "matched": "Rattaché",
         "posted": "Comptabilisé"
-      }
+      },
+      "planOnly": "La lecture automatique des justificatifs est comprise dans la formule Pro (50 par mois) et Pro+ (300 par mois)."
     },
     "reports": {
       "title": "Rapports",
@@ -892,7 +899,8 @@
       "errors": {
         "blocked": "Le décompte ne peut pas être validé tant que des points bloquants subsistent.",
         "noFiscalYear": "Aucun exercice ouvert ne couvre la fin de cette période.",
-        "noChart": "Le plan comptable n'a pas les comptes TVA nécessaires."
+        "noChart": "Le plan comptable n'a pas les comptes TVA nécessaires.",
+        "plan": "La validation du décompte TVA est réservée à la formule Pro."
       },
       "periods": "Périodes",
       "quarter": "T{q} {year}",
@@ -946,7 +954,8 @@
       "validateHint": "En validant, les chiffres sont figés et plus aucune écriture ne pourra être datée dans cette période.",
       "validate": "Valider le décompte",
       "semester": "S{q} {year}",
-      "tax": "Impôt"
+      "tax": "Impôt",
+      "planOnly": "Le décompte TVA préparé et validé dans InvoiceLead est compris dans la formule Pro. Vous pouvez consulter les chiffres ci-dessous."
     },
     "reminders": {
       "title": "Relances",
@@ -991,6 +1000,13 @@
       "pause": "Mettre en pause",
       "resume": "Reprendre",
       "delete": "Supprimer"
+    },
+    "plan": {
+      "upgrade": "Passer à Pro",
+      "free": "Gratuit",
+      "pro": "Pro",
+      "proplus": "Pro+",
+      "usage": "Formule {plan}{hasLimit, select, yes { : {invoices} factures sur {invoiceLimit} ce mois-ci, {contacts} contacts sur {contactLimit}} other {}}."
     }
   },
   "footer": {

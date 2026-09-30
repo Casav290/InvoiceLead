@@ -277,7 +277,8 @@
         "uid": "Ungültige UID-Nummer (Format oder Prüfziffer).",
         "paymentTerm": "Zwischen 0 und 365 Tagen.",
         "role": "Kunde, Lieferant oder beides ankreuzen."
-      }
+      },
+      "planLimit": "Das Gratis-Abo umfasst höchstens 50 Kontakte. Mit Pro können Sie weitere erfassen."
     },
     "products": {
       "title": "Artikel",
@@ -497,7 +498,9 @@
         "notConvertible": "Diese Offerte kann nicht mehr in eine Rechnung umgewandelt werden.",
         "contact": "Der Kunde dieser Offerte wurde archiviert.",
         "creditTooHigh": "Die Gutschrift übersteigt den noch gutschreibbaren Betrag der Rechnung.",
-        "closed": "Diese Zahlung ist in einem abgeschlossenen Geschäftsjahr verbucht und kann nicht mehr gelöscht werden."
+        "closed": "Diese Zahlung ist in einem abgeschlossenen Geschäftsjahr verbucht und kann nicht mehr gelöscht werden.",
+        "planLimit": "Sie haben die 10 Rechnungen pro Monat des Gratis-Abos erreicht. Mit Pro stellen Sie unbegrenzt Rechnungen aus.",
+        "recurring": "Die Wiederholung konnte nicht gespeichert werden."
       },
       "addLine": "Position hinzufügen",
       "removeLine": "Entfernen",
@@ -780,7 +783,8 @@
         "noFiscalYear": "Kein offenes Geschäftsjahr umfasst das Datum dieser Bewegung.",
         "noProposal": "Wählen Sie zuerst ein Konto.",
         "notFound": "Bewegung nicht gefunden oder bereits verarbeitet.",
-        "vatPeriodClosed": "Dieses Datum liegt in einer bereits bestätigten MWST-Periode: Es kann dort nicht mehr gebucht werden."
+        "vatPeriodClosed": "Dieses Datum liegt in einer bereits bestätigten MWST-Periode: Es kann dort nicht mehr gebucht werden.",
+        "plan": "Der Import von Kontoauszügen ist dem Pro-Abo vorbehalten."
       },
       "aiError": "Der Assistent konnte nicht antworten. Die Bewegungen bleiben offen; versuchen Sie es später erneut.",
       "aiOff": "Der Buchhaltungsassistent ist noch nicht aktiviert: Automatisch vorgeschlagen werden nur Rechnungszahlungen, die an ihrer QR-Referenz erkannt werden.",
@@ -824,7 +828,8 @@
         "out": "(Ausgänge)",
         "hits": "{count, plural, one {# Mal bestätigt} other {# Mal bestätigt}}",
         "delete": "Vergessen"
-      }
+      },
+      "planOnly": "Der Import von Kontoauszügen und die Vorschläge des Assistenten sind im Pro-Abo enthalten."
     },
     "receipts": {
       "title": "Belege",
@@ -833,7 +838,8 @@
       "errors": {
         "unreadable": "Dieses PDF ist ein gescanntes Bild: Laden Sie stattdessen ein scharfes Foto des Dokuments hoch.",
         "failed": "Der Assistent konnte diesen Beleg nicht lesen. Versuchen Sie es später erneut.",
-        "notFound": "Beleg nicht gefunden."
+        "notFound": "Beleg nicht gefunden.",
+        "plan": "Das Lesen von Belegen ist Pro und Pro+ vorbehalten."
       },
       "aiOff": "Der Assistent ist noch nicht aktiviert: Die Belege werden aufbewahrt und gelesen, sobald er eingerichtet ist.",
       "files": "Rechnungen oder Quittungen",
@@ -852,7 +858,8 @@
         "error": "Unlesbar",
         "matched": "Zugeordnet",
         "posted": "Verbucht"
-      }
+      },
+      "planOnly": "Das automatische Lesen von Belegen ist in Pro (50 pro Monat) und Pro+ (300 pro Monat) enthalten."
     },
     "reports": {
       "title": "Auswertungen",
@@ -892,7 +899,8 @@
       "errors": {
         "blocked": "Die Abrechnung kann nicht bestätigt werden, solange blockierende Punkte offen sind.",
         "noFiscalYear": "Kein offenes Geschäftsjahr umfasst das Ende dieser Periode.",
-        "noChart": "Dem Kontenplan fehlen die nötigen MWST-Konten."
+        "noChart": "Dem Kontenplan fehlen die nötigen MWST-Konten.",
+        "plan": "Die Bestätigung der MWST-Abrechnung ist dem Pro-Abo vorbehalten."
       },
       "periods": "Perioden",
       "quarter": "Q{q} {year}",
@@ -946,7 +954,8 @@
       "validateHint": "Mit der Bestätigung werden die Zahlen fixiert, und in dieser Periode kann nicht mehr gebucht werden.",
       "validate": "Abrechnung bestätigen",
       "semester": "H{q} {year}",
-      "tax": "Steuer"
+      "tax": "Steuer",
+      "planOnly": "Die in InvoiceLead vorbereitete und bestätigte MWST-Abrechnung ist im Pro-Abo enthalten. Die Zahlen unten können Sie einsehen."
     },
     "reminders": {
       "title": "Mahnungen",
@@ -991,6 +1000,13 @@
       "pause": "Pausieren",
       "resume": "Fortsetzen",
       "delete": "Löschen"
+    },
+    "plan": {
+      "upgrade": "Auf Pro wechseln",
+      "free": "Gratis",
+      "pro": "Pro",
+      "proplus": "Pro+",
+      "usage": "Abo {plan}{hasLimit, select, yes {: {invoices} von {invoiceLimit} Rechnungen diesen Monat, {contacts} von {contactLimit} Kontakten} other {}}."
     }
   },
   "footer": {

@@ -10,6 +10,7 @@ test("facture récurrente : créée depuis une facture, générée et envoyée p
     email: `rec-${run}@atelier.test`,
     org: `org-rec-${run}`,
     org_name: "Abonnements Sàrl",
+    plan: "pro",
   });
   await setupBilling(page);
   await page.goto("/fr/app/invoices/new");

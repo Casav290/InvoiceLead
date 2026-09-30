@@ -56,6 +56,15 @@ export function ContactForm({
           {t("invalid")}
         </p>
       ) : null}
+      {state.status === "planLimit" ? (
+        <p
+          role="alert"
+          className="border border-hot-fg bg-hot-bg px-4 py-3 text-[13px] text-hot-fg"
+          data-testid="plan-limit"
+        >
+          {t("planLimit")}
+        </p>
+      ) : null}
 
       <FormSection title={t("sections.identity")}>
         <SelectField
