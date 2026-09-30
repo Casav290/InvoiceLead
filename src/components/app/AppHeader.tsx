@@ -4,18 +4,23 @@ import { Link } from "@/i18n/navigation";
 import type { LeadAppItem } from "@/lib/lead-apps";
 import { AppNav } from "./AppNav";
 import { AppSwitcher } from "./AppSwitcher";
+import { type OrgItem, OrgSwitcher } from "./OrgSwitcher";
 import { UserMenu } from "./UserMenu";
 
 export function AppHeader({
   locale,
+  orgId,
   orgName,
+  orgs,
   user,
   planCode,
   planName,
   apps,
 }: {
   locale: string;
+  orgId: string;
   orgName: string;
+  orgs: OrgItem[];
   user: { name: string; email: string };
   planCode: string;
   planName: string;
@@ -38,12 +43,16 @@ export function AppHeader({
         </Link>
         <AppNav />
         <div className="ml-auto flex items-center gap-2 pl-3">
-          <span
-            data-testid="org-name"
-            className="hidden max-w-[220px] truncate text-[13px] font-semibold text-ink-3 md:inline"
-          >
-            {orgName}
-          </span>
+          {orgs.length > 1 ? (
+            <OrgSwitcher locale={locale} current={{ id: orgId, name: orgName }} orgs={orgs} />
+          ) : (
+            <span
+              data-testid="org-name"
+              className="hidden max-w-[220px] truncate text-[13px] font-semibold text-ink-3 md:inline"
+            >
+              {orgName}
+            </span>
+          )}
           <AppSwitcher items={apps} />
           <UserMenu name={user.name} email={user.email} planLabel={planLabel} locale={locale} />
         </div>

@@ -43,7 +43,8 @@ export async function GET(request: NextRequest) {
       organizationId: organization.id,
       idToken: tokens.id_token,
     });
-    const response = done(`${APP_URL}/${locale}/app`);
+    const next = saved.invite ? `/${locale}/invite?token=${saved.invite}` : `/${locale}/app`;
+    const response = done(`${APP_URL}${next}`);
     response.cookies.set(SESSION_COOKIE, session.token, cookieOptions(SESSION_HOURS * 3600));
     return response;
   } catch (error) {

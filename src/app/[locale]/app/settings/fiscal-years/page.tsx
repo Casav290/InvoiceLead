@@ -7,7 +7,7 @@ import { fiscalYearContaining, formatDate, nextFiscalYear } from "@/lib/fiscal-y
 import { listFiscalYears } from "@/server/accounting";
 import { requireAppSession } from "@/server/auth/guard";
 import { closingChecks } from "@/server/closing";
-import { canEditSettings } from "@/server/company";
+import { canSetUpAccounting } from "@/server/company";
 import { db } from "@/server/db";
 import {
   closeFiscalYearAction,
@@ -30,7 +30,7 @@ export default async function FiscalYearsPage({ params, searchParams }: Props) {
   const { locale } = await params;
   const { user, organization } = await requireAppSession(locale);
   const { opened, error, closed, closeError } = await searchParams;
-  const editable = await canEditSettings(db(), organization.id, user.id);
+  const editable = await canSetUpAccounting(db(), organization.id, user.id);
   const t = await getTranslations({ locale, namespace: "app.fiscalYears" });
   const years = await listFiscalYears(db(), organization.id);
   const latest = years[0];

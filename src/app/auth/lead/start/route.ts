@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { type NextRequest, NextResponse } from "next/server";
 import { LOGIN_COOKIE, LOGIN_COOKIE_PATH, SESSION_COOKIE } from "@/lib/cookies";
-import { pickLocale, sealLogin } from "@/server/auth/login-cookie";
+import { INVITE_TOKEN, pickLocale, sealLogin } from "@/server/auth/login-cookie";
 import { cookieOptions, findSession } from "@/server/auth/session";
 import { db } from "@/server/db";
 import { env } from "@/server/env";
@@ -13,10 +13,13 @@ export const dynamic = "force-dynamic";
 export async function GET(request: NextRequest) {
   const { APP_URL, SESSION_SECRET } = env();
   const locale = pickLocale(request.nextUrl.searchParams.get("locale"));
+  const inviteParam = request.nextUrl.searchParams.get("invite") ?? "";
+  const invite = INVITE_TOKEN.test(inviteParam) ? inviteParam : undefined;
 
   const current = (await cookies()).get(SESSION_COOKIE)?.value;
   if (current && (await findSession(db(), current))) {
-    return NextResponse.redirect(`${APP_URL}/${locale}/app`, 303);
+    const next = invite ? `/${locale}/invite?token=${invite}` : `/${locale}/app`;
+    return NextResponse.redirect(`${APP_URL}${next}`, 303);
   }
 
   const login = startLogin({ locale });
@@ -24,7 +27,7 @@ export async function GET(request: NextRequest) {
   response.cookies.set(
     LOGIN_COOKIE,
     sealLogin(
-      { state: login.state, nonce: login.nonce, verifier: login.verifier, locale },
+      { state: login.state, nonce: login.nonce, verifier: login.verifier, locale, invite },
       SESSION_SECRET,
     ),
     { ...cookieOptions(600), path: LOGIN_COOKIE_PATH },

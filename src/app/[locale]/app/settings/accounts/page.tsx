@@ -11,7 +11,7 @@ import {
 import { Link } from "@/i18n/navigation";
 import { listAccounts } from "@/server/accounting";
 import { requireAppSession } from "@/server/auth/guard";
-import { canEditSettings } from "@/server/company";
+import { canSetUpAccounting } from "@/server/company";
 import { db } from "@/server/db";
 import type { Account } from "@/server/db/schema";
 import { installChartAction } from "./actions";
@@ -31,7 +31,7 @@ export default async function AccountsPage({ params, searchParams }: Props) {
   const { locale } = await params;
   const { user, organization } = await requireAppSession(locale);
   const { saved, installed } = await searchParams;
-  const editable = await canEditSettings(db(), organization.id, user.id);
+  const editable = await canSetUpAccounting(db(), organization.id, user.id);
   const t = await getTranslations({ locale, namespace: "app.accounts" });
   const rows = await listAccounts(db(), organization.id);
   const byClass = new Map<string, Account[]>();

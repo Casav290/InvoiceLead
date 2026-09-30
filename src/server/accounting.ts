@@ -8,7 +8,7 @@ import {
 } from "@/countries/ch/chart-of-accounts";
 import { VAT_CODES, type VatCode } from "@/countries/ch/vat";
 import { firstFiscalYear, isIsoDate, nextFiscalYear } from "@/lib/fiscal-year";
-import { canEditSettings } from "./company";
+import { canSetUpAccounting } from "./company";
 import type { Db } from "./db";
 import {
   type Account,
@@ -51,7 +51,7 @@ export async function installChart(
   who: Who,
   template: ChartTemplate,
 ): Promise<"installed" | "exists" | "forbidden"> {
-  if (!(await canEditSettings(database, who.organizationId, who.userId))) return "forbidden";
+  if (!(await canSetUpAccounting(database, who.organizationId, who.userId))) return "forbidden";
   return database.transaction(async (tx) => {
     // Verrou sur l'organisation : deux installations simultanées ne peuvent pas se croiser.
     await tx
@@ -153,7 +153,7 @@ export async function createAccount(
   who: Who,
   data: AccountInput,
 ): Promise<SaveResult> {
-  if (!(await canEditSettings(database, who.organizationId, who.userId))) return "forbidden";
+  if (!(await canSetUpAccounting(database, who.organizationId, who.userId))) return "forbidden";
   if (await numberTaken(database, who.organizationId, data.number)) return "numberTaken";
   return database.transaction(async (tx) => {
     const [row] = await tx
@@ -183,7 +183,7 @@ export async function updateAccount(
   id: string,
   data: AccountInput,
 ): Promise<SaveResult> {
-  if (!(await canEditSettings(database, who.organizationId, who.userId))) return "forbidden";
+  if (!(await canSetUpAccounting(database, who.organizationId, who.userId))) return "forbidden";
   const current = await getAccount(database, who.organizationId, id);
   if (!current) return null;
   if (current.role && !data.active) return "systemInactive";
@@ -239,7 +239,7 @@ export async function createFirstFiscalYear(
   who: Who,
   input: { start: string; extended: boolean },
 ): Promise<YearResult> {
-  if (!(await canEditSettings(database, who.organizationId, who.userId))) return "forbidden";
+  if (!(await canSetUpAccounting(database, who.organizationId, who.userId))) return "forbidden";
   if (!isIsoDate(input.start)) return "invalid";
   return database.transaction(async (tx) => {
     const { startMonth, latest } = await lockAndLatest(tx as unknown as Db, who.organizationId);
@@ -251,7 +251,7 @@ export async function createFirstFiscalYear(
 
 /** Ouvre l'exercice qui suit le dernier, sur douze mois. */
 export async function openNextFiscalYear(database: Db, who: Who): Promise<YearResult> {
-  if (!(await canEditSettings(database, who.organizationId, who.userId))) return "forbidden";
+  if (!(await canSetUpAccounting(database, who.organizationId, who.userId))) return "forbidden";
   return database.transaction(async (tx) => {
     const { latest } = await lockAndLatest(tx as unknown as Db, who.organizationId);
     if (!latest) return "none";

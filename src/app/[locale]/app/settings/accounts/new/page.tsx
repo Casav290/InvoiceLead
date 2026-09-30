@@ -4,7 +4,7 @@ import { getTranslations } from "next-intl/server";
 import { AccountForm } from "@/components/accounting/AccountForm";
 import { SettingsNav } from "@/components/settings/SettingsNav";
 import { requireAppSession } from "@/server/auth/guard";
-import { canEditSettings } from "@/server/company";
+import { canSetUpAccounting } from "@/server/company";
 import { db } from "@/server/db";
 
 type Props = { params: Promise<{ locale: string }> };
@@ -18,7 +18,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function NewAccountPage({ params }: Props) {
   const { locale } = await params;
   const { user, organization } = await requireAppSession(locale);
-  if (!(await canEditSettings(db(), organization.id, user.id)))
+  if (!(await canSetUpAccounting(db(), organization.id, user.id)))
     redirect(`/${locale}/app/settings/accounts`);
   const t = await getTranslations({ locale, namespace: "app.accounts" });
   return (

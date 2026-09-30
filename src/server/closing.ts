@@ -1,6 +1,6 @@
 import { and, eq, inArray, isNull, lte, sql } from "drizzle-orm";
 import { nextFiscalYear } from "@/lib/fiscal-year";
-import { canEditSettings } from "./company";
+import { canSetUpAccounting } from "./company";
 import type { Db } from "./db";
 import { auditLog, bankTransactions, fiscalYears, invoices } from "./db/schema";
 import { appendEntry, LedgerError, type Posting, roleAccounts } from "./ledger";
@@ -75,7 +75,7 @@ export async function closeFiscalYear(
   who: Who,
   yearId: string,
 ): Promise<CloseResult> {
-  if (!(await canEditSettings(database, who.organizationId, who.userId)))
+  if (!(await canSetUpAccounting(database, who.organizationId, who.userId)))
     return { ok: false, reason: "forbidden" };
   const blocking = await closingChecks(database, who.organizationId, yearId);
   if (blocking.length > 0) return { ok: false, reason: blocking[0]?.code ?? "blocked" };

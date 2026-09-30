@@ -4,7 +4,7 @@ import { cookies } from "next/headers";
 import { cache } from "react";
 import { SESSION_COOKIE } from "@/lib/cookies";
 import { type Db, db } from "../db";
-import { organizations, sessions, users } from "../db/schema";
+import { memberships, organizations, sessions, users } from "../db/schema";
 import { env } from "../env";
 import { randomToken, sha256Hex } from "./crypto";
 
@@ -46,10 +46,23 @@ export async function createSession(
 
 export async function findSession(database: Db, token: string) {
   const [row] = await database
-    .select({ session: sessions, user: users, organization: organizations })
+    .select({
+      session: sessions,
+      user: users,
+      organization: organizations,
+      membership: { role: memberships.role, appRole: memberships.appRole },
+    })
     .from(sessions)
     .innerJoin(users, eq(sessions.userId, users.id))
     .innerJoin(organizations, eq(sessions.organizationId, organizations.id))
+    // Sans appartenance (fiduciaire retirée), la session ne vaut plus rien.
+    .innerJoin(
+      memberships,
+      and(
+        eq(memberships.organizationId, sessions.organizationId),
+        eq(memberships.userId, sessions.userId),
+      ),
+    )
     .where(and(eq(sessions.id, sha256Hex(token)), gt(sessions.expiresAt, new Date())))
     .limit(1);
   return row ?? null;

@@ -109,13 +109,19 @@
       "soon": "Diese Ansichten folgen in den nächsten Versionen.",
       "complete": "Ergänzen",
       "done": "Erledigt",
-      "start": "Starten"
+      "start": "Starten",
+      "forbidden": "Ihre Rolle erlaubt diese Aktion nicht. Eine verantwortliche Person kann sie in den Team-Einstellungen ändern."
     },
     "noAccess": {
       "title": "Ihr Abo enthält InvoiceLead nicht",
       "body": "Ihre Organisation {org} hat noch keinen Zugang zu InvoiceLead. Wechseln Sie zu einem Abo, das InvoiceLead enthält.",
       "upgrade": "Upgrade",
-      "logout": "Abmelden"
+      "logout": "Abmelden",
+      "blockedTitle": "Zugang zu InvoiceLead entzogen",
+      "blockedBody": "Eine verantwortliche Person von {org} hat Ihren Zugang zu InvoiceLead entzogen. Bitten Sie sie, ihn in den Team-Einstellungen wiederherzustellen.",
+      "seatTitle": "Alle Plätze sind belegt",
+      "seatBody": "Das Abo von {org} umfasst {seats, plural, one {# Benutzer} other {# Benutzer}}, alle bereits belegt. Eine verantwortliche Person kann ein höheres Abo wählen oder einen Platz freigeben.",
+      "otherOrgs": "In einem anderen Unternehmen arbeiten"
     },
     "company": {
       "title": "Firma",
@@ -340,7 +346,8 @@
       "label": "Bereiche der Einstellungen",
       "company": "Unternehmen",
       "accounts": "Kontenplan",
-      "fiscalYears": "Geschäftsjahre"
+      "fiscalYears": "Geschäftsjahre",
+      "team": "Team"
     },
     "accounts": {
       "title": "Kontenplan",
@@ -769,7 +776,8 @@
         "receipts": "Belege",
         "reports": "Auswertungen",
         "vat": "MWST"
-      }
+      },
+      "welcomeFiduciary": "Willkommen. Sie arbeiten jetzt in der Buchhaltung Ihres Kunden; das Unternehmen wechseln Sie in der Kopfzeile."
     },
     "bank": {
       "title": "Bank",
@@ -1008,6 +1016,71 @@
       "pro": "Pro",
       "proplus": "Pro+",
       "usage": "Abo {plan}{hasLimit, select, yes {: {invoices} von {invoiceLimit} Rechnungen diesen Monat, {contacts} von {contactLimit} Kontakten} other {}}."
+    },
+    "orgSwitch": {
+      "label": "Unternehmen",
+      "switch": "Unternehmen wechseln",
+      "client": "Kunde"
+    },
+    "team": {
+      "title": "Team",
+      "subtitle": "Die Personen des Unternehmens kommen aus dem Lead-Konto. Hier legen Sie fest, was jede in InvoiceLead tut.",
+      "seats": "{used} von {seats} {seats, plural, one {Platz belegt} other {Plätzen belegt}}",
+      "members": "Mitglieder",
+      "name": "Person",
+      "leadRole": "Lead-Rolle",
+      "appRole": "In InvoiceLead",
+      "leadRoles": {
+        "admin": "Administrator",
+        "manager": "Verantwortlich",
+        "user": "Benutzer",
+        "fiduciary": "Treuhand"
+      },
+      "roles": {
+        "all": "Rechnungen und Buchhaltung",
+        "billing": "Nur Rechnungen",
+        "accounting": "Nur Buchhaltung",
+        "readonly": "Nur lesen",
+        "none": "Kein Zugang"
+      },
+      "managerRole": "Alles, inklusive Einstellungen",
+      "noSeat": "ohne Platz",
+      "save": "Speichern",
+      "saved": "Rolle gespeichert.",
+      "addHint": "Um eine Person hinzuzufügen, laden Sie sie im Lead-Konto in Ihre Organisation ein. Sie erscheint hier nach ihrer ersten Anmeldung.",
+      "fiduciaryTitle": "Treuhand",
+      "fiduciaryHint": "Ihre Treuhand greift kostenlos mit ihrem eigenen Lead-Konto auf die Buchhaltung zu (Bank, Belege, Journal, MWST, Abschluss). Rechnungen sieht sie, ohne sie ändern zu können.",
+      "fiduciaryEmail": "E-Mail-Adresse der Treuhand",
+      "invite": "Einladen",
+      "invited": "Einladung an {email} gesendet.",
+      "inviteLink": "Geben Sie diesen Link an {email} weiter, gültig {days} Tage:",
+      "pending": "Einladung offen bis {date}",
+      "cancel": "Zurückziehen",
+      "remove": "Zugang entziehen",
+      "removed": "Zugang entzogen.",
+      "noFiduciary": "Noch keine Treuhand hat Zugang.",
+      "planOnly": "Der Treuhandzugang ist in Pro und Pro+ enthalten.",
+      "managersOnly": "Nur verantwortliche Personen des Unternehmens ändern das Team.",
+      "errors": {
+        "invalid": "Ungültige E-Mail-Adresse.",
+        "forbidden": "Nur verantwortliche Personen des Unternehmens ändern das Team.",
+        "plan": "Der Treuhandzugang ist in Pro und Pro+ enthalten.",
+        "failed": "Die E-Mail konnte nicht gesendet werden. Geben Sie den Link unten weiter."
+      },
+      "emailSubject": "{org} gibt Ihnen Zugang zur Buchhaltung",
+      "emailBody": "Guten Tag\n\n{org} lädt Sie ein, in InvoiceLead auf die Buchhaltung zuzugreifen. Melden Sie sich über diesen Link mit Ihrem Lead-Konto an (gültig {days} Tage):"
+    },
+    "invite": {
+      "title": "Treuhand-Einladung",
+      "loginBody": "Melden Sie sich mit Ihrem Lead-Konto an, um die Einladung anzunehmen. Verwenden Sie die Adresse, an die sie gesendet wurde.",
+      "login": "Mit meinem Lead-Konto anmelden",
+      "accepted": "Sie haben jetzt Zugang zur Buchhaltung von {org}.",
+      "open": "{org} öffnen",
+      "invalid": "Dieser Einladungslink ist ungültig oder wurde bereits verwendet.",
+      "expired": "Dieser Einladungslink ist abgelaufen. Fordern Sie einen neuen an.",
+      "wrongEmail": "Diese Einladung ging an eine andere Adresse als {email}. Melden Sie sich mit dem richtigen Lead-Konto an.",
+      "logout": "Konto wechseln",
+      "accept": "Einladung annehmen"
     }
   },
   "footer": {

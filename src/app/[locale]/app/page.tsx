@@ -17,8 +17,15 @@ export async function generateMetadata({
   return { title: t("dashboard"), robots: { index: false } };
 }
 
-export default async function DashboardPage({ params }: { params: Promise<{ locale: string }> }) {
+export default async function DashboardPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ locale: string }>;
+  searchParams: Promise<{ forbidden?: string }>;
+}) {
   const { locale } = await params;
+  const { forbidden } = await searchParams;
   const { user, organization } = await requireAppSession(locale);
   const t = await getTranslations({ locale, namespace: "app.dashboard" });
   const tp = await getTranslations({ locale, namespace: "app.plan" });
@@ -31,6 +38,15 @@ export default async function DashboardPage({ params }: { params: Promise<{ loca
         {t("title", { name: firstName })}
       </h1>
       <p className="mt-2 text-[15px] text-ink-muted">{t("subtitle", { org: organization.name })}</p>
+      {forbidden ? (
+        <p
+          role="alert"
+          className="mt-6 border border-hot-fg bg-hot-bg px-4 py-3 text-[13px] text-hot-fg"
+          data-testid="forbidden"
+        >
+          {t("forbidden")}
+        </p>
+      ) : null}
       <p className="mt-3 text-[13px] text-ink-2" data-testid="plan-usage">
         {tp("usage", {
           plan: tp(tier),

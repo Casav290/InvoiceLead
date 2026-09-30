@@ -8,12 +8,14 @@ import { contacts, invoices, receipts } from "./db/schema";
  */
 export type Tier = "free" | "pro" | "proplus";
 
-export type Feature = "bankImport" | "vatReturn" | "recurring" | "receipts";
+export type Feature = "bankImport" | "vatReturn" | "recurring" | "receipts" | "fiduciary";
 
 type Limits = {
   invoicesPerMonth: number;
   contacts: number;
   receiptsPerMonth: number;
+  /** Utilisateurs de l'entreprise ; les fiduciaires invitées ne comptent pas. */
+  seats: number;
   features: Feature[];
   poweredBy: boolean;
 };
@@ -21,19 +23,28 @@ type Limits = {
 const UNLIMITED = Number.POSITIVE_INFINITY;
 
 export const LIMITS: Record<Tier, Limits> = {
-  free: { invoicesPerMonth: 10, contacts: 50, receiptsPerMonth: 0, features: [], poweredBy: true },
+  free: {
+    invoicesPerMonth: 10,
+    contacts: 50,
+    receiptsPerMonth: 0,
+    seats: 1,
+    features: [],
+    poweredBy: true,
+  },
   pro: {
     invoicesPerMonth: UNLIMITED,
     contacts: UNLIMITED,
     receiptsPerMonth: 50,
-    features: ["bankImport", "vatReturn", "recurring", "receipts"],
+    seats: 2,
+    features: ["bankImport", "vatReturn", "recurring", "receipts", "fiduciary"],
     poweredBy: false,
   },
   proplus: {
     invoicesPerMonth: UNLIMITED,
     contacts: UNLIMITED,
     receiptsPerMonth: 300,
-    features: ["bankImport", "vatReturn", "recurring", "receipts"],
+    seats: 5,
+    features: ["bankImport", "vatReturn", "recurring", "receipts", "fiduciary"],
     poweredBy: false,
   },
 };
@@ -55,6 +66,12 @@ export function upgradeUrl(org: OrgPlan): string {
   return typeof url === "string" && url.startsWith("https://")
     ? url
     : "https://scanlead.io/billing";
+}
+
+/** Places de l'entreprise : celles du Compte Lead quand il les donne, sinon celles de la formule. */
+export function seatsOf(org: OrgPlan): number {
+  const seats = Number((org.entitlements as { plan?: { seats?: unknown } } | null)?.plan?.seats);
+  return Number.isInteger(seats) && seats > 0 ? seats : LIMITS[tierOf(org)].seats;
 }
 
 export function hasFeature(org: OrgPlan, feature: Feature): boolean {

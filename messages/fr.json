@@ -109,13 +109,19 @@
       "soon": "Ces écrans arrivent dans les prochaines versions.",
       "complete": "Compléter",
       "done": "Fait",
-      "start": "Commencer"
+      "start": "Commencer",
+      "forbidden": "Votre rôle ne permet pas cette action. Un responsable peut le changer dans les réglages de l'équipe."
     },
     "noAccess": {
       "title": "Votre formule n'inclut pas InvoiceLead",
       "body": "Votre organisation {org} n'a pas encore accès à InvoiceLead. Passez à une formule qui l'inclut pour continuer.",
       "upgrade": "Mettre à niveau",
-      "logout": "Se déconnecter"
+      "logout": "Se déconnecter",
+      "blockedTitle": "Accès à InvoiceLead retiré",
+      "blockedBody": "Un responsable de {org} a retiré votre accès à InvoiceLead. Demandez-lui de le rétablir dans les réglages de l'équipe.",
+      "seatTitle": "Toutes les places sont prises",
+      "seatBody": "La formule de {org} compte {seats, plural, one {# utilisateur} other {# utilisateurs}}, déjà tous occupés. Un responsable peut passer à une formule supérieure ou libérer une place.",
+      "otherOrgs": "Travailler dans une autre entreprise"
     },
     "company": {
       "title": "Entreprise",
@@ -340,7 +346,8 @@
       "label": "Sections des réglages",
       "company": "Entreprise",
       "accounts": "Plan comptable",
-      "fiscalYears": "Exercices"
+      "fiscalYears": "Exercices",
+      "team": "Équipe"
     },
     "accounts": {
       "title": "Plan comptable",
@@ -769,7 +776,8 @@
         "receipts": "Justificatifs",
         "reports": "Rapports",
         "vat": "TVA"
-      }
+      },
+      "welcomeFiduciary": "Bienvenue. Vous travaillez maintenant dans la comptabilité de votre client ; changez d'entreprise depuis l'en-tête."
     },
     "bank": {
       "title": "Banque",
@@ -1008,6 +1016,71 @@
       "pro": "Pro",
       "proplus": "Pro+",
       "usage": "Formule {plan}{hasLimit, select, yes { : {invoices} factures sur {invoiceLimit} ce mois-ci, {contacts} contacts sur {contactLimit}} other {}}."
+    },
+    "orgSwitch": {
+      "label": "Entreprise",
+      "switch": "Changer d'entreprise",
+      "client": "client"
+    },
+    "team": {
+      "title": "Équipe",
+      "subtitle": "Les personnes de l'entreprise viennent du Compte Lead. Ici, vous choisissez ce que chacune fait dans InvoiceLead.",
+      "seats": "{used} sur {seats} {seats, plural, one {place utilisée} other {places utilisées}}",
+      "members": "Membres",
+      "name": "Personne",
+      "leadRole": "Rôle Lead",
+      "appRole": "Dans InvoiceLead",
+      "leadRoles": {
+        "admin": "Administrateur",
+        "manager": "Responsable",
+        "user": "Utilisateur",
+        "fiduciary": "Fiduciaire"
+      },
+      "roles": {
+        "all": "Factures et comptabilité",
+        "billing": "Factures seulement",
+        "accounting": "Comptabilité seulement",
+        "readonly": "Lecture seule",
+        "none": "Pas d'accès"
+      },
+      "managerRole": "Tout, réglages compris",
+      "noSeat": "sans place",
+      "save": "Enregistrer",
+      "saved": "Rôle enregistré.",
+      "addHint": "Pour ajouter une personne, invitez-la dans votre organisation depuis le Compte Lead. Elle apparaît ici après sa première connexion.",
+      "fiduciaryTitle": "Fiduciaire",
+      "fiduciaryHint": "Votre fiduciaire accède gratuitement à la comptabilité (banque, justificatifs, journal, TVA, clôture) avec son propre Compte Lead. Elle voit les factures sans pouvoir les modifier.",
+      "fiduciaryEmail": "Adresse e-mail de la fiduciaire",
+      "invite": "Inviter",
+      "invited": "Invitation envoyée à {email}.",
+      "inviteLink": "Transmettez ce lien à {email}, valable {days} jours :",
+      "pending": "Invitation en attente jusqu'au {date}",
+      "cancel": "Annuler",
+      "remove": "Retirer l'accès",
+      "removed": "Accès retiré.",
+      "noFiduciary": "Aucune fiduciaire n'a accès pour l'instant.",
+      "planOnly": "L'accès fiduciaire est compris dans les formules Pro et Pro+.",
+      "managersOnly": "Seuls les responsables de l'entreprise modifient l'équipe.",
+      "errors": {
+        "invalid": "Adresse e-mail invalide.",
+        "forbidden": "Seuls les responsables de l'entreprise modifient l'équipe.",
+        "plan": "L'accès fiduciaire est compris dans les formules Pro et Pro+.",
+        "failed": "L'e-mail n'a pas pu partir. Transmettez le lien ci-dessous."
+      },
+      "emailSubject": "{org} vous donne accès à sa comptabilité",
+      "emailBody": "Bonjour,\n\n{org} vous invite à accéder à sa comptabilité dans InvoiceLead. Connectez-vous avec votre Compte Lead depuis ce lien (valable {days} jours) :"
+    },
+    "invite": {
+      "title": "Invitation fiduciaire",
+      "loginBody": "Connectez-vous avec votre Compte Lead pour accepter l'invitation. Utilisez l'adresse à laquelle vous l'avez reçue.",
+      "login": "Se connecter avec mon Compte Lead",
+      "accepted": "Vous avez maintenant accès à la comptabilité de {org}.",
+      "open": "Ouvrir {org}",
+      "invalid": "Ce lien d'invitation n'est pas valable ou a déjà servi.",
+      "expired": "Ce lien d'invitation a expiré. Demandez-en un nouveau.",
+      "wrongEmail": "Cette invitation a été envoyée à une autre adresse que {email}. Connectez-vous avec le bon Compte Lead.",
+      "logout": "Changer de compte",
+      "accept": "Accepter l'invitation"
     }
   },
   "footer": {

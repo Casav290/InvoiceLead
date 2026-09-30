@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { requireAppSession } from "@/server/auth/guard";
+import { requirePermission } from "@/server/auth/guard";
 import { pickLocale } from "@/server/auth/login-cookie";
 import { db } from "@/server/db";
 import { hasFeature } from "@/server/plans";
@@ -10,7 +10,7 @@ import { createRecurring, deleteRecurring, setRecurringActive } from "@/server/r
 
 export async function createRecurringAction(form: FormData) {
   const locale = pickLocale(form.get("locale"));
-  const session = await requireAppSession(locale);
+  const session = await requirePermission(locale, "billing");
   const id = String(form.get("id") ?? "");
   if (!hasFeature(session.organization, "recurring"))
     redirect(`/${locale}/app/invoices/${id}?error=planLimit`);
@@ -31,7 +31,7 @@ export async function createRecurringAction(form: FormData) {
 
 export async function updateRecurringAction(form: FormData) {
   const locale = pickLocale(form.get("locale"));
-  const session = await requireAppSession(locale);
+  const session = await requirePermission(locale, "billing");
   const who = { organizationId: session.organization.id, userId: session.user.id };
   const id = String(form.get("id") ?? "");
   const op = String(form.get("op") ?? "");

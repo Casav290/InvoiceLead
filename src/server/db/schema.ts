@@ -80,7 +80,10 @@ export const organizations = pgTable("organizations", {
   updatedAt: updatedAt(),
 });
 
-/** Appartenance d'une personne à une organisation, avec son rôle Lead (admin, manager, user). */
+/**
+ * Appartenance d'une personne à une organisation : rôle Lead (admin, manager, user), relu à chaque
+ * connexion, ou « fiduciary » pour une fiduciaire invitée par l'entreprise.
+ */
 export const memberships = pgTable(
   "memberships",
   {
@@ -91,6 +94,8 @@ export const memberships = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     role: text("role").notNull().default("user"),
+    /** Droits dans InvoiceLead (roles.ts) : all, billing, accounting, readonly, none. Null vaut all. */
+    appRole: text("app_role"),
     createdAt: createdAt(),
   },
   (t) => [
@@ -699,3 +704,22 @@ export const recurringInvoices = pgTable(
 );
 
 export type RecurringInvoice = typeof recurringInvoices.$inferSelect;
+
+/** Invitation d'une fiduciaire : lien à usage unique, envoyé à une adresse précise. */
+export const fiduciaryInvitations = pgTable(
+  "fiduciary_invitations",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    email: text("email").notNull(),
+    tokenHash: text("token_hash").notNull().unique(),
+    invitedBy: uuid("invited_by").references(() => users.id, { onDelete: "set null" }),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    acceptedAt: timestamp("accepted_at", { withTimezone: true }),
+    acceptedBy: uuid("accepted_by").references(() => users.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+  },
+  (t) => [index("fiduciary_invitations_org_idx").on(t.organizationId)],
+);

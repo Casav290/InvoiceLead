@@ -10,7 +10,7 @@ import {
   parseAccountForm,
   updateAccount,
 } from "@/server/accounting";
-import { requireAppSession } from "@/server/auth/guard";
+import { requirePermission } from "@/server/auth/guard";
 import { pickLocale } from "@/server/auth/login-cookie";
 import { db } from "@/server/db";
 
@@ -26,7 +26,7 @@ export async function saveAccount(
   form: FormData,
 ): Promise<AccountFormState> {
   const locale = pickLocale(form.get("locale"));
-  const session = await requireAppSession(locale);
+  const session = await requirePermission(locale, "setup");
   const who = { organizationId: session.organization.id, userId: session.user.id };
   const id = String(form.get("id") ?? "");
   const values = Object.fromEntries(
@@ -50,7 +50,7 @@ export async function saveAccount(
 
 export async function installChartAction(form: FormData) {
   const locale = pickLocale(form.get("locale"));
-  const session = await requireAppSession(locale);
+  const session = await requirePermission(locale, "setup");
   const raw = String(form.get("template") ?? "");
   const template = (CHART_TEMPLATES as readonly string[]).includes(raw)
     ? (raw as ChartTemplate)

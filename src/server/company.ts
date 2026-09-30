@@ -8,6 +8,7 @@ import {
 } from "@/lib/swiss-ids";
 import type { Db } from "./db";
 import { auditLog, memberships, organizations } from "./db/schema";
+import { can } from "./roles";
 
 export const LEGAL_FORMS = [
   "sole_proprietorship",
@@ -20,7 +21,6 @@ export const LEGAL_FORMS = [
 export const VAT_METHODS = ["effective", "net_tax_rate"] as const;
 export const VAT_SETTLEMENTS = ["agreed", "received"] as const;
 /** Rôles Lead autorisés à modifier les réglages de l'entreprise. */
-export const SETTINGS_EDITORS = ["admin", "manager"];
 
 export type CompanyInput = {
   legalName: string;
@@ -148,13 +148,25 @@ export function parseCompanyForm(
   };
 }
 
-export async function canEditSettings(database: Db, organizationId: string, userId: string) {
+async function memberOf(database: Db, organizationId: string, userId: string) {
   const [row] = await database
-    .select({ role: memberships.role })
+    .select({ role: memberships.role, appRole: memberships.appRole })
     .from(memberships)
     .where(and(eq(memberships.organizationId, organizationId), eq(memberships.userId, userId)))
     .limit(1);
-  return !!row && SETTINGS_EDITORS.includes(row.role);
+  return row ?? null;
+}
+
+/** Réglages de l'entreprise et équipe : responsables Lead (admin, manager). */
+export async function canEditSettings(database: Db, organizationId: string, userId: string) {
+  const m = await memberOf(database, organizationId, userId);
+  return !!m && can(m, "company");
+}
+
+/** Plan comptable, exercices et clôture : responsables et fiduciaire invitée. */
+export async function canSetUpAccounting(database: Db, organizationId: string, userId: string) {
+  const m = await memberOf(database, organizationId, userId);
+  return !!m && can(m, "setup");
 }
 
 /** Enregistre les réglages de l'organisation de la session, après contrôle du rôle. */

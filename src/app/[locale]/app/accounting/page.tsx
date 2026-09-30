@@ -13,7 +13,7 @@ import { postPendingAction } from "./actions";
 
 type Props = {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ year?: string; posted?: string; reason?: string }>;
+  searchParams: Promise<{ year?: string; posted?: string; reason?: string; welcome?: string }>;
 };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -42,6 +42,14 @@ export default async function AccountingPage({ params, searchParams }: Props) {
       <h1 className="text-[28px] leading-tight">{t("title")}</h1>
       <p className="mt-2 text-[15px] text-ink-muted">{t("subtitle")}</p>
 
+      {query.welcome === "fiduciary" ? (
+        <p
+          role="status"
+          className="mt-6 border border-ok-fg bg-ok-bg px-4 py-3 text-[13px] text-ok-fg"
+        >
+          {t("welcomeFiduciary")}
+        </p>
+      ) : null}
       {query.posted !== undefined ? (
         <p
           role="status"

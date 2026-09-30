@@ -1,11 +1,16 @@
 import { z } from "zod";
 import { sign, unsign } from "./crypto";
 
+/** Jeton d'invitation : base64url de 32 octets. */
+export const INVITE_TOKEN = /^[A-Za-z0-9_-]{20,100}$/;
+
 const saved = z.object({
   state: z.string().min(1),
   nonce: z.string().min(1),
   verifier: z.string().min(1),
   locale: z.enum(["de", "fr"]),
+  /** Jeton d'invitation de fiduciaire à reprendre après la connexion. */
+  invite: z.string().regex(INVITE_TOKEN).optional(),
 });
 
 export type SavedLogin = z.infer<typeof saved>;

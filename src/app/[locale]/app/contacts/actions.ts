@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { requireAppSession } from "@/server/auth/guard";
+import { requirePermission } from "@/server/auth/guard";
 import { pickLocale } from "@/server/auth/login-cookie";
 import {
   archiveContact,
@@ -26,7 +26,7 @@ export async function saveContact(
   form: FormData,
 ): Promise<ContactFormState> {
   const locale = pickLocale(form.get("locale"));
-  const session = await requireAppSession(locale);
+  const session = await requirePermission(locale, "billing");
   const who = { organizationId: session.organization.id, userId: session.user.id };
   const id = String(form.get("id") ?? "");
   const values = Object.fromEntries(
@@ -48,7 +48,7 @@ export async function saveContact(
 
 export async function archiveContactAction(form: FormData) {
   const locale = pickLocale(form.get("locale"));
-  const session = await requireAppSession(locale);
+  const session = await requirePermission(locale, "billing");
   await archiveContact(
     db(),
     { organizationId: session.organization.id, userId: session.user.id },

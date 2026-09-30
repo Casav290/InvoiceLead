@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
-import { requireAppSession } from "@/server/auth/guard";
+import { requirePermission } from "@/server/auth/guard";
 import { pickLocale } from "@/server/auth/login-cookie";
 import { db } from "@/server/db";
 import {
@@ -56,7 +56,7 @@ export async function saveInvoice(
   form: FormData,
 ): Promise<InvoiceFormState> {
   const locale = pickLocale(form.get("locale"));
-  const session = await requireAppSession(locale);
+  const session = await requirePermission(locale, "billing");
   const who = { organizationId: session.organization.id, userId: session.user.id };
   const id = String(form.get("id") ?? "");
   const kind = kindOf(form);
@@ -83,7 +83,7 @@ export async function saveInvoice(
 
 export async function issueInvoiceAction(form: FormData) {
   const locale = pickLocale(form.get("locale"));
-  const session = await requireAppSession(locale);
+  const session = await requirePermission(locale, "billing");
   const id = String(form.get("id") ?? "");
   const path = `/${locale}/app/${section(kindOf(form))}`;
   if (kindOf(form) === "invoice" && (await limitReached(db(), session.organization, "invoice")))
@@ -101,7 +101,7 @@ export async function issueInvoiceAction(form: FormData) {
 
 export async function deleteDraftAction(form: FormData) {
   const locale = pickLocale(form.get("locale"));
-  const session = await requireAppSession(locale);
+  const session = await requirePermission(locale, "billing");
   await deleteDraft(
     db(),
     { organizationId: session.organization.id, userId: session.user.id },
@@ -114,7 +114,7 @@ export async function deleteDraftAction(form: FormData) {
 
 export async function quoteOutcomeAction(form: FormData) {
   const locale = pickLocale(form.get("locale"));
-  const session = await requireAppSession(locale);
+  const session = await requirePermission(locale, "billing");
   const id = String(form.get("id") ?? "");
   const outcome = form.get("outcome") === "declined" ? "declined" : "accepted";
   await setQuoteOutcome(
@@ -129,7 +129,7 @@ export async function quoteOutcomeAction(form: FormData) {
 
 export async function convertQuoteAction(form: FormData) {
   const locale = pickLocale(form.get("locale"));
-  const session = await requireAppSession(locale);
+  const session = await requirePermission(locale, "billing");
   const id = String(form.get("id") ?? "");
   const result = await convertQuoteToInvoice(
     db(),
@@ -145,7 +145,7 @@ export async function convertQuoteAction(form: FormData) {
 
 export async function createCreditNoteAction(form: FormData) {
   const locale = pickLocale(form.get("locale"));
-  const session = await requireAppSession(locale);
+  const session = await requirePermission(locale, "billing");
   const id = String(form.get("id") ?? "");
   const result = await createCreditNote(
     db(),
@@ -170,7 +170,7 @@ export async function addPaymentAction(
   form: FormData,
 ): Promise<PaymentFormState> {
   const locale = pickLocale(form.get("locale"));
-  const session = await requireAppSession(locale);
+  const session = await requirePermission(locale, "billing");
   const id = String(form.get("id") ?? "");
   const values = Object.fromEntries(
     [...form.entries()].filter(([k]) => !k.startsWith("$")).map(([k, v]) => [k, String(v)]),
@@ -193,7 +193,7 @@ export async function addPaymentAction(
 
 export async function deletePaymentAction(form: FormData) {
   const locale = pickLocale(form.get("locale"));
-  const session = await requireAppSession(locale);
+  const session = await requirePermission(locale, "billing");
   const id = String(form.get("id") ?? "");
   const result = await deletePayment(
     db(),
@@ -216,7 +216,7 @@ export async function sendDocumentAction(
   form: FormData,
 ): Promise<SendFormState> {
   const locale = pickLocale(form.get("locale"));
-  const session = await requireAppSession(locale);
+  const session = await requirePermission(locale, "billing");
   const id = String(form.get("id") ?? "");
   const values = Object.fromEntries(
     [...form.entries()].filter(([k]) => !k.startsWith("$")).map(([k, v]) => [k, String(v)]),
@@ -241,7 +241,7 @@ export type LinkState = { url?: string; round: number };
 
 export async function shareLinkAction(prev: LinkState, form: FormData): Promise<LinkState> {
   const locale = pickLocale(form.get("locale"));
-  const session = await requireAppSession(locale);
+  const session = await requirePermission(locale, "billing");
   const id = String(form.get("id") ?? "");
   const token = await enableShareLink(db(), session.organization.id, id);
   const language = String(form.get("language") ?? "de") === "fr" ? "fr" : "de";

@@ -5,7 +5,7 @@ import { AccountForm } from "@/components/accounting/AccountForm";
 import { SettingsNav } from "@/components/settings/SettingsNav";
 import { getAccount } from "@/server/accounting";
 import { requireAppSession } from "@/server/auth/guard";
-import { canEditSettings } from "@/server/company";
+import { canSetUpAccounting } from "@/server/company";
 import { db } from "@/server/db";
 
 type Props = { params: Promise<{ locale: string; id: string }> };
@@ -19,7 +19,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function AccountPage({ params }: Props) {
   const { locale, id } = await params;
   const { user, organization } = await requireAppSession(locale);
-  if (!(await canEditSettings(db(), organization.id, user.id)))
+  if (!(await canSetUpAccounting(db(), organization.id, user.id)))
     redirect(`/${locale}/app/settings/accounts`);
   const account = await getAccount(db(), organization.id, id);
   if (!account) notFound();

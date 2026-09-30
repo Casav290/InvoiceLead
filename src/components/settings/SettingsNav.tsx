@@ -8,9 +8,10 @@ const ITEMS = [
   { href: "/app/settings/company", key: "company" },
   { href: "/app/settings/accounts", key: "accounts" },
   { href: "/app/settings/fiscal-years", key: "fiscalYears" },
+  { href: "/app/settings/team", key: "team" },
 ] as const;
 
-/** Onglets des réglages : entreprise, plan comptable, exercices. */
+/** Onglets des réglages : entreprise, plan comptable, exercices, équipe. */
 export function SettingsNav() {
   const t = useTranslations("app.settingsNav");
   const pathname = usePathname();

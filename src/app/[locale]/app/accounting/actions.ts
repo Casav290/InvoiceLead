@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { parseCamt } from "@/countries/ch/camt";
 import { VAT_CODES, type VatCode } from "@/countries/ch/vat";
 import { aiConfigured } from "@/server/ai";
-import { requireAppSession } from "@/server/auth/guard";
+import { requirePermission } from "@/server/auth/guard";
 import { pickLocale } from "@/server/auth/login-cookie";
 import {
   ignoreTransaction,
@@ -23,7 +23,7 @@ import { aiReview, draftVatReturn, validateVatReturn } from "@/server/vat-return
 
 export async function postPendingAction(form: FormData) {
   const locale = pickLocale(form.get("locale"));
-  const session = await requireAppSession(locale);
+  const session = await requirePermission(locale, "accounting");
   const result = await postPending(db(), {
     organizationId: session.organization.id,
     userId: session.user.id,
@@ -36,7 +36,7 @@ export async function postPendingAction(form: FormData) {
 
 export async function importStatementAction(form: FormData) {
   const locale = pickLocale(form.get("locale"));
-  const session = await requireAppSession(locale);
+  const session = await requirePermission(locale, "accounting");
   const who = { organizationId: session.organization.id, userId: session.user.id };
   const file = form.get("statement");
   const path = `/${locale}/app/accounting/bank`;
@@ -66,7 +66,7 @@ export async function importStatementAction(form: FormData) {
 
 export async function proposeAction(form: FormData) {
   const locale = pickLocale(form.get("locale"));
-  const session = await requireAppSession(locale);
+  const session = await requirePermission(locale, "accounting");
   const result = await proposeAll(
     db(),
     { organizationId: session.organization.id, userId: session.user.id },
@@ -78,7 +78,7 @@ export async function proposeAction(form: FormData) {
 
 export async function validateBankAction(form: FormData) {
   const locale = pickLocale(form.get("locale"));
-  const session = await requireAppSession(locale);
+  const session = await requirePermission(locale, "accounting");
   const who = { organizationId: session.organization.id, userId: session.user.id };
   const id = String(form.get("id") ?? "");
   const accountId = String(form.get("accountId") ?? "");
@@ -96,7 +96,7 @@ export async function validateBankAction(form: FormData) {
 
 export async function validateConfidentAction(form: FormData) {
   const locale = pickLocale(form.get("locale"));
-  const session = await requireAppSession(locale);
+  const session = await requirePermission(locale, "accounting");
   const posted = await validateConfident(db(), {
     organizationId: session.organization.id,
     userId: session.user.id,
@@ -107,7 +107,7 @@ export async function validateConfidentAction(form: FormData) {
 
 export async function ignoreBankAction(form: FormData) {
   const locale = pickLocale(form.get("locale"));
-  const session = await requireAppSession(locale);
+  const session = await requirePermission(locale, "accounting");
   await ignoreTransaction(
     db(),
     { organizationId: session.organization.id, userId: session.user.id },
@@ -119,7 +119,7 @@ export async function ignoreBankAction(form: FormData) {
 
 export async function deleteRuleAction(form: FormData) {
   const locale = pickLocale(form.get("locale"));
-  const session = await requireAppSession(locale);
+  const session = await requirePermission(locale, "accounting");
   await deleteRule(
     db(),
     { organizationId: session.organization.id, userId: session.user.id },
@@ -131,7 +131,7 @@ export async function deleteRuleAction(form: FormData) {
 
 export async function uploadReceiptsAction(form: FormData) {
   const locale = pickLocale(form.get("locale"));
-  const session = await requireAppSession(locale);
+  const session = await requirePermission(locale, "accounting");
   const who = { organizationId: session.organization.id, userId: session.user.id };
   const language = locale === "fr" ? "fr" : "de";
   const files = form.getAll("files").filter((f): f is File => f instanceof File && f.size > 0);
@@ -162,7 +162,7 @@ export async function uploadReceiptsAction(form: FormData) {
 
 export async function readReceiptAction(form: FormData) {
   const locale = pickLocale(form.get("locale"));
-  const session = await requireAppSession(locale);
+  const session = await requirePermission(locale, "accounting");
   const result = await readReceipt(
     db(),
     { organizationId: session.organization.id, userId: session.user.id },
@@ -175,7 +175,7 @@ export async function readReceiptAction(form: FormData) {
 
 export async function validateVatAction(form: FormData) {
   const locale = pickLocale(form.get("locale"));
-  const session = await requireAppSession(locale);
+  const session = await requirePermission(locale, "accounting");
   const start = String(form.get("start") ?? "");
   const end = String(form.get("end") ?? "");
   if (!hasFeature(session.organization, "vatReturn"))
@@ -196,7 +196,7 @@ export type ReviewState = { points?: string[]; failed?: boolean; round: number }
 
 export async function reviewVatAction(prev: ReviewState, form: FormData): Promise<ReviewState> {
   const locale = pickLocale(form.get("locale"));
-  const session = await requireAppSession(locale);
+  const session = await requirePermission(locale, "accounting");
   const start = String(form.get("start") ?? "");
   const end = String(form.get("end") ?? "");
   try {

@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireAppSession } from "@/server/auth/guard";
+import { requirePermission } from "@/server/auth/guard";
 import { pickLocale } from "@/server/auth/login-cookie";
 import { type CompanyErrors, parseCompanyForm, saveCompanySettings } from "@/server/company";
 import { db } from "@/server/db";
@@ -19,7 +19,7 @@ export async function saveCompany(
   form: FormData,
 ): Promise<CompanyFormState> {
   const locale = pickLocale(form.get("locale"));
-  const session = await requireAppSession(locale);
+  const session = await requirePermission(locale, "company");
   const values = Object.fromEntries(
     [...form.entries()].filter(([k]) => !k.startsWith("$")).map(([k, v]) => [k, String(v)]),
   );
