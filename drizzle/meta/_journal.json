@@ -169,6 +169,20 @@
       "when": 1790777234408,
       "tag": "0023_account_name_en",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1790778793673,
+      "tag": "0024_us_sales_tax",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1790779007936,
+      "tag": "0025_rate_precision",
+      "breakpoints": true
     }
   ]
 }

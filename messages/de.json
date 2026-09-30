@@ -165,7 +165,11 @@
         "frVatId": "Französische USt-IdNr.",
         "siret": "SIRET",
         "gbVat": "VAT registration number",
-        "companyNumber": "Companies House number"
+        "companyNumber": "Companies House number",
+        "ein": "EIN (Employer Identification Number)",
+        "region": "Bundesstaat",
+        "collectsSalesTax": "Das Unternehmen erhebt Sales Tax",
+        "salesTaxRate": "Kombinierter Sales-Tax-Satz (%)"
       },
       "hints": {
         "uid": "Format CHE-123.456.789, Prüfziffer wird kontrolliert.",
@@ -177,7 +181,10 @@
         "frVatId": "Format FR + 2 Ziffern + SIREN, Prüfziffer wird kontrolliert.",
         "siret": "14 Ziffern (oder SIREN mit 9 Ziffern), Prüfziffer wird kontrolliert. Pflicht auf jeder Rechnung.",
         "gbVat": "Format GB + 9 Ziffern, HMRC-Prüfziffer wird kontrolliert.",
-        "companyNumber": "8 Zeichen, zum Beispiel 01234567 oder SC123456. Optional für Einzelunternehmen."
+        "companyNumber": "8 Zeichen, zum Beispiel 01234567 oder SC123456. Optional für Einzelunternehmen.",
+        "ein": "Format 12-3456789. Optional für Einzelunternehmen ohne Angestellte.",
+        "region": "Zweistelliger Code des Bundesstaats (TX, NY, CA…).",
+        "salesTaxRate": "Gesamtsatz von Bundesstaat, County und Stadt, zum Beispiel 8.875. Gilt für den Code «normal» der Zeilen."
       },
       "legalForms": {
         "sole_proprietorship": "Einzelunternehmen",
@@ -199,7 +206,10 @@
         "sole_trader": "Sole trader",
         "llp": "LLP",
         "ltd": "Private limited company (Ltd)",
-        "plc": "Public limited company (PLC)"
+        "plc": "Public limited company (PLC)",
+        "llc": "LLC",
+        "c_corp": "C corporation",
+        "s_corp": "S corporation"
       },
       "vatMethods": {
         "effective": "Effektive Methode",
@@ -226,7 +236,7 @@
       "errors": {
         "required": "Pflichtfeld.",
         "tooLong": "Text zu lang.",
-        "postalCode": "Ungültige Postleitzahl (4 Ziffern in der Schweiz, 5 in Deutschland und Frankreich, britisches Format im Vereinigten Königreich).",
+        "postalCode": "Ungültige Postleitzahl (4 Ziffern in der Schweiz, 5 in Deutschland und Frankreich, britisches Format im Vereinigten Königreich, ZIP in den USA).",
         "email": "Ungültige E-Mail-Adresse.",
         "uid": "Ungültige UID-Nummer (Format oder Prüfziffer).",
         "uidRequiredForVat": "Für MWST-pflichtige Firmen ist die UID-Nummer obligatorisch.",
@@ -243,13 +253,18 @@
         "siretRequired": "Die SIRET ist auf französischen Rechnungen Pflicht.",
         "gbVat": "Ungültige britische MWST-Nummer (GB und 9 Ziffern, HMRC-Prüfziffer).",
         "gbVatRequired": "Die MWST-Nummer ist für ein MWST-pflichtiges Unternehmen Pflicht.",
-        "companyNumber": "Ungültige Companies-House-Nummer (8 Zeichen)."
+        "companyNumber": "Ungültige Companies-House-Nummer (8 Zeichen).",
+        "ein": "Ungültige EIN (9 Ziffern, vom IRS vergebenes Präfix).",
+        "usState": "Ungültiger Code des Bundesstaats (zwei Buchstaben, zum Beispiel TX).",
+        "salesTaxRate": "Geben Sie einen Satz zwischen 0,001 und 20 % an.",
+        "ibanUs": "Keine IBAN in den USA: Geben Sie Ihre ACH-Angaben im Schlusstext der Rechnungen an."
       },
       "countries": {
         "CH": "Schweiz",
         "DE": "Deutschland",
         "FR": "Frankreich",
-        "GB": "Vereinigtes Königreich"
+        "GB": "Vereinigtes Königreich",
+        "US": "Vereinigte Staaten"
       }
     },
     "contacts": {
@@ -287,7 +302,7 @@
         "role": "Rolle",
         "isCustomer": "Kunde",
         "isSupplier": "Lieferant",
-        "uid": "UID-Nummer",
+        "uid": "UID oder MWST-Nummer",
         "email": "E-Mail",
         "phone": "Telefon",
         "street": "Strasse",
@@ -297,11 +312,13 @@
         "country": "Land",
         "language": "Dokumentsprache",
         "paymentTermDays": "Zahlungsfrist (Tage)",
-        "notes": "Interne Notizen"
+        "notes": "Interne Notizen",
+        "region": "Bundesstaat oder Region"
       },
       "hints": {
         "street": "Adresse optional, aber vollständig, sobald begonnen: Die QR-Rechnung verlangt sie strukturiert.",
-        "uid": "Optional. Format CHE-123.456.789."
+        "uid": "Optional. UID CHE-123.456.789 oder ausländische MWST-Nummer (FR…, DE…, GB…), nötig für das Reverse-Charge-Verfahren.",
+        "region": "In den USA der Code des Bundesstaats (TX, NY…)."
       },
       "kinds": {
         "company": "Firma",
@@ -319,16 +336,19 @@
         "DE": "Deutschland",
         "FR": "Frankreich",
         "IT": "Italien",
-        "AT": "Österreich"
+        "AT": "Österreich",
+        "GB": "Vereinigtes Königreich",
+        "US": "Vereinigte Staaten"
       },
       "errors": {
         "required": "Pflichtfeld.",
         "tooLong": "Text zu lang.",
         "email": "Ungültige E-Mail-Adresse.",
-        "postalCode": "PLZ mit 4 Ziffern.",
-        "uid": "Ungültige UID-Nummer (Format oder Prüfziffer).",
+        "postalCode": "Ungültige Postleitzahl für dieses Land.",
+        "uid": "Ungültige UID oder MWST-Nummer (Format oder Prüfziffer).",
         "paymentTerm": "Zwischen 0 und 365 Tagen.",
-        "role": "Kunde, Lieferant oder beides ankreuzen."
+        "role": "Kunde, Lieferant oder beides ankreuzen.",
+        "usState": "Geben Sie den Code des Bundesstaats an (zwei Buchstaben, zum Beispiel TX)."
       },
       "planLimit": "Das Gratis-Abo umfasst höchstens 50 Kontakte. Mit Pro können Sie weitere erfassen."
     },
@@ -506,7 +526,19 @@
         "8": "8 Übrige Gemeinkosten",
         "9": "9 Kontroll- und Abschlusskonten"
       },
-      "subtitleGb": "Britischer Kontenplan (Nominal Ledger), vierstellige Nummern. Die Systemkonten werden von den automatischen Buchungen verwendet."
+      "subtitleGb": "Britischer Kontenplan (Nominal Ledger), vierstellige Nummern. Die Systemkonten werden von den automatischen Buchungen verwendet.",
+      "classesUs": {
+        "1": "1 Aktiven",
+        "2": "2 Verbindlichkeiten",
+        "3": "3 Eigenkapital",
+        "4": "4 Erträge",
+        "5": "5 Warenaufwand",
+        "6": "6 Aufwand",
+        "7": "7 Übrige Erträge und Aufwände",
+        "8": "8 Steuern",
+        "9": "9 Abschluss"
+      },
+      "subtitleUs": "Üblicher amerikanischer Kontenplan, vierstellige Nummern. Die Systemkonten werden von den automatischen Buchungen verwendet."
     },
     "fiscalYears": {
       "title": "Geschäftsjahre",
@@ -626,7 +658,9 @@
         "unitPrice": "Einzelpreis exkl. MWST",
         "vatCode": "MWST",
         "introText": "Einleitungstext",
-        "footerText": "Schlusstext"
+        "footerText": "Schlusstext",
+        "vatCodeUs": "Steuer",
+        "unitPriceUs": "Einzelpreis ohne Steuer"
       },
       "hints": {
         "serviceDate": "Bestimmt den anwendbaren MWST-Satz.",
@@ -687,7 +721,10 @@
         "reverseChargeFr": "Autoliquidation: Steuerschuldnerschaft des Leistungsempfängers (art. 283-2 du CGI).",
         "outsideEuFr": "TVA non applicable, art. 259-1 du CGI (nicht in Frankreich steuerbar).",
         "latePaymentFr": "Bei Zahlungsverzug: Verzugszinsen in Höhe des dreifachen gesetzlichen Zinssatzes und eine Pauschale von 40 € für Inkassokosten. Kein Skonto bei vorzeitiger Zahlung.",
-        "outsideScopeGb": "Nicht im Anwendungsbereich der britischen MWST: Leistungsort im Land des Kunden."
+        "outsideScopeGb": "Nicht im Anwendungsbereich der britischen MWST: Leistungsort im Land des Kunden.",
+        "vatUs": "Steuer",
+        "vatLineUs": "Sales Tax {rate} auf {base}",
+        "netUs": "Zwischensumme"
       },
       "docTitle": "Rechnung",
       "docDue": "Zahlbar bis",
@@ -793,7 +830,17 @@
           "buyerVatId": "USt-IdNr. des Kunden",
           "sellerTaxId": "USt-IdNr. oder Steuernummer"
         }
-      }
+      },
+      "netUs": "Zwischensumme",
+      "vatLineUs": "Sales Tax {rate} auf {base}",
+      "vatCodesUs": {
+        "normal": "Steuerpflichtig",
+        "reduced": "Steuerpflichtig (reduziert)",
+        "lodging": "Steuerpflichtig (Beherbergung)",
+        "exempt": "Steuerbefreit",
+        "export": "Nicht steuerbar (ausserhalb des Bundesstaats)"
+      },
+      "totalWithVatUs": "Total inklusive Steuer"
     },
     "quotes": {
       "title": "Offerten",
@@ -1108,7 +1155,14 @@
         "7": "Feld 7 · Gesamteinkäufe ohne MWST",
         "8": "Feld 8 · Warenlieferungen in die EU (Nordirland)",
         "9": "Feld 9 · Warenerwerbe aus der EU (Nordirland)"
-      }
+      },
+      "figuresUs": {
+        "S1": "Bruttoumsatz",
+        "S2": "Nicht steuerbare Umsätze (befreit oder ausserhalb des Bundesstaats)",
+        "S3": "Steuerbare Umsätze",
+        "S4": "Erhobene Sales Tax, abzuliefern"
+      },
+      "titleUs": "Sales-Tax-Übersicht"
     },
     "reminders": {
       "title": "Mahnungen",

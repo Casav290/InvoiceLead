@@ -60,6 +60,7 @@ export function isValidSwissIban(input: string): boolean {
 
 /** Libellé du numéro d'entreprise imprimé sur la facture, selon le pays de l'émetteur. */
 export function taxNumberLabel(country: string): string {
+  if (country === "US") return "EIN";
   return country === "FR" ? "SIRET" : country === "GB" ? "Company No." : "Steuernummer";
 }
 

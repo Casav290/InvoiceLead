@@ -243,6 +243,7 @@ export async function NewDocumentPage({
           products={options.products}
           vatRegistered={organization.vatRegistered}
           country={organization.country}
+          localRateBp={organization.salesTaxRateBp}
           initial={{
             contactId: chosen?.id ?? "",
             language:
@@ -382,6 +383,7 @@ export async function DocumentDetailPage({
             id={invoice.id}
             vatRegistered={organization.vatRegistered}
             country={organization.country}
+            localRateBp={organization.salesTaxRateBp}
             {...(await invoiceOptions(db(), organization.id))}
             initial={{
               contactId: invoice.contactId,

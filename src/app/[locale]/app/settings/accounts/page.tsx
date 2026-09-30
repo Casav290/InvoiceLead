@@ -75,7 +75,9 @@ export default async function AccountsPage({ params, searchParams }: Props) {
               ? "subtitleFr"
               : organization.country === "GB"
                 ? "subtitleGb"
-                : "subtitle",
+                : organization.country === "US"
+                  ? "subtitleUs"
+                  : "subtitle",
         )}
       </p>
       {saved || installed ? (

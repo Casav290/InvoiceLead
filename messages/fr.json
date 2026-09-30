@@ -165,7 +165,11 @@
         "frVatId": "Numéro de TVA intracommunautaire",
         "siret": "SIRET",
         "gbVat": "VAT registration number",
-        "companyNumber": "Companies House number"
+        "companyNumber": "Companies House number",
+        "ein": "EIN (Employer Identification Number)",
+        "region": "État",
+        "collectsSalesTax": "L'entreprise perçoit la sales tax",
+        "salesTaxRate": "Taux de sales tax combiné (%)"
       },
       "hints": {
         "uid": "Format CHE-123.456.789, clé de contrôle vérifiée.",
@@ -177,7 +181,10 @@
         "frVatId": "Format FR + 2 chiffres + SIREN, clé vérifiée. Facultatif en franchise en base.",
         "siret": "14 chiffres (ou SIREN à 9 chiffres), clé de contrôle vérifiée. Obligatoire sur chaque facture.",
         "gbVat": "Format GB + 9 chiffres, clé HMRC vérifiée.",
-        "companyNumber": "8 caractères, par exemple 01234567 ou SC123456. Facultatif pour une entreprise individuelle."
+        "companyNumber": "8 caractères, par exemple 01234567 ou SC123456. Facultatif pour une entreprise individuelle.",
+        "ein": "Format 12-3456789. Facultatif pour une entreprise individuelle sans salarié.",
+        "region": "Code de l'État à deux lettres (TX, NY, CA…).",
+        "salesTaxRate": "Taux total État, comté et ville, par exemple 8.875. Appliqué au code « normal » des lignes."
       },
       "legalForms": {
         "sole_proprietorship": "Raison individuelle",
@@ -199,7 +206,10 @@
         "sole_trader": "Sole trader",
         "llp": "LLP",
         "ltd": "Private limited company (Ltd)",
-        "plc": "Public limited company (PLC)"
+        "plc": "Public limited company (PLC)",
+        "llc": "LLC",
+        "c_corp": "C corporation",
+        "s_corp": "S corporation"
       },
       "vatMethods": {
         "effective": "Méthode effective",
@@ -226,7 +236,7 @@
       "errors": {
         "required": "Champ obligatoire.",
         "tooLong": "Texte trop long.",
-        "postalCode": "Code postal invalide (4 chiffres en Suisse, 5 en Allemagne et en France, format britannique au Royaume-Uni).",
+        "postalCode": "Code postal invalide (4 chiffres en Suisse, 5 en Allemagne et en France, format britannique au Royaume-Uni, ZIP aux États-Unis).",
         "email": "Adresse e-mail invalide.",
         "uid": "Numéro IDE invalide (format ou clé de contrôle).",
         "uidRequiredForVat": "Le numéro IDE est obligatoire pour une entreprise inscrite à la TVA.",
@@ -243,13 +253,18 @@
         "siretRequired": "Le SIRET est obligatoire sur les factures françaises.",
         "gbVat": "Numéro de TVA britannique invalide (GB et 9 chiffres, clé HMRC).",
         "gbVatRequired": "Le numéro de TVA est obligatoire pour une entreprise enregistrée à la TVA.",
-        "companyNumber": "Numéro Companies House invalide (8 caractères)."
+        "companyNumber": "Numéro Companies House invalide (8 caractères).",
+        "ein": "EIN invalide (9 chiffres, préfixe attribué par l'IRS).",
+        "usState": "Code d'État invalide (deux lettres, par exemple TX).",
+        "salesTaxRate": "Indiquez un taux entre 0,001 et 20 %.",
+        "ibanUs": "Pas d'IBAN aux États-Unis : indiquez vos coordonnées ACH dans le texte de fin des factures."
       },
       "countries": {
         "CH": "Suisse",
         "DE": "Allemagne",
         "FR": "France",
-        "GB": "Royaume-Uni"
+        "GB": "Royaume-Uni",
+        "US": "États-Unis"
       }
     },
     "contacts": {
@@ -287,7 +302,7 @@
         "role": "Rôle",
         "isCustomer": "Client",
         "isSupplier": "Fournisseur",
-        "uid": "Numéro IDE",
+        "uid": "Numéro IDE ou de TVA",
         "email": "E-mail",
         "phone": "Téléphone",
         "street": "Rue",
@@ -297,11 +312,13 @@
         "country": "Pays",
         "language": "Langue des documents",
         "paymentTermDays": "Délai de paiement (jours)",
-        "notes": "Notes internes"
+        "notes": "Notes internes",
+        "region": "État ou région"
       },
       "hints": {
         "street": "Adresse facultative, mais complète si commencée : la QR-facture l'exige structurée.",
-        "uid": "Facultatif. Format CHE-123.456.789."
+        "uid": "Facultatif. IDE CHE-123.456.789 ou numéro de TVA étranger (FR…, DE…, GB…), exigé pour l'autoliquidation.",
+        "region": "Aux États-Unis, code de l'État (TX, NY…)."
       },
       "kinds": {
         "company": "Entreprise",
@@ -319,16 +336,19 @@
         "DE": "Allemagne",
         "FR": "France",
         "IT": "Italie",
-        "AT": "Autriche"
+        "AT": "Autriche",
+        "GB": "Royaume-Uni",
+        "US": "États-Unis"
       },
       "errors": {
         "required": "Champ obligatoire.",
         "tooLong": "Texte trop long.",
         "email": "Adresse e-mail invalide.",
-        "postalCode": "NPA à 4 chiffres.",
-        "uid": "Numéro IDE invalide (format ou clé de contrôle).",
+        "postalCode": "Code postal invalide pour ce pays.",
+        "uid": "Numéro IDE ou de TVA invalide (format ou clé de contrôle).",
         "paymentTerm": "Entre 0 et 365 jours.",
-        "role": "Cochez client, fournisseur ou les deux."
+        "role": "Cochez client, fournisseur ou les deux.",
+        "usState": "Indiquez le code de l'État (deux lettres, par exemple TX)."
       },
       "planLimit": "La formule gratuite compte 50 contacts au plus. Passez à Pro pour en ajouter d'autres."
     },
@@ -506,7 +526,19 @@
         "8": "8 Autres frais généraux",
         "9": "9 Comptes de contrôle et clôture"
       },
-      "subtitleGb": "Plan de comptes britannique (nominal ledger), codes à quatre chiffres. Les comptes système sont utilisés par les écritures automatiques."
+      "subtitleGb": "Plan de comptes britannique (nominal ledger), codes à quatre chiffres. Les comptes système sont utilisés par les écritures automatiques.",
+      "classesUs": {
+        "1": "1 Actifs",
+        "2": "2 Dettes",
+        "3": "3 Capitaux propres",
+        "4": "4 Produits",
+        "5": "5 Coût des ventes",
+        "6": "6 Charges",
+        "7": "7 Autres produits et charges",
+        "8": "8 Impôts",
+        "9": "9 Clôture"
+      },
+      "subtitleUs": "Plan de comptes américain courant, codes à quatre chiffres. Les comptes système sont utilisés par les écritures automatiques."
     },
     "fiscalYears": {
       "title": "Exercices comptables",
@@ -626,7 +658,9 @@
         "unitPrice": "Prix unitaire HT",
         "vatCode": "TVA",
         "introText": "Texte d'introduction",
-        "footerText": "Texte de fin"
+        "footerText": "Texte de fin",
+        "vatCodeUs": "Taxe",
+        "unitPriceUs": "Prix unitaire hors taxe"
       },
       "hints": {
         "serviceDate": "Détermine le taux de TVA applicable.",
@@ -687,7 +721,10 @@
         "reverseChargeFr": "Autoliquidation : TVA due par le preneur (art. 283-2 du CGI).",
         "outsideEuFr": "TVA non applicable, art. 259-1 du CGI.",
         "latePaymentFr": "En cas de retard de paiement : pénalités au taux de trois fois l'intérêt légal et indemnité forfaitaire pour frais de recouvrement de 40 €. Pas d'escompte pour paiement anticipé.",
-        "outsideScopeGb": "Hors du champ de la TVA britannique : lieu de la prestation dans le pays du client."
+        "outsideScopeGb": "Hors du champ de la TVA britannique : lieu de la prestation dans le pays du client.",
+        "vatUs": "Taxe",
+        "vatLineUs": "Sales tax {rate} sur {base}",
+        "netUs": "Sous-total"
       },
       "docTitle": "Facture",
       "docDue": "Payable jusqu'au",
@@ -793,7 +830,17 @@
           "buyerVatId": "USt-IdNr. du client",
           "sellerTaxId": "USt-IdNr. ou Steuernummer"
         }
-      }
+      },
+      "netUs": "Sous-total",
+      "vatLineUs": "Sales tax {rate} sur {base}",
+      "vatCodesUs": {
+        "normal": "Taxable",
+        "reduced": "Taxable (réduit)",
+        "lodging": "Taxable (hébergement)",
+        "exempt": "Exonéré",
+        "export": "Non taxable (hors de l'État)"
+      },
+      "totalWithVatUs": "Total taxe comprise"
     },
     "quotes": {
       "title": "Devis",
@@ -1108,7 +1155,14 @@
         "7": "Case 7 · Achats totaux hors TVA",
         "8": "Case 8 · Livraisons de biens vers l'UE (Irlande du Nord)",
         "9": "Case 9 · Acquisitions de biens de l'UE (Irlande du Nord)"
-      }
+      },
+      "figuresUs": {
+        "S1": "Ventes brutes",
+        "S2": "Ventes non taxables (exonérées ou hors de l'État)",
+        "S3": "Ventes taxables",
+        "S4": "Sales tax perçue, à reverser"
+      },
+      "titleUs": "Relevé de sales tax"
     },
     "reminders": {
       "title": "Relances",

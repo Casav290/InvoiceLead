@@ -30,6 +30,8 @@ export async function buildDocumentPdf(
     .where(eq(organizations.id, invoice.organizationId));
   const poweredBy = org && LIMITS[tierOf(org)].poweredBy ? t("poweredBy") : undefined;
   const country = invoice.sender?.country;
+  // États-Unis : sales tax, pas de TVA, dans les libellés.
+  const us = country === "US";
   const germany = country === "DE";
   const exportLines = lines.some((l) => l.vatCode === "export");
   const toEu = EU_COUNTRIES.has(invoice.recipient?.country ?? "");
@@ -62,11 +64,11 @@ export async function buildDocumentPdf(
       description: t("description"),
       quantity: t("quantity"),
       unitPrice: t("unitPrice"),
-      vat: t("vat"),
+      vat: t(us ? "vatUs" : "vat"),
       amount: t("amount"),
-      net: t("net"),
+      net: t(us ? "netUs" : "net"),
       total: t("total"),
-      vatLine: (rate, base) => t("vatLine", { rate, base }),
+      vatLine: (rate, base) => t(us ? "vatLineUs" : "vatLine", { rate, base }),
       payTo: (iban) => t("payTo", { iban }),
       referenceLine: (reference) => t("referenceLine", { reference }),
       units,

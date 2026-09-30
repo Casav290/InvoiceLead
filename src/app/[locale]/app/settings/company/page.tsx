@@ -37,6 +37,8 @@ export default async function CompanySettingsPage({ params }: Params) {
     vatMethod: o.vatMethod ?? "",
     vatSettlement: o.vatSettlement ?? "",
     netTaxRate: o.netTaxRateBp ? String(o.netTaxRateBp / 100) : "",
+    region: o.region ?? "",
+    salesTaxRate: o.salesTaxRateBp ? String(o.salesTaxRateBp / 100) : "",
     iban: o.iban ? formatIban(o.iban) : "",
     qrIban: o.qrIban ? formatIban(o.qrIban) : "",
     fiscalYearStartMonth: String(o.fiscalYearStartMonth),

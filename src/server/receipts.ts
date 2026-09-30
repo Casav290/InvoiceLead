@@ -141,7 +141,7 @@ export async function readReceipt(
     .join("\n");
 
   const instructions = [
-    "You read supplier invoices and receipts (Switzerland, Germany, France or the UK) for bookkeeping.",
+    "You read supplier invoices and receipts (Switzerland, Germany, France, the UK or the US) for bookkeeping.",
     'Answer with JSON only: {"supplier":"...","date":"YYYY-MM-DD","total":"123.45","currency":"CHF","vat":"8.07","vat_code":"normal|reduced|lodging|exempt|null","invoice_number":"...","description":"...","account":"6510","confidence":0.9}',
     germany
       ? "total is the amount to pay including VAT. vat is the VAT amount shown (null if none). vat_code: German VAT rate applied (19 % normal, 7 % reduced)."

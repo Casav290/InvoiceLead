@@ -165,7 +165,11 @@
         "frVatId": "Intra-EU VAT number",
         "siret": "SIRET",
         "gbVat": "VAT registration number",
-        "companyNumber": "Companies House number"
+        "companyNumber": "Companies House number",
+        "ein": "EIN (Employer Identification Number)",
+        "region": "State",
+        "collectsSalesTax": "The business collects sales tax",
+        "salesTaxRate": "Combined sales tax rate (%)"
       },
       "hints": {
         "uid": "Format CHE-123.456.789, check digit verified.",
@@ -177,7 +181,10 @@
         "frVatId": "Format FR + 2 digits + SIREN, check key verified. Optional under the small business exemption (franchise en base).",
         "siret": "14 digits (or a 9-digit SIREN), check digit verified. Required on every invoice.",
         "gbVat": "Format GB + 9 digits, HMRC check digits verified.",
-        "companyNumber": "8 characters, for example 01234567 or SC123456. Optional for a sole trader."
+        "companyNumber": "8 characters, for example 01234567 or SC123456. Optional for a sole trader.",
+        "ein": "Format 12-3456789. Optional for a sole proprietor without employees.",
+        "region": "Two-letter state code (TX, NY, CA…).",
+        "salesTaxRate": "Total state, county and city rate, for example 8.875. Applied to the \"normal\" code on lines."
       },
       "legalForms": {
         "sole_proprietorship": "Sole proprietorship",
@@ -199,7 +206,10 @@
         "sole_trader": "Sole trader",
         "llp": "LLP",
         "ltd": "Private limited company (Ltd)",
-        "plc": "Public limited company (PLC)"
+        "plc": "Public limited company (PLC)",
+        "llc": "LLC",
+        "c_corp": "C corporation",
+        "s_corp": "S corporation"
       },
       "vatMethods": {
         "effective": "Effective method",
@@ -226,7 +236,7 @@
       "errors": {
         "required": "Required field.",
         "tooLong": "Text too long.",
-        "postalCode": "Invalid postcode (4 digits in Switzerland, 5 in Germany and France, UK format in the United Kingdom).",
+        "postalCode": "Invalid postcode (4 digits in Switzerland, 5 in Germany and France, UK format in the United Kingdom, ZIP in the United States).",
         "email": "Invalid email address.",
         "uid": "Invalid UID number (format or check digit).",
         "uidRequiredForVat": "The UID number is required for a VAT-registered company.",
@@ -243,13 +253,18 @@
         "siretRequired": "SIRET is required on French invoices.",
         "gbVat": "Invalid UK VAT number (GB and 9 digits, HMRC check digits).",
         "gbVatRequired": "The VAT number is required for a VAT-registered company.",
-        "companyNumber": "Invalid Companies House number (8 characters)."
+        "companyNumber": "Invalid Companies House number (8 characters).",
+        "ein": "Invalid EIN (9 digits, prefix assigned by the IRS).",
+        "usState": "Invalid state code (two letters, for example TX).",
+        "salesTaxRate": "Enter a rate between 0.001 and 20%.",
+        "ibanUs": "No IBAN in the United States: add your ACH details to the closing text of your invoices."
       },
       "countries": {
         "CH": "Switzerland",
         "DE": "Germany",
         "FR": "France",
-        "GB": "United Kingdom"
+        "GB": "United Kingdom",
+        "US": "United States"
       }
     },
     "contacts": {
@@ -287,7 +302,7 @@
         "role": "Role",
         "isCustomer": "Customer",
         "isSupplier": "Supplier",
-        "uid": "UID number",
+        "uid": "UID or VAT number",
         "email": "Email",
         "phone": "Phone",
         "street": "Street",
@@ -297,11 +312,13 @@
         "country": "Country",
         "language": "Document language",
         "paymentTermDays": "Payment term (days)",
-        "notes": "Internal notes"
+        "notes": "Internal notes",
+        "region": "State or region"
       },
       "hints": {
         "street": "The address is optional, but must be complete once started: the QR-bill requires it in structured form.",
-        "uid": "Optional. Format CHE-123.456.789."
+        "uid": "Optional. Swiss UID CHE-123.456.789 or a foreign VAT number (FR…, DE…, GB…), required for reverse charge.",
+        "region": "In the United States, the state code (TX, NY…)."
       },
       "kinds": {
         "company": "Company",
@@ -319,16 +336,19 @@
         "DE": "Germany",
         "FR": "France",
         "IT": "Italy",
-        "AT": "Austria"
+        "AT": "Austria",
+        "GB": "United Kingdom",
+        "US": "United States"
       },
       "errors": {
         "required": "Required field.",
         "tooLong": "Text too long.",
         "email": "Invalid email address.",
-        "postalCode": "4-digit postcode.",
-        "uid": "Invalid UID number (format or check digit).",
+        "postalCode": "Invalid postcode for this country.",
+        "uid": "Invalid UID or VAT number (format or check digit).",
         "paymentTerm": "Between 0 and 365 days.",
-        "role": "Tick customer, supplier or both."
+        "role": "Tick customer, supplier or both.",
+        "usState": "Enter the state code (two letters, for example TX)."
       },
       "planLimit": "The Free plan includes up to 50 contacts. Upgrade to Pro to add more."
     },
@@ -506,7 +526,19 @@
         "8": "8 Other overheads",
         "9": "9 Control and closing accounts"
       },
-      "subtitleGb": "UK nominal ledger, four-digit codes. System accounts are used by automatic entries."
+      "subtitleGb": "UK nominal ledger, four-digit codes. System accounts are used by automatic entries.",
+      "classesUs": {
+        "1": "1 Assets",
+        "2": "2 Liabilities",
+        "3": "3 Equity",
+        "4": "4 Income",
+        "5": "5 Cost of goods sold",
+        "6": "6 Expenses",
+        "7": "7 Other income and expenses",
+        "8": "8 Taxes",
+        "9": "9 Closing"
+      },
+      "subtitleUs": "Standard US chart of accounts, four-digit codes. System accounts are used by automatic entries."
     },
     "fiscalYears": {
       "title": "Fiscal years",
@@ -626,7 +658,9 @@
         "unitPrice": "Unit price excl. VAT",
         "vatCode": "VAT",
         "introText": "Introductory text",
-        "footerText": "Closing text"
+        "footerText": "Closing text",
+        "vatCodeUs": "Tax",
+        "unitPriceUs": "Unit price excl. tax"
       },
       "hints": {
         "serviceDate": "Determines the applicable VAT rate.",
@@ -687,7 +721,10 @@
         "reverseChargeFr": "Autoliquidation: reverse charge, VAT payable by the customer (art. 283-2 du CGI).",
         "outsideEuFr": "TVA non applicable, art. 259-1 du CGI (not subject to French VAT).",
         "latePaymentFr": "Late payment: penalties at three times the statutory interest rate and a fixed recovery fee of €40. No discount for early payment.",
-        "outsideScopeGb": "Outside the scope of UK VAT: place of supply in the customer's country."
+        "outsideScopeGb": "Outside the scope of UK VAT: place of supply in the customer's country.",
+        "vatUs": "Tax",
+        "vatLineUs": "Sales tax {rate} on {base}",
+        "netUs": "Subtotal"
       },
       "docTitle": "Invoice",
       "docDue": "Payable by",
@@ -793,7 +830,17 @@
           "buyerVatId": "customer's USt-IdNr.",
           "sellerTaxId": "USt-IdNr. or Steuernummer"
         }
-      }
+      },
+      "netUs": "Subtotal",
+      "vatLineUs": "Sales tax {rate} on {base}",
+      "vatCodesUs": {
+        "normal": "Taxable",
+        "reduced": "Taxable (reduced)",
+        "lodging": "Taxable (lodging)",
+        "exempt": "Exempt",
+        "export": "Not taxable (out of state)"
+      },
+      "totalWithVatUs": "Total incl. tax"
     },
     "quotes": {
       "title": "Quotes",
@@ -1108,7 +1155,14 @@
         "7": "Box 7 · Total purchases excluding VAT",
         "8": "Box 8 · Supplies of goods to the EU (Northern Ireland)",
         "9": "Box 9 · Acquisitions of goods from the EU (Northern Ireland)"
-      }
+      },
+      "figuresUs": {
+        "S1": "Gross sales",
+        "S2": "Non-taxable sales (exempt or out of state)",
+        "S3": "Taxable sales",
+        "S4": "Sales tax collected, to remit"
+      },
+      "titleUs": "Sales tax report"
     },
     "reminders": {
       "title": "Payment reminders",

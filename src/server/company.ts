@@ -8,6 +8,7 @@ import {
   isValidUkPostcode,
   normalizeGbVatNumber,
 } from "@/countries/gb/vat";
+import { formatEin, isUsState, isValidEin, isValidZip } from "@/countries/us/tax";
 import {
   isQrIban,
   isValidSepaIban,
@@ -40,6 +41,9 @@ export const LEGAL_FORMS = [
   "ltd",
   "llp",
   "plc",
+  "llc",
+  "c_corp",
+  "s_corp",
   "other",
 ] as const;
 export const VAT_METHODS = ["effective", "net_tax_rate"] as const;
@@ -63,6 +67,9 @@ export type CompanyInput = {
   vatMethod: (typeof VAT_METHODS)[number] | null;
   vatSettlement: (typeof VAT_SETTLEMENTS)[number] | null;
   netTaxRateBp: number | null;
+  /** États-Unis : État du siège et taux combiné de sales tax. */
+  region: string | null;
+  salesTaxRateBp: number | null;
   iban: string | null;
   qrIban: string | null;
   fiscalYearStartMonth: number;
@@ -85,6 +92,7 @@ export function parseCompanyForm(
   const germany = country === "DE";
   const france = country === "FR";
   const uk = country === "GB";
+  const us = country === "US";
   const eu = germany || france;
 
   const legalName = text(form, "legalName");
@@ -103,7 +111,9 @@ export function parseCompanyForm(
   const postalCode = text(form, "postalCode");
   const postalOk = uk
     ? isValidUkPostcode(postalCode)
-    : (eu ? /^\d{5}$/ : /^\d{4}$/).test(postalCode);
+    : us
+      ? isValidZip(postalCode)
+      : (eu ? /^\d{5}$/ : /^\d{4}$/).test(postalCode);
   if (!postalOk) errors.postalCode = "postalCode";
   const town = text(form, "town");
   if (!town) errors.town = "required";
@@ -114,7 +124,8 @@ export function parseCompanyForm(
   const phone = optional(text(form, "phone"));
   const website = optional(text(form, "website"));
 
-  const uidRaw = optional(text(form, "uid"));
+  // Les États-Unis n'ont pas de numéro de TVA.
+  const uidRaw = us ? null : optional(text(form, "uid"));
   // Suisse : IDE (CHE…) ; Allemagne : USt-IdNr. (DE…) ; France : TVA intracommunautaire (FR…).
   const uid = uidRaw
     ? germany
@@ -139,15 +150,20 @@ export function parseCompanyForm(
   // Allemagne : Steuernummer du Finanzamt (10 à 13 chiffres) ; USt-IdNr. ou Steuernummer exigé.
   // France : SIRET (ou SIREN), obligatoire sur toute facture.
   // Royaume-Uni : numéro Companies House, facultatif (entreprise individuelle).
-  const taxNumberRaw = eu || uk ? optional(text(form, "taxNumber")) : null;
+  // États-Unis : EIN de l'IRS, facultatif pour une entreprise individuelle sans salarié.
+  const taxNumberRaw = eu || uk || us ? optional(text(form, "taxNumber")) : null;
   const taxNumber = taxNumberRaw
     ? france
       ? normalizeSiret(taxNumberRaw)
       : uk
         ? taxNumberRaw.replace(/\s+/g, "").toUpperCase()
-        : taxNumberRaw.replace(/\s+/g, " ")
+        : us
+          ? formatEin(taxNumberRaw)
+          : taxNumberRaw.replace(/\s+/g, " ")
     : null;
-  if (uk) {
+  if (us) {
+    if (taxNumber && !isValidEin(taxNumber)) errors.taxNumber = "ein";
+  } else if (uk) {
     if (taxNumber && !isValidCompanyNumber(taxNumber)) errors.taxNumber = "companyNumber";
   } else if (france) {
     if (!taxNumber) errors.taxNumber = "siretRequired";
@@ -161,11 +177,11 @@ export function parseCompanyForm(
   const vatRegistered = form.get("vatRegistered") === "on";
   // L'Allemagne ne connaît que la méthode effective (Soll- ou Ist-Versteuerung).
   let vatMethod = (
-    eu || uk ? "effective" : optional(text(form, "vatMethod"))
+    eu || uk || us ? "effective" : optional(text(form, "vatMethod"))
   ) as CompanyInput["vatMethod"];
   let vatSettlement = optional(text(form, "vatSettlement")) as CompanyInput["vatSettlement"];
   if (vatRegistered) {
-    if (!uidRaw && !germany) errors.uid = uk ? "gbVatRequired" : "uidRequiredForVat";
+    if (!uidRaw && !germany && !us) errors.uid = uk ? "gbVatRequired" : "uidRequiredForVat";
     if (!vatMethod || !VAT_METHODS.includes(vatMethod)) errors.vatMethod = "required";
     if (!vatSettlement || !VAT_SETTLEMENTS.includes(vatSettlement))
       errors.vatSettlement = "required";
@@ -185,10 +201,27 @@ export function parseCompanyForm(
 
   const ibanRaw = optional(text(form, "iban"));
   const iban = ibanRaw ? normalizeIban(ibanRaw) : null;
-  if (iban && !(eu || uk ? isValidSepaIban(iban) : isValidSwissIban(iban))) errors.iban = "iban";
+  // États-Unis : pas d'IBAN ; les coordonnées ACH vont dans le texte de fin des factures.
+  if (us && iban) errors.iban = "ibanUs";
+  else if (iban && !(eu || uk ? isValidSepaIban(iban) : isValidSwissIban(iban)))
+    errors.iban = "iban";
   else if (iban && isQrIban(iban)) errors.iban = "ibanIsQr";
 
-  const qrIbanRaw = eu || uk ? null : optional(text(form, "qrIban"));
+  const qrIbanRaw = eu || uk || us ? null : optional(text(form, "qrIban"));
+
+  // Sales tax : taux combiné en pour cent (« 8.25 »), exigé si l'entreprise en perçoit.
+  const regionRaw = us ? text(form, "region").toUpperCase() : "";
+  const region = us ? regionRaw || null : null;
+  if (us && (!region || !isUsState(region))) errors.region = "usState";
+  let salesTaxRateBp: number | null = null;
+  if (us && vatRegistered) {
+    const raw = text(form, "salesTaxRate").replace(",", ".").replace("%", "").trim();
+    const n = Number(raw);
+    if (!raw || !/^\d{1,2}(\.\d{1,3})?$/.test(raw) || n <= 0 || n > 20)
+      errors.salesTaxRateBp = "salesTaxRate";
+    // Au dixième de point de base près : 8.875 % donne 887,5.
+    else salesTaxRateBp = Math.round(n * 1000) / 10;
+  }
   const qrIban = qrIbanRaw ? normalizeIban(qrIbanRaw) : null;
   if (qrIban && !isValidSwissIban(qrIban)) errors.qrIban = "iban";
   else if (qrIban && !isQrIban(qrIban)) errors.qrIban = "notQrIban";
@@ -222,6 +255,8 @@ export function parseCompanyForm(
       vatMethod,
       vatSettlement,
       netTaxRateBp,
+      region,
+      salesTaxRateBp,
       iban,
       qrIban,
       fiscalYearStartMonth,
@@ -275,7 +310,7 @@ export async function saveCompanySettings(
     data.street &&
     data.postalCode &&
     data.town &&
-    (data.iban || data.qrIban)
+    (data.iban || data.qrIban || data.country === "US")
   );
   await database.transaction(async (tx) => {
     const [before] = await tx

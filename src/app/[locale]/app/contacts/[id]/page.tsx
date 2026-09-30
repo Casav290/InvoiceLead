@@ -37,7 +37,8 @@ export default async function ContactPage({ params }: Props) {
     town: contact.town ?? "",
     country: contact.country,
     language: contact.language,
-    uid: contact.uid ? formatUid(contact.uid) : "",
+    uid: contact.uid ? (contact.uid.startsWith("CHE") ? formatUid(contact.uid) : contact.uid) : "",
+    region: contact.region ?? "",
     paymentTermDays: String(contact.paymentTermDays),
     notes: contact.notes ?? "",
   };

@@ -271,6 +271,7 @@ async function askAi(
   const germany = ctx.country === "DE";
   const france = ctx.country === "FR";
   const uk = ctx.country === "GB";
+  const usa = ctx.country === "US";
   const system = [
     germany
       ? "You are the bookkeeping assistant of a German small business using the DATEV SKR04 chart of accounts."
@@ -278,10 +279,12 @@ async function askAi(
         ? "You are the bookkeeping assistant of a French small business using the French PCG chart of accounts."
         : uk
           ? "You are the bookkeeping assistant of a UK small business using a standard UK nominal ledger."
-          : "You are the bookkeeping assistant of a Swiss SME using the Swiss KMU chart of accounts.",
+          : usa
+            ? "You are the bookkeeping assistant of a US small business using a standard US chart of accounts."
+            : "You are the bookkeeping assistant of a Swiss SME using the Swiss KMU chart of accounts.",
     "For each bank transaction, decide EITHER which open customer invoice it pays (incoming money only) OR which account of the chart it must be booked against (the bank side is booked automatically).",
     "Only use invoice numbers and account numbers from the lists given. Never use class 9 accounts.",
-    ctx.vatRegistered
+    ctx.vatRegistered && !usa
       ? `The company is VAT registered: set vat to the ${germany ? "German VAT code the amount includes (normal 19 %, reduced 7 %)" : france ? "French VAT code the amount includes (normal 20 %, lodging 10 %, reduced 5.5 %)" : uk ? "UK VAT code the amount includes (normal 20 %, reduced 5 %)" : "Swiss VAT code the amount includes (normal, reduced, lodging)"} or null when there is no VAT (bank fees, salaries, social insurance, insurance premiums, taxes, private withdrawals, transfers).`
       : "The company is not VAT registered: always set vat to null.",
     ctx.legalForm === "sole_proprietorship"
@@ -352,8 +355,9 @@ export async function bankPostings(
     .from(organizations)
     .where(eq(organizations.id, organizationId));
   const counter = -tx.amountCents;
+  // Sales tax américaine : payée sur un achat, elle n'est pas récupérable et reste dans la charge.
   const rate =
-    vatCode && org?.vatRegistered && org.vatMethod === "effective"
+    vatCode && org?.vatRegistered && org.vatMethod === "effective" && org.country !== "US"
       ? countryPack(org.country).vatRateBp(vatCode, tx.bookingDate)
       : 0;
   if (rate === 0) {

@@ -33,6 +33,7 @@ export function vatRateBp(code: VatCode, serviceDate: string): number {
 
 /** « 8.1 % » ou « 8,1 % » selon la langue. */
 export function formatRate(bp: number, locale: string): string {
-  const value = (bp / 100).toFixed(bp % 10 === 0 ? 1 : 2).replace(/\.0$/, "");
+  // Jusqu'à trois décimales (sales tax de 8,875 %), zéros finaux retirés : 8.1, 20, 8.875.
+  const value = (bp / 100).toFixed(3).replace(/\.?0+$/, "");
   return `${locale.startsWith("fr") ? value.replace(".", ",") : value} %`;
 }

@@ -1,12 +1,14 @@
 import { and, asc, eq, ilike, isNull, or, sql } from "drizzle-orm";
-import { isValidUid, normalizeUid } from "@/lib/swiss-ids";
+import { isValidUkPostcode } from "@/countries/gb/vat";
+import { isUsState, isValidZip } from "@/countries/us/tax";
+import { normalizeVatId } from "@/countries/vat-ids";
 import type { Db } from "./db";
 import { auditLog, type Contact, contacts } from "./db/schema";
 
 export const CONTACT_KINDS = ["company", "person"] as const;
 export const DOCUMENT_LANGUAGES = ["de", "fr", "it", "en"] as const;
 /** Pays proposés au départ ; les autres viendront avec les packs pays. */
-export const CONTACT_COUNTRIES = ["CH", "LI", "DE", "FR", "IT", "AT"] as const;
+export const CONTACT_COUNTRIES = ["CH", "LI", "DE", "FR", "IT", "AT", "GB", "US"] as const;
 
 export type ContactInput = {
   kind: (typeof CONTACT_KINDS)[number];
@@ -20,6 +22,7 @@ export type ContactInput = {
   buildingNumber: string | null;
   postalCode: string | null;
   town: string | null;
+  region?: string | null;
   country: (typeof CONTACT_COUNTRIES)[number];
   language: (typeof DOCUMENT_LANGUAGES)[number];
   uid: string | null;
@@ -57,6 +60,7 @@ export function parseContactForm(
   const buildingNumber = optional(text(form, "buildingNumber"));
   const postalCode = optional(text(form, "postalCode"));
   const town = optional(text(form, "town"));
+  const regionRaw = optional(text(form, "region"));
   const country = (text(form, "country") || "CH") as ContactInput["country"];
   if (!CONTACT_COUNTRIES.includes(country)) errors.country = "required";
   const anyAddress = street || buildingNumber || postalCode || town;
@@ -65,18 +69,25 @@ export function parseContactForm(
     if (!postalCode) errors.postalCode = "required";
     else if ((country === "CH" || country === "LI") && !/^\d{4}$/.test(postalCode))
       errors.postalCode = "postalCode";
+    else if (country === "US" && !isValidZip(postalCode)) errors.postalCode = "postalCode";
+    else if (country === "GB" && !isValidUkPostcode(postalCode)) errors.postalCode = "postalCode";
     if (!town) errors.town = "required";
   }
   if (street && street.length > 70) errors.street = "tooLong";
   if (town && town.length > 35) errors.town = "tooLong";
   if (buildingNumber && buildingNumber.length > 16) errors.buildingNumber = "tooLong";
+  // États-Unis : code d'État USPS (TX, NY…), exigé avec une adresse.
+  const region = country === "US" ? (regionRaw?.toUpperCase() ?? null) : regionRaw;
+  if (country === "US" && anyAddress && (!region || !isUsState(region))) errors.region = "usState";
+  if (region && region.length > 35) errors.region = "tooLong";
 
   const language = text(form, "language") as ContactInput["language"];
   if (!DOCUMENT_LANGUAGES.includes(language)) errors.language = "required";
 
   const uidRaw = optional(text(form, "uid"));
-  const uid = uidRaw ? normalizeUid(uidRaw) : null;
-  if (uidRaw && (!uid || !isValidUid(uid))) errors.uid = "uid";
+  // IDE suisse ou numéro de TVA d'un autre pays (autoliquidation).
+  const uid = uidRaw ? normalizeVatId(uidRaw) : null;
+  if (uidRaw && !uid) errors.uid = "uid";
 
   const paymentTermDays = Number(text(form, "paymentTermDays") || "30");
   if (!Number.isInteger(paymentTermDays) || paymentTermDays < 0 || paymentTermDays > 365) {
@@ -98,6 +109,7 @@ export function parseContactForm(
       buildingNumber,
       postalCode,
       town,
+      region,
       country,
       language,
       uid,

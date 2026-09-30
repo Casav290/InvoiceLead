@@ -11,8 +11,9 @@ const LEGAL_FORMS: Record<string, string[]> = {
   DE: ["sole_proprietorship", "ek", "gbr", "ug", "gmbh", "ag", "association", "other"],
   FR: ["ei", "micro", "eurl", "sarl", "sas", "sasu", "sa", "association", "other"],
   GB: ["sole_trader", "partnership", "llp", "ltd", "plc", "association", "other"],
+  US: ["sole_proprietorship", "partnership", "llc", "s_corp", "c_corp", "association", "other"],
 };
-const COUNTRIES = ["CH", "DE", "FR", "GB"];
+const COUNTRIES = ["CH", "DE", "FR", "GB", "US"];
 const VAT_METHODS = ["effective", "net_tax_rate"];
 const VAT_SETTLEMENTS = ["agreed", "received"];
 const MONTHS = Array.from({ length: 12 }, (_, i) => String(i + 1));
@@ -38,8 +39,15 @@ export function CompanyForm({
   // Le pays change les champs proposés : IDE ou USt-IdNr., QR-IBAN et TDFN seulement en Suisse.
   const [country, setCountry] = useState(values.country || "CH");
   const swiss = country === "CH";
+  const us = country === "US";
   const error = (name: string) =>
-    state.errors?.[(name === "netTaxRate" ? "netTaxRateBp" : name) as keyof typeof state.errors];
+    state.errors?.[
+      (name === "netTaxRate"
+        ? "netTaxRateBp"
+        : name === "salesTaxRate"
+          ? "salesTaxRateBp"
+          : name) as keyof typeof state.errors
+    ];
 
   const field = ({
     name,
@@ -192,21 +200,30 @@ export function CompanyForm({
             options: LEGAL_FORMS[country] ?? LEGAL_FORMS.CH ?? [],
             prefix: "legalForms",
           })}
-          {field({
-            name:
-              country === "DE"
-                ? "ustId"
-                : country === "FR"
-                  ? "frVatId"
-                  : country === "GB"
-                    ? "gbVat"
-                    : "uid",
-            formName: "uid",
-          })}
+          {us
+            ? null
+            : field({
+                name:
+                  country === "DE"
+                    ? "ustId"
+                    : country === "FR"
+                      ? "frVatId"
+                      : country === "GB"
+                        ? "gbVat"
+                        : "uid",
+                formName: "uid",
+              })}
           {swiss
             ? null
             : field({
-                name: country === "FR" ? "siret" : country === "GB" ? "companyNumber" : "taxNumber",
+                name:
+                  country === "FR"
+                    ? "siret"
+                    : country === "GB"
+                      ? "companyNumber"
+                      : us
+                        ? "ein"
+                        : "taxNumber",
                 formName: "taxNumber",
               })}
         </>,
@@ -219,6 +236,7 @@ export function CompanyForm({
           {field({ name: "buildingNumber" })}
           {field({ name: "postalCode", autoComplete: "postal-code" })}
           {field({ name: "town", autoComplete: "address-level2" })}
+          {us ? field({ name: "region", autoComplete: "address-level1" }) : null}
           {field({ name: "email", type: "email", autoComplete: "email" })}
           {field({ name: "phone", type: "tel", autoComplete: "tel" })}
           {field({ name: "website", type: "url", wide: true, autoComplete: "url" })}
@@ -236,21 +254,26 @@ export function CompanyForm({
               disabled={!editable}
               className="h-4 w-4 accent-accent"
             />
-            <span className="text-[14px] font-semibold">{t("fields.vatRegistered")}</span>
+            <span className="text-[14px] font-semibold">
+              {t(us ? "fields.collectsSalesTax" : "fields.vatRegistered")}
+            </span>
           </label>
           {swiss ? select({ name: "vatMethod", options: VAT_METHODS, prefix: "vatMethods" }) : null}
           {select({ name: "vatSettlement", options: VAT_SETTLEMENTS, prefix: "vatSettlements" })}
           {swiss ? field({ name: "netTaxRate" }) : null}
+          {us ? field({ name: "salesTaxRate" }) : null}
         </>,
       )}
 
-      {section(
-        t("sections.bank"),
-        <>
-          {field({ name: "iban" })}
-          {swiss ? field({ name: "qrIban" }) : null}
-        </>,
-      )}
+      {us
+        ? null
+        : section(
+            t("sections.bank"),
+            <>
+              {field({ name: "iban" })}
+              {swiss ? field({ name: "qrIban" }) : null}
+            </>,
+          )}
 
       {section(
         t("sections.fiscalYear"),

@@ -4,6 +4,7 @@ import { SwissQRBill } from "swissqrbill/pdf";
 import { countryPack } from "@/countries";
 import { formatReference } from "@/countries/ch/qr-reference";
 import { formatRate } from "@/countries/ch/vat";
+import { addressLines } from "@/lib/address";
 import { formatDate } from "@/lib/fiscal-year";
 import { computeTotals, formatQuantity } from "@/lib/invoice-math";
 import { formatAmount } from "@/lib/money";
@@ -43,19 +44,8 @@ const INK = "#1b1a19";
 const MUTED = "#67625c";
 const LINE = "#cfcac4";
 const LEFT = mm(20);
-const RIGHT = mm(210 - 20);
-const BOTTOM = mm(297 - 20);
-
-function addressLines(p: PartySnapshot): string[] {
-  const lines = [p.name];
-  if (p.contactPerson) lines.push(p.contactPerson);
-  if (p.street) lines.push(`${p.street} ${p.buildingNumber ?? ""}`.trim());
-  if (p.postalCode || p.town)
-    lines.push(
-      `${p.country !== "CH" ? `${p.country}-` : ""}${p.postalCode ?? ""} ${p.town ?? ""}`.trim(),
-    );
-  return lines;
-}
+/** Pages A4 (210 × 297 mm) ou US Letter (215,9 × 279,4 mm), marges de 20 mm. */
+const PAGE = { A4: { w: 210, h: 297 }, LETTER: { w: 215.9, h: 279.4 } };
 
 /** Données de la QR-facture, ou null si la facture ne peut pas en porter (montant nul, compte absent). */
 export function qrBillData(invoice: Invoice) {
@@ -148,9 +138,15 @@ export function renderInvoicePdf(
   einvoice?: { xml: string },
 ): Promise<Buffer> {
   const pdfa = !!einvoice;
+  const pack = countryPack(invoice.sender?.country);
+  const page = PAGE[pack.paper];
+  const RIGHT = mm(page.w - 20);
+  const BOTTOM = mm(page.h - 20);
+  const home = invoice.sender?.country ?? "CH";
+  const lines_ = (p: PartySnapshot) => addressLines(p, home, invoice.language);
   const doc = new PDFDocument({
     ...(pdfa ? { subset: "PDF/A-3b" as const, pdfVersion: "1.7" as const, tagged: true } : {}),
-    size: "A4",
+    size: pack.paper,
     margins: { top: mm(20), bottom: mm(20), left: LEFT, right: mm(20) },
     info: {
       Title: `${labels.invoice} ${invoice.number ?? ""}`,
@@ -193,7 +189,7 @@ export function renderInvoicePdf(
 
   // Expéditeur
   if (sender) {
-    const [name, ...rest] = addressLines(sender);
+    const [name, ...rest] = lines_(sender);
     doc
       .font(F.bold)
       .fontSize(11)
@@ -209,7 +205,7 @@ export function renderInvoicePdf(
 
   // Destinataire, dans la fenêtre à droite
   if (recipient) {
-    const [name, ...rest] = addressLines(recipient);
+    const [name, ...rest] = lines_(recipient);
     doc
       .font(F.bold)
       .fontSize(10)

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { Button } from "@/components/ui/button";
 import { countryPack } from "@/countries";
-import { formatRate, type VatCode, vatRateBp } from "@/countries/ch/vat";
+import { formatRate, type VatCode } from "@/countries/ch/vat";
 import { Link } from "@/i18n/navigation";
 import { formatAmount } from "@/lib/money";
 import { requireAppSession } from "@/server/auth/guard";
@@ -109,7 +109,14 @@ export default async function ProductsPage({ params, searchParams }: Props) {
                     {formatAmount(p.unitPriceCents, countryPack(organization.country).amounts)}
                   </td>
                   <td className="px-4 py-3 text-right text-ink-2">
-                    {formatRate(vatRateBp(p.vatCode as VatCode, today), locale)}
+                    {formatRate(
+                      countryPack(organization.country).vatRateBp(
+                        p.vatCode as VatCode,
+                        today,
+                        organization.salesTaxRateBp,
+                      ),
+                      locale,
+                    )}
                   </td>
                 </tr>
               ))}

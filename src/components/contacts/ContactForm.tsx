@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 
 const KINDS = ["company", "person"];
 const LANGUAGES = ["de", "fr", "it", "en"];
-const COUNTRIES = ["CH", "LI", "DE", "FR", "IT", "AT"];
+const COUNTRIES = ["CH", "LI", "DE", "FR", "IT", "AT", "GB", "US"];
 
 export function ContactForm({
   locale,
@@ -108,6 +108,7 @@ export function ContactForm({
         {text("buildingNumber")}
         {text("postalCode", { autoComplete: "postal-code" })}
         {text("town", { autoComplete: "address-level2" })}
+        {text("region", { autoComplete: "address-level1" })}
         <SelectField
           id="contact-country"
           name="country"

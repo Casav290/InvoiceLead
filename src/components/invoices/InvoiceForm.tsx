@@ -70,9 +70,12 @@ export function InvoiceForm({
   products,
   vatRegistered,
   country = "CH",
+  localRateBp = null,
 }: {
   locale: string;
   country?: string;
+  /** Taux de sales tax de l'entreprise (États-Unis). */
+  localRateBp?: number | null;
   kind?: "invoice" | "quote" | "credit_note";
   id?: string;
   initial: Record<string, string | string[]>;
@@ -104,6 +107,7 @@ export function InvoiceForm({
       products={products}
       vatRegistered={vatRegistered}
       country={country}
+      localRateBp={localRateBp}
       t={t}
     />
   );
@@ -124,6 +128,7 @@ function InvoiceFormBody({
   products,
   vatRegistered,
   country,
+  localRateBp,
   t,
 }: {
   locale: string;
@@ -140,9 +145,12 @@ function InvoiceFormBody({
   products: ProductOption[];
   vatRegistered: boolean;
   country: string;
+  localRateBp: number | null;
   t: ReturnType<typeof useTranslations>;
 }) {
   const pack = countryPack(country);
+  // États-Unis : sales tax, pas de TVA, dans les libellés.
+  const us = pack.tax === "salesTax";
   const v = (k: string) => {
     const x = values[k];
     return typeof x === "string" ? x : "";
@@ -180,7 +188,7 @@ function InvoiceFormBody({
   const rateOf = (code: string) => {
     if (!vatRegistered) return 0;
     try {
-      return pack.vatRateBp(code as VatCode, rateDate);
+      return pack.vatRateBp(code as VatCode, rateDate, localRateBp);
     } catch {
       return 0;
     }
@@ -422,7 +430,7 @@ function InvoiceFormBody({
                 </div>
                 <div className="sm:col-span-2">
                   <label htmlFor={`${base}-price`} className="mb-1 block text-[12px] font-semibold">
-                    {t("fields.unitPrice")}
+                    {t(us ? "fields.unitPriceUs" : "fields.unitPrice")}
                   </label>
                   <input
                     id={`${base}-price`}
@@ -438,7 +446,7 @@ function InvoiceFormBody({
                 {vatRegistered ? (
                   <div className="sm:col-span-2">
                     <label htmlFor={`${base}-vat`} className="mb-1 block text-[12px] font-semibold">
-                      {t("fields.vatCode")}
+                      {t(us ? "fields.vatCodeUs" : "fields.vatCode")}
                     </label>
                     <select
                       id={`${base}-vat`}
@@ -449,7 +457,8 @@ function InvoiceFormBody({
                     >
                       {VAT_CODES.map((c) => (
                         <option key={c} value={c}>
-                          {t(`vatCodes.${c}`)} ({formatRate(rateOf(c), locale)})
+                          {t(`${us ? "vatCodesUs" : "vatCodes"}.${c}`)} (
+                          {formatRate(rateOf(c), locale)})
                         </option>
                       ))}
                     </select>
@@ -488,7 +497,7 @@ function InvoiceFormBody({
           data-testid="invoice-totals"
         >
           <div className="flex justify-between gap-4">
-            <dt>{vatRegistered ? t("net") : t("total")}</dt>
+            <dt>{vatRegistered ? t(us ? "netUs" : "net") : t("total")}</dt>
             <dd className="tabular-nums">{formatAmount(totals.netCents, pack.amounts)}</dd>
           </div>
           {vatRegistered
@@ -497,7 +506,7 @@ function InvoiceFormBody({
                 .map((x) => (
                   <div key={x.rateBp} className="flex justify-between gap-4 text-ink-2">
                     <dt>
-                      {t("vatLine", {
+                      {t(us ? "vatLineUs" : "vatLine", {
                         rate: formatRate(x.rateBp, locale),
                         base: formatAmount(x.netCents, pack.amounts),
                       })}
@@ -508,7 +517,7 @@ function InvoiceFormBody({
             : null}
           {vatRegistered ? (
             <div className="mt-2 flex justify-between gap-4 border-t border-line pt-2 font-extrabold">
-              <dt>{t("totalWithVat")}</dt>
+              <dt>{t(us ? "totalWithVatUs" : "totalWithVat")}</dt>
               <dd className="tabular-nums">
                 {pack.currency} {formatAmount(totals.totalCents, pack.amounts)}
               </dd>

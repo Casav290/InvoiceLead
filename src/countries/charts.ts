@@ -9,13 +9,14 @@ import {
 import { CHART_ACCOUNTS_DE, TYPES_BY_CLASS_DE } from "./de/chart-of-accounts";
 import { CHART_ACCOUNTS_FR, TYPES_BY_CLASS_FR } from "./fr/chart-of-accounts";
 import { CHART_ACCOUNTS_GB, TYPES_BY_CLASS_GB } from "./gb/chart-of-accounts";
+import { CHART_ACCOUNTS_US, TYPES_BY_CLASS_US } from "./us/chart-of-accounts";
 
 /** Plan comptable d'un pays : modèles, classes, et règles qui dépendent des numéros de compte. */
 export type ChartPack = {
   templateAccounts: (template: ChartTemplate) => TemplateAccount[];
   typesByClass: Record<string, readonly AccountType[]>;
   /** Clé des libellés de classes (messages app.accounts.*). */
-  classLabels: "classes" | "classesDe" | "classesFr" | "classesGb";
+  classLabels: "classes" | "classesDe" | "classesFr" | "classesGb" | "classesUs";
   /** Numéro de compte admis (quatre chiffres en Suisse et en Allemagne, trois à huit en France). */
   numberPattern: RegExp;
   /** Produit qui compte dans le chiffre d'affaires du décompte TVA. */
@@ -77,6 +78,21 @@ const GB: ChartPack = {
   inputVatRole: () => "vat_input_material",
 };
 
+const US: ChartPack = {
+  templateAccounts: (template) =>
+    CHART_ACCOUNTS_US.filter((x) => !x.only || x.only === template).sort((x, y) =>
+      x.number.localeCompare(y.number),
+    ),
+  typesByClass: TYPES_BY_CLASS_US,
+  classLabels: "classesUs",
+  numberPattern: /^[1-9]\d{3}$/,
+  isTurnover: (a) => a.type === "revenue" && /^4/.test(a.number),
+  // Sans objet : la sales tax des achats n'est jamais séparée de la charge.
+  inputVatRole: () => "vat_input_material",
+};
+
+const PACKS: Record<string, ChartPack> = { CH, DE, FR, GB, US };
+
 export function chartPack(country: string | null | undefined): ChartPack {
-  return country === "DE" ? DE : country === "FR" ? FR : country === "GB" ? GB : CH;
+  return PACKS[country ?? "CH"] ?? CH;
 }

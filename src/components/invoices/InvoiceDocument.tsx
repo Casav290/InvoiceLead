@@ -1,28 +1,31 @@
 import { getTranslations } from "next-intl/server";
 import { countryPack } from "@/countries";
 import { formatRate } from "@/countries/ch/vat";
+import { addressLines } from "@/lib/address";
 import { formatDate } from "@/lib/fiscal-year";
 import { computeTotals, formatQuantity } from "@/lib/invoice-math";
 import { formatAmount } from "@/lib/money";
 import { taxNumberLabel } from "@/lib/swiss-ids";
 import type { Invoice, InvoiceLine, PartySnapshot } from "@/server/db/schema";
 
-function Address({ party }: { party: PartySnapshot }) {
+function Address({
+  party,
+  home,
+  language,
+}: {
+  party: PartySnapshot;
+  home: string;
+  language: string;
+}) {
+  const [name, ...rest] = addressLines(party, home, language);
   return (
     <address className="text-[13px] leading-relaxed not-italic">
-      <strong className="block">{party.name}</strong>
-      {party.contactPerson ? <span className="block">{party.contactPerson}</span> : null}
-      {party.street ? (
-        <span className="block">
-          {party.street} {party.buildingNumber ?? ""}
+      <strong className="block">{name}</strong>
+      {rest.map((line) => (
+        <span key={line} className="block">
+          {line}
         </span>
-      ) : null}
-      {party.postalCode || party.town ? (
-        <span className="block">
-          {party.country !== "CH" ? `${party.country}-` : ""}
-          {party.postalCode} {party.town}
-        </span>
-      ) : null}
+      ))}
     </address>
   );
 }
@@ -55,6 +58,8 @@ export async function InvoiceDocument({
   const sender = invoice.sender;
   const style = countryPack(sender?.country).amounts;
   const dateStyle = countryPack(sender?.country).dates;
+  // États-Unis : sales tax, pas de TVA, dans les libellés.
+  const us = sender?.country === "US";
   const recipient = invoice.recipient;
   const totals = computeTotals(lines);
   return (
@@ -66,7 +71,7 @@ export async function InvoiceDocument({
       <div className="grid gap-6 sm:grid-cols-2">
         {sender ? (
           <div>
-            <Address party={sender} />
+            <Address party={sender} home={sender.country} language={invoice.language} />
             {sender.vatNumber ? (
               <p className="mt-1 text-[12px] text-ink-2">{sender.vatNumber}</p>
             ) : null}
@@ -79,7 +84,7 @@ export async function InvoiceDocument({
         ) : null}
         {recipient ? (
           <div className="sm:pt-10">
-            <Address party={recipient} />
+            <Address party={recipient} home={sender?.country ?? "CH"} language={invoice.language} />
           </div>
         ) : null}
       </div>
@@ -112,7 +117,9 @@ export async function InvoiceDocument({
               <th className="py-2 pr-3 text-right">{t("quantity")}</th>
               <th className="hidden py-2 pr-3 text-right sm:table-cell">{t("unitPrice")}</th>
               {invoice.vatRegistered ? (
-                <th className="hidden py-2 pr-3 text-right sm:table-cell">{t("vat")}</th>
+                <th className="hidden py-2 pr-3 text-right sm:table-cell">
+                  {t(us ? "vatUs" : "vat")}
+                </th>
               ) : null}
               <th className="py-2 text-right">{t("amount")}</th>
             </tr>
@@ -144,7 +151,7 @@ export async function InvoiceDocument({
         {invoice.vatRegistered ? (
           <>
             <div className="flex justify-between gap-4">
-              <dt>{t("net")}</dt>
+              <dt>{t(us ? "netUs" : "net")}</dt>
               <dd className="tabular-nums">{formatAmount(invoice.netCents, style)}</dd>
             </div>
             {totals.vat
@@ -152,7 +159,7 @@ export async function InvoiceDocument({
               .map((v) => (
                 <div key={v.rateBp} className="flex justify-between gap-4 text-ink-2">
                   <dt>
-                    {t("vatLine", {
+                    {t(us ? "vatLineUs" : "vatLine", {
                       rate: formatRate(v.rateBp, lang),
                       base: formatAmount(v.netCents, style),
                     })}

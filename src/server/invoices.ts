@@ -155,10 +155,15 @@ function addDays(iso: string, days: number) {
   return d.toISOString().slice(0, 10);
 }
 
-function priced(data: InvoiceInput, vatRegistered: boolean, country: string) {
+function priced(
+  data: InvoiceInput,
+  vatRegistered: boolean,
+  country: string,
+  localRateBp: number | null = null,
+) {
   const { vatRateBp } = countryPack(country);
   const rates = data.lines.map((l) =>
-    vatRegistered && l.vatCode ? vatRateBp(l.vatCode, data.serviceDate) : 0,
+    vatRegistered && l.vatCode ? vatRateBp(l.vatCode, data.serviceDate, localRateBp) : 0,
   );
   const totals = computeTotals(
     data.lines.map((l, i) => ({
@@ -187,7 +192,11 @@ async function customerOf(database: Db, organizationId: string, contactId: strin
 
 async function taxProfileOf(database: Db, organizationId: string) {
   const [row] = await database
-    .select({ vatRegistered: organizations.vatRegistered, country: organizations.country })
+    .select({
+      vatRegistered: organizations.vatRegistered,
+      country: organizations.country,
+      salesTaxRateBp: organizations.salesTaxRateBp,
+    })
     .from(organizations)
     .where(eq(organizations.id, organizationId));
   const pack = countryPack(row?.country);
@@ -195,6 +204,7 @@ async function taxProfileOf(database: Db, organizationId: string) {
     vatRegistered: row?.vatRegistered ?? false,
     country: pack.code,
     currency: pack.currency,
+    localRateBp: row?.salesTaxRateBp ?? null,
   };
 }
 
@@ -226,8 +236,11 @@ async function writeInvoice(
   }
   const contact = await customerOf(database, who.organizationId, data.contactId);
   if (!contact) return "contact";
-  const { vatRegistered, country, currency } = await taxProfileOf(database, who.organizationId);
-  const { rates, totals } = priced(data, vatRegistered, country);
+  const { vatRegistered, country, currency, localRateBp } = await taxProfileOf(
+    database,
+    who.organizationId,
+  );
+  const { rates, totals } = priced(data, vatRegistered, country, localRateBp);
   const values = {
     contactId: contact.id,
     language: data.language,
@@ -504,6 +517,7 @@ export async function issueInvoice(database: Db, who: Who, id: string): Promise<
       buildingNumber: c.buildingNumber,
       postalCode: c.postalCode,
       town: c.town,
+      region: c.region,
       country: c.country,
       uid: c.uid,
       email: c.email,
@@ -514,6 +528,7 @@ export async function issueInvoice(database: Db, who: Who, id: string): Promise<
       buildingNumber: org.buildingNumber,
       postalCode: org.postalCode,
       town: org.town,
+      region: org.region,
       country: org.country,
       uid: org.uid,
       email: org.email,
@@ -522,7 +537,7 @@ export async function issueInvoice(database: Db, who: Who, id: string): Promise<
       qrIban: org.qrIban,
       vatNumber:
         org.vatRegistered && org.uid ? vatNumberLabel(org.uid, row.invoice.language) : null,
-      taxNumber: ["DE", "FR", "GB"].includes(org.country) ? org.taxNumber : null,
+      taxNumber: ["DE", "FR", "GB", "US"].includes(org.country) ? org.taxNumber : null,
     };
     const number = formatInvoiceNumber(year, seq.value, kind);
     const [issued] = await tx

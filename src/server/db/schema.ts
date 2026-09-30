@@ -6,6 +6,7 @@ import {
   check,
   customType,
   date,
+  doublePrecision,
   index,
   integer,
   jsonb,
@@ -63,6 +64,8 @@ export const organizations = pgTable("organizations", {
   buildingNumber: text("building_number"),
   postalCode: text("postal_code"),
   town: text("town"),
+  /** État, province ou région (codes USPS aux États-Unis). */
+  region: text("region"),
   email: text("email"),
   phone: text("phone"),
   website: text("website"),
@@ -76,6 +79,8 @@ export const organizations = pgTable("organizations", {
   qrIban: text("qr_iban"),
   /** Taux de la dette fiscale nette accordé par l'AFC (méthode TDFN), en points de base : 620 = 6,2 %. */
   netTaxRateBp: integer("net_tax_rate_bp"),
+  /** États-Unis : taux combiné de sales tax (État, comté, ville), en points de base. */
+  salesTaxRateBp: doublePrecision("sales_tax_rate_bp"),
   fiscalYearStartMonth: integer("fiscal_year_start_month").notNull().default(1),
   settingsCompletedAt: timestamp("settings_completed_at", { withTimezone: true }),
   createdAt: createdAt(),
@@ -165,6 +170,8 @@ export const contacts = pgTable(
     buildingNumber: text("building_number"),
     postalCode: text("postal_code"),
     town: text("town"),
+    /** État ou région (codes USPS aux États-Unis). */
+    region: text("region"),
     country: text("country").notNull().default("CH"),
     language: text("language").notNull().default("de"), // langue des documents : de | fr | it | en
     uid: text("uid"),
@@ -290,6 +297,8 @@ export type PartySnapshot = {
   buildingNumber: string | null;
   postalCode: string | null;
   town: string | null;
+  /** État ou région (États-Unis). */
+  region?: string | null;
   country: string;
   uid?: string | null;
   email?: string | null;
@@ -385,7 +394,8 @@ export const invoiceLines = pgTable(
     unit: text("unit").notNull(),
     unitPriceCents: bigint("unit_price_cents", { mode: "number" }).notNull(),
     vatCode: text("vat_code"), // null si l'entreprise n'est pas assujettie
-    vatRateBp: integer("vat_rate_bp").notNull().default(0),
+    /** Taux en points de base ; un demi-point est possible (sales tax de 8,875 %). */
+    vatRateBp: doublePrecision("vat_rate_bp").notNull().default(0),
     netCents: bigint("net_cents", { mode: "number" }).notNull(),
   },
   (t) => [uniqueIndex("invoice_lines_position_idx").on(t.invoiceId, t.position)],
@@ -472,7 +482,7 @@ export const journalLines = pgTable(
       .references(() => accounts.id, { onDelete: "restrict" }),
     debitCents: bigint("debit_cents", { mode: "number" }).notNull().default(0),
     creditCents: bigint("credit_cents", { mode: "number" }).notNull().default(0),
-    vatRateBp: integer("vat_rate_bp"),
+    vatRateBp: doublePrecision("vat_rate_bp"),
     /** Sur une ligne de TVA : le chiffre d'affaires (hors TVA) auquel elle s'applique. */
     vatBaseCents: bigint("vat_base_cents", { mode: "number" }),
   },

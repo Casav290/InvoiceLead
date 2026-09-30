@@ -4,6 +4,7 @@ import { chartPack } from "@/countries/charts";
 import { ustvaFigures } from "@/countries/de/vat-return";
 import { ca3Figures } from "@/countries/fr/vat-return";
 import { mtdFigures } from "@/countries/gb/vat-return";
+import { salesTaxFigures } from "@/countries/us/sales-tax-report";
 import { roundHalfAwayFromZero, vatOf } from "@/lib/money";
 import { aiLanguageName, chatJson } from "./ai";
 import type { Db } from "./db";
@@ -61,7 +62,8 @@ export async function draftVatReturn(
   const germany = org?.country === "DE";
   const france = org?.country === "FR";
   const uk = org?.country === "GB";
-  const swiss = !germany && !france && !uk;
+  const usa = org?.country === "US";
+  const swiss = !germany && !france && !uk && !usa;
   const chart = chartPack(org?.country);
   // La TDFN n'existe qu'en Suisse.
   const method = swiss && org?.vatMethod === "net_tax_rate" ? "net_tax_rate" : "effective";
@@ -217,6 +219,14 @@ export async function draftVatReturn(
     };
     if (input400 + input405 !== 0)
       anomalies.push({ code: "inputUnderNetTaxRate", severity: "warn" });
+  } else if (usa) {
+    rates = [...byRate.entries()].map(([rateBp, v]) => ({
+      rateBp,
+      figure: "S3",
+      baseCents: v.base,
+      taxCents: v.tax,
+    }));
+    figures = salesTaxFigures({ byRate, exports: f220, exempt: f230, inputVat: 0 });
   } else if (uk) {
     rates = [...byRate.entries()]
       .sort(([a], [b]) => b - a)
@@ -448,6 +458,9 @@ export async function aiReview(
     : [];
 }
 
+/** Impôt préalable total d'un décompte, quel que soit le pays. */
+const inputOf = (f: VatFigures) => f["479"];
+
 export type ValidateVatResult = "validated" | "blocked" | "noFiscalYear" | "noChart";
 
 /**
@@ -463,13 +476,9 @@ export async function validateVatReturn(
   const draft = await draftVatReturn(database, who.organizationId, start, end);
   if (draft.anomalies.some((a) => a.severity === "block")) return "blocked";
   const roles = await roleAccounts(database, who.organizationId);
-  if (
-    !roles.vat_output ||
-    !roles.vat_settlement ||
-    !roles.vat_input_material ||
-    !roles.sales_deductions
-  )
-    return "noChart";
+  if (!roles.vat_output || !roles.vat_settlement || !roles.sales_deductions) return "noChart";
+  // Plans sans compte d'impôt préalable (sales tax américaine) : rien à virer de ce côté.
+  if (!roles.vat_input_material && (inputOf(draft.figures) ?? 0) !== 0) return "noChart";
   const f = draft.figures;
   // Le plan allemand n'a qu'un compte de Vorsteuer : pas de chiffre 405 à virer.
   if (!roles.vat_input_invest && (f["405"] ?? 0) !== 0) return "noChart";
