@@ -57,6 +57,13 @@
       "when": 1790754516338,
       "tag": "0007_payment_reference",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1790754925586,
+      "tag": "0008_quotes",
+      "breakpoints": true
     }
   ]
 }

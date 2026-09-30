@@ -62,6 +62,7 @@ function rowsFrom(values: Record<string, string | string[]>): Row[] {
 
 export function InvoiceForm({
   locale,
+  kind = "invoice",
   id,
   initial,
   contacts,
@@ -69,6 +70,7 @@ export function InvoiceForm({
   vatRegistered,
 }: {
   locale: string;
+  kind?: "invoice" | "quote";
   id?: string;
   initial: Record<string, string | string[]>;
   contacts: ContactOption[];
@@ -76,6 +78,7 @@ export function InvoiceForm({
   vatRegistered: boolean;
 }) {
   const t = useTranslations("app.invoices");
+  const tk = useTranslations(kind === "quote" ? "app.quotes" : "app.invoices");
   const [state, action, pending] = useActionState<InvoiceFormState, FormData>(saveInvoice, {
     status: "idle",
     round: 0,
@@ -85,6 +88,9 @@ export function InvoiceForm({
     <InvoiceFormBody
       key={state.round}
       locale={locale}
+      kind={kind}
+      dueLabel={tk("dueLabel")}
+      dueHint={tk("dueHint")}
       id={id}
       values={values}
       errors={state.errors ?? {}}
@@ -101,6 +107,9 @@ export function InvoiceForm({
 
 function InvoiceFormBody({
   locale,
+  kind,
+  dueLabel,
+  dueHint,
   id,
   values,
   errors,
@@ -113,6 +122,9 @@ function InvoiceFormBody({
   t,
 }: {
   locale: string;
+  kind: "invoice" | "quote";
+  dueLabel: string;
+  dueHint: string;
   id?: string;
   values: Record<string, string | string[]>;
   errors: Record<string, string>;
@@ -185,6 +197,7 @@ function InvoiceFormBody({
   return (
     <form action={action} className="mt-8 space-y-6" data-testid="invoice-form">
       <input type="hidden" name="locale" value={locale} />
+      <input type="hidden" name="kind" value={kind} />
       {id ? <input type="hidden" name="id" value={id} /> : null}
       {status === "invalid" ? (
         <p
@@ -284,8 +297,8 @@ function InvoiceFormBody({
           id="invoice-due"
           name="dueDate"
           type="date"
-          label={t("fields.dueDate")}
-          hint={t("hints.dueDate")}
+          label={dueLabel}
+          hint={dueHint}
           defaultValue={v("dueDate")}
           error={err("dueDate")}
         />

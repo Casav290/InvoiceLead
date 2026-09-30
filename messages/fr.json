@@ -76,7 +76,8 @@
       "settings": "Réglages",
       "contacts": "Contacts",
       "products": "Articles",
-      "invoices": "Factures"
+      "invoices": "Factures",
+      "quotes": "Devis"
     },
     "switcher": {
       "open": "Changer d'application",
@@ -448,7 +449,10 @@
       "issuedTitle": "Facture {number}",
       "status": {
         "draft": "Brouillon",
-        "issued": "Émise"
+        "issued": "Émise",
+        "accepted": "Accepté",
+        "declined": "Refusé",
+        "invoiced": "Facturé"
       },
       "saved": "Brouillon enregistré.",
       "issued": "Facture émise. Son numéro est définitif et elle ne peut plus être modifiée.",
@@ -469,7 +473,9 @@
         "companyIncomplete": "Les données de l'entreprise (adresse et IBAN) doivent être complètes avant d'émettre une facture.",
         "vatChanged": "L'assujettissement à la TVA a changé depuis l'enregistrement. Enregistrez à nouveau le brouillon.",
         "notDraft": "Cette facture est déjà émise.",
-        "notFound": "Facture introuvable."
+        "notFound": "Facture introuvable.",
+        "notConvertible": "Ce devis ne peut plus être transformé en facture.",
+        "contact": "Le client de ce devis a été archivé."
       },
       "addLine": "Ajouter une ligne",
       "removeLine": "Retirer",
@@ -482,7 +488,8 @@
         "number": "N°",
         "customer": "Client",
         "date": "Date",
-        "total": "Total (CHF)"
+        "total": "Total (CHF)",
+        "status": "Statut"
       },
       "sections": {
         "customer": "Client",
@@ -556,7 +563,43 @@
         "payTo": "À verser sur le compte {iban}.",
         "referenceLine": "Référence : {reference}"
       },
+      "docTitle": "Facture",
+      "docDue": "Payable jusqu'au",
+      "dueLabel": "Échéance",
+      "dueHint": "Vide : selon le délai de paiement du client.",
+      "converted": "Brouillon de facture créé à partir du devis. Vérifiez-le puis émettez-le.",
+      "fromQuote": "Voir le devis d'origine",
       "download": "Télécharger le PDF"
+    },
+    "quotes": {
+      "title": "Devis",
+      "new": "Nouveau devis",
+      "edit": "Devis",
+      "back": "Tous les devis",
+      "draftTitle": "Brouillon de devis",
+      "issuedTitle": "Devis {number}",
+      "status": {
+        "draft": "Brouillon",
+        "issued": "Envoyé",
+        "accepted": "Accepté",
+        "declined": "Refusé",
+        "invoiced": "Facturé"
+      },
+      "saved": "Brouillon enregistré.",
+      "issued": "Devis émis avec son numéro définitif.",
+      "deleted": "Brouillon supprimé.",
+      "empty": "Aucun devis pour l'instant.",
+      "issue": "Émettre le devis",
+      "issueHint": "L'émission attribue le numéro suivant et fige le devis. Enregistrez d'abord vos dernières modifications.",
+      "deleteDraft": "Supprimer ce brouillon",
+      "accept": "Marquer comme accepté",
+      "decline": "Marquer comme refusé",
+      "convert": "Transformer en facture",
+      "converted": "Brouillon de facture créé.",
+      "docTitle": "Devis",
+      "docDue": "Valable jusqu'au",
+      "dueLabel": "Valable jusqu'au",
+      "dueHint": "Vide : 30 jours après la date du devis."
     }
   },
   "footer": {

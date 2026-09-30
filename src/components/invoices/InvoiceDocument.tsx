@@ -38,6 +38,10 @@ export async function InvoiceDocument({
 }) {
   const lang = invoice.language;
   const t = await getTranslations({ locale: lang, namespace: "app.invoices.document" });
+  const tk = await getTranslations({
+    locale: lang,
+    namespace: invoice.kind === "quote" ? "app.quotes" : "app.invoices",
+  });
   const tu = await getTranslations({ locale: lang, namespace: "app.invoices.units" });
   const sender = invoice.sender;
   const recipient = invoice.recipient;
@@ -64,14 +68,14 @@ export async function InvoiceDocument({
         ) : null}
       </div>
       <h2 className="mt-10 text-[22px] leading-tight">
-        {invoice.title || t("invoice")} {invoice.number}
+        {invoice.title || tk("docTitle")} {invoice.number}
       </h2>
       <dl className="mt-3 grid grid-cols-[auto_1fr] gap-x-4 text-[13px] text-ink-2">
         <dt>{t("issueDate")}</dt>
         <dd className="tabular-nums">{formatDate(invoice.issueDate)}</dd>
         <dt>{t("serviceDate")}</dt>
         <dd className="tabular-nums">{formatDate(invoice.serviceDate)}</dd>
-        <dt>{t("dueDate")}</dt>
+        <dt>{tk("docDue")}</dt>
         <dd className="tabular-nums">{formatDate(invoice.dueDate)}</dd>
       </dl>
       {invoice.introText ? (
@@ -145,7 +149,7 @@ export async function InvoiceDocument({
       {invoice.footerText ? (
         <p className="mt-8 text-[13px] whitespace-pre-line text-ink-2">{invoice.footerText}</p>
       ) : null}
-      {sender?.iban || sender?.qrIban ? (
+      {invoice.kind === "invoice" && (sender?.iban || sender?.qrIban) ? (
         <p className="mt-8 text-[12px] text-ink-muted">
           {t("payTo", { iban: sender.qrIban ?? sender.iban ?? "" })}
         </p>

@@ -48,6 +48,7 @@ function addressLines(p: PartySnapshot): string[] {
 
 /** Données de la QR-facture, ou null si la facture ne peut pas en porter (montant nul, compte absent). */
 export function qrBillData(invoice: Invoice) {
+  if (invoice.kind !== "invoice") return null;
   const s = invoice.sender;
   const account = s?.qrIban ?? s?.iban;
   if (!s || !account || !s.street || !s.postalCode || !s.town || invoice.totalCents <= 0)
@@ -262,7 +263,7 @@ export function renderInvoicePdf(
     doc.moveDown(1.5).text(invoice.footerText, LEFT, doc.y, { width: RIGHT - LEFT });
   }
   const account = sender?.qrIban ?? sender?.iban;
-  if (account) {
+  if (account && invoice.kind === "invoice") {
     doc
       .moveDown(1)
       .fillColor(MUTED)

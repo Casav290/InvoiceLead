@@ -9,25 +9,31 @@ export const runtime = "nodejs";
 
 /** PDF d'une facture émise de l'organisation de la session, avec sa QR-facture. */
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ locale: string; id: string }> },
 ) {
   const { locale, id } = await params;
   const { organization } = await requireAppSession(locale);
   const found = await getInvoice(db(), organization.id, id);
-  if (found?.invoice.status !== "issued") notFound();
+  // La même route sert les devis (/quotes/…/pdf) : le type demandé doit correspondre à la pièce.
+  const kind = new URL(request.url).pathname.includes("/app/quotes/") ? "quote" : "invoice";
+  if (!found || found.invoice.kind !== kind || found.invoice.status === "draft") notFound();
   const { invoice, lines } = found;
   const lang = invoice.language;
   const t = await getTranslations({ locale: lang, namespace: "app.invoices.document" });
+  const tk = await getTranslations({
+    locale: lang,
+    namespace: kind === "quote" ? "app.quotes" : "app.invoices",
+  });
   const tu = await getTranslations({ locale: lang, namespace: "app.invoices.units" });
   const units = Object.fromEntries(
     ["hour", "day", "piece", "flat", "km", "month"].map((u) => [u, tu(u)]),
   );
   const pdf = await renderInvoicePdf(invoice, lines, {
-    invoice: t("invoice"),
+    invoice: tk("docTitle"),
     issueDate: t("issueDate"),
     serviceDate: t("serviceDate"),
-    dueDate: t("dueDate"),
+    dueDate: tk("docDue"),
     description: t("description"),
     quantity: t("quantity"),
     unitPrice: t("unitPrice"),
@@ -40,7 +46,7 @@ export async function GET(
     referenceLine: (reference) => t("referenceLine", { reference }),
     units,
   });
-  const filename = `${t("invoice")}-${invoice.number}.pdf`;
+  const filename = `${tk("docTitle")}-${invoice.number}.pdf`;
   return new Response(new Uint8Array(pdf), {
     headers: {
       "Content-Type": "application/pdf",

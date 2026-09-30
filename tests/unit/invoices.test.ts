@@ -5,12 +5,14 @@ import { attachLeadIdentity } from "@/server/auth/attach";
 import { createContact, parseContactForm } from "@/server/contacts";
 import { organizations } from "@/server/db/schema";
 import {
+  convertQuoteToInvoice,
   createInvoice,
   deleteDraft,
   getInvoice,
   issueInvoice,
   listInvoices,
   parseInvoiceForm,
+  setQuoteOutcome,
   updateInvoice,
 } from "@/server/invoices";
 import { claims } from "../support/claims";
@@ -217,5 +219,46 @@ describe("factures", () => {
       .where(eq(organizations.id, who.organizationId));
     expect(await issueInvoice(db, who, draft.id)).toBe("companyIncomplete");
     expect(await deleteDraft(db, who, draft.id)).toBe(true);
+  });
+});
+
+describe("devis", () => {
+  it("ont leur propre numérotation, puis deviennent une facture une seule fois", async () => {
+    const { a, who, contact } = await setup();
+    const r = parseInvoiceForm(
+      form({ contactId: contact.id, language: "de", issueDate: "2026-03-01", ...lines }),
+      { vatRegistered: true },
+    );
+    if (!r.ok) throw new Error(JSON.stringify(r.errors));
+    const quote = await createInvoice(db, who, r.data, "quote");
+    if (typeof quote !== "object" || !quote) throw new Error("devis");
+    expect(quote).toMatchObject({ kind: "quote", dueDate: "2026-03-31" });
+    expect(await convertQuoteToInvoice(db, who, quote.id, "2026-03-05")).toBe("notConvertible");
+    // Une facture ne se modifie pas par le chemin des devis, ni l'inverse.
+    expect(await updateInvoice(db, who, quote.id, r.data, "invoice")).toBe("notDraft");
+
+    const issued = await issueInvoice(db, who, quote.id);
+    expect(issued).toMatchObject({ number: "O-2026-0001", paymentReference: null });
+    expect(await setQuoteOutcome(db, who, quote.id, "declined")).toBe(true);
+    expect(await convertQuoteToInvoice(db, who, quote.id, "2026-03-05")).toBe("notConvertible");
+    expect(await setQuoteOutcome(db, who, quote.id, "accepted")).toBe(true);
+
+    const invoice = await convertQuoteToInvoice(db, who, quote.id, "2026-03-05");
+    if (typeof invoice !== "object") throw new Error(invoice);
+    expect(invoice).toMatchObject({
+      kind: "invoice",
+      status: "draft",
+      sourceQuoteId: quote.id,
+      issueDate: "2026-03-05",
+      netCents: 41_500,
+      totalCents: 41_500 + 3362,
+    });
+    expect((await getInvoice(db, a.organization.id, quote.id))?.invoice.status).toBe("invoiced");
+    expect(await convertQuoteToInvoice(db, who, quote.id, "2026-03-06")).toBe("notConvertible");
+    expect(await setQuoteOutcome(db, who, quote.id, "declined")).toBe(false);
+
+    expect(await issueInvoice(db, who, invoice.id)).toMatchObject({ number: "2026-0001" });
+    expect(await listInvoices(db, a.organization.id, "quote")).toHaveLength(1);
+    expect(await listInvoices(db, a.organization.id, "invoice")).toHaveLength(1);
   });
 });

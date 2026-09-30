@@ -76,7 +76,8 @@
       "settings": "Einstellungen",
       "contacts": "Kontakte",
       "products": "Artikel",
-      "invoices": "Rechnungen"
+      "invoices": "Rechnungen",
+      "quotes": "Offerten"
     },
     "switcher": {
       "open": "Anwendung wechseln",
@@ -448,7 +449,10 @@
       "issuedTitle": "Rechnung {number}",
       "status": {
         "draft": "Entwurf",
-        "issued": "Ausgestellt"
+        "issued": "Ausgestellt",
+        "accepted": "Angenommen",
+        "declined": "Abgelehnt",
+        "invoiced": "Verrechnet"
       },
       "saved": "Entwurf gespeichert.",
       "issued": "Rechnung ausgestellt. Die Nummer ist definitiv, die Rechnung kann nicht mehr geändert werden.",
@@ -469,7 +473,9 @@
         "companyIncomplete": "Die Unternehmensdaten (Adresse und IBAN) müssen vollständig sein, bevor Sie eine Rechnung ausstellen.",
         "vatChanged": "Die MWST-Pflicht hat sich seit dem Speichern geändert. Speichern Sie den Entwurf erneut.",
         "notDraft": "Diese Rechnung ist bereits ausgestellt.",
-        "notFound": "Rechnung nicht gefunden."
+        "notFound": "Rechnung nicht gefunden.",
+        "notConvertible": "Diese Offerte kann nicht mehr in eine Rechnung umgewandelt werden.",
+        "contact": "Der Kunde dieser Offerte wurde archiviert."
       },
       "addLine": "Position hinzufügen",
       "removeLine": "Entfernen",
@@ -482,7 +488,8 @@
         "number": "Nr.",
         "customer": "Kunde",
         "date": "Datum",
-        "total": "Total (CHF)"
+        "total": "Total (CHF)",
+        "status": "Status"
       },
       "sections": {
         "customer": "Kunde",
@@ -556,7 +563,43 @@
         "payTo": "Zahlbar auf das Konto {iban}.",
         "referenceLine": "Referenz: {reference}"
       },
+      "docTitle": "Rechnung",
+      "docDue": "Zahlbar bis",
+      "dueLabel": "Fällig am",
+      "dueHint": "Leer: gemäss Zahlungsfrist des Kunden.",
+      "converted": "Rechnungsentwurf aus der Offerte erstellt. Prüfen Sie ihn und stellen Sie ihn aus.",
+      "fromQuote": "Ursprüngliche Offerte anzeigen",
       "download": "PDF herunterladen"
+    },
+    "quotes": {
+      "title": "Offerten",
+      "new": "Neue Offerte",
+      "edit": "Offerte",
+      "back": "Alle Offerten",
+      "draftTitle": "Offertentwurf",
+      "issuedTitle": "Offerte {number}",
+      "status": {
+        "draft": "Entwurf",
+        "issued": "Versendet",
+        "accepted": "Angenommen",
+        "declined": "Abgelehnt",
+        "invoiced": "Verrechnet"
+      },
+      "saved": "Entwurf gespeichert.",
+      "issued": "Offerte mit definitiver Nummer ausgestellt.",
+      "deleted": "Entwurf gelöscht.",
+      "empty": "Noch keine Offerten.",
+      "issue": "Offerte ausstellen",
+      "issueHint": "Beim Ausstellen erhält die Offerte die nächste Nummer und wird unveränderlich. Speichern Sie zuerst Ihre letzten Änderungen.",
+      "deleteDraft": "Diesen Entwurf löschen",
+      "accept": "Als angenommen markieren",
+      "decline": "Als abgelehnt markieren",
+      "convert": "In Rechnung umwandeln",
+      "converted": "Rechnungsentwurf erstellt.",
+      "docTitle": "Offerte",
+      "docDue": "Gültig bis",
+      "dueLabel": "Gültig bis",
+      "dueHint": "Leer: 30 Tage nach dem Offertdatum."
     }
   },
   "footer": {

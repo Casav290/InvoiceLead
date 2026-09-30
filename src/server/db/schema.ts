@@ -283,6 +283,9 @@ export type PartySnapshot = {
 };
 
 /**
+ * Facture ou devis (`kind`), qui partagent lignes, calculs et numérotation. Les devis ne passent jamais
+ * en comptabilité ; transformé en facture, un devis garde le lien (`source_quote_id` sur la facture).
+ *
  * Facture. Brouillon modifiable, puis émise : elle reçoit alors son numéro et devient immuable (seule
  * l'annulation par avoir la corrigera). Montants hors TVA, TVA et total en centimes.
  */
@@ -296,8 +299,11 @@ export const invoices = pgTable(
     contactId: uuid("contact_id")
       .notNull()
       .references(() => contacts.id, { onDelete: "restrict" }),
+    kind: text("kind").notNull().default("invoice"), // invoice | quote
     number: text("number"),
-    status: text("status").notNull().default("draft"), // draft | issued
+    // facture : draft | issued ; devis : draft | issued | accepted | declined | invoiced
+    status: text("status").notNull().default("draft"),
+    sourceQuoteId: uuid("source_quote_id"),
     language: text("language").notNull().default("de"),
     currency: text("currency").notNull().default("CHF"),
     title: text("title"),
@@ -320,7 +326,7 @@ export const invoices = pgTable(
     updatedAt: updatedAt(),
   },
   (t) => [
-    index("invoices_org_idx").on(t.organizationId, t.createdAt),
+    index("invoices_org_idx").on(t.organizationId, t.kind, t.createdAt),
     uniqueIndex("invoices_org_number_idx")
       .on(t.organizationId, t.number)
       .where(sql`${t.number} is not null`),

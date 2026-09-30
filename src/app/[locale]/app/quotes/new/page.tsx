@@ -7,11 +7,11 @@ type Props = {
 };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  return documentMetadata((await params).locale, "invoice", "new");
+  return documentMetadata((await params).locale, "quote", "new");
 }
 
 export default async function Page({ params, searchParams }: Props) {
   const { locale } = await params;
   const { contact } = await searchParams;
-  return <NewDocumentPage locale={locale} kind="invoice" contact={contact} />;
+  return <NewDocumentPage locale={locale} kind="quote" contact={contact} />;
 }

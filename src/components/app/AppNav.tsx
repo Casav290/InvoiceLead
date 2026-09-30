@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 
 const ITEMS = [
   { href: "/app", key: "dashboard", exact: true, match: "/app" },
+  { href: "/app/quotes", key: "quotes", exact: false, match: "/app/quotes" },
   { href: "/app/invoices", key: "invoices", exact: false, match: "/app/invoices" },
   { href: "/app/contacts", key: "contacts", exact: false, match: "/app/contacts" },
   { href: "/app/products", key: "products", exact: false, match: "/app/products" },
