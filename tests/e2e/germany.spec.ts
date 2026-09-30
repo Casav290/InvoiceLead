@@ -38,6 +38,7 @@ test("entreprise allemande : facture en euros à 19 %, GiroCode, SKR04 et UStVA"
   await product.getByLabel("Désignation").fill("Beratung");
   await product.getByLabel("Prix unitaire hors TVA (EUR)").fill("1000");
   await page.getByTestId("product-save").click();
+  await expect(page).toHaveURL(/\/fr\/app\/products\?saved=1$/);
 
   await page.goto("/fr/app/invoices/new");
   await page

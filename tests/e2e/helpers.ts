@@ -91,9 +91,11 @@ export async function setupBilling(page: Page) {
   await page.goto("/fr/app/contacts/new");
   await page.getByTestId("contact-form").getByLabel("Nom ou raison sociale").fill("Client SA");
   await page.getByTestId("contact-save").click();
+  await expect(page).toHaveURL(/\/fr\/app\/contacts\?saved=1$/);
   await page.goto("/fr/app/products/new");
   const product = page.getByTestId("product-form");
   await product.getByLabel("Désignation").fill("Conseil");
   await product.getByLabel("Prix unitaire hors TVA (CHF)").fill("150");
   await page.getByTestId("product-save").click();
+  await expect(page).toHaveURL(/\/fr\/app\/products\?saved=1$/);
 }
