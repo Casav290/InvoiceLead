@@ -102,6 +102,9 @@ test("comptabilité : pièce en attente, puis journal en partie double après mi
 /** Référence SCOR de la facture émise, recalculée depuis son numéro (IBAN ordinaire, pas de QR-IBAN). */
 async function invoiceReference(page: Page): Promise<string> {
   await page.goto("/fr/app/invoices");
-  const number = await page.getByRole("row", { name: /Client SA/ }).getByRole("link").textContent();
+  const number = await page
+    .getByRole("row", { name: /Client SA/ })
+    .getByRole("link")
+    .textContent();
   return scorReference((number ?? "").trim());
 }
