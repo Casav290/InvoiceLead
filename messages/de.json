@@ -1,0 +1,1542 @@
+{
+  "meta": {
+    "title": "InvoiceLead, Offerten, QR-Rechnungen und Schweizer Buchhaltung",
+    "description": "Offerten, konforme QR-Rechnungen, automatische Mahnungen und doppelte Buchhaltung für Selbständige und KMU in der Schweiz. Kostenlos starten."
+  },
+  "nav": {
+    "features": "Funktionen",
+    "family": "Lead-Familie",
+    "login": "Anmelden",
+    "cta": "Kostenlos starten",
+    "language": "Sprache",
+    "pricing": "Preise",
+    "faq": "FAQ"
+  },
+  "home": {
+    "kicker": "Neu in der Lead-Familie",
+    "title": "Offerten, Rechnungen und Buchhaltung, erledigt vor Feierabend.",
+    "subtitle": "InvoiceLead erstellt Ihre Offerten, verschickt konforme QR-Rechnungen, mahnt offene Beträge und führt Ihre Schweizer Buchhaltung. Für Selbständige wie für KMU, kostenlos starten.",
+    "ctaPrimary": "Kostenlos starten",
+    "ctaSecondary": "Funktionen ansehen",
+    "featuresTitle": "Alles, was Sie brauchen, um bezahlt zu werden, und nicht mehr",
+    "features": {
+      "quotes": {
+        "title": "Von der Offerte zur Rechnung mit einem Klick",
+        "body": "Eine angenommene Offerte wird zur Auftragsbestätigung und dann zur Rechnung, ohne erneute Eingabe."
+      },
+      "qr": {
+        "title": "QR-Rechnungen nach Schweizer Standard",
+        "body": "QR-Zahlteil nach SIX-Norm, strukturierte Adressen, QR- oder SCOR-Referenz."
+      },
+      "reminders": {
+        "title": "Automatische Mahnungen",
+        "body": "Drei Mahnstufen mit eigenen Gebühren und Fristen, zum richtigen Zeitpunkt verschickt."
+      },
+      "accounting": {
+        "title": "Doppelte Buchhaltung",
+        "body": "KMU-Kontenrahmen, Buchungen direkt aus Rechnungen und Zahlungen, Bilanz und Erfolgsrechnung."
+      },
+      "vat": {
+        "title": "Schweizer MWST im Griff",
+        "body": "Sätze 8,1 %, 2,6 % und 3,8 %, effektive Methode oder Saldosteuersatz, Abrechnung vorbereitet."
+      },
+      "team": {
+        "title": "Das ganze Team, inklusive Treuhand",
+        "body": "Mehrere Benutzer pro Firma, mit einem einzigen Konto für alle Lead-Anwendungen."
+      }
+    },
+    "familyTitle": "Ein Konto, alle Ihre Lead-Anwendungen",
+    "familyBody": "Scanlead erfasst Ihre Messekontakte, CRMlead begleitet sie bis zum Abschluss, InvoiceLead verrechnet und kassiert. Ein einziges Lead-Konto für den Wechsel zwischen ihnen.",
+    "preview": {
+      "position": "Position",
+      "qty": "Menge",
+      "subtotal": "Zwischentotal",
+      "vat": "MWST 8,1 %",
+      "total": "Total",
+      "payment": "Zahlteil",
+      "rows": ["Beratung, September", "Lancierungs-Workshop", "Reisespesen"],
+      "hours": "Std."
+    }
+  },
+  "auth": {
+    "loginTitle": "Bei InvoiceLead anmelden",
+    "loginSubtitle": "InvoiceLead verwendet Ihr Lead-Konto, dasselbe wie für Scanlead und CRMlead.",
+    "signupTitle": "Konto erstellen",
+    "signupSubtitle": "Mit dem Lead-Konto nutzen Sie InvoiceLead und alle Anwendungen der Familie. Im nächsten Schritt können Sie «Konto erstellen» wählen.",
+    "leadButton": "Mit meinem Lead-Konto anmelden",
+    "noAccountYet": "Noch kein Konto? Mit derselben Schaltfläche erstellen Sie eines.",
+    "errors": {
+      "lead": "Die Anmeldung beim Lead-Konto hat nicht geklappt. Bitte erneut versuchen.",
+      "session": "Die Anmeldeanfrage ist abgelaufen. Bitte erneut versuchen."
+    }
+  },
+  "app": {
+    "nav": {
+      "dashboard": "Übersicht",
+      "settings": "Einstellungen",
+      "contacts": "Kontakte",
+      "products": "Artikel",
+      "invoices": "Rechnungen",
+      "quotes": "Offerten",
+      "accounting": "Buchhaltung"
+    },
+    "switcher": {
+      "open": "Anwendung wechseln",
+      "title": "Lead-Anwendungen",
+      "current": "Hier",
+      "openLink": "Öffnen",
+      "soon": "Demnächst",
+      "upgrade": "Upgrade"
+    },
+    "user": {
+      "logout": "Abmelden",
+      "planLine": "Abo: <strong>{plan}</strong>",
+      "plans": {
+        "free": "Gratis",
+        "pro": "Pro",
+        "pro_plus": "Pro+"
+      },
+      "feedback": "Feedback geben"
+    },
+    "dashboard": {
+      "title": "Guten Tag {name}",
+      "subtitle": "Ihr Bereich {org} ist bereit.",
+      "nextTitle": "Nächste Schritte",
+      "next": {
+        "company": "Firmendaten ergänzen (UID, MWST, IBAN)",
+        "contacts": "Kunden importieren",
+        "invoice": "Erste QR-Rechnung erstellen"
+      },
+      "soon": "Diese Ansichten folgen in den nächsten Versionen.",
+      "complete": "Ergänzen",
+      "done": "Erledigt",
+      "start": "Starten",
+      "forbidden": "Ihre Rolle erlaubt diese Aktion nicht. Eine verantwortliche Person kann sie in den Team-Einstellungen ändern."
+    },
+    "noAccess": {
+      "title": "Ihr Abo enthält InvoiceLead nicht",
+      "body": "Ihre Organisation {org} hat noch keinen Zugang zu InvoiceLead. Wechseln Sie zu einem Abo, das InvoiceLead enthält.",
+      "upgrade": "Upgrade",
+      "logout": "Abmelden",
+      "blockedTitle": "Zugang zu InvoiceLead entzogen",
+      "blockedBody": "Eine verantwortliche Person von {org} hat Ihren Zugang zu InvoiceLead entzogen. Bitten Sie sie, ihn in den Team-Einstellungen wiederherzustellen.",
+      "seatTitle": "Alle Plätze sind belegt",
+      "seatBody": "Das Abo von {org} umfasst {seats, plural, one {# Benutzer} other {# Benutzer}}, alle bereits belegt. Eine verantwortliche Person kann ein höheres Abo wählen oder einen Platz freigeben.",
+      "otherOrgs": "In einem anderen Unternehmen arbeiten",
+      "betaTitle": "InvoiceLead ist in der privaten Beta",
+      "betaBody": "{org} steht noch nicht auf der Beta-Liste. Wir öffnen den Zugang in kleinen Gruppen; schreiben Sie uns an hello@invoicelead.io, um aufgenommen zu werden."
+    },
+    "company": {
+      "title": "Firma",
+      "subtitle": "Diese Angaben erscheinen auf Ihren Offerten, Rechnungen und QR-Rechnungen.",
+      "readOnly": "Nur Administratoren und Verantwortliche können diese Einstellungen ändern.",
+      "save": "Speichern",
+      "saved": "Einstellungen gespeichert.",
+      "invalid": "Einige Felder müssen korrigiert werden.",
+      "choose": "Auswählen…",
+      "sections": {
+        "identity": "Identität",
+        "address": "Adresse und Kontakt",
+        "vat": "MWST",
+        "bank": "Bankkonto",
+        "fiscalYear": "Geschäftsjahr"
+      },
+      "fields": {
+        "legalName": "Firmenname",
+        "legalForm": "Rechtsform",
+        "uid": "UID-Nummer",
+        "street": "Strasse",
+        "buildingNumber": "Hausnummer",
+        "postalCode": "PLZ",
+        "town": "Ort",
+        "email": "E-Mail",
+        "phone": "Telefon",
+        "website": "Website",
+        "vatRegistered": "Im MWST-Register eingetragen",
+        "vatMethod": "Abrechnungsmethode",
+        "vatSettlement": "Abrechnung nach",
+        "iban": "IBAN",
+        "qrIban": "QR-IBAN",
+        "fiscalYearStartMonth": "Beginn des Geschäftsjahres",
+        "netTaxRate": "Saldosteuersatz (%)",
+        "country": "Land des Sitzes",
+        "ustId": "USt-IdNr.",
+        "taxNumber": "Steuernummer",
+        "frVatId": "Französische USt-IdNr.",
+        "siret": "SIRET",
+        "gbVat": "VAT registration number",
+        "companyNumber": "Companies House number",
+        "ein": "EIN (Employer Identification Number)",
+        "region": "Bundesstaat",
+        "collectsSalesTax": "Das Unternehmen erhebt Sales Tax",
+        "salesTaxRate": "Kombinierter Sales-Tax-Satz (%)"
+      },
+      "hints": {
+        "uid": "Format CHE-123.456.789, Prüfziffer wird kontrolliert.",
+        "iban": "Normales Konto: Rechnungen mit SCOR-Referenz (RF…).",
+        "qrIban": "Optional: Rechnungen mit 27-stelliger QR-Referenz.",
+        "netTaxRate": "Nur bei der Saldosteuersatzmethode: der von der ESTV bewilligte Satz, zum Beispiel 6,2.",
+        "ustId": "Format DE123456789, Prüfziffer wird kontrolliert.",
+        "taxNumber": "Steuernummer des Finanzamts, zum Beispiel 12/345/67890. USt-IdNr. oder Steuernummer: eines von beiden ist Pflicht.",
+        "frVatId": "Format FR + 2 Ziffern + SIREN, Prüfziffer wird kontrolliert.",
+        "siret": "14 Ziffern (oder SIREN mit 9 Ziffern), Prüfziffer wird kontrolliert. Pflicht auf jeder Rechnung.",
+        "gbVat": "Format GB + 9 Ziffern, HMRC-Prüfziffer wird kontrolliert.",
+        "companyNumber": "8 Zeichen, zum Beispiel 01234567 oder SC123456. Optional für Einzelunternehmen.",
+        "ein": "Format 12-3456789. Optional für Einzelunternehmen ohne Angestellte.",
+        "region": "Zweistelliger Code des Bundesstaats (TX, NY, CA…).",
+        "salesTaxRate": "Gesamtsatz von Bundesstaat, County und Stadt, zum Beispiel 8.875. Gilt für den Code «normal» der Zeilen."
+      },
+      "legalForms": {
+        "sole_proprietorship": "Einzelunternehmen",
+        "gmbh": "GmbH",
+        "ag": "AG",
+        "partnership": "Personengesellschaft",
+        "association": "Verein",
+        "other": "Andere",
+        "ug": "UG (haftungsbeschränkt)",
+        "ek": "Kaufmann (e.K.)",
+        "gbr": "GbR",
+        "ei": "Einzelunternehmen (EI)",
+        "micro": "Micro-entreprise",
+        "eurl": "EURL",
+        "sarl": "SARL",
+        "sas": "SAS",
+        "sasu": "SASU",
+        "sa": "SA",
+        "sole_trader": "Sole trader",
+        "llp": "LLP",
+        "ltd": "Private limited company (Ltd)",
+        "plc": "Public limited company (PLC)",
+        "llc": "LLC",
+        "c_corp": "C corporation",
+        "s_corp": "S corporation"
+      },
+      "vatMethods": {
+        "effective": "Effektive Methode",
+        "net_tax_rate": "Saldosteuersatzmethode"
+      },
+      "vatSettlements": {
+        "agreed": "Vereinbarte Entgelte",
+        "received": "Vereinnahmte Entgelte"
+      },
+      "months": {
+        "1": "Januar",
+        "2": "Februar",
+        "3": "März",
+        "4": "April",
+        "5": "Mai",
+        "6": "Juni",
+        "7": "Juli",
+        "8": "August",
+        "9": "September",
+        "10": "Oktober",
+        "11": "November",
+        "12": "Dezember"
+      },
+      "errors": {
+        "required": "Pflichtfeld.",
+        "tooLong": "Text zu lang.",
+        "postalCode": "Ungültige Postleitzahl (4 Ziffern in der Schweiz, 5 in Deutschland und Frankreich, britisches Format im Vereinigten Königreich, ZIP in den USA).",
+        "email": "Ungültige E-Mail-Adresse.",
+        "uid": "Ungültige UID-Nummer (Format oder Prüfziffer).",
+        "uidRequiredForVat": "Für MWST-pflichtige Firmen ist die UID-Nummer obligatorisch.",
+        "iban": "Ungültige IBAN (Land oder Prüfziffer).",
+        "ibanIsQr": "Das ist eine QR-IBAN: bitte im Feld QR-IBAN erfassen.",
+        "notQrIban": "Das ist keine QR-IBAN (Institut 30000 bis 31999).",
+        "netTaxRate": "Geben Sie den von der ESTV bewilligten Satz an (zwischen 0,1 und 15 %).",
+        "ustId": "Ungültige USt-IdNr. (DE und 9 Ziffern, Prüfziffer).",
+        "countryLocked": "Das Land lässt sich nach dem ersten ausgestellten Dokument nicht mehr ändern.",
+        "taxNumber": "Ungültige Steuernummer (10 bis 13 Ziffern).",
+        "taxIdRequired": "Geben Sie die USt-IdNr. oder die Steuernummer an: eines von beiden steht auf jeder Rechnung.",
+        "frVatId": "Ungültige französische USt-IdNr. (FR, 2 Prüfziffern, SIREN).",
+        "siret": "Ungültige SIRET oder SIREN (Prüfziffer).",
+        "siretRequired": "Die SIRET ist auf französischen Rechnungen Pflicht.",
+        "gbVat": "Ungültige britische MWST-Nummer (GB und 9 Ziffern, HMRC-Prüfziffer).",
+        "gbVatRequired": "Die MWST-Nummer ist für ein MWST-pflichtiges Unternehmen Pflicht.",
+        "companyNumber": "Ungültige Companies-House-Nummer (8 Zeichen).",
+        "ein": "Ungültige EIN (9 Ziffern, vom IRS vergebenes Präfix).",
+        "usState": "Ungültiger Code des Bundesstaats (zwei Buchstaben, zum Beispiel TX).",
+        "salesTaxRate": "Geben Sie einen Satz zwischen 0,001 und 20 % an.",
+        "ibanUs": "Keine IBAN in den USA: Geben Sie Ihre ACH-Angaben im Schlusstext der Rechnungen an."
+      },
+      "countries": {
+        "CH": "Schweiz",
+        "DE": "Deutschland",
+        "FR": "Frankreich",
+        "GB": "Vereinigtes Königreich",
+        "US": "Vereinigte Staaten"
+      }
+    },
+    "contacts": {
+      "title": "Kontakte",
+      "new": "Neuer Kontakt",
+      "edit": "Kontakt bearbeiten",
+      "save": "Speichern",
+      "archive": "Kontakt archivieren",
+      "saved": "Kontakt gespeichert.",
+      "archived": "Kontakt archiviert.",
+      "invalid": "Einige Felder müssen korrigiert werden.",
+      "search": "Name, E-Mail oder Ort suchen",
+      "searchButton": "Suchen",
+      "empty": "Noch keine Kontakte. Erfassen Sie Ihren ersten Kunden.",
+      "noResults": "Kein Kontakt entspricht dieser Suche.",
+      "columns": {
+        "name": "Name",
+        "town": "Ort",
+        "email": "E-Mail",
+        "role": "Rolle"
+      },
+      "roles": {
+        "customer": "Kunde",
+        "supplier": "Lieferant"
+      },
+      "sections": {
+        "identity": "Identität",
+        "address": "Adresse",
+        "billing": "Fakturierung"
+      },
+      "fields": {
+        "kind": "Art",
+        "name": "Name oder Firma",
+        "contactPerson": "Kontaktperson",
+        "role": "Rolle",
+        "isCustomer": "Kunde",
+        "isSupplier": "Lieferant",
+        "uid": "UID oder MWST-Nummer",
+        "email": "E-Mail",
+        "phone": "Telefon",
+        "street": "Strasse",
+        "buildingNumber": "Hausnummer",
+        "postalCode": "PLZ",
+        "town": "Ort",
+        "country": "Land",
+        "language": "Dokumentsprache",
+        "paymentTermDays": "Zahlungsfrist (Tage)",
+        "notes": "Interne Notizen",
+        "region": "Bundesstaat oder Region"
+      },
+      "hints": {
+        "street": "Adresse optional, aber vollständig, sobald begonnen: Die QR-Rechnung verlangt sie strukturiert.",
+        "uid": "Optional. UID CHE-123.456.789 oder ausländische MWST-Nummer (FR…, DE…, GB…), nötig für das Reverse-Charge-Verfahren.",
+        "region": "In den USA der Code des Bundesstaats (TX, NY…)."
+      },
+      "kinds": {
+        "company": "Firma",
+        "person": "Person"
+      },
+      "languages": {
+        "de": "Deutsch",
+        "fr": "Französisch",
+        "it": "Italienisch",
+        "en": "Englisch"
+      },
+      "countries": {
+        "CH": "Schweiz",
+        "LI": "Liechtenstein",
+        "DE": "Deutschland",
+        "FR": "Frankreich",
+        "IT": "Italien",
+        "AT": "Österreich",
+        "GB": "Vereinigtes Königreich",
+        "US": "Vereinigte Staaten"
+      },
+      "errors": {
+        "required": "Pflichtfeld.",
+        "tooLong": "Text zu lang.",
+        "email": "Ungültige E-Mail-Adresse.",
+        "postalCode": "Ungültige Postleitzahl für dieses Land.",
+        "uid": "Ungültige UID oder MWST-Nummer (Format oder Prüfziffer).",
+        "paymentTerm": "Zwischen 0 und 365 Tagen.",
+        "role": "Kunde, Lieferant oder beides ankreuzen.",
+        "usState": "Geben Sie den Code des Bundesstaats an (zwei Buchstaben, zum Beispiel TX)."
+      },
+      "planLimit": "Das Gratis-Abo umfasst höchstens 50 Kontakte. Mit Pro können Sie weitere erfassen."
+    },
+    "products": {
+      "title": "Artikel",
+      "new": "Neuer Artikel",
+      "edit": "Artikel bearbeiten",
+      "save": "Speichern",
+      "archive": "Artikel archivieren",
+      "saved": "Artikel gespeichert.",
+      "archived": "Artikel archiviert.",
+      "invalid": "Einige Felder müssen korrigiert werden.",
+      "search": "Name oder Artikelnummer suchen",
+      "searchButton": "Suchen",
+      "empty": "Noch keine Artikel. Erfassen Sie Ihre Leistungen und Produkte.",
+      "noResults": "Kein Artikel entspricht dieser Suche.",
+      "columns": {
+        "name": "Bezeichnung",
+        "unit": "Einheit",
+        "price": "Preis exkl. MWST ({currency})",
+        "vat": "MWST"
+      },
+      "sections": {
+        "product": "Artikel",
+        "price": "Preis und MWST"
+      },
+      "fields": {
+        "name": "Bezeichnung",
+        "sku": "Artikelnummer",
+        "unit": "Einheit",
+        "description": "Beschreibung",
+        "unitPrice": "Einzelpreis exkl. MWST ({currency})",
+        "vatCode": "MWST-Satz"
+      },
+      "hints": {
+        "unitPrice": "Zum Beispiel 1'200.50. Der Satz richtet sich nach dem Datum der Leistung."
+      },
+      "units": {
+        "hour": "Stunde",
+        "day": "Tag",
+        "piece": "Stück",
+        "flat": "Pauschale",
+        "km": "Kilometer",
+        "month": "Monat"
+      },
+      "vatCodes": {
+        "normal": "Normalsatz (8,1 %)",
+        "reduced": "Reduzierter Satz (2,6 %)",
+        "lodging": "Beherbergung (3,8 %)",
+        "exempt": "Von der Steuer ausgenommen",
+        "export": "Steuerbefreit (Export)"
+      },
+      "errors": {
+        "required": "Pflichtfeld.",
+        "tooLong": "Text zu lang.",
+        "amount": "Ungültiger Betrag (höchstens zwei Dezimalstellen).",
+        "skuTaken": "Diese Artikelnummer wird bereits verwendet."
+      }
+    },
+    "settingsNav": {
+      "label": "Bereiche der Einstellungen",
+      "company": "Unternehmen",
+      "accounts": "Kontenplan",
+      "fiscalYears": "Geschäftsjahre",
+      "team": "Team",
+      "payments": "Online-Zahlung",
+      "api": "API"
+    },
+    "accounts": {
+      "title": "Kontenplan",
+      "subtitle": "Schweizer KMU-Kontenrahmen, Klassen 1 bis 9. Systemkonten werden von automatischen Buchungen verwendet.",
+      "new": "Neues Konto",
+      "edit": "Konto bearbeiten",
+      "save": "Speichern",
+      "saved": "Konto gespeichert.",
+      "installed": "Kontenplan eingerichtet.",
+      "invalid": "Einige Felder sind zu korrigieren.",
+      "readOnly": "Nur Administratoren und Manager können den Kontenplan ändern.",
+      "empty": "Noch kein Kontenplan. Wählen Sie die Vorlage, die zu Ihrer Rechtsform passt.",
+      "install": "Kontenplan einrichten",
+      "template": "Vorlage",
+      "templates": {
+        "sole_proprietorship": "Einzelunternehmen oder Personengesellschaft",
+        "corporation": "Kapitalgesellschaft (GmbH, AG)"
+      },
+      "system": "System",
+      "inactive": "Inaktiv",
+      "columns": {
+        "number": "Nr.",
+        "name": "Name",
+        "type": "Typ"
+      },
+      "classes": {
+        "1": "1 Aktiven",
+        "2": "2 Passiven",
+        "3": "3 Betriebsertrag",
+        "4": "4 Aufwand für Material und Handelswaren",
+        "5": "5 Personalaufwand",
+        "6": "6 Übriger Betriebsaufwand und Finanzerfolg",
+        "7": "7 Nebenbetriebe",
+        "8": "8 Betriebsfremder, ausserordentlicher Erfolg und Steuern",
+        "9": "9 Abschluss"
+      },
+      "types": {
+        "asset": "Aktivum",
+        "liability": "Verbindlichkeit",
+        "equity": "Eigenkapital",
+        "revenue": "Ertrag",
+        "expense": "Aufwand",
+        "closing": "Abschluss"
+      },
+      "sections": {
+        "account": "Konto",
+        "options": "Optionen"
+      },
+      "fields": {
+        "number": "Nummer",
+        "nameDe": "Name auf Deutsch",
+        "nameFr": "Name auf Französisch",
+        "type": "Typ",
+        "vatCode": "Standard-MWST-Code",
+        "active": "Konto aktiv",
+        "nameEn": "Englische Bezeichnung (optional)"
+      },
+      "hints": {
+        "number": "Vier Ziffern; die erste bestimmt die Klasse.",
+        "nameDe": "Ist nur eine Sprache ausgefüllt, wird derselbe Name übernommen."
+      },
+      "noVat": "Keiner",
+      "vatCodes": {
+        "normal": "Normalsatz",
+        "reduced": "Reduzierter Satz",
+        "lodging": "Beherbergung",
+        "exempt": "Von der Steuer ausgenommen",
+        "export": "Befreit (Export)"
+      },
+      "errors": {
+        "required": "Pflichtfeld.",
+        "tooLong": "Text zu lang.",
+        "number": "Vier Ziffern, ohne 0 am Anfang.",
+        "typeForClass": "Dieser Typ passt nicht zur Kontoklasse.",
+        "numberTaken": "Diese Nummer ist bereits vergeben.",
+        "systemInactive": "Ein Systemkonto bleibt aktiv."
+      },
+      "classesDe": {
+        "0": "0 Anlagevermögen",
+        "1": "1 Umlaufvermögen",
+        "2": "2 Eigenkapital",
+        "3": "3 Fremdkapital",
+        "4": "4 Betriebliche Erträge",
+        "5": "5 Material und Fremdleistungen",
+        "6": "6 Betriebliche Aufwendungen",
+        "7": "7 Weitere Erträge und Aufwendungen",
+        "9": "9 Vortrags- und Abschlusskonten"
+      },
+      "subtitleDe": "Kontenrahmen SKR04 (DATEV), Klassen 0 bis 9. Die Systemkonten werden von den automatischen Buchungen verwendet.",
+      "classesFr": {
+        "1": "1 Kapital",
+        "2": "2 Anlagevermögen",
+        "3": "3 Vorräte",
+        "4": "4 Forderungen und Verbindlichkeiten",
+        "5": "5 Finanzkonten",
+        "6": "6 Aufwand",
+        "7": "7 Ertrag",
+        "8": "8 Sonderkonten"
+      },
+      "subtitleFr": "Französischer Kontenrahmen (PCG), sechsstellige Nummern. Die Systemkonten werden von den automatischen Buchungen verwendet.",
+      "classesGb": {
+        "0": "0 Anlagevermögen",
+        "1": "1 Umlaufvermögen",
+        "2": "2 Verbindlichkeiten",
+        "3": "3 Eigenkapital",
+        "4": "4 Umsätze",
+        "5": "5 Einkäufe",
+        "6": "6 Direkte Kosten",
+        "7": "7 Gemeinkosten",
+        "8": "8 Übrige Gemeinkosten",
+        "9": "9 Kontroll- und Abschlusskonten"
+      },
+      "subtitleGb": "Britischer Kontenplan (Nominal Ledger), vierstellige Nummern. Die Systemkonten werden von den automatischen Buchungen verwendet.",
+      "classesUs": {
+        "1": "1 Aktiven",
+        "2": "2 Verbindlichkeiten",
+        "3": "3 Eigenkapital",
+        "4": "4 Erträge",
+        "5": "5 Warenaufwand",
+        "6": "6 Aufwand",
+        "7": "7 Übrige Erträge und Aufwände",
+        "8": "8 Steuern",
+        "9": "9 Abschluss"
+      },
+      "subtitleUs": "Üblicher amerikanischer Kontenplan, vierstellige Nummern. Die Systemkonten werden von den automatischen Buchungen verwendet."
+    },
+    "fiscalYears": {
+      "title": "Geschäftsjahre",
+      "subtitle": "Die Geschäftsjahre folgen lückenlos aufeinander. Der Startmonat wird in den Unternehmensdaten festgelegt.",
+      "readOnly": "Nur Administratoren und Manager können ein Geschäftsjahr eröffnen.",
+      "empty": "Noch kein Geschäftsjahr. Eröffnen Sie das erste, um mit der Buchhaltung zu beginnen.",
+      "first": "Erstes Geschäftsjahr",
+      "start": "Startdatum",
+      "startHint": "Das erste Geschäftsjahr kann an jedem Tag beginnen, zum Beispiel bei der Gründung.",
+      "extended": "Erstes Geschäftsjahr bis zum Ende des folgenden verlängern",
+      "extendedHint": "Möglich, wenn das Unternehmen im Laufe des Jahres startet.",
+      "openFirst": "Erstes Geschäftsjahr eröffnen",
+      "openNext": "Nächstes Geschäftsjahr eröffnen",
+      "nextPeriod": "Nächstes Geschäftsjahr: {start} bis {end}",
+      "opened": "Geschäftsjahr eröffnet.",
+      "invalidDate": "Ungültiges Datum.",
+      "columns": {
+        "period": "Zeitraum",
+        "status": "Status"
+      },
+      "period": "{start} bis {end}",
+      "status": {
+        "open": "Offen",
+        "closed": "Abgeschlossen"
+      },
+      "closingLater": "Ein Geschäftsjahr wird nach seinem Ende hier abgeschlossen.",
+      "closedNotice": "Geschäftsjahr abgeschlossen. Das Ergebnis ist ins Eigenkapital übertragen, die Bilanzsalden sind ins nächste Geschäftsjahr eröffnet.",
+      "closeTitle": "Geschäftsjahr {period} abschliessen",
+      "closeHint": "Das Ergebnis wird auf das Konto Jahresgewinn oder -verlust gebucht, die Bilanzsalden werden ins nächste Geschäftsjahr übernommen (bei Bedarf eröffnet), und im abgeschlossenen Jahr kann nicht mehr gebucht werden.",
+      "closeConfirm": "Ich habe die Auswertungen geprüft und schliesse dieses Geschäftsjahr definitiv ab.",
+      "close": "Geschäftsjahr abschliessen",
+      "closeErrors": {
+        "confirm": "Bestätigen Sie den Abschluss mit dem Häkchen.",
+        "forbidden": "Nur Administratoren und Manager können abschliessen.",
+        "earlierOpen": "Schliessen Sie zuerst das vorherige Geschäftsjahr ab.",
+        "unposted": "{count, plural, one {# Beleg des Geschäftsjahres ist noch nicht verbucht.} other {# Belege des Geschäftsjahres sind noch nicht verbucht.}}",
+        "pendingBank": "{count, plural, one {# Bankbewegung des Geschäftsjahres wartet noch auf Bestätigung.} other {# Bankbewegungen des Geschäftsjahres warten noch auf Bestätigung.}}",
+        "noChart": "Dem Kontenplan fehlt das Konto Jahresgewinn oder -verlust.",
+        "alreadyClosed": "Dieses Geschäftsjahr ist bereits abgeschlossen.",
+        "notFound": "Geschäftsjahr nicht gefunden.",
+        "blocked": "Der Abschluss war nicht möglich."
+      }
+    },
+    "invoices": {
+      "title": "Rechnungen",
+      "new": "Neue Rechnung",
+      "edit": "Rechnung",
+      "back": "Alle Rechnungen",
+      "draft": "Entwurf",
+      "draftTitle": "Rechnungsentwurf",
+      "issuedTitle": "Rechnung {number}",
+      "status": {
+        "draft": "Entwurf",
+        "issued": "Ausgestellt",
+        "accepted": "Angenommen",
+        "declined": "Abgelehnt",
+        "invoiced": "Verrechnet"
+      },
+      "saved": "Entwurf gespeichert.",
+      "issued": "Rechnung ausgestellt. Die Nummer ist definitiv, die Rechnung kann nicht mehr geändert werden.",
+      "deleted": "Entwurf gelöscht.",
+      "empty": "Noch keine Rechnungen.",
+      "noCustomers": "Erfassen Sie zuerst einen Kunden.",
+      "addCustomer": "Neuer Kontakt",
+      "invalid": "Einige Felder sind zu korrigieren.",
+      "notEditable": "Diese Rechnung kann nicht mehr geändert werden.",
+      "choose": "Auswählen",
+      "freeLine": "Freie Position (ohne Artikel)",
+      "saveDraft": "Entwurf speichern",
+      "issue": "Rechnung ausstellen",
+      "issueHint": "Beim Ausstellen erhält die Rechnung die nächste Nummer und wird unveränderlich. Speichern Sie zuerst Ihre letzten Änderungen.",
+      "deleteDraft": "Diesen Entwurf löschen",
+      "completeCompany": "Unternehmensdaten ergänzen",
+      "issueErrors": {
+        "companyIncomplete": "Die Unternehmensdaten (Adresse und IBAN) müssen vollständig sein, bevor Sie eine Rechnung ausstellen.",
+        "vatChanged": "Die MWST-Pflicht hat sich seit dem Speichern geändert. Speichern Sie den Entwurf erneut.",
+        "notDraft": "Diese Rechnung ist bereits ausgestellt.",
+        "notFound": "Rechnung nicht gefunden.",
+        "notConvertible": "Diese Offerte kann nicht mehr in eine Rechnung umgewandelt werden.",
+        "contact": "Der Kunde dieser Offerte wurde archiviert.",
+        "creditTooHigh": "Die Gutschrift übersteigt den noch gutschreibbaren Betrag der Rechnung.",
+        "closed": "Diese Zahlung ist in einem abgeschlossenen Geschäftsjahr verbucht und kann nicht mehr gelöscht werden.",
+        "planLimit": "Sie haben die 10 Rechnungen pro Monat des Gratis-Abos erreicht. Mit Pro stellen Sie unbegrenzt Rechnungen aus.",
+        "recurring": "Die Wiederholung konnte nicht gespeichert werden.",
+        "fxRate": "Der Tageskurs konnte nicht abgerufen werden. Bitte den Kurs im Entwurf erfassen und erneut ausstellen."
+      },
+      "addLine": "Position hinzufügen",
+      "removeLine": "Entfernen",
+      "lineTotal": "Betrag:",
+      "net": "Total exkl. MWST",
+      "total": "Total",
+      "totalWithVat": "Total inkl. MWST",
+      "vatLine": "MWST {rate} auf {base}",
+      "columns": {
+        "number": "Nr.",
+        "customer": "Kunde",
+        "date": "Datum",
+        "total": "Total ({currency})",
+        "status": "Status"
+      },
+      "sections": {
+        "customer": "Kunde",
+        "dates": "Daten",
+        "lines": "Positionen",
+        "texts": "Texte"
+      },
+      "fields": {
+        "contact": "Kunde",
+        "language": "Sprache der Rechnung",
+        "title": "Titel",
+        "issueDate": "Rechnungsdatum",
+        "serviceDate": "Leistungsdatum",
+        "dueDate": "Fällig am",
+        "product": "Artikel",
+        "description": "Bezeichnung",
+        "quantity": "Menge",
+        "unit": "Einheit",
+        "unitPrice": "Einzelpreis exkl. MWST",
+        "vatCode": "MWST",
+        "introText": "Einleitungstext",
+        "footerText": "Schlusstext",
+        "vatCodeUs": "Steuer",
+        "unitPriceUs": "Einzelpreis ohne Steuer",
+        "currency": "Währung",
+        "fxRate": "Kurs (1 {currency} in {home})"
+      },
+      "hints": {
+        "serviceDate": "Bestimmt den anwendbaren MWST-Satz.",
+        "dueDate": "Leer: gemäss Zahlungsfrist des Kunden.",
+        "fxRate": "Leer: EZB-Referenzkurs des Rechnungsdatums, bei der Ausstellung festgeschrieben."
+      },
+      "languages": {
+        "de": "Deutsch",
+        "fr": "Französisch",
+        "en": "Englisch"
+      },
+      "units": {
+        "hour": "Std.",
+        "day": "Tag(e)",
+        "piece": "Stk.",
+        "flat": "pauschal",
+        "km": "km",
+        "month": "Mt."
+      },
+      "vatCodes": {
+        "normal": "Normal",
+        "reduced": "Reduziert",
+        "lodging": "Beherbergung",
+        "exempt": "Ausgenommen",
+        "export": "Export"
+      },
+      "errors": {
+        "required": "Pflichtfeld.",
+        "tooLong": "Text zu lang.",
+        "date": "Ungültiges Datum.",
+        "dueBeforeIssue": "Das Fälligkeitsdatum liegt vor dem Rechnungsdatum.",
+        "vatDate": "Für dieses Datum ist kein MWST-Satz bekannt.",
+        "quantity": "Ungültige Menge (höchstens drei Dezimalstellen, nicht null).",
+        "amount": "Ungültiger Betrag (höchstens zwei Dezimalstellen).",
+        "noLines": "Erfassen Sie mindestens eine Position.",
+        "tooManyLines": "Höchstens hundert Positionen.",
+        "plan": "Rechnungen in Fremdwährung sind Teil des Pro-Abos.",
+        "fxRate": "Ungültiger Kurs (positive Zahl, zum Beispiel 0.9412)."
+      },
+      "document": {
+        "invoice": "Rechnung",
+        "issueDate": "Datum",
+        "serviceDate": "Leistung",
+        "dueDate": "Zahlbar bis",
+        "description": "Bezeichnung",
+        "quantity": "Menge",
+        "unitPrice": "Einzelpreis",
+        "vat": "MWST",
+        "amount": "Betrag",
+        "net": "Total exkl. MWST",
+        "vatLine": "MWST {rate} auf {base}",
+        "total": "Total",
+        "payTo": "Zahlbar auf das Konto {iban}.",
+        "referenceLine": "Referenz: {reference}",
+        "relatedLine": "Betrifft Rechnung {number}",
+        "poweredBy": "Erstellt mit InvoiceLead · invoicelead.io",
+        "smallBusinessDe": "Gemäss § 19 UStG wird keine Umsatzsteuer berechnet (Kleinunternehmerregelung).",
+        "reverseChargeDe": "Steuerschuldnerschaft des Leistungsempfängers (Reverse Charge).",
+        "scanToPay": "Mit der Banking-App scannen, um per SEPA-Überweisung zu bezahlen.",
+        "franchiseFr": "TVA non applicable, art. 293 B du CGI (Kleinunternehmer, keine Mehrwertsteuer).",
+        "reverseChargeFr": "Autoliquidation: Steuerschuldnerschaft des Leistungsempfängers (art. 283-2 du CGI).",
+        "outsideEuFr": "TVA non applicable, art. 259-1 du CGI (nicht in Frankreich steuerbar).",
+        "latePaymentFr": "Bei Zahlungsverzug: Verzugszinsen in Höhe des dreifachen gesetzlichen Zinssatzes und eine Pauschale von 40 € für Inkassokosten. Kein Skonto bei vorzeitiger Zahlung.",
+        "outsideScopeGb": "Nicht im Anwendungsbereich der britischen MWST: Leistungsort im Land des Kunden.",
+        "vatUs": "Steuer",
+        "vatLineUs": "Sales Tax {rate} auf {base}",
+        "netUs": "Zwischensumme",
+        "fxLine": "Umrechnungskurs: 1 {currency} = {rate} {home}, entspricht {home} {total}",
+        "fxVatLine": "davon MWST {home} {vat}"
+      },
+      "docTitle": "Rechnung",
+      "docDue": "Zahlbar bis",
+      "dueLabel": "Fällig am",
+      "dueHint": "Leer: gemäss Zahlungsfrist des Kunden.",
+      "converted": "Rechnungsentwurf aus der Offerte erstellt. Prüfen Sie ihn und stellen Sie ihn aus.",
+      "fromQuote": "Ursprüngliche Offerte anzeigen",
+      "download": "PDF herunterladen",
+      "creditNotesLink": "Gutschriften",
+      "createCreditNote": "Gutschrift erstellen",
+      "relatedInvoice": "Betroffene Rechnung: {number}",
+      "payments": {
+        "title": "Zahlungen",
+        "saved": "Zahlung erfasst.",
+        "totalCents": "Total",
+        "creditedCents": "Gutschriften",
+        "paidCents": "Bezahlt",
+        "openCents": "Offener Betrag",
+        "date": "Zahlungsdatum",
+        "amount": "Betrag ({currency})",
+        "method": "Zahlungsart",
+        "note": "Bemerkung",
+        "add": "Zahlung erfassen",
+        "delete": "Löschen",
+        "tooHigh": "Der Betrag übersteigt den offenen Betrag.",
+        "methods": {
+          "bank": "Überweisung",
+          "cash": "Bar",
+          "other": "Andere",
+          "online": "Online (Stripe)"
+        },
+        "states": {
+          "open": "Offen",
+          "partial": "Teilweise bezahlt",
+          "paid": "Bezahlt",
+          "overdue": "Überfällig",
+          "credited": "Durch Gutschrift storniert"
+        },
+        "errors": {
+          "date": "Ungültiges Datum.",
+          "amount": "Ungültiger Betrag.",
+          "required": "Pflichtfeld.",
+          "tooLong": "Text zu lang.",
+          "fxRate": "Ungültiger Kurs (positive Zahl, zum Beispiel 0.9412)."
+        },
+        "fxRate": "Tageskurs (1 {currency} in {home})",
+        "fxHint": "Leer: EZB-Referenzkurs des Zahlungsdatums. Die Abweichung zum Rechnungskurs wird als Kursdifferenz verbucht.",
+        "chargesCents": "Gebühren und Zinsen",
+        "chargesHint": "Mit den Mahnungen geforderte Mahngebühren und Verzugszinsen.",
+        "waive": "Auf Gebühren verzichten",
+        "waived": "Gebühren und Zinsen erlassen."
+      },
+      "email": {
+        "title": "Versand",
+        "to": "Empfänger",
+        "subject": "Betreff",
+        "message": "Nachricht",
+        "messageHint": "Der Link zur Online-Ansicht wird am Ende angefügt, das PDF wird mitgeschickt.",
+        "send": "Per E-Mail senden",
+        "sent": "E-Mail gesendet.",
+        "sentInfo": "Gesendet an {to} am {date}.",
+        "viewed": "Online angesehen.",
+        "notConfigured": "Der E-Mail-Versand ist noch nicht eingerichtet. Sie können den Link kopieren und selbst senden.",
+        "link": "Link zur Online-Ansicht",
+        "linkHint": "Ein Link für den Kunden, ohne Konto.",
+        "linkLabelField": "Link zur Online-Ansicht",
+        "linkLabel": "Online ansehen:",
+        "results": {
+          "notConfigured": "Der E-Mail-Versand ist nicht eingerichtet.",
+          "failed": "Der Versand ist fehlgeschlagen. Versuchen Sie es in einigen Minuten erneut.",
+          "notFound": "Beleg nicht gefunden."
+        },
+        "errors": {
+          "email": "Ungültige E-Mail-Adresse.",
+          "required": "Pflichtfeld.",
+          "tooLong": "Text zu lang."
+        },
+        "subjects": {
+          "invoice": "Rechnung {number} von {company}",
+          "quote": "Offerte {number} von {company}",
+          "credit_note": "Gutschrift {number} von {company}"
+        },
+        "bodies": {
+          "invoice": "Guten Tag\n\nIm Anhang finden Sie unsere Rechnung {number} über {currency} {amount}, zahlbar bis {due}.\n\nFreundliche Grüsse\n{company}",
+          "quote": "Guten Tag\n\nIm Anhang finden Sie unsere Offerte {number} über {currency} {amount}, gültig bis {due}.\n\nFreundliche Grüsse\n{company}",
+          "credit_note": "Guten Tag\n\nIm Anhang finden Sie unsere Gutschrift {number} über {currency} {amount}.\n\nFreundliche Grüsse\n{company}"
+        }
+      },
+      "remindersLink": "Mahnungen",
+      "reminderLine": "{level, select, 1 {1. Mahnung} 2 {2. Mahnung} other {Letzte Mahnung}} am {date} ({channel, select, email {E-Mail} other {Post}})",
+      "recurringLink": "Wiederkehrend",
+      "recurring": {
+        "title": "Wiederkehrend machen",
+        "interval": "Rhythmus",
+        "every": "{months, plural, one {Jeden Monat} other {Alle # Monate}}",
+        "next": "Nächste Rechnung am",
+        "autoSend": "Automatisch ausstellen und senden (sonst: Entwurf zur Prüfung)",
+        "create": "Wiederholung speichern"
+      },
+      "einvoice": {
+        "download": "XRechnung (XML)",
+        "missing": "XRechnung nicht möglich, es fehlt: {fields}.",
+        "fields": {
+          "number": "Nummer",
+          "sellerAddress": "Adresse des Unternehmens",
+          "buyerAddress": "Adresse des Kunden",
+          "sellerEmail": "E-Mail des Unternehmens",
+          "sellerPhone": "Telefon des Unternehmens",
+          "sellerIban": "IBAN",
+          "buyerEmail": "E-Mail des Kunden",
+          "buyerVatId": "USt-IdNr. des Kunden",
+          "sellerTaxId": "USt-IdNr. oder Steuernummer"
+        }
+      },
+      "netUs": "Zwischensumme",
+      "vatLineUs": "Sales Tax {rate} auf {base}",
+      "vatCodesUs": {
+        "normal": "Steuerpflichtig",
+        "reduced": "Steuerpflichtig (reduziert)",
+        "lodging": "Steuerpflichtig (Beherbergung)",
+        "exempt": "Steuerbefreit",
+        "export": "Nicht steuerbar (ausserhalb des Bundesstaats)"
+      },
+      "totalWithVatUs": "Total inklusive Steuer"
+    },
+    "quotes": {
+      "title": "Offerten",
+      "new": "Neue Offerte",
+      "edit": "Offerte",
+      "back": "Alle Offerten",
+      "draftTitle": "Offertentwurf",
+      "issuedTitle": "Offerte {number}",
+      "status": {
+        "draft": "Entwurf",
+        "issued": "Versendet",
+        "accepted": "Angenommen",
+        "declined": "Abgelehnt",
+        "invoiced": "Verrechnet"
+      },
+      "saved": "Entwurf gespeichert.",
+      "issued": "Offerte mit definitiver Nummer ausgestellt.",
+      "deleted": "Entwurf gelöscht.",
+      "empty": "Noch keine Offerten.",
+      "issue": "Offerte ausstellen",
+      "issueHint": "Beim Ausstellen erhält die Offerte die nächste Nummer und wird unveränderlich. Speichern Sie zuerst Ihre letzten Änderungen.",
+      "deleteDraft": "Diesen Entwurf löschen",
+      "accept": "Als angenommen markieren",
+      "decline": "Als abgelehnt markieren",
+      "convert": "In Rechnung umwandeln",
+      "converted": "Rechnungsentwurf erstellt.",
+      "docTitle": "Offerte",
+      "docDue": "Gültig bis",
+      "dueLabel": "Gültig bis",
+      "dueHint": "Leer: 30 Tage nach dem Offertdatum."
+    },
+    "creditNotes": {
+      "title": "Gutschriften",
+      "new": "Neue Gutschrift",
+      "edit": "Gutschrift",
+      "back": "Alle Gutschriften",
+      "draftTitle": "Gutschriftentwurf",
+      "issuedTitle": "Gutschrift {number}",
+      "status": {
+        "draft": "Entwurf",
+        "issued": "Ausgestellt"
+      },
+      "saved": "Gutschriftentwurf gespeichert. Kürzen Sie die Positionen für eine Teilgutschrift.",
+      "issued": "Gutschrift ausgestellt. Sie reduziert den offenen Betrag der Rechnung.",
+      "deleted": "Entwurf gelöscht.",
+      "empty": "Noch keine Gutschriften. Eine Gutschrift wird aus einer ausgestellten Rechnung erstellt.",
+      "issue": "Gutschrift ausstellen",
+      "issueHint": "Beim Ausstellen erhält die Gutschrift die nächste Nummer und wird unveränderlich.",
+      "deleteDraft": "Diesen Entwurf löschen",
+      "converted": "",
+      "docTitle": "Gutschrift",
+      "docDue": "Datum",
+      "dueLabel": "Datum",
+      "dueHint": ""
+    },
+    "accountingHome": {
+      "title": "Buchhaltung",
+      "subtitle": "Rechnungen, Gutschriften und Zahlungen werden automatisch ins Journal gebucht. Das Journal ist unveränderlich: Korrekturen erfolgen per Stornobuchung.",
+      "postedCount": "{count, plural, =0 {Keine Buchung hinzugefügt.} one {# Buchung ins Journal übernommen.} other {# Buchungen ins Journal übernommen.}}",
+      "setupTitle": "Für die Buchhaltung fehlt noch:",
+      "setupChart": "der Kontenplan",
+      "setupYear": "ein offenes Geschäftsjahr",
+      "unposted": "{count, plural, one {# Beleg wartet auf die Verbuchung.} other {# Belege warten auf die Verbuchung.}}",
+      "reasons": {
+        "noChart": "Richten Sie zuerst den Kontenplan ein.",
+        "noFiscalYear": "Eröffnen Sie das Geschäftsjahr, das das Datum dieser Belege umfasst.",
+        "vatPeriodClosed": "Dieses Datum liegt in einer bereits bestätigten MWST-Periode: Es kann dort nicht mehr gebucht werden."
+      },
+      "postNow": "Jetzt verbuchen",
+      "journal": "Journal",
+      "year": "Geschäftsjahr",
+      "show": "Anzeigen",
+      "chainOk": "{count, plural, =0 {Journal leer.} one {Hash-Kette über # Buchung geprüft.} other {Hash-Kette über # Buchungen geprüft.}}",
+      "chainBroken": "Achtung: Die Hash-Kette stimmt ab Buchung Nr. {seq} nicht mehr.",
+      "empty": "Keine Buchungen in diesem Geschäftsjahr.",
+      "columns": {
+        "number": "Nr.",
+        "date": "Datum",
+        "account": "Konto",
+        "debit": "Soll",
+        "credit": "Haben"
+      },
+      "tabs": {
+        "label": "Bereiche der Buchhaltung",
+        "bank": "Bank",
+        "journal": "Journal",
+        "receipts": "Belege",
+        "reports": "Auswertungen",
+        "vat": "MWST"
+      },
+      "welcomeFiduciary": "Willkommen. Sie arbeiten jetzt in der Buchhaltung Ihres Kunden; das Unternehmen wechseln Sie in der Kopfzeile.",
+      "unavailableTitle": "Buchhaltung für dieses Land folgt bald",
+      "unavailableBody": "Die Fakturierung funktioniert bereits für ein Unternehmen in {country}. Doppelte Buchhaltung, MWST-Abrechnung und Bankimport folgen mit dem nächsten Paket; bis dahin exportieren Sie Ihre Rechnungen für Ihre Treuhand."
+    },
+    "bank": {
+      "title": "Bank",
+      "subtitle": "Importieren Sie den Kontoauszug Ihrer Bank: Der Assistent schlägt für jede Bewegung die Buchung vor, Sie prüfen und bestätigen.",
+      "imported": "{count, plural, =0 {Keine neue Bewegung} one {# Bewegung importiert} other {# Bewegungen importiert}}{duplicates, plural, =0 {.} one { (# bereits bekannt).} other { (# bereits bekannt).}}",
+      "validatedCount": "{count, plural, =0 {Keine Buchung bestätigt.} one {# Buchung bestätigt.} other {# Buchungen bestätigt.}}",
+      "errors": {
+        "file": "Wählen Sie eine Auszugsdatei (höchstens 5 MB).",
+        "format": "Diese Datei ist kein lesbarer camt.053-Auszug.",
+        "tooHigh": "Der Betrag übersteigt den offenen Betrag der Rechnung.",
+        "noChart": "Richten Sie zuerst den Kontenplan ein.",
+        "noFiscalYear": "Kein offenes Geschäftsjahr umfasst das Datum dieser Bewegung.",
+        "noProposal": "Wählen Sie zuerst ein Konto.",
+        "notFound": "Bewegung nicht gefunden oder bereits verarbeitet.",
+        "vatPeriodClosed": "Dieses Datum liegt in einer bereits bestätigten MWST-Periode: Es kann dort nicht mehr gebucht werden.",
+        "plan": "Der Import von Kontoauszügen ist dem Pro-Abo vorbehalten."
+      },
+      "aiError": "Der Assistent konnte nicht antworten. Die Bewegungen bleiben offen; versuchen Sie es später erneut.",
+      "aiOff": "Der Buchhaltungsassistent ist noch nicht aktiviert: Automatisch vorgeschlagen werden nur Rechnungszahlungen, die an ihrer QR-Referenz erkannt werden.",
+      "file": "Kontoauszug (camt.053)",
+      "fileHint": "XML-Datei aus dem E-Banking («camt.053» oder «ISO-20022-Auszug»).",
+      "import": "Importieren",
+      "toReview": "{count, plural, =0 {Nichts zu bestätigen} one {# Bewegung zu bestätigen} other {# Bewegungen zu bestätigen}}",
+      "propose": "Buchungen vorschlagen",
+      "validateConfident": "Die {count} sicheren Vorschläge bestätigen",
+      "nothing": "Alle Bewegungen sind verarbeitet.",
+      "noSuggestion": "Kein Vorschlag: Wählen Sie das Konto.",
+      "paysInvoice": "Zahlung der Rechnung {invoice}",
+      "confidence": "Sicherheit {value} %",
+      "validate": "Bestätigen",
+      "ignore": "Ignorieren",
+      "correct": "Anderes Konto wählen",
+      "account": "Konto",
+      "choose": "Auswählen",
+      "vatLabel": "Inkl. MWST",
+      "noVat": "Ohne MWST",
+      "validateChoice": "Diese Wahl bestätigen",
+      "unknownParty": "Unbekannte Gegenpartei",
+      "done": "Bereits verarbeitet",
+      "status": {
+        "posted": "Verbucht",
+        "ignored": "Ignoriert",
+        "new": "Neu",
+        "proposed": "Vorgeschlagen"
+      },
+      "vat": {
+        "normal": "MWST Normalsatz",
+        "reduced": "MWST reduziert",
+        "lodging": "MWST Beherbergung",
+        "exempt": "Ausgenommen",
+        "export": "Export"
+      },
+      "rules": {
+        "title": "Gelernte Regeln",
+        "hint": "Bei jeder Bestätigung gespeichert: Dieselbe Gegenpartei wird ohne KI auf dasselbe Konto vorgeschlagen.",
+        "in": "(Eingänge)",
+        "out": "(Ausgänge)",
+        "hits": "{count, plural, one {# Mal bestätigt} other {# Mal bestätigt}}",
+        "delete": "Vergessen"
+      },
+      "planOnly": "Der Import von Kontoauszügen und die Vorschläge des Assistenten sind im Pro-Abo enthalten."
+    },
+    "receipts": {
+      "title": "Belege",
+      "subtitle": "Laden Sie Lieferantenrechnungen und Quittungen hoch (PDF oder Foto). Der Assistent liest sie und ordnet sie der passenden Zahlung im Kontoauszug zu.",
+      "added": "{count, plural, =0 {Kein Beleg hinzugefügt} one {# Beleg hinzugefügt} other {# Belege hinzugefügt}}{rejected, plural, =0 {.} one { (# abgelehnt: Duplikat, Format oder Grösse).} other { (# abgelehnt: Duplikate, Format oder Grösse).}}",
+      "errors": {
+        "unreadable": "Dieses PDF ist ein gescanntes Bild: Laden Sie stattdessen ein scharfes Foto des Dokuments hoch.",
+        "failed": "Der Assistent konnte diesen Beleg nicht lesen. Versuchen Sie es später erneut.",
+        "notFound": "Beleg nicht gefunden.",
+        "plan": "Das Lesen von Belegen ist Pro und Pro+ vorbehalten."
+      },
+      "aiOff": "Der Assistent ist noch nicht aktiviert: Die Belege werden aufbewahrt und gelesen, sobald er eingerichtet ist.",
+      "files": "Rechnungen oder Quittungen",
+      "filesHint": "PDF, JPEG, PNG oder WebP, höchstens 10 MB pro Datei, 20 Dateien auf einmal.",
+      "upload": "Hochladen",
+      "empty": "Noch keine Belege.",
+      "invoiceNumber": "Rechnung {number}",
+      "vat": "MWST {amount}",
+      "account": "Konto {number}",
+      "matchedHint": "Einer Zahlung zugeordnet: Die Buchung ist unter «Bank» noch zu bestätigen.",
+      "read": "Lesen",
+      "reread": "Erneut lesen",
+      "status": {
+        "new": "Zu lesen",
+        "read": "Gelesen, Zahlung noch nicht gefunden",
+        "error": "Unlesbar",
+        "matched": "Zugeordnet",
+        "posted": "Verbucht"
+      },
+      "planOnly": "Das automatische Lesen von Belegen ist in Pro (50 pro Monat) und Pro+ (300 pro Monat) enthalten."
+    },
+    "reports": {
+      "title": "Auswertungen",
+      "period": "Geschäftsjahr vom {start} bis {end}",
+      "provisional": "Provisorische Zahlen aus dem Journal: Sie werden mit dem Jahresabschluss definitiv.",
+      "empty": "Keine Buchungen in diesem Geschäftsjahr.",
+      "income": "Erfolgsrechnung",
+      "balanceSheet": "Bilanz",
+      "trial": "Saldenliste",
+      "account": "Konto",
+      "amount": "Betrag",
+      "profit": "Jahresgewinn",
+      "loss": "Jahresverlust",
+      "assets": "Aktiven",
+      "liabilitiesEquity": "Passiven",
+      "totalAssets": "Total Aktiven",
+      "totalLiabilities": "Total Passiven",
+      "equity": "Eigenkapital",
+      "currentResult": "Ergebnis des laufenden Geschäftsjahres",
+      "balanced": "Die Bilanz ist ausgeglichen.",
+      "unbalanced": "Achtung: Die Bilanz ist nicht ausgeglichen. Prüfen Sie die Eröffnungsbuchungen.",
+      "debit": "Soll",
+      "credit": "Haben",
+      "total": "Total",
+      "ledger": "Kontoblatt",
+      "back": "Zurück zu den Auswertungen",
+      "noMovement": "Keine Bewegungen auf diesem Konto in diesem Geschäftsjahr.",
+      "date": "Datum",
+      "entry": "Nr.",
+      "text": "Text",
+      "balance": "Saldo"
+    },
+    "vat": {
+      "title": "MWST",
+      "subtitle": "Abrechnung aus dem Journal, nach der Methode (effektiv oder Saldosteuersatz) und der Abrechnungsart (vereinbart oder vereinnahmt) aus den Unternehmensdaten. Prüfen Sie, lassen Sie sie bei Bedarf vom Assistenten gegenlesen und bestätigen Sie: Die Zahlen übertragen Sie unverändert ins Formular der ESTV.",
+      "validatedNotice": "Abrechnung bestätigt. Die Periode ist im Journal abgeschlossen, die MWST ist auf das Abrechnungskonto 2201 übertragen.",
+      "errors": {
+        "blocked": "Die Abrechnung kann nicht bestätigt werden, solange blockierende Punkte offen sind.",
+        "noFiscalYear": "Kein offenes Geschäftsjahr umfasst das Ende dieser Periode.",
+        "noChart": "Dem Kontenplan fehlen die nötigen MWST-Konten.",
+        "plan": "Die Bestätigung der MWST-Abrechnung ist dem Pro-Abo vorbehalten."
+      },
+      "periods": "Perioden",
+      "quarter": "Q{q} {year}",
+      "done": "bestätigt",
+      "period": "Vom {start} bis {end}",
+      "validatedOn": "Bestätigt am {date}",
+      "draft": "Zu bestätigen",
+      "figure": "Ziffer",
+      "label": "Bezeichnung",
+      "amount": "CHF",
+      "anomalies": {
+        "notRegistered": "Das Unternehmen ist nicht im MWST-Register eingetragen (Unternehmenseinstellungen).",
+        "baseMismatch": "Der steuerbare Umsatz stimmt nicht genau mit den Bemessungsgrundlagen überein: Prüfen Sie Ertragsbuchungen ohne MWST.",
+        "pendingBank": "{count, plural, one {# Bankbewegung der Periode ist noch nicht bestätigt.} other {# Bankbewegungen der Periode sind noch nicht bestätigt.}}",
+        "unposted": "{count, plural, one {# Rechnung der Periode ist noch nicht verbucht.} other {# Rechnungen der Periode sind noch nicht verbucht.}}",
+        "inputWithoutReceipt": "{count, plural, one {# Ausgabe mit Vorsteuerabzug hat keinen zugeordneten Beleg.} other {# Ausgaben mit Vorsteuerabzug haben keinen zugeordneten Beleg.}}",
+        "alreadyValidated": "Diese Periode überschneidet sich mit einer bereits bestätigten Abrechnung.",
+        "noNetTaxRate": "Geben Sie Ihren Saldosteuersatz in den Unternehmensdaten an.",
+        "inputUnderNetTaxRate": "In der Periode wurde Vorsteuer verbucht: Bei der Saldosteuersatzmethode ist sie nicht abziehbar.",
+        "exportsSplit": "Exporte oder Leistungen ins Ausland stehen in E2: teilen Sie sie auf E1 (ausserhalb der EU), E2 (EU-Leistungen) und F2 (innergemeinschaftliche Lieferungen) auf und reichen Sie bei Bedarf die DES ein."
+      },
+      "figures": {
+        "200": "Total der vereinbarten Entgelte",
+        "220": "Von der Steuer befreite Leistungen (Exporte)",
+        "230": "Von der Steuer ausgenommene Leistungen",
+        "289": "Total Abzüge",
+        "299": "Steuerbarer Gesamtumsatz",
+        "303": "Leistungen zum Normalsatz 8,1 %",
+        "313": "Leistungen zum reduzierten Satz 2,6 %",
+        "343": "Beherbergungsleistungen 3,8 %",
+        "302": "Leistungen zum Normalsatz 7,7 % (vor 2024)",
+        "312": "Leistungen zum reduzierten Satz 2,5 % (vor 2024)",
+        "342": "Beherbergungsleistungen 3,7 % (vor 2024)",
+        "399": "Total geschuldete Steuer",
+        "400": "Vorsteuer auf Material- und Dienstleistungsaufwand",
+        "405": "Vorsteuer auf Investitionen und übrigem Betriebsaufwand",
+        "479": "Total Vorsteuer",
+        "500": "An die ESTV zu bezahlender Betrag",
+        "510": "Guthaben zu Ihren Gunsten",
+        "322": "Umsatz zum Saldosteuersatz",
+        "332": "Umsatz zum zweiten Saldosteuersatz",
+        "321": "Umsatz zum Saldosteuersatz (vor 2024)",
+        "331": "Umsatz zum zweiten Saldosteuersatz (vor 2024)"
+      },
+      "payBy": "An die ESTV zu bezahlen bis {date}.",
+      "reviewIntro": "Der Assistent kann die Periode gegenlesen und auf Auffälliges hinweisen.",
+      "review": "Gegenlesen lassen",
+      "reviewing": "Wird gelesen…",
+      "reviewFailed": "Der Assistent konnte nicht antworten. Versuchen Sie es später erneut.",
+      "reviewNothing": "Der Assistent hat nichts Ungewöhnliches gefunden.",
+      "cannotValidate": "Klären Sie zuerst die roten Punkte.",
+      "validateHint": "Mit der Bestätigung werden die Zahlen fixiert, und in dieser Periode kann nicht mehr gebucht werden.",
+      "validate": "Abrechnung bestätigen",
+      "semester": "H{q} {year}",
+      "tax": "Steuer",
+      "planOnly": "Die in InvoiceLead vorbereitete und bestätigte MWST-Abrechnung ist im Pro-Abo enthalten. Die Zahlen unten können Sie einsehen.",
+      "figuresDe": {
+        "81": "Kz 81 · Steuerpflichtige Umsätze zu 19 %",
+        "86": "Kz 86 · Steuerpflichtige Umsätze zu 7 %",
+        "35": "Kz 35/36 · Umsätze zu anderen Steuersätzen",
+        "21": "Kz 21 · Nicht steuerbare sonstige Leistungen (EU)",
+        "48": "Kz 48 · Steuerfreie Umsätze ohne Vorsteuerabzug",
+        "66": "Kz 66 · Abziehbare Vorsteuerbeträge",
+        "83": "Kz 83 · Verbleibende Vorauszahlung (negativ: Erstattung)"
+      },
+      "figuresFr": {
+        "A1": "A1 · Steuerpflichtige Verkäufe und Leistungen (netto)",
+        "E2": "E2 · Übrige nicht steuerbare Umsätze (auf E1, E2, F2 aufteilen)",
+        "08": "08 · Normalsatz 20 %",
+        "9B": "9B · Ermässigter Satz 10 %",
+        "09": "09 · Ermässigter Satz 5,5 %",
+        "OT": "Andere Sätze",
+        "16": "16 · Total geschuldete MWST",
+        "19": "19 · Vorsteuer auf Anlagen",
+        "20": "20 · Vorsteuer auf übrige Waren und Leistungen",
+        "23": "23 · Total Vorsteuer",
+        "28": "28 · Geschuldete Netto-MWST",
+        "25": "25 · MWST-Guthaben"
+      },
+      "figuresGb": {
+        "1": "Feld 1 · MWST auf Verkäufen",
+        "2": "Feld 2 · MWST auf EU-Erwerben (Nordirland)",
+        "3": "Feld 3 · Total geschuldete MWST",
+        "4": "Feld 4 · Rückforderbare Vorsteuer",
+        "5": "Feld 5 · Nettobetrag zu zahlen oder zurück",
+        "6": "Feld 6 · Gesamtumsatz ohne MWST",
+        "7": "Feld 7 · Gesamteinkäufe ohne MWST",
+        "8": "Feld 8 · Warenlieferungen in die EU (Nordirland)",
+        "9": "Feld 9 · Warenerwerbe aus der EU (Nordirland)"
+      },
+      "figuresUs": {
+        "S1": "Bruttoumsatz",
+        "S2": "Nicht steuerbare Umsätze (befreit oder ausserhalb des Bundesstaats)",
+        "S3": "Steuerbare Umsätze",
+        "S4": "Erhobene Sales Tax, abzuliefern"
+      },
+      "titleUs": "Sales-Tax-Übersicht",
+      "xmlDownload": "Abrechnung im Format eCH-0217 herunterladen, für das ESTV-Portal",
+      "xmlNoUid": "Die eCH-0217-Datei braucht die UID des Unternehmens (Einstellungen)."
+    },
+    "reminders": {
+      "title": "Mahnungen",
+      "back": "Alle Rechnungen",
+      "subtitle": "Überfällige Rechnungen, deren nächste Mahnstufe fällig ist (10, 25 und 40 Tage nach Fälligkeit). Die E-Mail geht in der Sprache der Rechnung, mit dem PDF und seinem QR-Einzahlungsschein.",
+      "sendAll": "Alle Mahnungen per E-Mail senden",
+      "sentCount": "{count, plural, =0 {Keine Mahnung gesendet.} one {# Mahnung gesendet.} other {# Mahnungen gesendet.}}",
+      "results": {
+        "sent": "Mahnung gesendet.",
+        "recorded": "Mahnung als gesendet vermerkt.",
+        "notDue": "Diese Mahnung ist nicht mehr fällig.",
+        "noEmail": "Keine E-Mail-Adresse für diesen Kunden, oder Versand nicht eingerichtet.",
+        "failed": "Der Versand ist fehlgeschlagen. Versuchen Sie es später erneut."
+      },
+      "empty": "Heute sind keine Mahnungen fällig.",
+      "line": "{level, select, 1 {1. Mahnung} 2 {2. Mahnung} other {Letzte Mahnung}} · {days} Tage überfällig · fällig seit {due}",
+      "noEmail": "keine E-Mail",
+      "send": "Senden",
+      "markManual": "Als gesendet vermerken (Post)",
+      "email": {
+        "link": "Online ansehen:",
+        "subject1": "Zahlungserinnerung: Rechnung {number} von {company}",
+        "subject2": "2. Mahnung: Rechnung {number} von {company}",
+        "subject3": "Letzte Mahnung: Rechnung {number} von {company}",
+        "body1": "Guten Tag\n\nGemäss unserer Buchhaltung ist unsere Rechnung {number}, fällig am {due}, noch offen. Der offene Betrag beträgt {currency} {amount}.\n\nFalls die Zahlung bereits unterwegs ist, betrachten Sie diese Nachricht bitte als gegenstandslos.\n\nFreundliche Grüsse\n{company}",
+        "body2": "Guten Tag\n\nTrotz unserer Zahlungserinnerung ist unsere Rechnung {number}, fällig am {due}, weiterhin offen. Wir bitten Sie, den offenen Betrag von {currency} {amount} innert 10 Tagen zu begleichen.\n\nFreundliche Grüsse\n{company}",
+        "body3": "Guten Tag\n\nUnsere Rechnung {number}, fällig am {due}, ist trotz unserer Mahnungen noch offen. Bitte begleichen Sie den offenen Betrag von {currency} {amount} innert 10 Tagen. Andernfalls sehen wir uns gezwungen, weitere Schritte einzuleiten.\n\nFreundliche Grüsse\n{company}",
+        "charges": "Offener Rechnungsbetrag: {currency} {open}\nMahngebühren und Verzugszinsen: {currency} {charges}\nZu bezahlen: {currency} {total}"
+      },
+      "chargesLine": "Offene Rechnung {open} · Gebühr {fee} · Zinsen {interest} · bereits gefordert {before}",
+      "settings": {
+        "title": "Mahneinstellungen",
+        "auto": "Mahnungen automatisch versenden",
+        "autoHint": "Jeden Morgen gehen fällige Mahnungen per E-Mail an Kunden mit Adresse. Die übrigen bleiben in dieser Liste.",
+        "fee": "Mahngebühr ab der 2. Mahnung ({currency})",
+        "feeHint": "Leer oder 0: keine Gebühr. In den AGB vorsehen.",
+        "interest": "Verzugszins pro Jahr (%)",
+        "interestHint": {
+          "CH": "Leer: kein Zins. Gesetzlicher Satz in der Schweiz: 5 % (Art. 104 OR).",
+          "DE": "Leer: kein Zins. Zwischen Unternehmen 9 Prozentpunkte über dem Basiszinssatz (§ 288 BGB).",
+          "FR": "Leer: kein Zins. Mindestens das Dreifache des gesetzlichen Satzes, dazu 40 € Pauschale (Art. L441-10 C. com.).",
+          "GB": "Leer: kein Zins. Zwischen Unternehmen 8 Prozentpunkte über dem Leitzins der Bank of England.",
+          "US": "Leer: kein Zins. Der Höchstsatz hängt vom Bundesstaat und vom Vertrag ab."
+        },
+        "save": "Einstellungen speichern",
+        "plan": "2. und 3. Mahnung, automatischer Versand, Mahngebühren und Verzugszinsen sind Teil des Pro-Abos.",
+        "results": {
+          "saved": "Mahneinstellungen gespeichert.",
+          "plan": "Diese Einstellungen sind Teil des Pro-Abos.",
+          "invalidFee": "Ungültige Gebühr (positiver Betrag, höchstens zwei Nachkommastellen).",
+          "invalidRate": "Ungültiger Satz (zwischen 0 und 20 %, zum Beispiel 5)."
+        }
+      }
+    },
+    "recurring": {
+      "title": "Wiederkehrende Rechnungen",
+      "back": "Alle Rechnungen",
+      "subtitle": "Jede Fälligkeit erstellt eine neue Rechnung nach der Vorlage. Mit automatischem Versand wird sie an jedem fälligen Morgen ausgestellt, verbucht und dem Kunden gesendet.",
+      "created": "Wiederholung gespeichert.",
+      "empty": "Keine wiederkehrenden Rechnungen. Öffnen Sie eine Rechnung und wählen Sie «Wiederkehrend machen».",
+      "line": "Alle {interval, plural, one {Monate} other {# Monate}} · nächste am {next} · Vorlage {model}",
+      "draftModel": "Entwurf",
+      "autoSend": "automatisch ausgestellt und gesendet",
+      "draftOnly": "als Entwurf erstellt",
+      "paused": "pausiert",
+      "model": "Vorlage anzeigen",
+      "pause": "Pausieren",
+      "resume": "Fortsetzen",
+      "delete": "Löschen"
+    },
+    "plan": {
+      "upgrade": "Auf Pro wechseln",
+      "free": "Gratis",
+      "pro": "Pro",
+      "proplus": "Pro+",
+      "usage": "Abo {plan}{hasLimit, select, yes {: {invoices} von {invoiceLimit} Rechnungen diesen Monat, {contacts} von {contactLimit} Kontakten} other {}}."
+    },
+    "orgSwitch": {
+      "label": "Unternehmen",
+      "switch": "Unternehmen wechseln",
+      "client": "Kunde"
+    },
+    "team": {
+      "title": "Team",
+      "subtitle": "Die Personen des Unternehmens kommen aus dem Lead-Konto. Hier legen Sie fest, was jede in InvoiceLead tut.",
+      "seats": "{used} von {seats} {seats, plural, one {Platz belegt} other {Plätzen belegt}}",
+      "members": "Mitglieder",
+      "name": "Person",
+      "leadRole": "Lead-Rolle",
+      "appRole": "In InvoiceLead",
+      "leadRoles": {
+        "admin": "Administrator",
+        "manager": "Verantwortlich",
+        "user": "Benutzer",
+        "fiduciary": "Treuhand"
+      },
+      "roles": {
+        "all": "Rechnungen und Buchhaltung",
+        "billing": "Nur Rechnungen",
+        "accounting": "Nur Buchhaltung",
+        "readonly": "Nur lesen",
+        "none": "Kein Zugang"
+      },
+      "managerRole": "Alles, inklusive Einstellungen",
+      "noSeat": "ohne Platz",
+      "save": "Speichern",
+      "saved": "Rolle gespeichert.",
+      "addHint": "Um eine Person hinzuzufügen, laden Sie sie im Lead-Konto in Ihre Organisation ein. Sie erscheint hier nach ihrer ersten Anmeldung.",
+      "fiduciaryTitle": "Treuhand",
+      "fiduciaryHint": "Ihre Treuhand greift kostenlos mit ihrem eigenen Lead-Konto auf die Buchhaltung zu (Bank, Belege, Journal, MWST, Abschluss). Rechnungen sieht sie, ohne sie ändern zu können.",
+      "fiduciaryEmail": "E-Mail-Adresse der Treuhand",
+      "invite": "Einladen",
+      "invited": "Einladung an {email} gesendet.",
+      "inviteLink": "Geben Sie diesen Link an {email} weiter, gültig {days} Tage:",
+      "pending": "Einladung offen bis {date}",
+      "cancel": "Zurückziehen",
+      "remove": "Zugang entziehen",
+      "removed": "Zugang entzogen.",
+      "noFiduciary": "Noch keine Treuhand hat Zugang.",
+      "planOnly": "Der Treuhandzugang ist in Pro und Pro+ enthalten.",
+      "managersOnly": "Nur verantwortliche Personen des Unternehmens ändern das Team.",
+      "errors": {
+        "invalid": "Ungültige E-Mail-Adresse.",
+        "forbidden": "Nur verantwortliche Personen des Unternehmens ändern das Team.",
+        "plan": "Der Treuhandzugang ist in Pro und Pro+ enthalten.",
+        "failed": "Die E-Mail konnte nicht gesendet werden. Geben Sie den Link unten weiter."
+      },
+      "emailSubject": "{org} gibt Ihnen Zugang zur Buchhaltung",
+      "emailBody": "Guten Tag\n\n{org} lädt Sie ein, in InvoiceLead auf die Buchhaltung zuzugreifen. Melden Sie sich über diesen Link mit Ihrem Lead-Konto an (gültig {days} Tage):"
+    },
+    "invite": {
+      "title": "Treuhand-Einladung",
+      "loginBody": "Melden Sie sich mit Ihrem Lead-Konto an, um die Einladung anzunehmen. Verwenden Sie die Adresse, an die sie gesendet wurde.",
+      "login": "Mit meinem Lead-Konto anmelden",
+      "accepted": "Sie haben jetzt Zugang zur Buchhaltung von {org}.",
+      "open": "{org} öffnen",
+      "invalid": "Dieser Einladungslink ist ungültig oder wurde bereits verwendet.",
+      "expired": "Dieser Einladungslink ist abgelaufen. Fordern Sie einen neuen an.",
+      "wrongEmail": "Diese Einladung ging an eine andere Adresse als {email}. Melden Sie sich mit dem richtigen Lead-Konto an.",
+      "logout": "Konto wechseln",
+      "accept": "Einladung annehmen"
+    },
+    "crmImport": {
+      "title": "Gewonnener Lead aus CRMlead",
+      "subtitle": "Prüfen Sie, was CRMlead übermittelt. Der Kunde wird übernommen, wenn er schon existiert (gleiche Karte, gleiche E-Mail oder gleicher Name), sonst neu angelegt.",
+      "invalid": "Dieser CRMlead-Link ist unvollständig oder unlesbar. Starten Sie die Erstellung erneut in CRMlead.",
+      "contactLimit": "Ihr Abo hat die Kontaktgrenze erreicht. Wechseln Sie zu Pro, um diesen Kunden hinzuzufügen.",
+      "quote": "Offerte",
+      "invoice": "Rechnung",
+      "net": "Total ohne MWST",
+      "hint": "Es wird ein Entwurf erstellt, den Sie vor dem Ausstellen ändern können. Ein Lead ergibt nur ein Dokument.",
+      "forbidden": "Ihre Rolle erlaubt keine Rechnungen.",
+      "createQuote": "Offerte erstellen",
+      "createInvoice": "Rechnung erstellen",
+      "fromCrm": "Entwurf aus CRMlead erstellt. Prüfen und dann ausstellen."
+    },
+    "feedback": {
+      "title": "Feedback geben",
+      "subtitle": "InvoiceLead ist in der privaten Beta. Eine Idee, ein Problem, ein Lob: Wir lesen alles.",
+      "kind": "Art des Feedbacks",
+      "kinds": {
+        "idea": "Idee",
+        "problem": "Problem",
+        "praise": "Gefällt mir"
+      },
+      "message": "Ihre Nachricht",
+      "send": "Senden",
+      "sent": "Danke, Ihr Feedback ist angekommen.",
+      "invalid": "Schreiben Sie ein paar Worte, bevor Sie senden."
+    },
+    "onlinePayments": {
+      "title": "Online-Zahlung",
+      "subtitle": "Ihre Kunden bezahlen eine Rechnung über ihren Link, per Karte, TWINT, SEPA oder ACH, je nachdem, was Ihr Stripe-Konto akzeptiert. Das Geld geht direkt auf Ihr Stripe-Konto.",
+      "notConfigured": "Die Online-Zahlung ist in InvoiceLead noch nicht aktiviert.",
+      "notLinked": "Kein Stripe-Konto verbunden.",
+      "linked": "Stripe-Konto verbunden: {account}.",
+      "connect": "Mein Stripe-Konto verbinden",
+      "disconnect": "Trennen",
+      "connected": "Stripe-Konto verbunden.",
+      "disconnected": "Stripe-Konto getrennt.",
+      "howItWorks": "Jede Zahlung wird auf der Rechnung erfasst und auf das Transferkonto des Zahlungsdienstleisters gebucht; die Auszahlung von Stripe auf Ihre Bank gleicht es aus, der Rest sind die Gebühren.",
+      "errors": {
+        "state": "Die Rückmeldung von Stripe konnte nicht geprüft werden. Bitte erneut versuchen.",
+        "denied": "Die Verbindung wurde bei Stripe abgebrochen.",
+        "failed": "Stripe hat die Verbindung nicht bestätigt. Versuchen Sie es später erneut."
+      }
+    },
+    "apiSettings": {
+      "title": "API und Webhooks",
+      "subtitle": "Verbinden Sie InvoiceLead mit Ihren Werkzeugen: Die REST-API ({base}) erstellt Kontakte, Offerten, Rechnungen und Zahlungen; Webhooks melden Ihren Werkzeugen, wenn eine Rechnung ausgestellt oder bezahlt wird.",
+      "plan": "API und Webhooks sind Teil des Pro+-Abos.",
+      "keys": {
+        "title": "API-Schlüssel",
+        "empty": "Kein Schlüssel.",
+        "name": "Name des Schlüssels (zum Beispiel «Onlineshop»)",
+        "create": "Schlüssel erstellen",
+        "created": "Kopieren Sie diesen Schlüssel jetzt: Er wird nicht mehr angezeigt. Senden Sie ihn im Header Authorization: Bearer.",
+        "meta": "erstellt am {created}, verwendet: {used}",
+        "never": "nie",
+        "revoke": "Widerrufen",
+        "revoked": "Schlüssel widerrufen."
+      },
+      "webhooks": {
+        "title": "Webhooks",
+        "hint": "Jedes Ereignis wird als JSON per POST gesendet und im Header InvoiceLead-Signature signiert (HMAC-SHA256 von «t.Inhalt» mit dem Geheimnis). Bei einem Fehler wird es später erneut gesendet, bis zu fünfmal.",
+        "empty": "Keine Adresse.",
+        "url": "Empfangsadresse (https)",
+        "events": "Ereignisse",
+        "create": "Webhook hinzufügen",
+        "created": "Kopieren Sie dieses Signaturgeheimnis jetzt: Es wird nicht mehr angezeigt.",
+        "disable": "Löschen",
+        "disabled": "Webhook gelöscht.",
+        "delivery": "{event}: {status} ({code}), {date}",
+        "status": {
+          "pending": "ausstehend",
+          "delivered": "zugestellt",
+          "failed": "aufgegeben"
+        }
+      },
+      "errors": {
+        "plan": "API und Webhooks sind Teil des Pro+-Abos.",
+        "invalid": "Name erforderlich (höchstens 60 Zeichen).",
+        "tooMany": "Höchstzahl erreicht.",
+        "url": "Ungültige Adresse: https zu einem öffentlichen Server, ohne Zugangsdaten.",
+        "events": "Wählen Sie mindestens ein Ereignis."
+      }
+    }
+  },
+  "footer": {
+    "product": "Produkt",
+    "home": "Startseite",
+    "family": "Lead-Familie",
+    "account": "Konto",
+    "login": "Anmelden",
+    "signup": "Registrieren",
+    "scanlead": "Scanlead, Leaderfassung an Messen",
+    "crmlead": "CRMlead, das CRM für Ihre Kontakte",
+    "features": "Funktionen",
+    "pricing": "Preise",
+    "faq": "FAQ",
+    "legal": "Rechtliches",
+    "imprint": "Impressum",
+    "privacy": "Datenschutz",
+    "terms": "AGB",
+    "dpa": "Auftragsbearbeitung (AVV)"
+  },
+  "notFound": {
+    "title": "Seite nicht gefunden",
+    "body": "Diese Adresse gibt es bei InvoiceLead nicht, oder nicht mehr.",
+    "home": "Zur Startseite"
+  },
+  "legal": {
+    "home": "Startseite",
+    "titles": {
+      "imprint": "Impressum",
+      "privacy": "Datenschutz",
+      "terms": "Allgemeine Geschäftsbedingungen",
+      "dpa": "Auftragsbearbeitungsvertrag"
+    }
+  },
+  "pricing": {
+    "title": "Einfache Preise, für die ganze Lead-Familie",
+    "subtitle": "Ein Abo öffnet InvoiceLead, Scanlead und CRMlead. Preise exkl. MWST.",
+    "notice": "InvoiceLead öffnet schrittweise: Mit «Demnächst» markierte Funktionen folgen in den nächsten Versionen. Die Registrierung ist kostenlos.",
+    "monthly": "pro Monat",
+    "yearly": "oder {price} pro Jahr (2 Monate geschenkt)",
+    "popular": "Empfohlen",
+    "soon": "Demnächst",
+    "cta": {
+      "free": "Kostenlos starten",
+      "paid": "{plan} wählen"
+    },
+    "plans": {
+      "free": {
+        "name": "Gratis",
+        "tagline": "Für den Start als Selbständige",
+        "features": [
+          "1 Benutzer, 1 Firma",
+          "10 Rechnungen pro Monat, Offerten unbegrenzt",
+          "50 Kontakte",
+          "QR-Rechnung, Dokumente auf DE, FR, IT, EN",
+          "Buchhaltung direkt aus Ihren Rechnungen",
+          "Hinweis «Erstellt mit InvoiceLead»"
+        ]
+      },
+      "pro": {
+        "name": "Pro",
+        "tagline": "Für KMU, die jede Woche verrechnen",
+        "features": [
+          "Rechnungen und Kontakte unbegrenzt",
+          "2 Benutzer und kostenloser Treuhandzugang",
+          "Automatische Mahnungen in 3 Stufen",
+          "MWST-Abrechnung (effektiv und Saldosteuersatz)",
+          "Bankimport camt und Abgleich",
+          "Wiederkehrende Rechnungen, Fremdwährungen"
+        ]
+      },
+      "proPlus": {
+        "name": "Pro+",
+        "tagline": "Für Teams und mehrere Firmen",
+        "features": [
+          "5 Benutzer mit Rollen",
+          "Bis zu 3 Firmen",
+          "Direkte Bankanbindung",
+          "eBill, API und Webhooks",
+          "GeBüV-konforme Archivierung",
+          "Priorisierter Support"
+        ]
+      }
+    },
+    "footer": "Verrechnet in Euro durch die Lead-Familie (Quantum Liquid LLC). Jederzeit kündbar."
+  },
+  "faq": {
+    "title": "Häufige Fragen",
+    "items": [
+      {
+        "q": "Erstellt InvoiceLead konforme QR-Rechnungen?",
+        "a": "Ja. Der Zahlteil folgt dem geltenden SIX-Standard (Version 2.3, strukturierte Adressen), mit QR- oder SCOR-Referenz je nach Bankkonto."
+      },
+      {
+        "q": "Kann ich meine ganze Buchhaltung in InvoiceLead führen?",
+        "a": "Das ist das Ziel: doppelte Buchhaltung nach KMU-Kontenrahmen, Buchungen direkt aus Rechnungen und Zahlungen, Bilanz, Erfolgsrechnung und MWST-Abrechnung. Diese Funktionen werden schrittweise freigeschaltet."
+      },
+      {
+        "q": "Welche MWST-Methoden sind vorgesehen?",
+        "a": "Die effektive Methode und die Saldosteuersatzmethode, nach vereinbarten oder vereinnahmten Entgelten. Die Abrechnung wird als XML nach eCH-0217 exportiert, wie es das ESTV-Portal annimmt."
+      },
+      {
+        "q": "Was ist das Lead-Konto?",
+        "a": "Das gemeinsame Konto der Lead-Familie: dieselbe Anmeldung für InvoiceLead, Scanlead und CRMlead, und ein in einer Anwendung bezahltes Abo öffnet die anderen."
+      },
+      {
+        "q": "Kann meine Treuhand auf die Buchhaltung zugreifen?",
+        "a": "Ja, ab dem Pro-Abo ist ein kostenloser Treuhandzugang vorgesehen."
+      },
+      {
+        "q": "Wo werden meine Daten gespeichert?",
+        "a": "In den USA (Vercel und Neon, Ohio), verschlüsselt bei der Übertragung und im Ruhezustand. Details stehen in der Datenschutzerklärung."
+      },
+      {
+        "q": "Kann ich meine Daten exportieren?",
+        "a": "Ja, jederzeit und noch 30 Tage nach einer Kündigung. Ihre Bücher müssen Sie zehn Jahre aufbewahren: Der Export ist genau dafür vorgesehen."
+      },
+      {
+        "q": "Brauche ich für den Start eine Kreditkarte?",
+        "a": "Nein. Das Gratis-Abo verlangt keine Karte und ist zeitlich unbegrenzt."
+      }
+    ]
+  },
+  "shared": {
+    "download": "PDF herunterladen",
+    "poweredBy": "Versendet mit InvoiceLead",
+    "pay": "Online bezahlen",
+    "paid": "Danke. Die Zahlung wird bestätigt; die Rechnung gilt als bezahlt, sobald Stripe sie bestätigt hat.",
+    "payError": "Die Online-Zahlung konnte nicht gestartet werden. Versuchen Sie es erneut oder zahlen Sie per Überweisung."
+  }
+}

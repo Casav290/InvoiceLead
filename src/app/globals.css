@@ -1,0 +1,171 @@
+@import "tailwindcss";
+
+/*
+ * InvoiceLead, visuel « Trait net » v1 commun aux applications Lead (Scanlead, CRMlead).
+ * Angles vifs, aucune ombre, aucun dégradé, une seule police (Archivo), une seule couleur d'action.
+ * Les arrondis et les ombres sont retirés du thème : `rounded-lg` ou `shadow-md` n'existent plus.
+ */
+@theme {
+  --color-*: initial;
+  --radius-*: initial;
+  --shadow-*: initial;
+  --inset-shadow-*: initial;
+  --drop-shadow-*: initial;
+  --text-shadow-*: initial;
+
+  --font-sans: "Archivo Variable", "Archivo", system-ui, sans-serif;
+  --font-mono: Menlo, ui-monospace, monospace;
+
+  --color-white: #ffffff;
+  --color-black: #000000;
+
+  /* Fonds */
+  --color-app: #eceae7;
+  --color-panel: #ffffff;
+  --color-paper: #fffdf9;
+  --color-muted: #f2f0ee;
+  --color-head: #f7f5f3;
+  --color-strip: #f4f2ef;
+  --color-rowhover: #f4f8ff;
+
+  /* Traits */
+  --color-line-strong: #cfcac4;
+  --color-line: #e7e4e0;
+  --color-line-soft: #eeebe7;
+  --color-line-cell: #f4f1ee;
+
+  /* Encres */
+  --color-ink: #1b1a19;
+  --color-ink-2: #44403c;
+  --color-ink-3: #57534e;
+  --color-ink-muted: #67625c;
+
+  /* Action : la couleur d'InvoiceLead */
+  --color-accent: #2563eb;
+  --color-accent-dark: #1d4ed8;
+  --color-accent-pale: #dbeafe;
+  --color-accent-veil: #eff6ff;
+
+  /* Compte Lead et applications sœurs */
+  --color-lead: #0e6d6e;
+  --color-lead-dark: #0b5a5c;
+  --color-scanlead: #2563eb;
+  --color-crmlead: #0f6e70;
+
+  /* Statuts : le rouge dit l'urgence, jamais l'issue */
+  --color-hot: #dc2626;
+  --color-hot-bg: #fee2e2;
+  --color-hot-fg: #b91c1c;
+  --color-warm: #ea580c;
+  --color-warm-bg: #ffedd5;
+  --color-warm-fg: #c2410c;
+  --color-cold: #0284c7;
+  --color-cold-bg: #e0f2fe;
+  --color-cold-fg: #0369a1;
+  --color-ok: #16a34a;
+  --color-ok-bg: #dcfce7;
+  --color-ok-fg: #15803d;
+}
+
+@layer base {
+  *,
+  ::before,
+  ::after {
+    border-color: var(--color-line);
+  }
+  body {
+    background: var(--color-app);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  h1,
+  h2 {
+    letter-spacing: -0.025em;
+    word-spacing: 0.06em;
+    font-weight: 800;
+  }
+  h3 {
+    font-weight: 700;
+  }
+  ::selection {
+    background: var(--color-accent-pale);
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+  /* Sur téléphone, un champ sous 16 px fait zoomer Safari au premier toucher. */
+  @media (max-width: 640px), (pointer: coarse) {
+    input,
+    select,
+    textarea {
+      font-size: 16px;
+    }
+  }
+}
+
+/* Textes légaux rendus depuis content/legal (Markdown). */
+@layer components {
+  /* Les mots composés allemands (« Datenschutz-Grundverordnung ») doivent pouvoir se couper à 320 px. */
+  .legal-prose {
+    overflow-wrap: anywhere;
+    hyphens: auto;
+  }
+  .legal-prose h1 {
+    font-size: 28px;
+    line-height: 1.15;
+    margin: 0 0 12px;
+  }
+  .legal-prose h2 {
+    font-size: 17px;
+    font-weight: 700;
+    letter-spacing: 0;
+    margin: 28px 0 8px;
+  }
+  .legal-prose h3 {
+    font-size: 15px;
+    margin: 20px 0 6px;
+  }
+  .legal-prose p,
+  .legal-prose li {
+    font-size: 15px;
+    line-height: 1.75;
+    color: var(--color-ink-2);
+  }
+  .legal-prose p {
+    margin: 0 0 12px;
+  }
+  .legal-prose ul {
+    list-style: square;
+    padding-left: 1.3em;
+    margin: 0 0 12px;
+  }
+  .legal-prose a {
+    color: var(--color-accent-dark);
+    text-decoration: underline;
+  }
+  .legal-prose hr {
+    border-top: 1px solid var(--color-line);
+    margin: 28px 0;
+  }
+  .legal-prose table {
+    display: block;
+    width: 100%;
+    overflow-x: auto;
+    border-collapse: collapse;
+    margin: 0 0 16px;
+    font-size: 14px;
+  }
+  .legal-prose th,
+  .legal-prose td {
+    border: 1px solid var(--color-line-strong);
+    padding: 8px 10px;
+    text-align: left;
+    vertical-align: top;
+  }
+  .legal-prose th {
+    background: var(--color-head);
+    font-weight: 700;
+  }
+}

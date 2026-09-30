@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Extrait minimal d'eCH-0097 v3 (identification des organisations), limité aux types qu'importe
+  eCH-0217 : uidStructureType et organisationNameType. Sert seulement à valider le XML produit
+  hors ligne ; le schéma officiel est publié sur ech.ch.
+-->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:eCH-0097="http://www.ech.ch/xmlns/eCH-0097/3" targetNamespace="http://www.ech.ch/xmlns/eCH-0097/3" elementFormDefault="qualified" attributeFormDefault="unqualified">
+  <xs:simpleType name="uidOrganisationIdCategorieType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="CHE"/>
+      <xs:enumeration value="ADM"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="uidOrganisationIdType">
+    <xs:restriction base="xs:nonNegativeInteger">
+      <xs:totalDigits value="9"/>
+      <xs:minInclusive value="1"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:complexType name="uidStructureType">
+    <xs:sequence>
+      <xs:element name="uidOrganisationIdCategorie" type="eCH-0097:uidOrganisationIdCategorieType"/>
+      <xs:element name="uidOrganisationId" type="eCH-0097:uidOrganisationIdType"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:simpleType name="organisationNameType">
+    <xs:restriction base="xs:token">
+      <xs:minLength value="1"/>
+      <xs:maxLength value="255"/>
+    </xs:restriction>
+  </xs:simpleType>
+</xs:schema>

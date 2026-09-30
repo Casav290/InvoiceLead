@@ -1,0 +1,1542 @@
+{
+  "meta": {
+    "title": "InvoiceLead, quotes, QR-bills and Swiss accounting",
+    "description": "Quotes, compliant QR-bills, automatic payment reminders and double-entry accounting for Swiss freelancers and SMEs. Free to start."
+  },
+  "nav": {
+    "features": "Features",
+    "family": "Lead family",
+    "login": "Log in",
+    "cta": "Start for free",
+    "language": "Language",
+    "pricing": "Pricing",
+    "faq": "FAQ"
+  },
+  "home": {
+    "kicker": "New in the Lead family",
+    "title": "Quotes, invoices and accounting, done before the end of the day.",
+    "subtitle": "InvoiceLead prepares your quotes, issues compliant QR-bills, chases unpaid invoices and keeps your Swiss accounts. For freelancers and SMEs alike, free to start.",
+    "ctaPrimary": "Start for free",
+    "ctaSecondary": "See the features",
+    "featuresTitle": "Everything you need to get paid, and nothing more",
+    "features": {
+      "quotes": {
+        "title": "From quote to invoice in one click",
+        "body": "An accepted quote becomes an order confirmation, then an invoice, with nothing to re-enter."
+      },
+      "qr": {
+        "title": "QR-bills to the Swiss standard",
+        "body": "Payment part compliant with the SIX standard, structured addresses, QR or SCOR reference."
+      },
+      "reminders": {
+        "title": "Automatic payment reminders",
+        "body": "Three reminder levels, with fees and deadlines you set, sent at the right time."
+      },
+      "accounting": {
+        "title": "Double-entry accounting",
+        "body": "SME chart of accounts, entries created from your invoices and payments, balance sheet and income statement."
+      },
+      "vat": {
+        "title": "Swiss VAT under control",
+        "body": "Rates of 8.1%, 2.6% and 3.8%, effective method or net tax rate method, VAT return prepared."
+      },
+      "team": {
+        "title": "The whole team, and your fiduciary",
+        "body": "Several users per company, with a single account for all Lead apps."
+      }
+    },
+    "familyTitle": "One account, all your Lead apps",
+    "familyBody": "Scanlead captures your trade fair contacts, CRMlead follows them through to the sale, InvoiceLead invoices and collects payment. A single Lead account to move from one to the other.",
+    "preview": {
+      "position": "Item",
+      "qty": "Qty",
+      "subtotal": "Subtotal",
+      "vat": "VAT 8.1%",
+      "total": "Total",
+      "payment": "Payment part",
+      "rows": ["Consulting, September", "Kick-off workshop", "Travel expenses"],
+      "hours": "h"
+    }
+  },
+  "auth": {
+    "loginTitle": "Log in to InvoiceLead",
+    "loginSubtitle": "InvoiceLead uses your Lead account, the same one as for Scanlead and CRMlead.",
+    "signupTitle": "Create your account",
+    "signupSubtitle": "Your Lead account gives you access to InvoiceLead and every app in the family. The next screen offers “Create an account”.",
+    "leadButton": "Log in with my Lead account",
+    "noAccountYet": "No account yet? The same button lets you create one.",
+    "errors": {
+      "lead": "Logging in with your Lead account did not work. Try again.",
+      "session": "The login request has expired. Try again."
+    }
+  },
+  "app": {
+    "nav": {
+      "dashboard": "Dashboard",
+      "settings": "Settings",
+      "contacts": "Contacts",
+      "products": "Items",
+      "invoices": "Invoices",
+      "quotes": "Quotes",
+      "accounting": "Accounting"
+    },
+    "switcher": {
+      "open": "Switch app",
+      "title": "Lead apps",
+      "current": "Here",
+      "openLink": "Open",
+      "soon": "Soon",
+      "upgrade": "Upgrade"
+    },
+    "user": {
+      "logout": "Log out",
+      "planLine": "Plan: <strong>{plan}</strong>",
+      "plans": {
+        "free": "Free",
+        "pro": "Pro",
+        "pro_plus": "Pro+"
+      },
+      "feedback": "Give feedback"
+    },
+    "dashboard": {
+      "title": "Hello {name}",
+      "subtitle": "Your {org} workspace is ready.",
+      "nextTitle": "Next steps",
+      "next": {
+        "company": "Complete your company details (UID, VAT, IBAN)",
+        "contacts": "Import your customers",
+        "invoice": "Issue your first QR-bill"
+      },
+      "soon": "These screens are coming in the next releases.",
+      "complete": "Complete",
+      "done": "Done",
+      "start": "Start",
+      "forbidden": "Your role does not allow this action. A manager can change it in the team settings."
+    },
+    "noAccess": {
+      "title": "Your plan does not include InvoiceLead",
+      "body": "Your organisation {org} does not have access to InvoiceLead yet. Switch to a plan that includes it to continue.",
+      "upgrade": "Upgrade",
+      "logout": "Log out",
+      "blockedTitle": "Access to InvoiceLead removed",
+      "blockedBody": "A manager at {org} has removed your access to InvoiceLead. Ask them to restore it in the team settings.",
+      "seatTitle": "All seats are taken",
+      "seatBody": "The {org} plan includes {seats, plural, one {# user} other {# users}}, all already taken. A manager can upgrade to a higher plan or free up a seat.",
+      "otherOrgs": "Work in another company",
+      "betaTitle": "InvoiceLead is in private beta",
+      "betaBody": "{org} is not on the beta list yet. We are opening access in small groups; write to us at hello@invoicelead.io to be added."
+    },
+    "company": {
+      "title": "Company",
+      "subtitle": "These details appear on your quotes, invoices and QR-bills.",
+      "readOnly": "Only administrators and managers can change these settings.",
+      "save": "Save",
+      "saved": "Settings saved.",
+      "invalid": "Some fields need correcting.",
+      "choose": "Choose…",
+      "sections": {
+        "identity": "Identity",
+        "address": "Address and contact",
+        "vat": "VAT",
+        "bank": "Bank account",
+        "fiscalYear": "Fiscal year"
+      },
+      "fields": {
+        "legalName": "Legal name",
+        "legalForm": "Legal form",
+        "uid": "UID number",
+        "street": "Street",
+        "buildingNumber": "Number",
+        "postalCode": "Postcode",
+        "town": "Town",
+        "email": "Email",
+        "phone": "Phone",
+        "website": "Website",
+        "vatRegistered": "Company registered for VAT",
+        "vatMethod": "VAT method",
+        "vatSettlement": "Settlement basis",
+        "iban": "IBAN",
+        "qrIban": "QR-IBAN",
+        "fiscalYearStartMonth": "Start of the fiscal year",
+        "netTaxRate": "Net tax rate (%)",
+        "country": "Country of registered office",
+        "ustId": "USt-IdNr.",
+        "taxNumber": "Steuernummer",
+        "frVatId": "Intra-EU VAT number",
+        "siret": "SIRET",
+        "gbVat": "VAT registration number",
+        "companyNumber": "Companies House number",
+        "ein": "EIN (Employer Identification Number)",
+        "region": "State",
+        "collectsSalesTax": "The business collects sales tax",
+        "salesTaxRate": "Combined sales tax rate (%)"
+      },
+      "hints": {
+        "uid": "Format CHE-123.456.789, check digit verified.",
+        "iban": "Standard account: invoices with an SCOR reference (RF…).",
+        "qrIban": "Optional: invoices with a 27-digit QR reference.",
+        "netTaxRate": "Only with the net tax rate method: the rate granted by the SFTA, for example 6.2.",
+        "ustId": "Format DE123456789, check digit verified.",
+        "taxNumber": "Tax number from the Finanzamt, for example 12/345/67890. USt-IdNr. or Steuernummer: one of the two is required.",
+        "frVatId": "Format FR + 2 digits + SIREN, check key verified. Optional under the small business exemption (franchise en base).",
+        "siret": "14 digits (or a 9-digit SIREN), check digit verified. Required on every invoice.",
+        "gbVat": "Format GB + 9 digits, HMRC check digits verified.",
+        "companyNumber": "8 characters, for example 01234567 or SC123456. Optional for a sole trader.",
+        "ein": "Format 12-3456789. Optional for a sole proprietor without employees.",
+        "region": "Two-letter state code (TX, NY, CA…).",
+        "salesTaxRate": "Total state, county and city rate, for example 8.875. Applied to the \"normal\" code on lines."
+      },
+      "legalForms": {
+        "sole_proprietorship": "Sole proprietorship",
+        "gmbh": "GmbH (Sàrl)",
+        "ag": "AG (SA)",
+        "partnership": "Partnership",
+        "association": "Association",
+        "other": "Other",
+        "ug": "UG (haftungsbeschränkt)",
+        "ek": "Kaufmann (e.K.)",
+        "gbr": "GbR",
+        "ei": "Entreprise individuelle (EI)",
+        "micro": "Micro-entreprise",
+        "eurl": "EURL",
+        "sarl": "SARL",
+        "sas": "SAS",
+        "sasu": "SASU",
+        "sa": "SA",
+        "sole_trader": "Sole trader",
+        "llp": "LLP",
+        "ltd": "Private limited company (Ltd)",
+        "plc": "Public limited company (PLC)",
+        "llc": "LLC",
+        "c_corp": "C corporation",
+        "s_corp": "S corporation"
+      },
+      "vatMethods": {
+        "effective": "Effective method",
+        "net_tax_rate": "Net tax rate method"
+      },
+      "vatSettlements": {
+        "agreed": "Agreed consideration",
+        "received": "Consideration received"
+      },
+      "months": {
+        "1": "January",
+        "2": "February",
+        "3": "March",
+        "4": "April",
+        "5": "May",
+        "6": "June",
+        "7": "July",
+        "8": "August",
+        "9": "September",
+        "10": "October",
+        "11": "November",
+        "12": "December"
+      },
+      "errors": {
+        "required": "Required field.",
+        "tooLong": "Text too long.",
+        "postalCode": "Invalid postcode (4 digits in Switzerland, 5 in Germany and France, UK format in the United Kingdom, ZIP in the United States).",
+        "email": "Invalid email address.",
+        "uid": "Invalid UID number (format or check digit).",
+        "uidRequiredForVat": "The UID number is required for a VAT-registered company.",
+        "iban": "Invalid IBAN (country or check digits).",
+        "ibanIsQr": "This is a QR-IBAN: enter it in the QR-IBAN field.",
+        "notQrIban": "This is not a QR-IBAN (institution ID 30000 to 31999).",
+        "netTaxRate": "Enter the rate granted by the SFTA (between 0.1 and 15%).",
+        "ustId": "Invalid USt-IdNr. (DE followed by 9 digits, check digit).",
+        "countryLocked": "The country can no longer be changed once a document has been issued.",
+        "taxNumber": "Invalid Steuernummer (10 to 13 digits).",
+        "taxIdRequired": "Enter the USt-IdNr. or the Steuernummer: one of the two appears on every invoice.",
+        "frVatId": "Invalid VAT number (FR, 2-digit key, SIREN).",
+        "siret": "Invalid SIRET or SIREN (check digit).",
+        "siretRequired": "SIRET is required on French invoices.",
+        "gbVat": "Invalid UK VAT number (GB and 9 digits, HMRC check digits).",
+        "gbVatRequired": "The VAT number is required for a VAT-registered company.",
+        "companyNumber": "Invalid Companies House number (8 characters).",
+        "ein": "Invalid EIN (9 digits, prefix assigned by the IRS).",
+        "usState": "Invalid state code (two letters, for example TX).",
+        "salesTaxRate": "Enter a rate between 0.001 and 20%.",
+        "ibanUs": "No IBAN in the United States: add your ACH details to the closing text of your invoices."
+      },
+      "countries": {
+        "CH": "Switzerland",
+        "DE": "Germany",
+        "FR": "France",
+        "GB": "United Kingdom",
+        "US": "United States"
+      }
+    },
+    "contacts": {
+      "title": "Contacts",
+      "new": "New contact",
+      "edit": "Edit contact",
+      "save": "Save",
+      "archive": "Archive this contact",
+      "saved": "Contact saved.",
+      "archived": "Contact archived.",
+      "invalid": "Some fields need correcting.",
+      "search": "Search by name, email or town",
+      "searchButton": "Search",
+      "empty": "No contacts yet. Create your first customer.",
+      "noResults": "No contacts match this search.",
+      "columns": {
+        "name": "Name",
+        "town": "Town",
+        "email": "Email",
+        "role": "Role"
+      },
+      "roles": {
+        "customer": "Customer",
+        "supplier": "Supplier"
+      },
+      "sections": {
+        "identity": "Identity",
+        "address": "Address",
+        "billing": "Billing"
+      },
+      "fields": {
+        "kind": "Type",
+        "name": "Name or company name",
+        "contactPerson": "Contact person",
+        "role": "Role",
+        "isCustomer": "Customer",
+        "isSupplier": "Supplier",
+        "uid": "UID or VAT number",
+        "email": "Email",
+        "phone": "Phone",
+        "street": "Street",
+        "buildingNumber": "Number",
+        "postalCode": "Postcode",
+        "town": "Town",
+        "country": "Country",
+        "language": "Document language",
+        "paymentTermDays": "Payment term (days)",
+        "notes": "Internal notes",
+        "region": "State or region"
+      },
+      "hints": {
+        "street": "The address is optional, but must be complete once started: the QR-bill requires it in structured form.",
+        "uid": "Optional. Swiss UID CHE-123.456.789 or a foreign VAT number (FR…, DE…, GB…), required for reverse charge.",
+        "region": "In the United States, the state code (TX, NY…)."
+      },
+      "kinds": {
+        "company": "Company",
+        "person": "Individual"
+      },
+      "languages": {
+        "de": "German",
+        "fr": "French",
+        "it": "Italian",
+        "en": "English"
+      },
+      "countries": {
+        "CH": "Switzerland",
+        "LI": "Liechtenstein",
+        "DE": "Germany",
+        "FR": "France",
+        "IT": "Italy",
+        "AT": "Austria",
+        "GB": "United Kingdom",
+        "US": "United States"
+      },
+      "errors": {
+        "required": "Required field.",
+        "tooLong": "Text too long.",
+        "email": "Invalid email address.",
+        "postalCode": "Invalid postcode for this country.",
+        "uid": "Invalid UID or VAT number (format or check digit).",
+        "paymentTerm": "Between 0 and 365 days.",
+        "role": "Tick customer, supplier or both.",
+        "usState": "Enter the state code (two letters, for example TX)."
+      },
+      "planLimit": "The Free plan includes up to 50 contacts. Upgrade to Pro to add more."
+    },
+    "products": {
+      "title": "Items",
+      "new": "New item",
+      "edit": "Edit item",
+      "save": "Save",
+      "archive": "Archive this item",
+      "saved": "Item saved.",
+      "archived": "Item archived.",
+      "invalid": "Some fields need correcting.",
+      "search": "Search by name or reference",
+      "searchButton": "Search",
+      "empty": "No items yet. Add your services and products.",
+      "noResults": "No items match this search.",
+      "columns": {
+        "name": "Name",
+        "unit": "Unit",
+        "price": "Price excl. VAT ({currency})",
+        "vat": "VAT"
+      },
+      "sections": {
+        "product": "Item",
+        "price": "Price and VAT"
+      },
+      "fields": {
+        "name": "Name",
+        "sku": "Reference",
+        "unit": "Unit",
+        "description": "Description",
+        "unitPrice": "Unit price excl. VAT ({currency})",
+        "vatCode": "VAT rate"
+      },
+      "hints": {
+        "unitPrice": "For example 1'200.50. The rate applied depends on the date of service."
+      },
+      "units": {
+        "hour": "Hour",
+        "day": "Day",
+        "piece": "Piece",
+        "flat": "Flat rate",
+        "km": "Kilometre",
+        "month": "Month"
+      },
+      "vatCodes": {
+        "normal": "Standard rate (8.1%)",
+        "reduced": "Reduced rate (2.6%)",
+        "lodging": "Accommodation (3.8%)",
+        "exempt": "Excluded from the scope of VAT",
+        "export": "Exempt (export)"
+      },
+      "errors": {
+        "required": "Required field.",
+        "tooLong": "Text too long.",
+        "amount": "Invalid amount (at most two decimal places).",
+        "skuTaken": "This reference is already used by another item."
+      }
+    },
+    "settingsNav": {
+      "label": "Settings sections",
+      "company": "Company",
+      "accounts": "Chart of accounts",
+      "fiscalYears": "Fiscal years",
+      "team": "Team",
+      "payments": "Online payments",
+      "api": "API"
+    },
+    "accounts": {
+      "title": "Chart of accounts",
+      "subtitle": "Swiss SME chart of accounts, classes 1 to 9. System accounts are used by automatic entries.",
+      "new": "New account",
+      "edit": "Edit account",
+      "save": "Save",
+      "saved": "Account saved.",
+      "installed": "Chart of accounts installed.",
+      "invalid": "Some fields need correcting.",
+      "readOnly": "Only administrators and managers can change the chart of accounts.",
+      "empty": "No chart of accounts yet. Choose the template that matches your legal form.",
+      "install": "Install the chart of accounts",
+      "template": "Template",
+      "templates": {
+        "sole_proprietorship": "Sole proprietorship or partnership",
+        "corporation": "Corporation (GmbH, AG)"
+      },
+      "system": "System",
+      "inactive": "Inactive",
+      "columns": {
+        "number": "No.",
+        "name": "Name",
+        "type": "Type"
+      },
+      "classes": {
+        "1": "1 Assets",
+        "2": "2 Liabilities and equity",
+        "3": "3 Operating revenue",
+        "4": "4 Cost of materials and goods",
+        "5": "5 Personnel expenses",
+        "6": "6 Other operating expenses and financial result",
+        "7": "7 Ancillary activities",
+        "8": "8 Non-operating and extraordinary items, taxes",
+        "9": "9 Closing"
+      },
+      "types": {
+        "asset": "Asset",
+        "liability": "Liability",
+        "equity": "Equity",
+        "revenue": "Revenue",
+        "expense": "Expense",
+        "closing": "Closing"
+      },
+      "sections": {
+        "account": "Account",
+        "options": "Options"
+      },
+      "fields": {
+        "number": "Number",
+        "nameDe": "Name in German",
+        "nameFr": "Name in French",
+        "type": "Type",
+        "vatCode": "Default VAT code",
+        "active": "Active account",
+        "nameEn": "English name (optional)"
+      },
+      "hints": {
+        "number": "Four digits, the first one gives the class.",
+        "nameDe": "If only one language is filled in, the other uses the same name."
+      },
+      "noVat": "None",
+      "vatCodes": {
+        "normal": "Standard rate",
+        "reduced": "Reduced rate",
+        "lodging": "Accommodation",
+        "exempt": "Excluded from the scope of VAT",
+        "export": "Exempt (export)"
+      },
+      "errors": {
+        "required": "Required field.",
+        "tooLong": "Text too long.",
+        "number": "Four digits, not starting with 0.",
+        "typeForClass": "This type does not fit the account's class.",
+        "numberTaken": "This number is already in use.",
+        "systemInactive": "A system account stays active."
+      },
+      "classesDe": {
+        "0": "0 Fixed assets",
+        "1": "1 Current assets",
+        "2": "2 Equity",
+        "3": "3 Liabilities",
+        "4": "4 Operating income",
+        "5": "5 Materials and third-party services",
+        "6": "6 Operating expenses",
+        "7": "7 Other income and expenses",
+        "9": "9 Carry-forward and closing accounts"
+      },
+      "subtitleDe": "SKR04 chart of accounts (DATEV), classes 0 to 9. System accounts are used by automatic entries.",
+      "classesFr": {
+        "1": "1 Capital",
+        "2": "2 Fixed assets",
+        "3": "3 Inventories",
+        "4": "4 Receivables and payables",
+        "5": "5 Financial accounts",
+        "6": "6 Expenses",
+        "7": "7 Income",
+        "8": "8 Special accounts"
+      },
+      "subtitleFr": "French general chart of accounts (PCG), six-digit numbers. System accounts are used by automatic entries.",
+      "classesGb": {
+        "0": "0 Fixed assets",
+        "1": "1 Current assets",
+        "2": "2 Liabilities",
+        "3": "3 Capital and reserves",
+        "4": "4 Sales",
+        "5": "5 Purchases",
+        "6": "6 Direct expenses",
+        "7": "7 Overheads",
+        "8": "8 Other overheads",
+        "9": "9 Control and closing accounts"
+      },
+      "subtitleGb": "UK nominal ledger, four-digit codes. System accounts are used by automatic entries.",
+      "classesUs": {
+        "1": "1 Assets",
+        "2": "2 Liabilities",
+        "3": "3 Equity",
+        "4": "4 Income",
+        "5": "5 Cost of goods sold",
+        "6": "6 Expenses",
+        "7": "7 Other income and expenses",
+        "8": "8 Taxes",
+        "9": "9 Closing"
+      },
+      "subtitleUs": "Standard US chart of accounts, four-digit codes. System accounts are used by automatic entries."
+    },
+    "fiscalYears": {
+      "title": "Fiscal years",
+      "subtitle": "Fiscal years follow one another without gaps. The start month is set in the company details.",
+      "readOnly": "Only administrators and managers can open a fiscal year.",
+      "empty": "No fiscal years yet. Open the first one to start the accounting.",
+      "first": "First fiscal year",
+      "start": "Start date",
+      "startHint": "The first fiscal year can start on any day, for example when the company was founded.",
+      "extended": "Extend the first fiscal year to the end of the following one",
+      "extendedHint": "Possible when the company starts partway through the year.",
+      "openFirst": "Open the first fiscal year",
+      "openNext": "Open the next fiscal year",
+      "nextPeriod": "Next fiscal year: {start} to {end}",
+      "opened": "Fiscal year opened.",
+      "invalidDate": "Invalid date.",
+      "columns": {
+        "period": "Period",
+        "status": "Status"
+      },
+      "period": "{start} to {end}",
+      "status": {
+        "open": "Open",
+        "closed": "Closed"
+      },
+      "closingLater": "A fiscal year is closed from this page once it has ended.",
+      "closedNotice": "Fiscal year closed. The result has been transferred to equity and the balance sheet balances carried forward to the opening of the next fiscal year.",
+      "closeTitle": "Close fiscal year {period}",
+      "closeHint": "The result is transferred to the profit or loss account for the year, balance sheet balances are carried forward to the next fiscal year (opened if needed), and no entry can be dated in the closed fiscal year any more.",
+      "closeConfirm": "I have checked the reports and am closing this fiscal year for good.",
+      "close": "Close fiscal year",
+      "closeErrors": {
+        "confirm": "Tick the confirmation to close.",
+        "forbidden": "Only administrators and managers can close a fiscal year.",
+        "earlierOpen": "Close the previous fiscal year first.",
+        "unposted": "{count, plural, one {# document in the fiscal year has not been posted yet.} other {# documents in the fiscal year have not been posted yet.}}",
+        "pendingBank": "{count, plural, one {# bank transaction in the fiscal year is still awaiting validation.} other {# bank transactions in the fiscal year are still awaiting validation.}}",
+        "noChart": "The chart of accounts has no profit or loss account for the year.",
+        "alreadyClosed": "This fiscal year is already closed.",
+        "notFound": "Fiscal year not found.",
+        "blocked": "The fiscal year could not be closed."
+      }
+    },
+    "invoices": {
+      "title": "Invoices",
+      "new": "New invoice",
+      "edit": "Invoice",
+      "back": "All invoices",
+      "draft": "Draft",
+      "draftTitle": "Draft invoice",
+      "issuedTitle": "Invoice {number}",
+      "status": {
+        "draft": "Draft",
+        "issued": "Issued",
+        "accepted": "Accepted",
+        "declined": "Declined",
+        "invoiced": "Invoiced"
+      },
+      "saved": "Draft saved.",
+      "issued": "Invoice issued. Its number is final and it can no longer be changed.",
+      "deleted": "Draft deleted.",
+      "empty": "No invoices yet.",
+      "noCustomers": "Add a customer first.",
+      "addCustomer": "New contact",
+      "invalid": "Some fields need correcting.",
+      "notEditable": "This invoice can no longer be edited.",
+      "choose": "Choose",
+      "freeLine": "Free line (no item)",
+      "saveDraft": "Save draft",
+      "issue": "Issue invoice",
+      "issueHint": "Issuing assigns the next number and locks the invoice. Save your latest changes first.",
+      "deleteDraft": "Delete this draft",
+      "completeCompany": "Complete company details",
+      "issueErrors": {
+        "companyIncomplete": "Company details (address and IBAN) must be complete before you issue an invoice.",
+        "vatChanged": "VAT registration has changed since the draft was saved. Save the draft again.",
+        "notDraft": "This invoice has already been issued.",
+        "notFound": "Invoice not found.",
+        "notConvertible": "This quote can no longer be converted into an invoice.",
+        "contact": "The customer on this quote has been archived.",
+        "creditTooHigh": "The credit note exceeds the amount still available to credit on the invoice.",
+        "closed": "This payment is already posted in a closed fiscal year: it can no longer be deleted.",
+        "planLimit": "You have reached the Free plan limit of 10 invoices per month. Upgrade to Pro for unlimited invoicing.",
+        "recurring": "The recurrence could not be saved.",
+        "fxRate": "The day's exchange rate could not be retrieved. Enter the rate in the draft, then issue again."
+      },
+      "addLine": "Add line",
+      "removeLine": "Remove",
+      "lineTotal": "Amount:",
+      "net": "Total excl. VAT",
+      "total": "Total",
+      "totalWithVat": "Total incl. VAT",
+      "vatLine": "VAT {rate} on {base}",
+      "columns": {
+        "number": "No.",
+        "customer": "Customer",
+        "date": "Date",
+        "total": "Total ({currency})",
+        "status": "Status"
+      },
+      "sections": {
+        "customer": "Customer",
+        "dates": "Dates",
+        "lines": "Lines",
+        "texts": "Texts"
+      },
+      "fields": {
+        "contact": "Customer",
+        "language": "Invoice language",
+        "title": "Title",
+        "issueDate": "Invoice date",
+        "serviceDate": "Date of service",
+        "dueDate": "Due date",
+        "product": "Item",
+        "description": "Description",
+        "quantity": "Quantity",
+        "unit": "Unit",
+        "unitPrice": "Unit price excl. VAT",
+        "vatCode": "VAT",
+        "introText": "Introductory text",
+        "footerText": "Closing text",
+        "vatCodeUs": "Tax",
+        "unitPriceUs": "Unit price excl. tax",
+        "currency": "Currency",
+        "fxRate": "Rate (1 {currency} in {home})"
+      },
+      "hints": {
+        "serviceDate": "Determines the applicable VAT rate.",
+        "dueDate": "Empty: based on the customer's payment term.",
+        "fxRate": "Empty: ECB reference rate on the issue date, fixed when the invoice is issued."
+      },
+      "languages": {
+        "de": "German",
+        "fr": "French",
+        "en": "English"
+      },
+      "units": {
+        "hour": "h",
+        "day": "day(s)",
+        "piece": "pc",
+        "flat": "flat rate",
+        "km": "km",
+        "month": "month(s)"
+      },
+      "vatCodes": {
+        "normal": "Standard",
+        "reduced": "Reduced",
+        "lodging": "Accommodation",
+        "exempt": "Excluded",
+        "export": "Export"
+      },
+      "errors": {
+        "required": "Required field.",
+        "tooLong": "Text too long.",
+        "date": "Invalid date.",
+        "dueBeforeIssue": "The due date is before the invoice date.",
+        "vatDate": "No known VAT rate for this date.",
+        "quantity": "Invalid quantity (at most three decimal places, not zero).",
+        "amount": "Invalid amount (at most two decimal places).",
+        "noLines": "Add at least one line.",
+        "tooManyLines": "One hundred lines at most.",
+        "plan": "Invoicing in a foreign currency is part of the Pro plan.",
+        "fxRate": "Invalid rate (a positive number, for example 0.9412)."
+      },
+      "document": {
+        "invoice": "Invoice",
+        "issueDate": "Date",
+        "serviceDate": "Service date",
+        "dueDate": "Payable by",
+        "description": "Description",
+        "quantity": "Quantity",
+        "unitPrice": "Unit price",
+        "vat": "VAT",
+        "amount": "Amount",
+        "net": "Total excl. VAT",
+        "vatLine": "VAT {rate} on {base}",
+        "total": "Total",
+        "payTo": "Please pay to account {iban}.",
+        "referenceLine": "Reference: {reference}",
+        "relatedLine": "Relates to invoice {number}",
+        "poweredBy": "Created with InvoiceLead · invoicelead.io",
+        "smallBusinessDe": "Gemäß § 19 UStG wird keine Umsatzsteuer berechnet (no VAT charged under the small business scheme, § 19 UStG).",
+        "reverseChargeDe": "Steuerschuldnerschaft des Leistungsempfängers (reverse charge: VAT is payable by the recipient of the service).",
+        "scanToPay": "Scan this code with your banking app to pay by SEPA transfer.",
+        "franchiseFr": "TVA non applicable, art. 293 B du CGI (VAT not applicable, small business exemption).",
+        "reverseChargeFr": "Autoliquidation: reverse charge, VAT payable by the customer (art. 283-2 du CGI).",
+        "outsideEuFr": "TVA non applicable, art. 259-1 du CGI (not subject to French VAT).",
+        "latePaymentFr": "Late payment: penalties at three times the statutory interest rate and a fixed recovery fee of €40. No discount for early payment.",
+        "outsideScopeGb": "Outside the scope of UK VAT: place of supply in the customer's country.",
+        "vatUs": "Tax",
+        "vatLineUs": "Sales tax {rate} on {base}",
+        "netUs": "Subtotal",
+        "fxLine": "Exchange rate: 1 {currency} = {rate} {home}, equal to {home} {total}",
+        "fxVatLine": "of which VAT {home} {vat}"
+      },
+      "docTitle": "Invoice",
+      "docDue": "Payable by",
+      "dueLabel": "Due date",
+      "dueHint": "Empty: based on the customer's payment term.",
+      "converted": "Draft invoice created from the quote. Check it, then issue it.",
+      "fromQuote": "View the original quote",
+      "download": "Download PDF",
+      "creditNotesLink": "Credit notes",
+      "createCreditNote": "Create credit note",
+      "relatedInvoice": "Related invoice: {number}",
+      "payments": {
+        "title": "Payments",
+        "saved": "Payment recorded.",
+        "totalCents": "Total",
+        "creditedCents": "Credit notes",
+        "paidCents": "Paid",
+        "openCents": "Outstanding balance",
+        "date": "Payment date",
+        "amount": "Amount ({currency})",
+        "method": "Method",
+        "note": "Note",
+        "add": "Record payment",
+        "delete": "Delete",
+        "tooHigh": "The amount exceeds the outstanding balance.",
+        "methods": {
+          "bank": "Bank transfer",
+          "cash": "Cash",
+          "other": "Other",
+          "online": "Online (Stripe)"
+        },
+        "states": {
+          "open": "Open",
+          "partial": "Partly paid",
+          "paid": "Paid",
+          "overdue": "Overdue",
+          "credited": "Cancelled by credit note"
+        },
+        "errors": {
+          "date": "Invalid date.",
+          "amount": "Invalid amount.",
+          "required": "Required field.",
+          "tooLong": "Text too long.",
+          "fxRate": "Invalid rate (a positive number, for example 0.9412)."
+        },
+        "fxRate": "Day's rate (1 {currency} in {home})",
+        "fxHint": "Empty: ECB reference rate on the payment date. The difference from the invoice rate is booked as an exchange difference.",
+        "chargesCents": "Fees and interest",
+        "chargesHint": "Reminder fees and late payment interest charged with the reminders.",
+        "waive": "Waive fees",
+        "waived": "Fees and interest waived."
+      },
+      "email": {
+        "title": "Sending",
+        "to": "Recipient",
+        "subject": "Subject",
+        "message": "Message",
+        "messageHint": "The online view link is added at the end, and the PDF is attached.",
+        "send": "Send by email",
+        "sent": "Email sent.",
+        "sentInfo": "Sent to {to} on {date}.",
+        "viewed": "Viewed online.",
+        "notConfigured": "Email sending is not set up yet. You can copy the view link and send it yourself.",
+        "link": "View link",
+        "linkHint": "A link to pass on to the customer, no account needed.",
+        "linkLabelField": "Online view link",
+        "linkLabel": "View online:",
+        "results": {
+          "notConfigured": "Email sending is not set up.",
+          "failed": "Sending failed. Try again in a few minutes.",
+          "notFound": "Document not found."
+        },
+        "errors": {
+          "email": "Invalid email address.",
+          "required": "Required field.",
+          "tooLong": "Text too long."
+        },
+        "subjects": {
+          "invoice": "Invoice {number} from {company}",
+          "quote": "Quote {number} from {company}",
+          "credit_note": "Credit note {number} from {company}"
+        },
+        "bodies": {
+          "invoice": "Hello,\n\nPlease find attached our invoice {number} for {currency} {amount}, payable by {due}.\n\nKind regards\n{company}",
+          "quote": "Hello,\n\nPlease find attached our quote {number} for {currency} {amount}, valid until {due}.\n\nKind regards\n{company}",
+          "credit_note": "Hello,\n\nPlease find attached our credit note {number} for {currency} {amount}.\n\nKind regards\n{company}"
+        }
+      },
+      "remindersLink": "Payment reminders",
+      "reminderLine": "{level, select, 1 {1st reminder} 2 {2nd reminder} other {Final reminder}} on {date} ({channel, select, email {email} other {post}})",
+      "recurringLink": "Recurring",
+      "recurring": {
+        "title": "Make recurring",
+        "interval": "Frequency",
+        "every": "{months, plural, one {Every month} other {Every # months}}",
+        "next": "Next invoice on",
+        "autoSend": "Issue and send automatically (otherwise: draft to review)",
+        "create": "Save recurrence"
+      },
+      "einvoice": {
+        "download": "XRechnung (XML)",
+        "missing": "XRechnung not possible, missing: {fields}.",
+        "fields": {
+          "number": "number",
+          "sellerAddress": "company address",
+          "buyerAddress": "customer address",
+          "sellerEmail": "company email",
+          "sellerPhone": "company phone",
+          "sellerIban": "IBAN",
+          "buyerEmail": "customer email",
+          "buyerVatId": "customer's USt-IdNr.",
+          "sellerTaxId": "USt-IdNr. or Steuernummer"
+        }
+      },
+      "netUs": "Subtotal",
+      "vatLineUs": "Sales tax {rate} on {base}",
+      "vatCodesUs": {
+        "normal": "Taxable",
+        "reduced": "Taxable (reduced)",
+        "lodging": "Taxable (lodging)",
+        "exempt": "Exempt",
+        "export": "Not taxable (out of state)"
+      },
+      "totalWithVatUs": "Total incl. tax"
+    },
+    "quotes": {
+      "title": "Quotes",
+      "new": "New quote",
+      "edit": "Quote",
+      "back": "All quotes",
+      "draftTitle": "Draft quote",
+      "issuedTitle": "Quote {number}",
+      "status": {
+        "draft": "Draft",
+        "issued": "Sent",
+        "accepted": "Accepted",
+        "declined": "Declined",
+        "invoiced": "Invoiced"
+      },
+      "saved": "Draft saved.",
+      "issued": "Quote issued with its final number.",
+      "deleted": "Draft deleted.",
+      "empty": "No quotes yet.",
+      "issue": "Issue quote",
+      "issueHint": "Issuing assigns the next number and locks the quote. Save your latest changes first.",
+      "deleteDraft": "Delete this draft",
+      "accept": "Mark as accepted",
+      "decline": "Mark as declined",
+      "convert": "Convert to invoice",
+      "converted": "Draft invoice created.",
+      "docTitle": "Quote",
+      "docDue": "Valid until",
+      "dueLabel": "Valid until",
+      "dueHint": "Empty: 30 days after the quote date."
+    },
+    "creditNotes": {
+      "title": "Credit notes",
+      "new": "New credit note",
+      "edit": "Credit note",
+      "back": "All credit notes",
+      "draftTitle": "Draft credit note",
+      "issuedTitle": "Credit note {number}",
+      "status": {
+        "draft": "Draft",
+        "issued": "Issued"
+      },
+      "saved": "Draft credit note saved. Reduce the lines for a partial credit note.",
+      "issued": "Credit note issued. It reduces the invoice balance.",
+      "deleted": "Draft deleted.",
+      "empty": "No credit notes yet. A credit note is created from an issued invoice.",
+      "issue": "Issue credit note",
+      "issueHint": "Issuing assigns the next number and locks the credit note.",
+      "deleteDraft": "Delete this draft",
+      "converted": "",
+      "docTitle": "Credit note",
+      "docDue": "Date",
+      "dueLabel": "Date",
+      "dueHint": ""
+    },
+    "accountingHome": {
+      "title": "Accounting",
+      "subtitle": "Invoices, credit notes and payments are posted to the journal automatically. The journal cannot be edited: corrections are made with a reversing entry.",
+      "postedCount": "{count, plural, =0 {No entries added.} one {# entry added to the journal.} other {# entries added to the journal.}}",
+      "setupTitle": "To keep the accounts, you still need:",
+      "setupChart": "the chart of accounts",
+      "setupYear": "an open fiscal year",
+      "unposted": "{count, plural, one {# document is waiting to be posted.} other {# documents are waiting to be posted.}}",
+      "reasons": {
+        "noChart": "Install the chart of accounts first.",
+        "noFiscalYear": "Open the fiscal year that covers the date of these documents.",
+        "vatPeriodClosed": "This date falls in a VAT period that has already been validated: entries can no longer be added to it."
+      },
+      "postNow": "Post now",
+      "journal": "Journal",
+      "year": "Fiscal year",
+      "show": "Show",
+      "chainOk": "{count, plural, =0 {Empty journal.} one {Hash chain verified over # entry.} other {Hash chain verified over # entries.}}",
+      "chainBroken": "Warning: the hash chain no longer matches from entry no. {seq} onwards.",
+      "empty": "No entries in this fiscal year.",
+      "columns": {
+        "number": "No.",
+        "date": "Date",
+        "account": "Account",
+        "debit": "Debit",
+        "credit": "Credit"
+      },
+      "tabs": {
+        "label": "Accounting sections",
+        "bank": "Bank",
+        "journal": "Journal",
+        "receipts": "Receipts",
+        "reports": "Reports",
+        "vat": "VAT"
+      },
+      "welcomeFiduciary": "Welcome. You are now working in your client's accounts; switch company from the header.",
+      "unavailableTitle": "Accounting coming soon for this country",
+      "unavailableBody": "Invoicing already works for a company in {country}. Double-entry accounting, the VAT return and bank import are coming in the next release; until then, export your invoices for your accountant."
+    },
+    "bank": {
+      "title": "Bank",
+      "subtitle": "Import your bank statement: the assistant proposes an entry for each transaction, and you check and validate it.",
+      "imported": "{count, plural, =0 {No new transactions} one {# transaction imported} other {# transactions imported}}{duplicates, plural, =0 {.} one { (# already known).} other { (# already known).}}",
+      "validatedCount": "{count, plural, =0 {No entries validated.} one {# entry validated.} other {# entries validated.}}",
+      "errors": {
+        "file": "Choose a statement file (5 MB at most).",
+        "format": "This file is not a readable camt.053 statement.",
+        "tooHigh": "The amount exceeds the invoice's outstanding balance.",
+        "noChart": "Install the chart of accounts first.",
+        "noFiscalYear": "No open fiscal year covers the date of this transaction.",
+        "noProposal": "Choose an account first.",
+        "notFound": "Transaction not found or already processed.",
+        "vatPeriodClosed": "This date falls in a VAT period that has already been validated: entries can no longer be added to it.",
+        "plan": "Bank statement import is only available on the Pro plan."
+      },
+      "aiError": "The assistant could not respond. The transactions are still awaiting proposals; try again later.",
+      "aiOff": "The accounting assistant is not enabled yet: only invoice payments recognised by their QR reference are proposed automatically.",
+      "file": "Bank statement (camt.053)",
+      "fileHint": "XML file exported from your e-banking (“camt.053” or “ISO 20022 statement”).",
+      "import": "Import",
+      "toReview": "{count, plural, =0 {Nothing to validate} one {# transaction to validate} other {# transactions to validate}}",
+      "propose": "Propose entries",
+      "validateConfident": "Validate the {count} confident proposals",
+      "nothing": "All transactions have been processed.",
+      "noSuggestion": "No proposal: choose the account.",
+      "paysInvoice": "Payment of invoice {invoice}",
+      "confidence": "Confidence {value}%",
+      "validate": "Validate",
+      "ignore": "Ignore",
+      "correct": "Choose another account",
+      "account": "Account",
+      "choose": "Choose",
+      "vatLabel": "VAT included",
+      "noVat": "No VAT",
+      "validateChoice": "Validate this choice",
+      "unknownParty": "Unknown counterparty",
+      "done": "Already processed",
+      "status": {
+        "posted": "Posted",
+        "ignored": "Ignored",
+        "new": "New",
+        "proposed": "Proposed"
+      },
+      "vat": {
+        "normal": "Standard VAT",
+        "reduced": "Reduced VAT",
+        "lodging": "Accommodation VAT",
+        "exempt": "Excluded",
+        "export": "Export"
+      },
+      "rules": {
+        "title": "Learned rules",
+        "hint": "Saved with each validation: the same counterparty will be proposed on the same account, without going through the AI.",
+        "in": "(incoming)",
+        "out": "(outgoing)",
+        "hits": "{count, plural, one {validated # time} other {validated # times}}",
+        "delete": "Forget"
+      },
+      "planOnly": "Bank statement import and assistant proposals are included in the Pro plan."
+    },
+    "receipts": {
+      "title": "Receipts",
+      "subtitle": "Upload your supplier invoices and till receipts (PDF or photo). The assistant reads them and matches them to the corresponding payment in the bank statement.",
+      "added": "{count, plural, =0 {No receipts added} one {# receipt added} other {# receipts added}}{rejected, plural, =0 {.} one { (# rejected: duplicate, format or size).} other { (# rejected: duplicates, format or size).}}",
+      "errors": {
+        "unreadable": "This PDF is a scanned image: upload a clear photo of the document instead.",
+        "failed": "The assistant could not read this receipt. Try again later.",
+        "notFound": "Receipt not found.",
+        "plan": "Receipt reading is only available on the Pro and Pro+ plans."
+      },
+      "aiOff": "The assistant is not enabled yet: receipts are kept and will be read once the assistant is set up.",
+      "files": "Invoices or till receipts",
+      "filesHint": "PDF, JPEG, PNG or WebP, 10 MB at most per file, 20 files at a time.",
+      "upload": "Upload",
+      "empty": "No receipts yet.",
+      "invoiceNumber": "invoice {number}",
+      "vat": "VAT {amount}",
+      "account": "account {number}",
+      "matchedHint": "Matched to a payment: the entry still needs to be validated in “Bank”.",
+      "read": "Read",
+      "reread": "Read again",
+      "status": {
+        "new": "To read",
+        "read": "Read, payment not found yet",
+        "error": "Unreadable",
+        "matched": "Matched",
+        "posted": "Posted"
+      },
+      "planOnly": "Automatic receipt reading is included in the Pro plan (50 per month) and Pro+ (300 per month)."
+    },
+    "reports": {
+      "title": "Reports",
+      "period": "Fiscal year from {start} to {end}",
+      "provisional": "Provisional figures, based on the journal: they become final when the fiscal year is closed.",
+      "empty": "No entries in this fiscal year.",
+      "income": "Income statement",
+      "balanceSheet": "Balance sheet",
+      "trial": "Trial balance",
+      "account": "Account",
+      "amount": "Amount",
+      "profit": "Profit for the year",
+      "loss": "Loss for the year",
+      "assets": "Assets",
+      "liabilitiesEquity": "Liabilities and equity",
+      "totalAssets": "Total assets",
+      "totalLiabilities": "Total liabilities and equity",
+      "equity": "Equity",
+      "currentResult": "Result for the current fiscal year",
+      "balanced": "The balance sheet balances.",
+      "unbalanced": "Warning: the balance sheet does not balance. Check the opening entries.",
+      "debit": "Debit",
+      "credit": "Credit",
+      "total": "Total",
+      "ledger": "General ledger",
+      "back": "Back to reports",
+      "noMovement": "No transactions on this account in this fiscal year.",
+      "date": "Date",
+      "entry": "No.",
+      "text": "Description",
+      "balance": "Balance"
+    },
+    "vat": {
+      "title": "VAT",
+      "subtitle": "VAT return prepared from the journal, using the method (effective or net tax rate) and basis (agreed or received) chosen in the company details. Check it, have the assistant review it if you wish, then validate: the figures carry over unchanged to the SFTA form.",
+      "validatedNotice": "VAT return validated. The period is closed in the journal, and the VAT has been transferred to the VAT settlement account 2201.",
+      "errors": {
+        "blocked": "The VAT return cannot be validated while blocking issues remain.",
+        "noFiscalYear": "No open fiscal year covers the end of this period.",
+        "noChart": "The chart of accounts lacks the required VAT accounts.",
+        "plan": "Validating the VAT return is only available on the Pro plan."
+      },
+      "periods": "Periods",
+      "quarter": "Q{q} {year}",
+      "done": "validated",
+      "period": "From {start} to {end}",
+      "validatedOn": "Validated on {date}",
+      "draft": "To validate",
+      "figure": "Figure",
+      "label": "Description",
+      "amount": "CHF",
+      "anomalies": {
+        "notRegistered": "The company is not registered for VAT (company settings).",
+        "baseMismatch": "Taxable turnover does not exactly match the rate bases: check revenue entries without VAT.",
+        "pendingBank": "{count, plural, one {# bank transaction in the period has not been validated yet.} other {# bank transactions in the period have not been validated yet.}}",
+        "unposted": "{count, plural, one {# invoice in the period has not been posted yet.} other {# invoices in the period have not been posted yet.}}",
+        "inputWithoutReceipt": "{count, plural, one {# expense claims input VAT without an attached receipt.} other {# expenses claim input VAT without an attached receipt.}}",
+        "alreadyValidated": "This period overlaps a VAT return that has already been validated.",
+        "noNetTaxRate": "Enter your net tax rate in the company details.",
+        "inputUnderNetTaxRate": "Input VAT has been posted in this period: under the net tax rate method, it is not deductible.",
+        "exportsSplit": "Exports or services abroad appear in E2: split them between E1 (outside the EU), E2 (EU services) and F2 (intra-EU supplies), and file the DES (European services declaration) if needed."
+      },
+      "figures": {
+        "200": "Total agreed consideration",
+        "220": "Exempt supplies (exports)",
+        "230": "Supplies excluded from the scope of VAT",
+        "289": "Total deductions",
+        "299": "Taxable turnover",
+        "303": "Supplies at the standard rate of 8.1%",
+        "313": "Supplies at the reduced rate of 2.6%",
+        "343": "Accommodation services at 3.8%",
+        "302": "Supplies at the standard rate of 7.7% (before 2024)",
+        "312": "Supplies at the reduced rate of 2.5% (before 2024)",
+        "342": "Accommodation services at 3.7% (before 2024)",
+        "399": "Total tax due",
+        "400": "Input VAT on materials and services",
+        "405": "Input VAT on investments and other operating expenses",
+        "479": "Total input VAT",
+        "500": "Amount payable to the SFTA",
+        "510": "Balance in your favour",
+        "322": "Turnover at the net tax rate",
+        "332": "Turnover at the second net tax rate",
+        "321": "Turnover at the net tax rate (before 2024)",
+        "331": "Turnover at the second net tax rate (before 2024)"
+      },
+      "payBy": "Payable to the SFTA by {date}.",
+      "reviewIntro": "The assistant can review the period and point out anything that needs your attention.",
+      "review": "Request review",
+      "reviewing": "Reviewing…",
+      "reviewFailed": "The assistant could not respond. Try again later.",
+      "reviewNothing": "The assistant found nothing unusual.",
+      "cannotValidate": "Resolve the points in red first.",
+      "validateHint": "Once validated, the figures are locked and no entry can be dated in this period any more.",
+      "validate": "Validate VAT return",
+      "semester": "H{q} {year}",
+      "tax": "Tax",
+      "planOnly": "The VAT return prepared and validated in InvoiceLead is included in the Pro plan. You can view the figures below.",
+      "figuresDe": {
+        "81": "Kz 81 · Taxable supplies at 19%",
+        "86": "Kz 86 · Taxable supplies at 7%",
+        "35": "Kz 35/36 · Supplies at other rates",
+        "21": "Kz 21 · Supplies not taxable in Germany (other EU country)",
+        "48": "Kz 48 · Exempt turnover without input VAT deduction",
+        "66": "Kz 66 · Deductible input VAT (Vorsteuer)",
+        "83": "Kz 83 · Balance payable (negative: refund)"
+      },
+      "figuresFr": {
+        "A1": "A1 · Taxable sales and services (excl. VAT)",
+        "E2": "E2 · Other non-taxable transactions (to split between E1, E2, F2)",
+        "08": "08 · Standard rate 20%",
+        "9B": "9B · Reduced rate 10%",
+        "09": "09 · Reduced rate 5.5%",
+        "OT": "Other rates",
+        "16": "16 · Total gross VAT due",
+        "19": "19 · Deductible VAT on fixed assets",
+        "20": "20 · Deductible VAT on other goods and services",
+        "23": "23 · Total deductible VAT",
+        "28": "28 · Net VAT due",
+        "25": "25 · VAT credit"
+      },
+      "figuresGb": {
+        "1": "Box 1 · VAT due on sales",
+        "2": "Box 2 · VAT due on EU acquisitions (Northern Ireland)",
+        "3": "Box 3 · Total VAT due",
+        "4": "Box 4 · VAT reclaimed on purchases",
+        "5": "Box 5 · Net VAT to pay or reclaim",
+        "6": "Box 6 · Total sales excluding VAT",
+        "7": "Box 7 · Total purchases excluding VAT",
+        "8": "Box 8 · Supplies of goods to the EU (Northern Ireland)",
+        "9": "Box 9 · Acquisitions of goods from the EU (Northern Ireland)"
+      },
+      "figuresUs": {
+        "S1": "Gross sales",
+        "S2": "Non-taxable sales (exempt or out of state)",
+        "S3": "Taxable sales",
+        "S4": "Sales tax collected, to remit"
+      },
+      "titleUs": "Sales tax report",
+      "xmlDownload": "Download the return in eCH-0217 format, to file on the SFTA portal",
+      "xmlNoUid": "The eCH-0217 file needs the company's UID (settings)."
+    },
+    "reminders": {
+      "title": "Payment reminders",
+      "back": "All invoices",
+      "subtitle": "Overdue invoices whose next reminder is due (10, 25 and then 40 days after the due date). The email is sent in the invoice language, with the PDF and its QR-bill.",
+      "sendAll": "Send all reminders by email",
+      "sentCount": "{count, plural, =0 {No reminders sent.} one {# reminder sent.} other {# reminders sent.}}",
+      "results": {
+        "sent": "Reminder sent.",
+        "recorded": "Reminder recorded as sent.",
+        "notDue": "This reminder is no longer due.",
+        "noEmail": "No email address for this customer, or sending is not set up.",
+        "failed": "Sending failed. Try again later."
+      },
+      "empty": "No reminders to send today.",
+      "line": "{level, select, 1 {1st reminder} 2 {2nd reminder} other {Final reminder}} · {days} days overdue · due on {due}",
+      "noEmail": "no email",
+      "send": "Send",
+      "markManual": "Mark as sent (post)",
+      "email": {
+        "link": "View online:",
+        "subject1": "Reminder: invoice {number} from {company}",
+        "subject2": "2nd reminder: invoice {number} from {company}",
+        "subject3": "Final reminder: invoice {number} from {company}",
+        "body1": "Hello,\n\nUnless we are mistaken, our invoice {number}, due on {due}, has not been paid yet. The outstanding amount is {currency} {amount}.\n\nIf payment is already on its way, please disregard this message.\n\nKind regards\n{company}",
+        "body2": "Hello,\n\nDespite our first reminder, our invoice {number}, due on {due}, remains unpaid. Please pay the outstanding amount of {currency} {amount} within 10 days.\n\nKind regards\n{company}",
+        "body3": "Hello,\n\nOur invoice {number}, due on {due}, is still unpaid despite our reminders. Please pay the outstanding amount of {currency} {amount} within 10 days. Without payment, we will have to take further steps.\n\nKind regards\n{company}",
+        "charges": "Open invoice amount: {currency} {open}\nReminder fees and late payment interest: {currency} {charges}\nTotal due: {currency} {total}"
+      },
+      "chargesLine": "Invoice open {open} · fee {fee} · interest {interest} · already charged {before}",
+      "settings": {
+        "title": "Reminder settings",
+        "auto": "Send reminders automatically",
+        "autoHint": "Every morning, due reminders are emailed to customers with an address. The others stay in this list.",
+        "fee": "Reminder fee from the 2nd reminder ({currency})",
+        "feeHint": "Empty or 0: no fee. Include it in your terms and conditions.",
+        "interest": "Annual late payment interest (%)",
+        "interestHint": {
+          "CH": "Empty: no interest. Statutory rate in Switzerland: 5% (art. 104 CO).",
+          "DE": "Empty: no interest. Between businesses, 9 points above the base rate (§ 288 BGB).",
+          "FR": "Empty: no interest. At least three times the legal rate, plus the €40 fixed indemnity (art. L441-10 C. com.).",
+          "GB": "Empty: no interest. Between businesses, 8 points above the Bank of England base rate.",
+          "US": "Empty: no interest. The maximum rate depends on the state and the contract."
+        },
+        "save": "Save settings",
+        "plan": "2nd and 3rd reminders, automatic sending, reminder fees and late payment interest are part of the Pro plan.",
+        "results": {
+          "saved": "Reminder settings saved.",
+          "plan": "These settings are part of the Pro plan.",
+          "invalidFee": "Invalid fee (a positive amount, at most two decimals).",
+          "invalidRate": "Invalid rate (between 0 and 20%, for example 5)."
+        }
+      }
+    },
+    "recurring": {
+      "title": "Recurring invoices",
+      "back": "All invoices",
+      "subtitle": "Each due date creates a new invoice from the template. With automatic sending, it is issued, posted and sent to the customer on the morning it is due.",
+      "created": "Recurrence saved.",
+      "empty": "No recurring invoices. Open an invoice and choose “Make recurring”.",
+      "line": "Every {interval, plural, one {month} other {# months}} · next on {next} · template {model}",
+      "draftModel": "draft",
+      "autoSend": "issued and sent automatically",
+      "draftOnly": "created as a draft",
+      "paused": "paused",
+      "model": "View template",
+      "pause": "Pause",
+      "resume": "Resume",
+      "delete": "Delete"
+    },
+    "plan": {
+      "upgrade": "Upgrade to Pro",
+      "free": "Free",
+      "pro": "Pro",
+      "proplus": "Pro+",
+      "usage": "{plan} plan{hasLimit, select, yes {: {invoices} of {invoiceLimit} invoices this month, {contacts} of {contactLimit} contacts} other {}}."
+    },
+    "orgSwitch": {
+      "label": "Company",
+      "switch": "Switch company",
+      "client": "client"
+    },
+    "team": {
+      "title": "Team",
+      "subtitle": "The people in your company come from the Lead account. Here you choose what each of them does in InvoiceLead.",
+      "seats": "{used} of {seats} {seats, plural, one {seat used} other {seats used}}",
+      "members": "Members",
+      "name": "Person",
+      "leadRole": "Lead role",
+      "appRole": "In InvoiceLead",
+      "leadRoles": {
+        "admin": "Administrator",
+        "manager": "Manager",
+        "user": "User",
+        "fiduciary": "Fiduciary"
+      },
+      "roles": {
+        "all": "Invoices and accounting",
+        "billing": "Invoices only",
+        "accounting": "Accounting only",
+        "readonly": "Read only",
+        "none": "No access"
+      },
+      "managerRole": "Everything, including settings",
+      "noSeat": "no seat",
+      "save": "Save",
+      "saved": "Role saved.",
+      "addHint": "To add someone, invite them to your organisation from the Lead account. They appear here after their first login.",
+      "fiduciaryTitle": "Fiduciary",
+      "fiduciaryHint": "Your fiduciary gets free access to the accounting (bank, receipts, journal, VAT, year-end closing) with their own Lead account. They can see invoices but cannot change them.",
+      "fiduciaryEmail": "Fiduciary's email address",
+      "invite": "Invite",
+      "invited": "Invitation sent to {email}.",
+      "inviteLink": "Send this link to {email}, valid for {days} days:",
+      "pending": "Invitation pending until {date}",
+      "cancel": "Cancel",
+      "remove": "Remove access",
+      "removed": "Access removed.",
+      "noFiduciary": "No fiduciary has access yet.",
+      "planOnly": "Fiduciary access is included in the Pro and Pro+ plans.",
+      "managersOnly": "Only company managers can change the team.",
+      "errors": {
+        "invalid": "Invalid email address.",
+        "forbidden": "Only company managers can change the team.",
+        "plan": "Fiduciary access is included in the Pro and Pro+ plans.",
+        "failed": "The email could not be sent. Pass on the link below."
+      },
+      "emailSubject": "{org} is giving you access to its accounts",
+      "emailBody": "Hello,\n\n{org} is inviting you to access its accounts in InvoiceLead. Log in with your Lead account using this link (valid for {days} days):"
+    },
+    "invite": {
+      "title": "Fiduciary invitation",
+      "loginBody": "Log in with your Lead account to accept the invitation. Use the address the invitation was sent to.",
+      "login": "Log in with my Lead account",
+      "accepted": "You now have access to the accounts of {org}.",
+      "open": "Open {org}",
+      "invalid": "This invitation link is not valid or has already been used.",
+      "expired": "This invitation link has expired. Ask for a new one.",
+      "wrongEmail": "This invitation was sent to an address other than {email}. Log in with the right Lead account.",
+      "logout": "Switch account",
+      "accept": "Accept invitation"
+    },
+    "crmImport": {
+      "title": "Lead won in CRMlead",
+      "subtitle": "Review what CRMlead is sending. The customer is reused if it already exists (same record, same email or same name), otherwise it is created.",
+      "invalid": "This CRMlead link is incomplete or unreadable. Start again from CRMlead.",
+      "contactLimit": "Your plan has reached its contact limit. Upgrade to Pro to add this customer.",
+      "quote": "Quote",
+      "invoice": "Invoice",
+      "net": "Total excl. VAT",
+      "hint": "A draft is created; you can edit it before issuing it. Each lead produces only one document.",
+      "forbidden": "Your role does not allow you to create invoices.",
+      "createQuote": "Create quote",
+      "createInvoice": "Create invoice",
+      "fromCrm": "Draft created from CRMlead. Check it, then issue it."
+    },
+    "feedback": {
+      "title": "Give feedback",
+      "subtitle": "InvoiceLead is in private beta. An idea, a problem, a compliment: we read everything.",
+      "kind": "Type of feedback",
+      "kinds": {
+        "idea": "Idea",
+        "problem": "Problem",
+        "praise": "I like it"
+      },
+      "message": "Your message",
+      "send": "Send",
+      "sent": "Thank you, your feedback has arrived.",
+      "invalid": "Write a few words before sending."
+    },
+    "onlinePayments": {
+      "title": "Online payments",
+      "subtitle": "Your customers pay an invoice from its link, by card, TWINT, SEPA or ACH depending on what your Stripe account accepts. The money goes straight to your Stripe account.",
+      "notConfigured": "Online payments are not yet enabled on InvoiceLead.",
+      "notLinked": "No Stripe account linked.",
+      "linked": "Linked Stripe account: {account}.",
+      "connect": "Link my Stripe account",
+      "disconnect": "Unlink",
+      "connected": "Stripe account linked.",
+      "disconnected": "Stripe account unlinked.",
+      "howItWorks": "Each payment is recorded on the invoice and posted to the payment provider clearing account; the Stripe payout to your bank clears it, and what remains is the fees.",
+      "errors": {
+        "state": "Stripe's response could not be verified. Please try again.",
+        "denied": "The link was cancelled on Stripe.",
+        "failed": "Stripe did not confirm the link. Try again later."
+      }
+    },
+    "apiSettings": {
+      "title": "API and webhooks",
+      "subtitle": "Connect InvoiceLead to your tools: the REST API ({base}) creates contacts, quotes, invoices and payments; webhooks notify your tools when an invoice is issued or paid.",
+      "plan": "The API and webhooks are part of the Pro+ plan.",
+      "keys": {
+        "title": "API keys",
+        "empty": "No key.",
+        "name": "Key name (for example “Online shop”)",
+        "create": "Create a key",
+        "created": "Copy this key now: it will not be shown again. Send it in the Authorization: Bearer header.",
+        "meta": "created {created}, used: {used}",
+        "never": "never",
+        "revoke": "Revoke",
+        "revoked": "Key revoked."
+      },
+      "webhooks": {
+        "title": "Webhooks",
+        "hint": "Each event is sent as a JSON POST, signed in the InvoiceLead-Signature header (HMAC-SHA256 of “t.body” with the secret). If delivery fails, it is retried later, up to five times.",
+        "empty": "No endpoint.",
+        "url": "Endpoint URL (https)",
+        "events": "Events",
+        "create": "Add webhook",
+        "created": "Copy this signing secret now: it will not be shown again.",
+        "disable": "Delete",
+        "disabled": "Webhook deleted.",
+        "delivery": "{event}: {status} ({code}), {date}",
+        "status": {
+          "pending": "pending",
+          "delivered": "delivered",
+          "failed": "given up"
+        }
+      },
+      "errors": {
+        "plan": "The API and webhooks are part of the Pro+ plan.",
+        "invalid": "Name required (60 characters at most).",
+        "tooMany": "Maximum reached.",
+        "url": "Invalid URL: https to a public server, without credentials.",
+        "events": "Choose at least one event."
+      }
+    }
+  },
+  "footer": {
+    "product": "Product",
+    "home": "Home",
+    "family": "Lead family",
+    "account": "Account",
+    "login": "Log in",
+    "signup": "Sign up",
+    "scanlead": "Scanlead, lead capture at trade fairs",
+    "crmlead": "CRMlead, the CRM that follows up your contacts",
+    "features": "Features",
+    "pricing": "Pricing",
+    "faq": "FAQ",
+    "legal": "Legal",
+    "imprint": "Legal notice",
+    "privacy": "Privacy",
+    "terms": "Terms",
+    "dpa": "Data processing (DPA)"
+  },
+  "notFound": {
+    "title": "Page not found",
+    "body": "This address does not exist, or no longer exists, on InvoiceLead.",
+    "home": "Back to home"
+  },
+  "legal": {
+    "home": "Home",
+    "titles": {
+      "imprint": "Legal notice",
+      "privacy": "Privacy",
+      "terms": "Terms and conditions",
+      "dpa": "Data processing agreement"
+    }
+  },
+  "pricing": {
+    "title": "Simple pricing for the whole Lead family",
+    "subtitle": "A single plan unlocks InvoiceLead, Scanlead and CRMlead. Prices excl. VAT.",
+    "notice": "InvoiceLead is opening in stages: features marked “Soon” are coming in the next releases. Signing up is free.",
+    "monthly": "per month",
+    "yearly": "or {price} per year (2 months free)",
+    "popular": "Recommended",
+    "soon": "Soon",
+    "cta": {
+      "free": "Start for free",
+      "paid": "Choose {plan}"
+    },
+    "plans": {
+      "free": {
+        "name": "Free",
+        "tagline": "For getting started as a freelancer",
+        "features": [
+          "1 user, 1 company",
+          "10 invoices per month, unlimited quotes",
+          "50 contacts",
+          "QR-bill, documents in DE, FR, IT, EN",
+          "Accounting fed by your invoices",
+          "“Created with InvoiceLead” notice"
+        ]
+      },
+      "pro": {
+        "name": "Pro",
+        "tagline": "For SMEs that invoice every week",
+        "features": [
+          "Unlimited invoices and contacts",
+          "2 users and free fiduciary access",
+          "Automatic payment reminders on 3 levels",
+          "VAT return (effective and net tax rate methods)",
+          "camt bank import and reconciliation",
+          "Recurring invoices, multi-currency"
+        ]
+      },
+      "proPlus": {
+        "name": "Pro+",
+        "tagline": "For teams and multiple companies",
+        "features": [
+          "5 users with roles",
+          "Up to 3 companies",
+          "Direct bank connection",
+          "eBill, API and webhooks",
+          "GeBüV-compliant archiving",
+          "Priority support"
+        ]
+      }
+    },
+    "footer": "Billed in euros by the Lead family (Quantum Liquid LLC). Cancel at any time."
+  },
+  "faq": {
+    "title": "Frequently asked questions",
+    "items": [
+      {
+        "q": "Does InvoiceLead produce compliant QR-bills?",
+        "a": "Yes. The payment part follows the current SIX standard (version 2.3, structured addresses), with a QR or SCOR reference depending on your bank account."
+      },
+      {
+        "q": "Can I keep all my accounts in InvoiceLead?",
+        "a": "That is the goal: double-entry accounting on the SME chart of accounts, entries created from your invoices and payments, balance sheet, income statement and VAT return. These features are being rolled out gradually."
+      },
+      {
+        "q": "Which VAT methods are planned?",
+        "a": "The effective method and the net tax rate method, on agreed or received consideration. The VAT return will be exported in the eCH-0217 XML format, accepted by the SFTA portal."
+      },
+      {
+        "q": "What is the Lead account?",
+        "a": "The single account for the Lead family: the same login for InvoiceLead, Scanlead and CRMlead, and a plan paid for in one app unlocks the others."
+      },
+      {
+        "q": "Can my accountant access my accounts?",
+        "a": "Yes, free fiduciary access is provided from the Pro plan upwards."
+      },
+      {
+        "q": "Where is my data hosted?",
+        "a": "In the United States (Vercel and Neon, Ohio), encrypted in transit and at rest. Details are in the privacy policy."
+      },
+      {
+        "q": "Can I get my data back?",
+        "a": "Yes, at any time, and for 30 days after cancellation. Your books must be kept for ten years: the export is designed for that."
+      },
+      {
+        "q": "Do I need a payment card to start?",
+        "a": "No. The Free plan requires no card and has no time limit."
+      }
+    ]
+  },
+  "shared": {
+    "download": "Download PDF",
+    "poweredBy": "Sent with InvoiceLead",
+    "pay": "Pay online",
+    "paid": "Thank you. The payment is being confirmed; the invoice will show as paid as soon as Stripe confirms it.",
+    "payError": "The online payment could not start. Try again or pay by bank transfer."
+  }
+}

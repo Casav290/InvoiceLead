@@ -1,0 +1,1 @@
+ALTER TABLE "organizations" ADD COLUMN "net_tax_rate_bp" integer;

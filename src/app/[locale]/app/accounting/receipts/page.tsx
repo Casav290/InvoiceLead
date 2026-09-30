@@ -1,0 +1,170 @@
+import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
+import { AccountingNav } from "@/components/accounting/AccountingNav";
+import { PlanNotice } from "@/components/app/PlanNotice";
+import { Button } from "@/components/ui/button";
+import { countryPack } from "@/countries";
+import { formatDate } from "@/lib/fiscal-year";
+import { formatAmount } from "@/lib/money";
+import { aiConfigured } from "@/server/ai";
+import { requireAppSession } from "@/server/auth/guard";
+import { db } from "@/server/db";
+import { hasFeature, upgradeUrl } from "@/server/plans";
+import { listReceipts } from "@/server/receipts";
+import { readReceiptAction, uploadReceiptsAction } from "../actions";
+
+type Props = {
+  params: Promise<{ locale: string }>;
+  searchParams: Promise<{ added?: string; rejected?: string; error?: string }>;
+};
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: "app.receipts" });
+  return { title: t("title"), robots: { index: false } };
+}
+
+const ERRORS = ["unreadable", "failed", "notFound", "plan"];
+
+export default async function ReceiptsPage({ params, searchParams }: Props) {
+  const { locale } = await params;
+  const { organization } = await requireAppSession(locale);
+  const style = countryPack(organization.country).amounts;
+  const q = await searchParams;
+  const t = await getTranslations({ locale, namespace: "app.receipts" });
+  const rows = await listReceipts(db(), organization.id);
+  const hidden = <input type="hidden" name="locale" value={locale} />;
+
+  return (
+    <div className="mx-auto max-w-5xl px-4 py-10 sm:px-8">
+      <AccountingNav />
+      <h1 className="text-[28px] leading-tight">{t("title")}</h1>
+      <p className="mt-2 text-[15px] text-ink-muted">{t("subtitle")}</p>
+
+      {q.added !== undefined ? (
+        <p
+          role="status"
+          className="mt-6 border border-ok-fg bg-ok-bg px-4 py-3 text-[13px] text-ok-fg"
+        >
+          {t("added", { count: Number(q.added) || 0, rejected: Number(q.rejected) || 0 })}
+        </p>
+      ) : null}
+      {q.error && ERRORS.includes(q.error) ? (
+        <p
+          role="alert"
+          className="mt-6 border border-hot-fg bg-hot-bg px-4 py-3 text-[13px] text-hot-fg"
+        >
+          {t(`errors.${q.error}`)}
+        </p>
+      ) : null}
+      {aiConfigured() ? null : (
+        <p className="mt-6 border border-line-strong bg-panel px-4 py-3 text-[13px] text-ink-2">
+          {t("aiOff")}
+        </p>
+      )}
+
+      {hasFeature(organization, "receipts") ? null : (
+        <PlanNotice locale={locale} message={t("planOnly")} href={upgradeUrl(organization)} />
+      )}
+      <form
+        action={uploadReceiptsAction}
+        className="mt-6 flex flex-wrap items-end gap-3 border border-line-strong bg-panel px-5 py-4"
+      >
+        {hidden}
+        <div className="min-w-0 flex-1">
+          <label htmlFor="receipt-files" className="mb-1 block text-[13px] font-semibold">
+            {t("files")}
+          </label>
+          <input
+            id="receipt-files"
+            name="files"
+            type="file"
+            multiple
+            required
+            accept="application/pdf,image/jpeg,image/png,image/webp"
+            aria-describedby="receipt-files-hint"
+            className="block w-full text-[13px]"
+          />
+          <span id="receipt-files-hint" className="mt-1 block text-[12px] text-ink-muted">
+            {t("filesHint")}
+          </span>
+        </div>
+        <Button type="submit" data-testid="receipts-upload">
+          {t("upload")}
+        </Button>
+      </form>
+
+      {rows.length === 0 ? (
+        <p className="mt-8 border border-line-strong bg-panel px-5 py-8 text-center text-[14px] text-ink-muted">
+          {t("empty")}
+        </p>
+      ) : (
+        <ul className="mt-6 space-y-3" data-testid="receipts-list">
+          {rows.map((r) => {
+            const x = r.extraction;
+            return (
+              <li
+                key={r.id}
+                className="border border-line-strong bg-panel px-4 py-3"
+                data-testid="receipt-row"
+              >
+                <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+                  <span className="min-w-0 flex-1 font-semibold [overflow-wrap:anywhere]">
+                    {x?.supplier ?? r.filename}
+                  </span>
+                  {x?.totalCents ? (
+                    <span className="font-extrabold tabular-nums">
+                      {x.currency ?? organization.currency} {formatAmount(x.totalCents, style)}
+                    </span>
+                  ) : null}
+                  <span
+                    className="border border-line-strong px-1.5 text-[11px] font-semibold text-ink-2"
+                    data-testid="receipt-status"
+                  >
+                    {t(`status.${r.status}`)}
+                  </span>
+                </div>
+                {x ? (
+                  <p className="mt-1 text-[12px] text-ink-2 [overflow-wrap:anywhere]">
+                    {[
+                      x.date ? formatDate(x.date) : null,
+                      x.invoiceNumber ? t("invoiceNumber", { number: x.invoiceNumber }) : null,
+                      x.vatCents ? t("vat", { amount: formatAmount(x.vatCents, style) }) : null,
+                      x.accountNumber ? t("account", { number: x.accountNumber }) : null,
+                      x.description,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </p>
+                ) : null}
+                <div className="mt-2 flex flex-wrap items-center gap-3 text-[12px]">
+                  <a
+                    href={`/${locale}/app/accounting/receipts/${r.id}/file`}
+                    className="font-semibold text-accent-dark underline"
+                    target="_blank"
+                    rel="noopener"
+                  >
+                    {r.filename}
+                  </a>
+                  {r.status === "matched" ? (
+                    <span className="text-ok-fg">{t("matchedHint")}</span>
+                  ) : null}
+                  {(r.status === "new" || r.status === "error" || r.status === "read") &&
+                  aiConfigured() ? (
+                    <form action={readReceiptAction}>
+                      {hidden}
+                      <input type="hidden" name="id" value={r.id} />
+                      <Button type="submit" variant="ghost" size="sm">
+                        {r.status === "new" ? t("read") : t("reread")}
+                      </Button>
+                    </form>
+                  ) : null}
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
+}

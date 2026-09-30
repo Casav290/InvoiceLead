@@ -1,207 +1,242 @@
 # InvoiceLead, plan de développement
 
-Version 1, 30.09.2026. Document de travail, à valider avant le début du code.
+Version 2, 30.09.2026. Remplace la version 1 : elle intègre les réponses d'Ève, ce que font déjà Scanlead et CRMlead (visuel Trait net, Compte Lead) et une recherche vérifiée sur la comptabilité et la TVA suisses.
 
 ## 1. Vision
 
-InvoiceLead est un logiciel de facturation en ligne pour indépendants et PME, équivalent fonctionnel du module facturation de bexio (offres, factures avec QR-facture, relances, encaissements, rapprochement bancaire). Il rejoint la famille Lead (Scanlead, CRMlead, ProjectLead) et en reprend le visuel « Trait net ».
+InvoiceLead fait les devis, les factures QR et la comptabilité des indépendants, des micro-entreprises et des petites PME suisses, à plusieurs utilisateurs. C'est l'équivalent de bexio pour ces trois fonctions, dans la famille Lead (Scanlead, CRMlead, ProjectLead), avec le même visuel et le même compte.
 
-Marché de départ : la Suisse, en allemand et en français (puis italien et anglais). L'architecture est pensée dès le premier jour pour ajouter l'Allemagne, la France, le Royaume-Uni et les États-Unis sans refonte.
+Marché de départ : la Suisse, en allemand (orthographe suisse, « ss ») et en français. L'architecture prévoit l'Allemagne, la France, le Royaume-Uni et les États-Unis sans refonte.
 
-Précision juridique : on reproduit les fonctionnalités et la logique de conversion de la landing page bexio, pas ses textes, images, marque ni sa mise en page exacte (droit d'auteur et LCD/UWG). Tous les textes seront originaux, et le rendu visuel sera celui de la famille Lead.
+On reprend les fonctions et la logique de conversion de bexio, jamais ses textes, images, marque ni mise en page.
 
-## 2. Ce qu'on reprend de bexio
+## 2. Décisions prises
 
-| Fonction bexio | InvoiceLead | Phase |
-|---|---|---|
-| Contacts (entreprises, personnes, adresses) | Contacts avec adresse structurée, langue, conditions de paiement | 2 |
-| Articles et prestations | Catalogue avec prix, unité, taux de TVA | 2 |
-| Offre, confirmation de commande, facture, avoir | Même chaîne, conversion en un clic | 2 |
-| QR-facture | PDF avec section paiement QR conforme SIX | 2 |
-| Envoi par e-mail, consultation en ligne | E-mail + lien sécurisé vers la facture en ligne | 2 |
-| Relances (3 niveaux, frais) | Relances automatiques paramétrables | 3 |
-| E-banking, rapprochement des paiements | Import camt.054 / camt.053, lettrage automatique par référence | 3 |
-| bexio pay, TWINT | Stripe (carte, TWINT) sur la facture en ligne | 3 |
-| Factures récurrentes | Abonnements clients avec génération automatique | 3 |
-| Multi-utilisateurs, accès fiduciaire | Équipe, rôles, accès comptable en lecture | 4 |
-| Saisie des justificatifs (OCR/IA) | Dépenses avec scan de justificatifs | 5 |
-| Comptabilité, décompte TVA | Comptabilité simplifiée PME, rapport TVA | 5 |
-| Suivi du temps, projets | Pont avec ProjectLead | 5 |
-| eBill | Nécessite un partenariat avec un réseau eBill | 5 |
-| Salaires (Swissdec) | Hors périmètre (certification lourde) | non prévu |
-| Application mobile | Application web responsive (PWA) d'abord | 2 |
-
-## 3. Stack technique
-
-Tout est gratuit pendant le développement. Les limites indiquées sont celles des offres gratuites au moment de la rédaction, à revérifier avant le lancement.
-
-| Besoin | Choix | Offre gratuite, remarques |
-|---|---|---|
-| Framework | Next.js 16 (App Router), React 19, TypeScript strict | Rendu serveur utile pour le SEO de la landing et pour les PDF |
-| Interface | Tailwind CSS v4 + composants shadcn/ui (Radix) réglés sur Trait net, icônes Lucide | Open source |
-| Base de données | Neon Postgres, région AWS Francfort (eu-central-1) | 0,5 Go et 100 CU-heures par projet et par mois, 10 branches, mise en veille après 5 min |
-| Accès aux données | Drizzle ORM + drizzle-kit (migrations), pilote `@neondatabase/serverless` | Léger, typé, adapté au serverless |
-| Authentification | Better Auth (open source, données stockées dans Neon) | Organisations, 2FA, passkeys, lien magique ; aucune dépendance à un fournisseur |
-| Validation | Zod, React Hook Form | Schémas partagés client/serveur |
-| PDF | PDFKit + `swissqrbill` v4 | Bibliothèque de référence pour la QR-facture en Node |
-| E-mails | Resend + React Email | Environ 3000 e-mails/mois, 100/jour |
-| Fichiers (logos, PDF archivés, justificatifs) | Cloudflare R2 | 10 Go, pas de frais de sortie |
-| Traductions | next-intl | de-CH, fr-CH au départ |
-| Tâches planifiées (relances, récurrences) | Cron quotidien (Vercel Cron ou GitHub Actions) vers des routes protégées | Suffisant tant qu'on n'a pas besoin de précision horaire |
-| Paiements en ligne | Stripe (cartes, TWINT) | Pas d'abonnement, commission par transaction |
-| Erreurs, analytics produit | Sentry, PostHog | Offres gratuites suffisantes pour la bêta |
-| Tests | Vitest (unitaires), Playwright (bout en bout, audit visuel) | |
-| Intégration continue | GitHub Actions | Lint, types, tests à chaque PR |
-| Hébergement | Vercel Hobby pour le développement et les prévisualisations | Voir le point d'attention ci-dessous |
-
-Point d'attention hébergement : l'offre Vercel Hobby interdit tout usage commercial, et une landing de SaaS payant compte déjà comme commercial. Deux options au moment d'ouvrir au public : Vercel Pro (environ 20 USD/mois) ou Cloudflare Workers via OpenNext (offre gratuite autorisant l'usage commercial, un peu plus de configuration). Le code restera compatible avec les deux.
-
-## 4. Visuel « Trait net »
-
-Charte reprise de Scanlead et CRMlead (pages publiques alignées le 24.09.2026) :
-
-| Règle | Application dans InvoiceLead |
+| Sujet | Décision |
 |---|---|
-| Police Archivo uniquement | `next/font/google`, aucune police de repli visible |
-| Accent bleu #2563eb | Variable CSS `--primary`, liens, boutons principaux, focus |
-| Aucun arrondi | `--radius: 0` pour tous les composants shadcn/ui |
-| Aucune ombre | Utilitaires `shadow-*` neutralisés dans le thème |
-| Aucun dégradé, pas de sections sombres, pas de cercles décoratifs | Fonds unis, structure portée par les traits (bordures fines) |
-| En-tête public en cellules, pied de page commun | Composant `PublicChrome` équivalent à celui de Scanlead |
-| Sélecteur d'applications à 9 points dans l'app | Scanlead, CRMlead, ProjectLead, InvoiceLead, chaque lien ouvre `<app>/login` |
-| `/login` et `/signup` pour un utilisateur déjà connecté | Redirection directe vers le tableau de bord |
+| Périmètre du MVP | Devis, facturation **et** comptabilité (partie double, TVA) |
+| Cible | Indépendants, micro-entreprises et petites PME, plusieurs utilisateurs par entreprise |
+| Offres | Gratuit (limité), Pro, Pro+, calquées sur Scanlead : 0, 19 et 39 par mois, 190 et 390 par an (dix mois payés) |
+| Compte | Un compte unique pour la famille : le **Compte Lead** (OpenID Connect hébergé par CRMlead). InvoiceLead y figure déjà dans les applications reliées |
+| Langues | Allemand et français au lancement |
+| Domaine | invoicelead.io, déjà réservé chez Porkbun |
+| Code et hébergement | GitHub `Casav290/InvoiceLead`, Vercel |
+| Base | Neon, projet `tiny-shape-39858234` (« InvoiceLead »), branche `production`, région `aws-us-east-2` (Ohio), Postgres 18 ; fonctions Vercel en `cle1` (Cleveland), à côté |
+| Visuel | Trait net v1, repris des jetons de CRMlead et de Scanlead (section 5) |
 
-Le même contrôle que sur Scanlead sera automatisé dans la CI : un test Playwright parcourt toutes les pages publiques et l'app à 390, 820 et 1280 px et échoue s'il trouve une police autre qu'Archivo, un arrondi, une ombre, un dégradé ou un débordement horizontal.
+## 3. Ce qu'on reprend de bexio, et quand
 
-Une fois InvoiceLead en ligne, il faudra passer l'entrée « InvoiceLead, Bientôt » des sélecteurs Scanlead et CRMlead vers `https://<domaine>/login` (hors de ce dépôt).
+| Fonction bexio | InvoiceLead | Lot |
+|---|---|---|
+| Assistant de configuration de l'entreprise | Réglages entreprise (IDE/UID, TVA, IBAN et QR-IBAN, logo, méthode TVA, exercice) | 2 |
+| Contacts, articles et prestations | Contacts à adresse structurée, articles avec taux de TVA | 2 |
+| Offre, confirmation, facture, avoir | Même chaîne, conversion sans ressaisie | 3 |
+| QR-facture | PDF avec section paiement conforme SIX IG 2.3 | 3 |
+| Envoi par e-mail, facture en ligne | E-mail et lien sécurisé | 3 |
+| Écritures automatiques depuis factures et paiements | Moteur d'écritures en partie double | 3 et 4 |
+| Journal, grand livre, balance, bilan, compte de résultat | Rapports comptables avec comparaison N-1 | 4 |
+| Dépenses et impôt préalable | Saisie des dépenses avec pièce et code TVA | 4 |
+| Rapprochement bancaire (camt.053/054) | Import de fichiers, lettrage par référence QR ou SCOR | 4 |
+| Décompte TVA | Méthode effective et taux de la dette fiscale nette, export XML eCH-0217 | 5 |
+| Relances à trois niveaux | Relances automatiques, frais, intérêt moratoire | 6 |
+| Factures récurrentes | Abonnements clients | 6 |
+| bexio pay, TWINT | Paiement en ligne sur la facture | 6 |
+| Saisie des justificatifs par IA | Lecture automatique des pièces (quotas par offre) | 6 |
+| Multi-utilisateurs, accès fiduciaire | Rôles, accès fiduciaire gratuit | 7 |
+| eBill, connexion bancaire directe | Partenariats nécessaires (SIX, bLink) | plus tard |
+| Salaires (Swissdec) | Hors périmètre | non prévu |
 
-Structure de la landing (logique de conversion inspirée de la page bexio, textes originaux) : en-tête en cellules avec CTA essai gratuit, bloc d'accroche avec aperçu d'une facture QR, trois bénéfices clés, sections détaillées (QR-facture, relances automatiques, rapprochement bancaire, paiement en ligne), fonctionnement en trois étapes, témoignages réels uniquement, tarifs, FAQ, CTA final, pied de page commun.
+## 4. Pile technique
 
-## 5. Architecture
+| Besoin | Choix | Remarques |
+|---|---|---|
+| Framework | Next.js 16.3 (App Router, `proxy.ts`), React 19, TypeScript strict | Rendu serveur pour le SEO, les PDF et la sécurité |
+| Interface | Tailwind CSS v4, composants Radix, icônes Lucide | Thème Trait net ; arrondis, ombres et couleurs par défaut retirés du thème |
+| Police | Archivo (variable), servie avec l'application | Aucune requête vers Google au chargement |
+| Traductions | next-intl 4, adresses `/de/…` et `/fr/…` | |
+| Base | Neon Postgres, pilote `pg` avec un pool par instance (Fluid compute) | |
+| Accès aux données | Drizzle ORM, migrations SQL versionnées dans `drizzle/` | Appliquées par `vercel-build` en production seulement, par la connexion directe (`DATABASE_URL_UNPOOLED`) |
+| Connexion | Compte Lead, kit `leadId.ts` de CRMlead copié tel quel | Session locale de 12 h, jeton stocké haché |
+| Neon Auth | Activé à la création du projet (`neon.ts`), **pas utilisé** pour la connexion | Peut être retiré si le Compte Lead reste la seule entrée |
+| Neon Functions | Fonction `api` déployée (exemple `hello.ts`) | Candidat pour les tâches planifiées (relances, récurrences) via les déclencheurs cron |
+| PDF | PDFKit et `swissqrbill` v4 | Lot 3 |
+| E-mails | Resend (SMTP aussi pour les e-mails transactionnels) | Lot 3 |
+| Fichiers | Neon Object Storage ou Cloudflare R2 | Choix au lot 3 |
+| Paiements | Stripe (carte, TWINT) | Lot 6 |
+| Tests | Vitest (unitaires et intégration sur Postgres), Playwright (parcours et audit Trait net) | |
+| CI | GitHub Actions : Biome, tsc, migrations, Vitest, build, Playwright | |
 
-Un monolithe modulaire : un seul dépôt, un seul déploiement, découpé par domaines métier.
+Point d'attention hébergement : l'offre Vercel Hobby interdit l'usage commercial, et une landing de SaaS payant compte déjà comme commercial. Il faudra passer sur Vercel Pro (environ 20 USD par mois) avant d'ouvrir au public.
+
+## 5. Visuel « Trait net »
+
+Jetons repris de CRMlead (`trait-net/tailwind-preset.cjs`, `src/index.css`) et de Scanlead (`PublicChrome.tsx`, `pricing.tsx`, `application-switcher.tsx`) :
+
+| Élément | Valeur |
+|---|---|
+| Police | Archivo seule ; titres en 800, interlettrage −0,025 em |
+| Fond d'application | `#eceae7` ; panneaux `#ffffff` ; cartes d'offre `#fffdf9` ; en-têtes de tableau `#f7f5f3` |
+| Traits | marqué `#cfcac4`, cellule `#e7e4e0`, doux `#eeebe7` |
+| Encres | `#1b1a19`, `#44403c`, `#57534e`, secondaire `#67625c` |
+| Action InvoiceLead | `#2563eb` (survol `#1d4ed8`, pâle `#dbeafe`) |
+| Compte Lead | bouton « Se connecter avec mon compte Lead » en `#0e6d6e` |
+| Marques des applications | carrés 26 px : SL `#2563eb`, CL `#0f6e70`, IL couleur d'action |
+| Formes | aucun arrondi, aucune ombre, aucun dégradé, pas de section sombre |
+| En-tête public | cellules séparées par des traits, sélecteur de langue, Connexion, bouton d'appel |
+| Application | sélecteur à 9 points qui ouvre `<app>/login` ; « Bientôt » pour les applications à venir |
+
+Un test Playwright parcourt les pages publiques et l'application à 390, 820 et 1280 px et échoue sur toute police autre qu'Archivo, tout arrondi, toute ombre, tout dégradé et tout débordement horizontal.
+
+## 6. Architecture
+
+Un monolithe modulaire, un seul déploiement.
 
 ```
 src/
   app/
-    [locale]/(marketing)/   landing, fonctionnalités, tarifs, FAQ, pages légales
-    [locale]/(auth)/        connexion, inscription, mot de passe oublié
-    [locale]/(app)/         tableau de bord, documents, contacts, articles, réglages
-    i/[token]/              facture en ligne côté client (consultation, paiement)
-    api/                    webhooks Stripe, cron, plus tard API publique
-  modules/                  contacts, products, documents, payments, reminders, banking, recurring
-  core/                     money, tax, numbering, pdf, email, auth, tenancy, audit
-  countries/
-    ch/                     TVA, QR-facture, camt, mentions légales, formats
-    (de, fr, uk, us plus tard)
-  db/                       schéma Drizzle, migrations, données de démo
+    [locale]/            pages publiques, connexion, inscription
+    [locale]/app/        application (vérifie la session et l'accès)
+    auth/lead/           départ, retour et déconnexion Compte Lead
+    api/                 santé, puis webhooks et API publique
+  components/            Trait net : public, application, marque, ui
+  i18n/                  routage et messages
+  lib/                   montants, applications Lead, utilitaires
+  server/
+    auth/                rattachement, sessions, cookies signés
+    db/                  schéma Drizzle et connexion
+    lead-id/             kit Compte Lead (copie conforme)
+    (à venir) documents/, accounting/, vat/, banking/, countries/ch/
+drizzle/                 migrations SQL
+tests/                   unitaires, bout en bout, faux Compte Lead
 ```
 
-Principes retenus :
+Principes :
 
-Multi-entreprise dès le départ. Chaque table métier porte `organization_id`, toutes les lectures et écritures passent par une couche de service qui injecte l'organisation courante, et la sécurité au niveau des lignes de Postgres (RLS) sert de seconde barrière.
+Tout objet métier porte `organization_id` ; les lectures et écritures passent par une couche de service qui injecte l'organisation de la session. La sécurité au niveau des lignes de Postgres viendra en seconde barrière avant l'ouverture.
 
-L'argent est stocké en entiers (centimes, Rappen) avec le code devise ISO, jamais en nombres à virgule flottante. L'arrondi à 5 centimes est un paramètre par organisation.
+L'argent est en centimes entiers avec le code devise ; jamais de nombre à virgule. Affichage suisse identique dans les deux langues : « 2'361.99 », formaté sans `Intl` (dont les données changent selon la version de Node).
 
-Un document émis est figé. Les coordonnées du client, de l'entreprise et les taux de TVA sont copiés dans le document au moment de l'émission, le PDF est archivé dans R2, et toute correction passe par un avoir puis une nouvelle facture. Un journal d'audit trace les actions sensibles.
+Un document émis est figé : coordonnées et taux copiés au moment de l'émission, PDF archivé, correction par avoir.
 
-Les règles propres à un pays vivent dans un « pack pays » (`countries/ch`) qui implémente une interface commune : devise, taux de TVA historisés, règles fiscales, bulletin de paiement, formats de facture électronique, mentions obligatoires, formats d'adresse, de date et de nombre. Le code métier ne connaît que l'interface, ce qui permet d'ajouter l'Allemagne ou les États-Unis sans toucher au cœur.
+La comptabilité est en ajout seul : une écriture validée ne se modifie ni ne se supprime (déclencheur Postgres), elle s'extourne. Chaîne d'empreintes SHA-256 par organisation et exercice, périodes TVA verrouillées au dépôt, exercice verrouillé à la clôture (exigences GeBüV/Olico).
 
-Les mutations internes passent par des Server Actions ; une API REST publique documentée (OpenAPI) viendra en phase 5.
+Les règles propres à un pays vivent dans un pack pays (`countries/ch`) : taux datés, chiffres du formulaire TVA, bulletin de paiement, formats de facture électronique, mentions obligatoires.
 
-## 6. Modèle de données, première version
+Les rôles comptables sont liés à des **rôles** (débiteurs, TVA due, impôt préalable, banque, arrondi, résultat…) et non à des numéros, pour permettre de renuméroter le plan comme dans bexio.
 
-| Table | Contenu principal |
+## 7. Modèle de données
+
+Déjà en place (migration `0000_init`) :
+
+| Table | Contenu |
 |---|---|
-| `organizations`, `members` | Entreprise (raison sociale, IDE/UID, n° TVA, méthode TVA, langue, devise, logo), utilisateurs et rôles |
-| tables Better Auth | Utilisateurs, sessions, comptes, invitations |
-| `bank_accounts` | IBAN, QR-IBAN, banque |
-| `contacts`, `contact_persons` | Entreprise ou personne, adresse structurée (rue, numéro, NPA, localité, pays), langue, e-mail, conditions de paiement |
-| `products` | Référence, désignation multilingue, unité, prix, taux de TVA |
-| `tax_rates` | Pays, code, taux en points de base, dates de validité |
-| `number_sequences` | Modèle de numérotation par type de document (ex. `RE-{YYYY}-{0000}`) |
-| `documents` | Type (offre, commande, facture, avoir), numéro, statut, client, adresse figée, dates, devise, langue, totaux, référence QR/SCOR, document d'origine |
-| `document_lines` | Position, type (article, texte, sous-total, rabais), quantité, prix, rabais, taux TVA figé, total |
-| `payments` | Montant, date, moyen, source (manuel, import bancaire, Stripe) |
-| `bank_imports`, `bank_transactions` | Fichiers camt importés et lignes à lettrer |
-| `reminder_levels`, `reminders` | Paramètres de relance par organisation, relances envoyées |
-| `recurring_invoices` | Modèle, fréquence, prochaine échéance |
-| `email_messages` | Historique d'envoi et d'ouverture |
-| `files`, `audit_logs`, `subscriptions` | Fichiers R2, journal, abonnement InvoiceLead de l'organisation |
+| `users` | Personne ; `lead_sub` unique (identifiant du Compte Lead), email unique sans casse, nom, langue |
+| `organizations` | Entreprise ; `lead_org` unique, pays, devise, langue, formule Lead, accès InvoiceLead, droits reçus |
+| `memberships` | Personne × entreprise, rôle Lead (admin, manager, user) |
+| `sessions` | Empreinte SHA-256 du jeton, échéance, jeton d'identité pour la déconnexion |
+| `audit_log` | Actions sensibles |
 
-## 7. Exigences suisses
+À venir, dans l'ordre des lots :
 
-QR-facture : norme SIX IG v2.3, en vigueur depuis le 21 novembre 2025 et valable jusqu'en novembre 2027 ; seules les adresses structurées sont admises. Deux combinaisons : IBAN classique avec référence créancier SCOR (ISO 11649), ou QR-IBAN avec référence QR à 27 chiffres (clé modulo 10 récursif). Les factures générées seront vérifiées avec l'outil de validation de SIX avant le lancement.
+| Lot | Tables |
+|---|---|
+| 2 | `company_settings`, `bank_accounts`, `contacts`, `contact_persons`, `products`, `vat_codes` et `vat_rates` datés, `accounts` (plan), `fiscal_years`, `number_sequences` |
+| 3 | `documents`, `document_lines`, `payments`, `email_messages`, `files` |
+| 4 | `journal_entries`, `journal_lines`, `open_items`, `open_item_allocations`, `expenses`, `bank_imports`, `bank_transactions` |
+| 5 | `vat_periods`, `vat_returns` (chiffres calculés, XML produit, statut) |
+| 6 | `reminder_levels`, `reminders`, `recurring_invoices`, `online_payments` |
 
-TVA : 8,1 %, 2,6 % et 3,8 % depuis le 1er janvier 2024, stockés avec leurs dates de validité pour gérer les changements futurs. Méthode effective ou taux de la dette fiscale nette, décompte sur contre-prestations convenues ou reçues. Mentions obligatoires de l'art. 26 LTVA sur chaque facture, dont le numéro au format `CHE-123.456.789 TVA` (MWST, IVA selon la langue).
+## 8. Exigences suisses
 
-Documents en allemand, français, italien et anglais, la langue étant choisie par client.
+QR-facture : norme SIX IG 2.3, en vigueur depuis le 21.11.2025 et valable jusqu'en novembre 2027 ; adresses structurées obligatoires ; IBAN avec référence SCOR, ou QR-IBAN avec référence QR (27 chiffres, modulo 10 récursif). Validation par l'outil SIX avant l'ouverture.
 
-Relances : niveaux, délais et frais paramétrables, intérêt moratoire de 5 % (art. 104 CO) en option.
+TVA, taux : 8,1 %, 2,6 % et 3,8 % depuis le 1.1.2024, stockés avec leurs dates de validité ; le taux dépend de la date de la prestation. Hausses en préparation, dates encore incertaines : financement de la 13e rente AVS (taux normal 8,5 %, probablement dès 2028, votation annoncée pour le 29.11.2026), hausse « armée » en débat (dès 2029 selon le Conseil des États), prolongation du taux hébergement au-delà de 2027. Veille à tenir, rien n'est codé en dur.
 
-Rapprochement : import des avis de crédit camt.054 et des relevés camt.053 (ISO 20022), lettrage automatique par référence QR ou SCOR, file de validation pour les cas ambigus.
+TVA, méthodes : effective, ou taux de la dette fiscale nette (TDFN) avec, depuis 2025, un taux par activité dépassant 10 % du chiffre d'affaires (plus de limite à deux taux) ; passage TDFN vers effective après une période, effective vers TDFN après trois ans.
 
-Conservation : pièces conservées dix ans (art. 958f CO), PDF émis immuables.
+TVA, décompte : formulaire par chiffres (200, 205, 220, 221, 225, 230, 235, 280, 289, 299, 303, 313, 343, 383, 399, 400, 405, 410, 415, 420, 479, 500/510, 900/910 ; 322/323… pour le taux de la dette fiscale nette). Dépôt électronique obligatoire depuis 2025 sur le portail AFC, par fichier XML **eCH-0217 V2.0.0** : pas d'API de dépôt direct, InvoiceLead produit le fichier et guide le dépôt. Périodes : trimestrielle (effective), semestrielle (TDFN), annuelle sur demande depuis 2025. Seuil d'assujettissement 100'000 CHF ; une entreprise non inscrite ne doit pas afficher de TVA (art. 27).
 
-Protection des données : nLPD. Hébergement dans l'UE (Francfort), à indiquer dans la politique de confidentialité avec la liste des sous-traitants et un DPA, comme pour Scanlead.
+TVA, facture : mentions de l'art. 26 LTVA, numéro `CHE-123.456.789 MWST/TVA` selon la langue, contrôle modulo 11 du numéro, TVA calculée par taux sur le total, total arrondi à 5 centimes avec compte d'arrondi.
 
-## 8. Feuille de route
+Comptabilité : partie double obligatoire pour les personnes morales et au-delà de 500'000 CHF de chiffre d'affaires (art. 957 CO) ; en dessous, une interface simplifiée au-dessus du même moteur. Plan comptable PME (Kontenrahmen KMU), deux modèles d'environ 80 comptes (raison individuelle ; SA/Sàrl), en allemand et en français. Conservation dix ans (art. 958f CO), archivage conforme à la GeBüV/Olico.
 
-Chaque phase donne lieu à une ou plusieurs PR avec une URL de prévisualisation et une branche Neon dédiée, pour tester sans toucher aux données réelles. Les durées supposent des sessions de travail régulières ; le rythme dépend surtout des retours et validations.
+Rapprochement : camt.054 et camt.053 (ISO 20022), lettrage automatique par référence.
 
-| Phase | Contenu | Terminé quand | Durée indicative |
+Validation : avant l'ouverture, faire relire les règles d'écriture et le décompte TVA par une fiduciaire ou un expert TVA (frais de rappel, TVA sur acomptes, écriture TDFN, durée du premier exercice).
+
+## 9. Offres et limites
+
+Les formules sont celles de la famille (Compte Lead) : un Pro payé dans une application ouvre les autres. Aujourd'hui seul Scanlead encaisse, et les boutons « Mettre à niveau » mènent à `scanlead.io/billing`.
+
+Proposition, à valider (issue du relevé des concurrents suisses) :
+
+| | Gratuit | Pro | Pro+ |
 |---|---|---|---|
-| 0. Fondations | Next.js, TypeScript, lint et formatage, CI, Neon + Drizzle, Better Auth avec organisations, next-intl (de, fr), thème Trait net, audit Playwright, déploiement de prévisualisation | On peut créer un compte et une entreprise, arriver sur un tableau de bord vide, et la CI est verte | 2 à 3 jours |
-| 1. Site public | Landing, fonctionnalités, tarifs, FAQ, pages légales (mentions, confidentialité, conditions, DPA), SEO, en-tête en cellules et sélecteur d'apps | Pages publiques en de et fr, audit Trait net sans erreur à 3 largeurs | 3 à 4 jours |
-| 2. MVP facturation | Configuration de l'entreprise, contacts, articles, offres, factures, avoirs, numérotation, PDF avec QR-facture, envoi par e-mail, facture en ligne, paiements saisis à la main, tableau de bord | Une vraie facture QR envoyée à un client et payée en scannant le QR dans une app bancaire | 2 à 3 semaines |
-| 3. Encaissement | Relances automatiques, import camt et lettrage, paiement par carte et TWINT via Stripe, factures récurrentes, exports CSV | Une facture payée par TWINT et une autre par virement se marquent payées toutes seules | 2 semaines |
-| 4. SaaS commercial | Offres et facturation d'InvoiceLead par Stripe Billing, essai gratuit, limites par offre, équipe et rôles, accès fiduciaire, bêta privée | Premiers clients bêta facturés | 1 à 2 semaines |
-| 5. Au-delà de la facture | Dépenses et justificatifs, comptabilité simplifiée (plan comptable PME), rapport TVA, pont ProjectLead et CRMlead, API publique et webhooks, eBill | Selon les priorités issues de la bêta | continu |
-| 6. International | Packs pays, voir ci-dessous | Premier pays hors Suisse en production | par pays |
+| Prix | 0 | 19 par mois, 190 par an | 39 par mois, 390 par an |
+| Utilisateurs | 1 | 2, plus accès fiduciaire gratuit | 5, puis supplément par utilisateur |
+| Factures | 10 par mois ; devis et avoirs illimités | illimitées | illimitées |
+| Contacts | 50 | illimités | illimités |
+| QR-facture, documents DE/FR/IT/EN, logo | oui | oui | oui |
+| Mention « Créé avec InvoiceLead » | oui | non | non |
+| Relances | 1 niveau, manuel | 3 niveaux automatiques, frais, intérêts | idem |
+| Comptabilité (écritures automatiques, bilan, résultat) | oui, 20 dépenses par mois | complète, clôture annuelle | complète |
+| Décompte TVA | non | oui (effective et TDFN) | oui |
+| Import bancaire camt | non | oui | oui, plus connexion directe |
+| Factures récurrentes, multidevise | non | oui | oui |
+| Lecture automatique des pièces | non | 50 par mois | 300 par mois |
+| Sociétés | 1 | 1 | jusqu'à 3 |
+| API, webhooks, eBill | non | non | oui |
 
-Packs pays prévus :
+Principes : ne jamais faire payer la QR-facture, les devis ni les documents multilingues (tous les concurrents les donnent) ; faire du décompte TVA le principal déclencheur de passage au payant (l'assujettissement à 100'000 CHF signale une entreprise qui grandit). Prix affichés en CHF, « hors TVA », équivalent mensuel de l'annuel à côté (15.83 et 32.50).
 
-| Pays | Particularités à couvrir |
-|---|---|
-| Allemagne | EUR, USt 19 % et 7 %, XRechnung et ZUGFeRD ; réception des e-factures B2B obligatoire depuis 2025, émission obligatoire dès 2027 au-delà de 800 000 EUR de chiffre d'affaires puis pour tous en 2028 ; QR code EPC (GiroCode) |
-| France | EUR, TVA 20 %, 10 %, 5,5 %, 2,1 %, Factur-X ; réception obligatoire pour toutes les entreprises depuis le 1er septembre 2026, émission pour les PME et TPE au 1er septembre 2027, via une plateforme agréée |
-| Royaume-Uni | GBP, VAT 20 %, 5 %, 0 %, Making Tax Digital |
-| États-Unis | USD, pas de TVA mais une sales tax par État et localité, formats US (dates, adresses) |
+Contexte : bexio coûte 35, 42, 69 et 119 CHF par mois depuis mars 2026 ; KLARA a supprimé son offre gratuite ; Swiss21, CashCtrl et smallinvoice ont des offres gratuites généreuses. Chiffres des concurrents à revérifier sur leurs sites avant toute comparaison publique.
 
-## 9. Méthode de travail
+## 10. Feuille de route
 
-Une branche et une PR par lot de fonctionnalités, relue avant fusion. Tests unitaires obligatoires sur tout ce qui calcule de l'argent : TVA, arrondis, totaux, références QR et SCOR, numérotation. Tests de bout en bout sur les parcours critiques (inscription, création et envoi d'une facture, paiement). Aucun secret dans le dépôt : les clés (Neon, Resend, Stripe, R2) vivent dans les variables d'environnement de l'hébergeur et de l'environnement de développement.
+Règle d'Ève : une fonction à la fois, terminée et mise en ligne avant la suivante.
 
-## 10. Coûts
+| Lot | Contenu | Terminé quand | État |
+|---|---|---|---|
+| 0. Fondations | Next.js 16, Trait net, de/fr, Drizzle, connexion Compte Lead, coquille de l'application, CI, audit Playwright | Connexion de bout en bout contre un faux Compte Lead, 76 contrôles verts (28 unitaires, 48 de bout en bout), revue adversariale appliquée | fait (PR #1) |
+| 1. Mise en ligne | Vercel, domaine invoicelead.io, Compte Lead réel (client déclaré dans CRMlead), pages légales, tarifs, FAQ | Connexion réelle sur invoicelead.io | en ligne sur invoicelead.io ; pages légales, tarifs et FAQ faits ; reste la déclaration dans CRMlead |
+| 2. Entreprise et référentiels | Réglages entreprise, contacts, articles, taux TVA datés, plan comptable (2 modèles), exercices | Une entreprise configurée avec son plan comptable | fait (réglages, contacts, articles, TVA datée, plan PME en 2 modèles, exercices) ; la clôture viendra au lot 4 |
+| 3. Devis et factures | Devis, confirmation, facture, avoir, numérotation, PDF avec QR-facture, envoi, facture en ligne, paiements saisis, écritures automatiques | Une vraie facture QR payée dans une app bancaire, écritures justes | 3a fait : factures (brouillon, lignes, TVA datée par taux, émission numérotée sans trou, facture figée) ; 3b fait : PDF A4 avec QR-facture (référence QRR ou SCOR) ; 3c fait : devis (numéros O-, accepté/refusé, transformation en facture) ; 3d fait : paiements saisis, états de paiement, avoirs partiels ou complets (G-) ; 3e fait : envoi par e-mail (Resend, PDF joint) et consultation en ligne par lien |
+| 4. Comptabilité | Journal en ajout seul, grand livre, balance, bilan, résultat, dépenses avec impôt préalable, postes ouverts, import camt et lettrage, clôture | Un exercice complet bouclé et contrôlé | 4a fait : journal en ajout seul chaîné par empreintes, comptabilisation automatique des factures, avoirs, paiements et extournes ; 4b fait : import de relevés camt.053, propositions (référence QR puis IA) à valider, écriture TVA comprise ; 4c fait : règles apprises des validations, proposées avant l'IA ; 4d fait : justificatifs lus par l'IA (PDF et photos), rattachés au paiement et joints à l'écriture ; 4e fait : compte de résultat, bilan, balance des comptes et grand livre par compte ; 4f fait : clôture (résultat au capital, ouverture de l'exercice suivant, exercice fermé) |
+| 5. TVA | Décompte effective et TDFN, convenu et reçu, XML eCH-0217, clôture de période | Un décompte accepté par le portail AFC | 5a fait : décompte trimestriel méthode effective, convenu, contrôles bloquants, relecture IA, validation qui fige la période et vire la TVA sur 2201 ; 5b fait : méthode TDFN (semestres, taux net, écart porté en déduction sur ventes) ; 5c fait : contre-prestations reçues (TVA due au prorata des paiements); 5d fait : XML eCH-0217 v1.0 du décompte validé (méthode effective et TDFN), validé contre le schéma officiel (docs/ech-0217) ; reste un dépôt d'essai sur l'ePortal de l'AFC |
+| 6. Encaissement | Relances automatiques, récurrentes, paiement en ligne (carte, TWINT), lecture des pièces | Une facture payée par TWINT se lettre toute seule | 6a fait : relances à trois niveaux (10, 25, 40 jours), e-mail avec PDF et QR-facture ou relance notée ; lecture des pièces faite au lot 4d ; 6b fait : factures récurrentes (1, 3, 6 ou 12 mois), émises, comptabilisées et envoyées par une tâche quotidienne ; 6c fait : paiement en ligne par Stripe Connect (carte, TWINT, SEPA, ACH selon le compte de l'entreprise), bouton sur le lien de la facture, notification signée qui enregistre le paiement une seule fois et le comptabilise sur un compte d'attente, docs/STRIPE.md ; 6d fait : factures en devise (CHF, EUR, USD, GBP) en formule Pro, cours de référence BCE figé à l'émission ou saisi, journal tenu dans la monnaie de l'entreprise, différence de change comptabilisée au paiement (cours du jour, dernier paiement soldant la créance au centime), avoir au cours de sa facture, contre-valeur et TVA convertie sur le document, XRechnung et ZUGFeRD avec la TVA dans la monnaie de l'entreprise (BT-6, BT-111) acceptés par KoSIT ; une facture en devise se solde à la main, pas par le relevé bancaire ; 6e fait : relances Pro (2e et 3e niveaux, envoi automatique chaque matin sur option), frais de rappel dès la 2e relance et intérêt moratoire simple réglables, réclamés dans l'e-mail et le solde, comptabilisés en produit financier hors chiffre d'affaires, abandon possible par extourne ; la formule gratuite garde la première relance, sans frais |
+| 7. SaaS | Quotas par formule, équipe et rôles, accès fiduciaire, échange avec CRMlead (lead gagné vers facture), bêta privée | Premiers clients bêta | 7a fait : limites par formule (Gratuit 10 factures par mois, 50 contacts ; banque, justificatifs, TVA et récurrence en Pro), encarts de mise à niveau, usage au tableau de bord, mention « Créé avec InvoiceLead » sur les PDF du plan Gratuit ; 7b fait : équipe et rôles (factures, comptabilité, lecture seule, sans accès ; places selon la formule), accès fiduciaire gratuit en Pro par invitation, avec changement d'entreprise ; 7c fait : passage d'un lead gagné de CRMlead vers un devis ou une facture en brouillon (lien relu puis confirmé, sans doublon, docs/CRMLEAD.md) ; 7d fait : bêta privée (liste d'accès BETA_ALLOWLIST par organisation, adresse ou domaine) et avis envoyés depuis le menu ; 7e fait : API REST et webhooks en Pro+ (clés à empreinte, contacts, devis, factures, émission, paiements, PDF ; événements invoice.issued, payment.created, invoice.paid signés HMAC, rejoués cinq fois, adresses privées refusées), docs/API.md |
+| 8. International | Packs pays DE, FR, UK, US | Premier pays hors Suisse | 8a fait : pack pays (taux datés, devise, bulletin, format des montants) et facturation Allemagne (EUR, USt 19/7 %, USt-IdNr., GiroCode SEPA, § 19 UStG, pays figé après la première pièce) ; 8b fait : comptabilité allemande (plan SKR04 réduit, écritures automatiques, banque camt, IA et justificatifs adaptés, UStVA Kz 81/86/35/21/48/66/83 validée sur 3820, échéance au 10); 8c fait : facture électronique allemande (PDF ZUGFeRD en PDF/A-3 avec XML EN 16931, XRechnung 3.0 en XML validé par le validateur officiel KoSIT sur 5 cas, PDF/A-3b validé par veraPDF, Steuernummer, docs/XRECHNUNG.md) ; 8d fait : facturation France (EUR, TVA 20/10/5,5 %, SIRET et TVA intracommunautaire contrôlés, mentions obligatoires, Factur-X validé par KoSIT) ; 8e fait : comptabilité française (PCG réduit à six chiffres, TVA déductible sur immobilisations et sur autres biens, CA3 lignes A1, E2, 08, 9B, 09, 16, 19, 20, 23, 28, 25 validée sur 445510) ; 8f fait : interface et documents en anglais (/en, 1025 messages, pages légales, libellés de comptes anglais) ; 8g fait : Royaume-Uni (GBP, VAT 20/5 %, VAT number et Companies House contrôlés, nominal ledger, déclaration MTD neuf cases validée sur 2202, échéance à un mois et sept jours) ; 8h fait : États-Unis (USD, sales tax au taux combiné de l'entreprise avec trois décimales, EIN, ZIP et État, adresses et dates américaines, papier Letter, sales tax non récupérable sur les achats, plan de comptes courant, relevé de sales tax validé sur 2210) ; reste les relectures d'experts et les dépôts électroniques (docs/PAYS.md) |
 
-| Poste | Pendant le développement | Au lancement commercial |
+Packs pays prévus : Allemagne (EUR, USt 19/7 %, XRechnung et ZUGFeRD, e-facture B2B obligatoire à l'émission dès 2027 puis 2028), France (TVA 20/10/5,5/2,1 %, Factur-X, réception obligatoire depuis le 1.9.2026 et émission des PME au 1.9.2027 via plateforme agréée), Royaume-Uni (VAT, Making Tax Digital), États-Unis (sales tax par État).
+
+## 11. Méthode de travail
+
+Une branche et une PR par lot, CI verte avant fusion. Les règles d'écriture comptable sont des fonctions pures testées une à une (facture, paiement partiel, escompte, avoir, frais de rappel, intérêt moratoire, perte sur débiteur, frais bancaires, arrondi, change, clôture TVA). Aucun secret dans le dépôt.
+
+## 12. Coûts
+
+| Poste | Aujourd'hui | À l'ouverture |
 |---|---|---|
-| Neon | Gratuit | Gratuit tant qu'on reste sous 0,5 Go, ensuite facturation à l'usage |
-| Hébergement | Gratuit (Vercel Hobby) | Vercel Pro environ 20 USD/mois, ou Cloudflare gratuit |
-| E-mails | Gratuit | Offre payante de Resend au-delà de 3000 e-mails/mois |
-| Stockage R2 | Gratuit | Gratuit jusqu'à 10 Go |
-| Stripe | Gratuit | Commission par transaction uniquement |
-| Nom de domaine | À prévoir | Environ 15 à 30 CHF/an |
+| Neon | Gratuit (0,5 Go, 100 CU-heures par mois) | Payant à l'usage au-delà |
+| Vercel | Gratuit (Hobby, non commercial) | Pro, environ 20 USD par mois |
+| Domaine | Réservé (Porkbun) | Renouvellement annuel |
+| E-mails, stockage, Stripe | Offres gratuites, commission Stripe par paiement | selon volume |
 
-## 11. Risques
+## 13. Risques
 
 | Risque | Parade |
 |---|---|
-| Clause non commerciale de Vercel Hobby | Bascule vers Vercel Pro ou Cloudflare avant l'ouverture publique |
-| Démarrage à froid de Neon (veille après 5 min) | Latence de quelques centaines de ms sur la première requête, acceptable ; compute toujours actif si besoin plus tard |
-| Non-conformité de la QR-facture | Bibliothèque éprouvée, tests unitaires, validation SIX, test réel avec plusieurs apps bancaires |
-| Ressemblance excessive avec bexio | Textes originaux, visuel Trait net, aucune reprise de marque ou d'images |
-| eBill et connexion bancaire directe (bLink) | Nécessitent des partenariats payants, reportés en phase 5 ; l'import camt couvre le besoin en attendant |
+| Région de la base aux États-Unis (`aws-us-east-2`) pour des données comptables suisses | À mentionner dans la politique de confidentialité ; décision d'Ève (le projet est vide, c'est le seul moment où un changement ne coûte rien) |
+| Erreurs comptables ou TVA | Règles testées, relecture par une fiduciaire avant l'ouverture |
+| Hausse de TVA 2028/2029 | Taux et chiffres datés dès le lot 2 |
+| Dépendance au Compte Lead (crmlead.io) | Session locale de 12 h ; message clair si le Compte Lead ne répond pas |
+| TVA suisse de l'éditeur | Quantum Liquid LLC vend un service électronique en Suisse : vérifier son assujettissement (règle des prestataires étrangers) |
+| Clause non commerciale de Vercel Hobby | Passage à Pro avant l'ouverture |
 
-## 12. Questions ouvertes
+## 14. Questions ouvertes
 
-Ce document sera mis à jour avec les réponses.
-
-1. Fichiers de référence du visuel : `trait-public-static.css` et `PublicChrome.tsx` de Scanlead (ou accès au code), le logo, et les couleurs secondaires (texte, bordures, fonds, erreur, succès). bexio.com, scanlead.io et crmlead.io sont bloqués par le réseau de l'environnement de développement actuel.
-2. Comptes : un login propre à InvoiceLead, comme aujourd'hui entre Scanlead et CRMlead, ou un compte unique pour toute la famille Lead ?
-3. Périmètre du MVP : facturation seule (recommandé) ou comptabilité et TVA dès le départ ?
-4. Cible et prix : indépendants seuls ou PME à plusieurs utilisateurs, essai gratuit ou offre gratuite limitée, prix visé.
-5. Hébergement : GitHub + Vercel (puis Vercel Pro ou Cloudflare) alors que Scanlead et CRMlead sont sur Replit, d'accord ?
-6. Langues au lancement (de + fr ?) et nom de domaine.
-7. Neon : compte existant, et accès depuis l'environnement de développement (variable `DATABASE_URL`, domaine `*.neon.tech` autorisé).
-8. Dépôt GitHub : il est public aujourd'hui ; le passer en privé ? Et créer une branche `main` pour servir de base aux PR.
+1. Couleur d'action d'InvoiceLead : bleu `#2563eb` comme Scanlead (choix actuel), ou une couleur propre comme le vert de CRMlead ?
+2. Déclarer InvoiceLead dans CRMlead (adresses de retour, secret) et lui donner l'accès dans la formule Gratuit : je peux préparer la migration CRMlead si le dépôt `Casav290/crmlead` est ajouté à la session.
+3. Région de la base : garder `aws-us-east-2` ou recréer le projet à Francfort (`aws-eu-central-1`) tant qu'il est vide ?
+4. Limites de l'offre Gratuit (section 9) : d'accord, ou autre équilibre ?
+5. Neon Auth : le retirer puisque la connexion passe par le Compte Lead ?

@@ -1,0 +1,1542 @@
+{
+  "meta": {
+    "title": "InvoiceLead, devis, factures QR et comptabilité suisse",
+    "description": "Devis, factures QR conformes, relances automatiques et comptabilité en partie double pour indépendants et PME suisses. Gratuit pour démarrer."
+  },
+  "nav": {
+    "features": "Fonctions",
+    "family": "Famille Lead",
+    "login": "Connexion",
+    "cta": "Commencer gratuitement",
+    "language": "Langue",
+    "pricing": "Tarifs",
+    "faq": "FAQ"
+  },
+  "home": {
+    "kicker": "Nouveau dans la famille Lead",
+    "title": "Devis, factures et comptabilité, bouclés avant la fin de journée.",
+    "subtitle": "InvoiceLead prépare vos devis, émet des factures QR conformes, relance les impayés et tient votre comptabilité suisse. Pour les indépendants comme pour les PME, gratuit pour démarrer.",
+    "ctaPrimary": "Commencer gratuitement",
+    "ctaSecondary": "Voir les fonctions",
+    "featuresTitle": "Tout ce qu'il faut pour être payé, et rien de plus",
+    "features": {
+      "quotes": {
+        "title": "Du devis à la facture en un clic",
+        "body": "Un devis accepté devient confirmation puis facture, sans rien ressaisir."
+      },
+      "qr": {
+        "title": "Factures QR au standard suisse",
+        "body": "Section paiement QR conforme à la norme SIX, adresses structurées, référence QR ou SCOR."
+      },
+      "reminders": {
+        "title": "Relances automatiques",
+        "body": "Trois niveaux de rappel, frais et délais à votre main, envoyés au bon moment."
+      },
+      "accounting": {
+        "title": "Comptabilité en partie double",
+        "body": "Plan comptable PME, écritures créées par vos factures et paiements, bilan et compte de résultat."
+      },
+      "vat": {
+        "title": "TVA suisse maîtrisée",
+        "body": "Taux 8,1 %, 2,6 % et 3,8 %, méthode effective ou taux de la dette fiscale nette, décompte préparé."
+      },
+      "team": {
+        "title": "Toute l'équipe, et votre fiduciaire",
+        "body": "Plusieurs utilisateurs par entreprise, avec un seul compte pour toutes les applications Lead."
+      }
+    },
+    "familyTitle": "Un compte, toutes vos applications Lead",
+    "familyBody": "Scanlead capte vos contacts de salon, CRMlead les suit jusqu'à la vente, InvoiceLead facture et encaisse. Un seul Compte Lead pour passer de l'une à l'autre.",
+    "preview": {
+      "position": "Position",
+      "qty": "Qté",
+      "subtotal": "Sous-total",
+      "vat": "TVA 8,1 %",
+      "total": "Total",
+      "payment": "Section paiement",
+      "rows": ["Conseil, septembre", "Atelier de lancement", "Frais de déplacement"],
+      "hours": "h"
+    }
+  },
+  "auth": {
+    "loginTitle": "Connexion à InvoiceLead",
+    "loginSubtitle": "InvoiceLead utilise votre Compte Lead, le même que pour Scanlead et CRMlead.",
+    "signupTitle": "Créer votre compte",
+    "signupSubtitle": "Le Compte Lead vous ouvre InvoiceLead et toutes les applications de la famille. L'écran suivant propose « Créer un compte ».",
+    "leadButton": "Se connecter avec mon compte Lead",
+    "noAccountYet": "Pas encore de compte ? Le même bouton permet d'en créer un.",
+    "errors": {
+      "lead": "La connexion au Compte Lead n'a pas abouti. Réessayez.",
+      "session": "La demande de connexion a expiré. Réessayez."
+    }
+  },
+  "app": {
+    "nav": {
+      "dashboard": "Tableau de bord",
+      "settings": "Réglages",
+      "contacts": "Contacts",
+      "products": "Articles",
+      "invoices": "Factures",
+      "quotes": "Devis",
+      "accounting": "Comptabilité"
+    },
+    "switcher": {
+      "open": "Changer d'application",
+      "title": "Applications Lead",
+      "current": "Ici",
+      "openLink": "Ouvrir",
+      "soon": "Bientôt",
+      "upgrade": "Mettre à niveau"
+    },
+    "user": {
+      "logout": "Se déconnecter",
+      "planLine": "Formule : <strong>{plan}</strong>",
+      "plans": {
+        "free": "Gratuit",
+        "pro": "Pro",
+        "pro_plus": "Pro+"
+      },
+      "feedback": "Donner mon avis"
+    },
+    "dashboard": {
+      "title": "Bonjour {name}",
+      "subtitle": "Votre espace {org} est prêt.",
+      "nextTitle": "Prochaines étapes",
+      "next": {
+        "company": "Compléter les données de l'entreprise (IDE, TVA, IBAN)",
+        "contacts": "Importer vos clients",
+        "invoice": "Émettre votre première facture QR"
+      },
+      "soon": "Ces écrans arrivent dans les prochaines versions.",
+      "complete": "Compléter",
+      "done": "Fait",
+      "start": "Commencer",
+      "forbidden": "Votre rôle ne permet pas cette action. Un responsable peut le changer dans les réglages de l'équipe."
+    },
+    "noAccess": {
+      "title": "Votre formule n'inclut pas InvoiceLead",
+      "body": "Votre organisation {org} n'a pas encore accès à InvoiceLead. Passez à une formule qui l'inclut pour continuer.",
+      "upgrade": "Mettre à niveau",
+      "logout": "Se déconnecter",
+      "blockedTitle": "Accès à InvoiceLead retiré",
+      "blockedBody": "Un responsable de {org} a retiré votre accès à InvoiceLead. Demandez-lui de le rétablir dans les réglages de l'équipe.",
+      "seatTitle": "Toutes les places sont prises",
+      "seatBody": "La formule de {org} compte {seats, plural, one {# utilisateur} other {# utilisateurs}}, déjà tous occupés. Un responsable peut passer à une formule supérieure ou libérer une place.",
+      "otherOrgs": "Travailler dans une autre entreprise",
+      "betaTitle": "InvoiceLead est en bêta privée",
+      "betaBody": "{org} n'est pas encore sur la liste de la bêta. Nous ouvrons les accès par petits groupes ; écrivez-nous à hello@invoicelead.io pour y figurer."
+    },
+    "company": {
+      "title": "Entreprise",
+      "subtitle": "Ces données figurent sur vos devis, factures et QR-factures.",
+      "readOnly": "Seuls les administrateurs et les responsables peuvent modifier ces réglages.",
+      "save": "Enregistrer",
+      "saved": "Réglages enregistrés.",
+      "invalid": "Certains champs sont à corriger.",
+      "choose": "Choisir…",
+      "sections": {
+        "identity": "Identité",
+        "address": "Adresse et contact",
+        "vat": "TVA",
+        "bank": "Compte bancaire",
+        "fiscalYear": "Exercice comptable"
+      },
+      "fields": {
+        "legalName": "Raison sociale",
+        "legalForm": "Forme juridique",
+        "uid": "Numéro IDE",
+        "street": "Rue",
+        "buildingNumber": "Numéro",
+        "postalCode": "NPA",
+        "town": "Localité",
+        "email": "E-mail",
+        "phone": "Téléphone",
+        "website": "Site web",
+        "vatRegistered": "Entreprise inscrite au registre TVA",
+        "vatMethod": "Méthode de décompte",
+        "vatSettlement": "Décompte selon",
+        "iban": "IBAN",
+        "qrIban": "QR-IBAN",
+        "fiscalYearStartMonth": "Début de l'exercice",
+        "netTaxRate": "Taux de la dette fiscale nette (%)",
+        "country": "Pays du siège",
+        "ustId": "USt-IdNr.",
+        "taxNumber": "Steuernummer",
+        "frVatId": "Numéro de TVA intracommunautaire",
+        "siret": "SIRET",
+        "gbVat": "VAT registration number",
+        "companyNumber": "Companies House number",
+        "ein": "EIN (Employer Identification Number)",
+        "region": "État",
+        "collectsSalesTax": "L'entreprise perçoit la sales tax",
+        "salesTaxRate": "Taux de sales tax combiné (%)"
+      },
+      "hints": {
+        "uid": "Format CHE-123.456.789, clé de contrôle vérifiée.",
+        "iban": "Compte classique : factures avec référence SCOR (RF…).",
+        "qrIban": "Facultatif : factures avec référence QR à 27 chiffres.",
+        "netTaxRate": "Seulement avec la méthode TDFN : le taux accordé par l'AFC, par exemple 6,2.",
+        "ustId": "Format DE123456789, clé de contrôle vérifiée.",
+        "taxNumber": "Numéro fiscal du Finanzamt, par exemple 12/345/67890. USt-IdNr. ou Steuernummer : l'un des deux est obligatoire.",
+        "frVatId": "Format FR + 2 chiffres + SIREN, clé vérifiée. Facultatif en franchise en base.",
+        "siret": "14 chiffres (ou SIREN à 9 chiffres), clé de contrôle vérifiée. Obligatoire sur chaque facture.",
+        "gbVat": "Format GB + 9 chiffres, clé HMRC vérifiée.",
+        "companyNumber": "8 caractères, par exemple 01234567 ou SC123456. Facultatif pour une entreprise individuelle.",
+        "ein": "Format 12-3456789. Facultatif pour une entreprise individuelle sans salarié.",
+        "region": "Code de l'État à deux lettres (TX, NY, CA…).",
+        "salesTaxRate": "Taux total État, comté et ville, par exemple 8.875. Appliqué au code « normal » des lignes."
+      },
+      "legalForms": {
+        "sole_proprietorship": "Raison individuelle",
+        "gmbh": "Sàrl",
+        "ag": "SA",
+        "partnership": "Société de personnes",
+        "association": "Association",
+        "other": "Autre",
+        "ug": "UG (haftungsbeschränkt)",
+        "ek": "Kaufmann (e.K.)",
+        "gbr": "GbR",
+        "ei": "Entreprise individuelle (EI)",
+        "micro": "Micro-entreprise",
+        "eurl": "EURL",
+        "sarl": "SARL",
+        "sas": "SAS",
+        "sasu": "SASU",
+        "sa": "SA",
+        "sole_trader": "Sole trader",
+        "llp": "LLP",
+        "ltd": "Private limited company (Ltd)",
+        "plc": "Public limited company (PLC)",
+        "llc": "LLC",
+        "c_corp": "C corporation",
+        "s_corp": "S corporation"
+      },
+      "vatMethods": {
+        "effective": "Méthode effective",
+        "net_tax_rate": "Taux de la dette fiscale nette (TDFN)"
+      },
+      "vatSettlements": {
+        "agreed": "Contre-prestations convenues",
+        "received": "Contre-prestations reçues"
+      },
+      "months": {
+        "1": "janvier",
+        "2": "février",
+        "3": "mars",
+        "4": "avril",
+        "5": "mai",
+        "6": "juin",
+        "7": "juillet",
+        "8": "août",
+        "9": "septembre",
+        "10": "octobre",
+        "11": "novembre",
+        "12": "décembre"
+      },
+      "errors": {
+        "required": "Champ obligatoire.",
+        "tooLong": "Texte trop long.",
+        "postalCode": "Code postal invalide (4 chiffres en Suisse, 5 en Allemagne et en France, format britannique au Royaume-Uni, ZIP aux États-Unis).",
+        "email": "Adresse e-mail invalide.",
+        "uid": "Numéro IDE invalide (format ou clé de contrôle).",
+        "uidRequiredForVat": "Le numéro IDE est obligatoire pour une entreprise inscrite à la TVA.",
+        "iban": "IBAN invalide (pays ou clé de contrôle).",
+        "ibanIsQr": "C'est un QR-IBAN : saisissez-le dans le champ QR-IBAN.",
+        "notQrIban": "Ce n'est pas un QR-IBAN (identifiant 30000 à 31999).",
+        "netTaxRate": "Indiquez le taux accordé par l'AFC (entre 0,1 et 15 %).",
+        "ustId": "USt-IdNr. invalide (DE suivi de 9 chiffres, clé de contrôle).",
+        "countryLocked": "Le pays ne change plus une fois une pièce émise.",
+        "taxNumber": "Steuernummer invalide (10 à 13 chiffres).",
+        "taxIdRequired": "Indiquez l'USt-IdNr. ou la Steuernummer : l'un des deux figure sur chaque facture.",
+        "frVatId": "Numéro de TVA invalide (FR, clé à 2 chiffres, SIREN).",
+        "siret": "SIRET ou SIREN invalide (clé de contrôle).",
+        "siretRequired": "Le SIRET est obligatoire sur les factures françaises.",
+        "gbVat": "Numéro de TVA britannique invalide (GB et 9 chiffres, clé HMRC).",
+        "gbVatRequired": "Le numéro de TVA est obligatoire pour une entreprise enregistrée à la TVA.",
+        "companyNumber": "Numéro Companies House invalide (8 caractères).",
+        "ein": "EIN invalide (9 chiffres, préfixe attribué par l'IRS).",
+        "usState": "Code d'État invalide (deux lettres, par exemple TX).",
+        "salesTaxRate": "Indiquez un taux entre 0,001 et 20 %.",
+        "ibanUs": "Pas d'IBAN aux États-Unis : indiquez vos coordonnées ACH dans le texte de fin des factures."
+      },
+      "countries": {
+        "CH": "Suisse",
+        "DE": "Allemagne",
+        "FR": "France",
+        "GB": "Royaume-Uni",
+        "US": "États-Unis"
+      }
+    },
+    "contacts": {
+      "title": "Contacts",
+      "new": "Nouveau contact",
+      "edit": "Modifier le contact",
+      "save": "Enregistrer",
+      "archive": "Archiver ce contact",
+      "saved": "Contact enregistré.",
+      "archived": "Contact archivé.",
+      "invalid": "Certains champs sont à corriger.",
+      "search": "Rechercher un nom, un e-mail, une localité",
+      "searchButton": "Rechercher",
+      "empty": "Aucun contact pour l'instant. Créez votre premier client.",
+      "noResults": "Aucun contact ne correspond à cette recherche.",
+      "columns": {
+        "name": "Nom",
+        "town": "Localité",
+        "email": "E-mail",
+        "role": "Rôle"
+      },
+      "roles": {
+        "customer": "Client",
+        "supplier": "Fournisseur"
+      },
+      "sections": {
+        "identity": "Identité",
+        "address": "Adresse",
+        "billing": "Facturation"
+      },
+      "fields": {
+        "kind": "Type",
+        "name": "Nom ou raison sociale",
+        "contactPerson": "Personne de contact",
+        "role": "Rôle",
+        "isCustomer": "Client",
+        "isSupplier": "Fournisseur",
+        "uid": "Numéro IDE ou de TVA",
+        "email": "E-mail",
+        "phone": "Téléphone",
+        "street": "Rue",
+        "buildingNumber": "Numéro",
+        "postalCode": "NPA",
+        "town": "Localité",
+        "country": "Pays",
+        "language": "Langue des documents",
+        "paymentTermDays": "Délai de paiement (jours)",
+        "notes": "Notes internes",
+        "region": "État ou région"
+      },
+      "hints": {
+        "street": "Adresse facultative, mais complète si commencée : la QR-facture l'exige structurée.",
+        "uid": "Facultatif. IDE CHE-123.456.789 ou numéro de TVA étranger (FR…, DE…, GB…), exigé pour l'autoliquidation.",
+        "region": "Aux États-Unis, code de l'État (TX, NY…)."
+      },
+      "kinds": {
+        "company": "Entreprise",
+        "person": "Personne"
+      },
+      "languages": {
+        "de": "Allemand",
+        "fr": "Français",
+        "it": "Italien",
+        "en": "Anglais"
+      },
+      "countries": {
+        "CH": "Suisse",
+        "LI": "Liechtenstein",
+        "DE": "Allemagne",
+        "FR": "France",
+        "IT": "Italie",
+        "AT": "Autriche",
+        "GB": "Royaume-Uni",
+        "US": "États-Unis"
+      },
+      "errors": {
+        "required": "Champ obligatoire.",
+        "tooLong": "Texte trop long.",
+        "email": "Adresse e-mail invalide.",
+        "postalCode": "Code postal invalide pour ce pays.",
+        "uid": "Numéro IDE ou de TVA invalide (format ou clé de contrôle).",
+        "paymentTerm": "Entre 0 et 365 jours.",
+        "role": "Cochez client, fournisseur ou les deux.",
+        "usState": "Indiquez le code de l'État (deux lettres, par exemple TX)."
+      },
+      "planLimit": "La formule gratuite compte 50 contacts au plus. Passez à Pro pour en ajouter d'autres."
+    },
+    "products": {
+      "title": "Articles",
+      "new": "Nouvel article",
+      "edit": "Modifier l'article",
+      "save": "Enregistrer",
+      "archive": "Archiver cet article",
+      "saved": "Article enregistré.",
+      "archived": "Article archivé.",
+      "invalid": "Certains champs sont à corriger.",
+      "search": "Rechercher un nom ou une référence",
+      "searchButton": "Rechercher",
+      "empty": "Aucun article pour l'instant. Ajoutez vos prestations et produits.",
+      "noResults": "Aucun article ne correspond à cette recherche.",
+      "columns": {
+        "name": "Désignation",
+        "unit": "Unité",
+        "price": "Prix HT ({currency})",
+        "vat": "TVA"
+      },
+      "sections": {
+        "product": "Article",
+        "price": "Prix et TVA"
+      },
+      "fields": {
+        "name": "Désignation",
+        "sku": "Référence",
+        "unit": "Unité",
+        "description": "Description",
+        "unitPrice": "Prix unitaire hors TVA ({currency})",
+        "vatCode": "Taux de TVA"
+      },
+      "hints": {
+        "unitPrice": "Par exemple 1'200.50. Le taux appliqué dépend de la date de la prestation."
+      },
+      "units": {
+        "hour": "Heure",
+        "day": "Jour",
+        "piece": "Pièce",
+        "flat": "Forfait",
+        "km": "Kilomètre",
+        "month": "Mois"
+      },
+      "vatCodes": {
+        "normal": "Taux normal (8,1 %)",
+        "reduced": "Taux réduit (2,6 %)",
+        "lodging": "Hébergement (3,8 %)",
+        "exempt": "Exclu du champ de l'impôt",
+        "export": "Exonéré (exportation)"
+      },
+      "errors": {
+        "required": "Champ obligatoire.",
+        "tooLong": "Texte trop long.",
+        "amount": "Montant invalide (au plus deux décimales).",
+        "skuTaken": "Cette référence est déjà utilisée par un autre article."
+      }
+    },
+    "settingsNav": {
+      "label": "Sections des réglages",
+      "company": "Entreprise",
+      "accounts": "Plan comptable",
+      "fiscalYears": "Exercices",
+      "team": "Équipe",
+      "payments": "Paiement en ligne",
+      "api": "API"
+    },
+    "accounts": {
+      "title": "Plan comptable",
+      "subtitle": "Plan comptable PME suisse, classes 1 à 9. Les comptes système sont utilisés par les écritures automatiques.",
+      "new": "Nouveau compte",
+      "edit": "Modifier le compte",
+      "save": "Enregistrer",
+      "saved": "Compte enregistré.",
+      "installed": "Plan comptable installé.",
+      "invalid": "Certains champs sont à corriger.",
+      "readOnly": "Seuls les administrateurs et les managers peuvent modifier le plan comptable.",
+      "empty": "Aucun plan comptable pour l'instant. Choisissez le modèle qui correspond à votre forme juridique.",
+      "install": "Installer le plan comptable",
+      "template": "Modèle",
+      "templates": {
+        "sole_proprietorship": "Entreprise individuelle ou société de personnes",
+        "corporation": "Société de capitaux (Sàrl, SA)"
+      },
+      "system": "Système",
+      "inactive": "Inactif",
+      "columns": {
+        "number": "N°",
+        "name": "Nom",
+        "type": "Type"
+      },
+      "classes": {
+        "1": "1 Actifs",
+        "2": "2 Passifs",
+        "3": "3 Chiffre d'affaires",
+        "4": "4 Charges de matériel et marchandises",
+        "5": "5 Charges de personnel",
+        "6": "6 Autres charges d'exploitation et résultat financier",
+        "7": "7 Activités annexes",
+        "8": "8 Hors exploitation, exceptionnel et impôts",
+        "9": "9 Clôture"
+      },
+      "types": {
+        "asset": "Actif",
+        "liability": "Dette",
+        "equity": "Capital propre",
+        "revenue": "Produit",
+        "expense": "Charge",
+        "closing": "Clôture"
+      },
+      "sections": {
+        "account": "Compte",
+        "options": "Options"
+      },
+      "fields": {
+        "number": "Numéro",
+        "nameDe": "Nom en allemand",
+        "nameFr": "Nom en français",
+        "type": "Type",
+        "vatCode": "Code TVA par défaut",
+        "active": "Compte actif",
+        "nameEn": "Libellé anglais (facultatif)"
+      },
+      "hints": {
+        "number": "Quatre chiffres ; le premier donne la classe.",
+        "nameDe": "Si une seule langue est remplie, l'autre reprend le même nom."
+      },
+      "noVat": "Aucun",
+      "vatCodes": {
+        "normal": "Taux normal",
+        "reduced": "Taux réduit",
+        "lodging": "Hébergement",
+        "exempt": "Exclu du champ de l'impôt",
+        "export": "Exonéré (exportation)"
+      },
+      "errors": {
+        "required": "Champ obligatoire.",
+        "tooLong": "Texte trop long.",
+        "number": "Quatre chiffres, sans 0 au début.",
+        "typeForClass": "Ce type ne convient pas à la classe du compte.",
+        "numberTaken": "Ce numéro est déjà utilisé.",
+        "systemInactive": "Un compte système reste actif."
+      },
+      "classesDe": {
+        "0": "0 Immobilisations",
+        "1": "1 Actif circulant",
+        "2": "2 Capitaux propres",
+        "3": "3 Dettes",
+        "4": "4 Produits d'exploitation",
+        "5": "5 Matières et prestations de tiers",
+        "6": "6 Charges d'exploitation",
+        "7": "7 Autres produits et charges",
+        "9": "9 Reports et clôture"
+      },
+      "subtitleDe": "Plan comptable SKR04 (DATEV), classes 0 à 9. Les comptes système sont utilisés par les écritures automatiques.",
+      "classesFr": {
+        "1": "1 Capitaux",
+        "2": "2 Immobilisations",
+        "3": "3 Stocks",
+        "4": "4 Tiers",
+        "5": "5 Financiers",
+        "6": "6 Charges",
+        "7": "7 Produits",
+        "8": "8 Comptes spéciaux"
+      },
+      "subtitleFr": "Plan comptable général (PCG), numéros à six chiffres. Les comptes système sont utilisés par les écritures automatiques.",
+      "classesGb": {
+        "0": "0 Immobilisations",
+        "1": "1 Actifs circulants",
+        "2": "2 Dettes",
+        "3": "3 Capitaux",
+        "4": "4 Ventes",
+        "5": "5 Achats",
+        "6": "6 Charges directes",
+        "7": "7 Frais généraux",
+        "8": "8 Autres frais généraux",
+        "9": "9 Comptes de contrôle et clôture"
+      },
+      "subtitleGb": "Plan de comptes britannique (nominal ledger), codes à quatre chiffres. Les comptes système sont utilisés par les écritures automatiques.",
+      "classesUs": {
+        "1": "1 Actifs",
+        "2": "2 Dettes",
+        "3": "3 Capitaux propres",
+        "4": "4 Produits",
+        "5": "5 Coût des ventes",
+        "6": "6 Charges",
+        "7": "7 Autres produits et charges",
+        "8": "8 Impôts",
+        "9": "9 Clôture"
+      },
+      "subtitleUs": "Plan de comptes américain courant, codes à quatre chiffres. Les comptes système sont utilisés par les écritures automatiques."
+    },
+    "fiscalYears": {
+      "title": "Exercices comptables",
+      "subtitle": "Les exercices se suivent sans interruption. Le mois de début se règle dans les données de l'entreprise.",
+      "readOnly": "Seuls les administrateurs et les managers peuvent ouvrir un exercice.",
+      "empty": "Aucun exercice pour l'instant. Ouvrez le premier pour commencer la comptabilité.",
+      "first": "Premier exercice",
+      "start": "Date de début",
+      "startHint": "Le premier exercice peut commencer n'importe quel jour, par exemple à la création de l'entreprise.",
+      "extended": "Prolonger le premier exercice jusqu'à la fin de l'exercice suivant",
+      "extendedHint": "Possible quand l'entreprise démarre en cours d'année.",
+      "openFirst": "Ouvrir le premier exercice",
+      "openNext": "Ouvrir l'exercice suivant",
+      "nextPeriod": "Prochain exercice : {start} au {end}",
+      "opened": "Exercice ouvert.",
+      "invalidDate": "Date invalide.",
+      "columns": {
+        "period": "Période",
+        "status": "Statut"
+      },
+      "period": "{start} au {end}",
+      "status": {
+        "open": "Ouvert",
+        "closed": "Clôturé"
+      },
+      "closingLater": "Un exercice se clôture une fois terminé, depuis cette page.",
+      "closedNotice": "Exercice clôturé. Le résultat est passé au capital et les soldes du bilan sont repris à l'ouverture de l'exercice suivant.",
+      "closeTitle": "Clôturer l'exercice {period}",
+      "closeHint": "Le résultat est viré au compte de bénéfice ou perte de l'exercice, les soldes du bilan sont repris dans l'exercice suivant (ouvert au besoin), et plus aucune écriture ne pourra être datée dans l'exercice clôturé.",
+      "closeConfirm": "J'ai vérifié les rapports et je clôture définitivement cet exercice.",
+      "close": "Clôturer l'exercice",
+      "closeErrors": {
+        "confirm": "Cochez la confirmation pour clôturer.",
+        "forbidden": "Seuls les administrateurs et les managers peuvent clôturer.",
+        "earlierOpen": "Clôturez d'abord l'exercice précédent.",
+        "unposted": "{count, plural, one {# pièce de l'exercice n'est pas encore comptabilisée.} other {# pièces de l'exercice ne sont pas encore comptabilisées.}}",
+        "pendingBank": "{count, plural, one {# mouvement bancaire de l'exercice attend encore une validation.} other {# mouvements bancaires de l'exercice attendent encore une validation.}}",
+        "noChart": "Le plan comptable n'a pas de compte de résultat de l'exercice.",
+        "alreadyClosed": "Cet exercice est déjà clôturé.",
+        "notFound": "Exercice introuvable.",
+        "blocked": "La clôture n'a pas pu se faire."
+      }
+    },
+    "invoices": {
+      "title": "Factures",
+      "new": "Nouvelle facture",
+      "edit": "Facture",
+      "back": "Toutes les factures",
+      "draft": "Brouillon",
+      "draftTitle": "Brouillon de facture",
+      "issuedTitle": "Facture {number}",
+      "status": {
+        "draft": "Brouillon",
+        "issued": "Émise",
+        "accepted": "Accepté",
+        "declined": "Refusé",
+        "invoiced": "Facturé"
+      },
+      "saved": "Brouillon enregistré.",
+      "issued": "Facture émise. Son numéro est définitif et elle ne peut plus être modifiée.",
+      "deleted": "Brouillon supprimé.",
+      "empty": "Aucune facture pour l'instant.",
+      "noCustomers": "Ajoutez d'abord un client.",
+      "addCustomer": "Nouveau contact",
+      "invalid": "Certains champs sont à corriger.",
+      "notEditable": "Cette facture n'est plus modifiable.",
+      "choose": "Choisir",
+      "freeLine": "Ligne libre (sans article)",
+      "saveDraft": "Enregistrer le brouillon",
+      "issue": "Émettre la facture",
+      "issueHint": "L'émission attribue le numéro suivant et fige la facture. Enregistrez d'abord vos dernières modifications.",
+      "deleteDraft": "Supprimer ce brouillon",
+      "completeCompany": "Compléter les données de l'entreprise",
+      "issueErrors": {
+        "companyIncomplete": "Les données de l'entreprise (adresse et IBAN) doivent être complètes avant d'émettre une facture.",
+        "vatChanged": "L'assujettissement à la TVA a changé depuis l'enregistrement. Enregistrez à nouveau le brouillon.",
+        "notDraft": "Cette facture est déjà émise.",
+        "notFound": "Facture introuvable.",
+        "notConvertible": "Ce devis ne peut plus être transformé en facture.",
+        "contact": "Le client de ce devis a été archivé.",
+        "creditTooHigh": "L'avoir dépasse le montant qui reste à créditer sur la facture.",
+        "closed": "Ce paiement est déjà comptabilisé dans un exercice fermé : il ne peut plus être supprimé.",
+        "planLimit": "Vous avez atteint les 10 factures du mois de la formule gratuite. Passez à Pro pour facturer sans limite.",
+        "recurring": "La récurrence n'a pas pu être enregistrée.",
+        "fxRate": "Le cours du jour n'a pas pu être obtenu. Saisissez le cours dans le brouillon, puis émettez à nouveau."
+      },
+      "addLine": "Ajouter une ligne",
+      "removeLine": "Retirer",
+      "lineTotal": "Montant :",
+      "net": "Total hors TVA",
+      "total": "Total",
+      "totalWithVat": "Total TVA comprise",
+      "vatLine": "TVA {rate} sur {base}",
+      "columns": {
+        "number": "N°",
+        "customer": "Client",
+        "date": "Date",
+        "total": "Total ({currency})",
+        "status": "Statut"
+      },
+      "sections": {
+        "customer": "Client",
+        "dates": "Dates",
+        "lines": "Lignes",
+        "texts": "Textes"
+      },
+      "fields": {
+        "contact": "Client",
+        "language": "Langue de la facture",
+        "title": "Titre",
+        "issueDate": "Date de facture",
+        "serviceDate": "Date de la prestation",
+        "dueDate": "Échéance",
+        "product": "Article",
+        "description": "Désignation",
+        "quantity": "Quantité",
+        "unit": "Unité",
+        "unitPrice": "Prix unitaire HT",
+        "vatCode": "TVA",
+        "introText": "Texte d'introduction",
+        "footerText": "Texte de fin",
+        "vatCodeUs": "Taxe",
+        "unitPriceUs": "Prix unitaire hors taxe",
+        "currency": "Devise",
+        "fxRate": "Cours (1 {currency} en {home})"
+      },
+      "hints": {
+        "serviceDate": "Détermine le taux de TVA applicable.",
+        "dueDate": "Vide : selon le délai de paiement du client.",
+        "fxRate": "Vide : cours de référence de la BCE du jour d'émission, figé à l'émission."
+      },
+      "languages": {
+        "de": "Allemand",
+        "fr": "Français",
+        "en": "Anglais"
+      },
+      "units": {
+        "hour": "h",
+        "day": "jour(s)",
+        "piece": "pce",
+        "flat": "forfait",
+        "km": "km",
+        "month": "mois"
+      },
+      "vatCodes": {
+        "normal": "Normal",
+        "reduced": "Réduit",
+        "lodging": "Hébergement",
+        "exempt": "Exclu",
+        "export": "Exportation"
+      },
+      "errors": {
+        "required": "Champ obligatoire.",
+        "tooLong": "Texte trop long.",
+        "date": "Date invalide.",
+        "dueBeforeIssue": "L'échéance précède la date de facture.",
+        "vatDate": "Aucun taux de TVA connu à cette date.",
+        "quantity": "Quantité invalide (au plus trois décimales, pas zéro).",
+        "amount": "Montant invalide (au plus deux décimales).",
+        "noLines": "Ajoutez au moins une ligne.",
+        "tooManyLines": "Cent lignes au plus.",
+        "plan": "Facturer en devise étrangère fait partie de la formule Pro.",
+        "fxRate": "Cours invalide (nombre positif, par exemple 0.9412)."
+      },
+      "document": {
+        "invoice": "Facture",
+        "issueDate": "Date",
+        "serviceDate": "Prestation",
+        "dueDate": "Payable jusqu'au",
+        "description": "Désignation",
+        "quantity": "Quantité",
+        "unitPrice": "Prix unitaire",
+        "vat": "TVA",
+        "amount": "Montant",
+        "net": "Total hors TVA",
+        "vatLine": "TVA {rate} sur {base}",
+        "total": "Total",
+        "payTo": "À verser sur le compte {iban}.",
+        "referenceLine": "Référence : {reference}",
+        "relatedLine": "Concerne la facture {number}",
+        "poweredBy": "Créé avec InvoiceLead · invoicelead.io",
+        "smallBusinessDe": "Conformément au § 19 UStG, aucune taxe sur le chiffre d'affaires n'est facturée (petite entreprise).",
+        "reverseChargeDe": "Autoliquidation : la taxe est due par le destinataire de la prestation (Steuerschuldnerschaft des Leistungsempfängers).",
+        "scanToPay": "Scannez ce code avec votre application bancaire pour payer par virement SEPA.",
+        "franchiseFr": "TVA non applicable, art. 293 B du CGI.",
+        "reverseChargeFr": "Autoliquidation : TVA due par le preneur (art. 283-2 du CGI).",
+        "outsideEuFr": "TVA non applicable, art. 259-1 du CGI.",
+        "latePaymentFr": "En cas de retard de paiement : pénalités au taux de trois fois l'intérêt légal et indemnité forfaitaire pour frais de recouvrement de 40 €. Pas d'escompte pour paiement anticipé.",
+        "outsideScopeGb": "Hors du champ de la TVA britannique : lieu de la prestation dans le pays du client.",
+        "vatUs": "Taxe",
+        "vatLineUs": "Sales tax {rate} sur {base}",
+        "netUs": "Sous-total",
+        "fxLine": "Cours de change : 1 {currency} = {rate} {home}, soit {home} {total}",
+        "fxVatLine": "dont TVA {home} {vat}"
+      },
+      "docTitle": "Facture",
+      "docDue": "Payable jusqu'au",
+      "dueLabel": "Échéance",
+      "dueHint": "Vide : selon le délai de paiement du client.",
+      "converted": "Brouillon de facture créé à partir du devis. Vérifiez-le puis émettez-le.",
+      "fromQuote": "Voir le devis d'origine",
+      "download": "Télécharger le PDF",
+      "creditNotesLink": "Avoirs",
+      "createCreditNote": "Créer un avoir",
+      "relatedInvoice": "Facture concernée : {number}",
+      "payments": {
+        "title": "Paiements",
+        "saved": "Paiement enregistré.",
+        "totalCents": "Total",
+        "creditedCents": "Avoirs",
+        "paidCents": "Payé",
+        "openCents": "Solde ouvert",
+        "date": "Date du paiement",
+        "amount": "Montant ({currency})",
+        "method": "Moyen",
+        "note": "Remarque",
+        "add": "Enregistrer le paiement",
+        "delete": "Supprimer",
+        "tooHigh": "Le montant dépasse le solde ouvert.",
+        "methods": {
+          "bank": "Virement",
+          "cash": "Espèces",
+          "other": "Autre",
+          "online": "En ligne (Stripe)"
+        },
+        "states": {
+          "open": "Ouverte",
+          "partial": "Payée en partie",
+          "paid": "Payée",
+          "overdue": "En retard",
+          "credited": "Annulée par avoir"
+        },
+        "errors": {
+          "date": "Date invalide.",
+          "amount": "Montant invalide.",
+          "required": "Champ obligatoire.",
+          "tooLong": "Texte trop long.",
+          "fxRate": "Cours invalide (nombre positif, par exemple 0.9412)."
+        },
+        "fxRate": "Cours du jour (1 {currency} en {home})",
+        "fxHint": "Vide : cours de référence de la BCE du jour du paiement. L'écart avec le cours de la facture est comptabilisé en différence de change.",
+        "chargesCents": "Frais et intérêts",
+        "chargesHint": "Frais de rappel et intérêts moratoires réclamés par les relances.",
+        "waive": "Renoncer aux frais",
+        "waived": "Frais et intérêts abandonnés."
+      },
+      "email": {
+        "title": "Envoi",
+        "to": "Destinataire",
+        "subject": "Objet",
+        "message": "Message",
+        "messageHint": "Le lien de consultation en ligne est ajouté à la fin, et le PDF est joint.",
+        "send": "Envoyer par e-mail",
+        "sent": "E-mail envoyé.",
+        "sentInfo": "Envoyé à {to} le {date}.",
+        "viewed": "Consulté en ligne.",
+        "notConfigured": "L'envoi d'e-mails n'est pas encore configuré. Vous pouvez copier le lien de consultation et l'envoyer vous-même.",
+        "link": "Lien de consultation",
+        "linkHint": "Un lien à transmettre au client, sans compte à créer.",
+        "linkLabelField": "Lien de consultation en ligne",
+        "linkLabel": "Consulter en ligne :",
+        "results": {
+          "notConfigured": "L'envoi d'e-mails n'est pas configuré.",
+          "failed": "L'envoi a échoué. Réessayez dans quelques minutes.",
+          "notFound": "Pièce introuvable."
+        },
+        "errors": {
+          "email": "Adresse e-mail invalide.",
+          "required": "Champ obligatoire.",
+          "tooLong": "Texte trop long."
+        },
+        "subjects": {
+          "invoice": "Facture {number} de {company}",
+          "quote": "Devis {number} de {company}",
+          "credit_note": "Avoir {number} de {company}"
+        },
+        "bodies": {
+          "invoice": "Bonjour,\n\nVous trouverez ci-joint notre facture {number} d'un montant de {currency} {amount}, payable jusqu'au {due}.\n\nMeilleures salutations\n{company}",
+          "quote": "Bonjour,\n\nVous trouverez ci-joint notre devis {number} d'un montant de {currency} {amount}, valable jusqu'au {due}.\n\nMeilleures salutations\n{company}",
+          "credit_note": "Bonjour,\n\nVous trouverez ci-joint notre avoir {number} d'un montant de {currency} {amount}.\n\nMeilleures salutations\n{company}"
+        }
+      },
+      "remindersLink": "Relances",
+      "reminderLine": "{level, select, 1 {1re relance} 2 {2e relance} other {Dernière relance}} le {date} ({channel, select, email {e-mail} other {courrier}})",
+      "recurringLink": "Récurrentes",
+      "recurring": {
+        "title": "Rendre récurrente",
+        "interval": "Rythme",
+        "every": "{months, plural, one {Chaque mois} other {Tous les # mois}}",
+        "next": "Prochaine facture le",
+        "autoSend": "Émettre et envoyer automatiquement (sinon : brouillon à vérifier)",
+        "create": "Enregistrer la récurrence"
+      },
+      "einvoice": {
+        "download": "XRechnung (XML)",
+        "missing": "XRechnung impossible, il manque : {fields}.",
+        "fields": {
+          "number": "numéro",
+          "sellerAddress": "adresse de l'entreprise",
+          "buyerAddress": "adresse du client",
+          "sellerEmail": "e-mail de l'entreprise",
+          "sellerPhone": "téléphone de l'entreprise",
+          "sellerIban": "IBAN",
+          "buyerEmail": "e-mail du client",
+          "buyerVatId": "USt-IdNr. du client",
+          "sellerTaxId": "USt-IdNr. ou Steuernummer"
+        }
+      },
+      "netUs": "Sous-total",
+      "vatLineUs": "Sales tax {rate} sur {base}",
+      "vatCodesUs": {
+        "normal": "Taxable",
+        "reduced": "Taxable (réduit)",
+        "lodging": "Taxable (hébergement)",
+        "exempt": "Exonéré",
+        "export": "Non taxable (hors de l'État)"
+      },
+      "totalWithVatUs": "Total taxe comprise"
+    },
+    "quotes": {
+      "title": "Devis",
+      "new": "Nouveau devis",
+      "edit": "Devis",
+      "back": "Tous les devis",
+      "draftTitle": "Brouillon de devis",
+      "issuedTitle": "Devis {number}",
+      "status": {
+        "draft": "Brouillon",
+        "issued": "Envoyé",
+        "accepted": "Accepté",
+        "declined": "Refusé",
+        "invoiced": "Facturé"
+      },
+      "saved": "Brouillon enregistré.",
+      "issued": "Devis émis avec son numéro définitif.",
+      "deleted": "Brouillon supprimé.",
+      "empty": "Aucun devis pour l'instant.",
+      "issue": "Émettre le devis",
+      "issueHint": "L'émission attribue le numéro suivant et fige le devis. Enregistrez d'abord vos dernières modifications.",
+      "deleteDraft": "Supprimer ce brouillon",
+      "accept": "Marquer comme accepté",
+      "decline": "Marquer comme refusé",
+      "convert": "Transformer en facture",
+      "converted": "Brouillon de facture créé.",
+      "docTitle": "Devis",
+      "docDue": "Valable jusqu'au",
+      "dueLabel": "Valable jusqu'au",
+      "dueHint": "Vide : 30 jours après la date du devis."
+    },
+    "creditNotes": {
+      "title": "Avoirs",
+      "new": "Nouvel avoir",
+      "edit": "Avoir",
+      "back": "Tous les avoirs",
+      "draftTitle": "Brouillon d'avoir",
+      "issuedTitle": "Avoir {number}",
+      "status": {
+        "draft": "Brouillon",
+        "issued": "Émis"
+      },
+      "saved": "Brouillon d'avoir enregistré. Réduisez les lignes pour un avoir partiel.",
+      "issued": "Avoir émis. Il réduit le solde de la facture.",
+      "deleted": "Brouillon supprimé.",
+      "empty": "Aucun avoir pour l'instant. Un avoir se crée depuis une facture émise.",
+      "issue": "Émettre l'avoir",
+      "issueHint": "L'émission attribue le numéro suivant et fige l'avoir.",
+      "deleteDraft": "Supprimer ce brouillon",
+      "converted": "",
+      "docTitle": "Avoir",
+      "docDue": "Date",
+      "dueLabel": "Date",
+      "dueHint": ""
+    },
+    "accountingHome": {
+      "title": "Comptabilité",
+      "subtitle": "Factures, avoirs et paiements sont passés au journal automatiquement. Le journal ne se modifie pas : une correction se fait par écriture d'extourne.",
+      "postedCount": "{count, plural, =0 {Aucune écriture ajoutée.} one {# écriture ajoutée au journal.} other {# écritures ajoutées au journal.}}",
+      "setupTitle": "Pour tenir la comptabilité, il manque encore :",
+      "setupChart": "le plan comptable",
+      "setupYear": "un exercice ouvert",
+      "unposted": "{count, plural, one {# pièce attend d'être comptabilisée.} other {# pièces attendent d'être comptabilisées.}}",
+      "reasons": {
+        "noChart": "Installez d'abord le plan comptable.",
+        "noFiscalYear": "Ouvrez l'exercice qui couvre la date de ces pièces.",
+        "vatPeriodClosed": "Cette date tombe dans une période TVA déjà validée : l'écriture ne peut plus y entrer."
+      },
+      "postNow": "Comptabiliser maintenant",
+      "journal": "Journal",
+      "year": "Exercice",
+      "show": "Afficher",
+      "chainOk": "{count, plural, =0 {Journal vide.} one {Chaîne d'empreintes vérifiée sur # écriture.} other {Chaîne d'empreintes vérifiée sur # écritures.}}",
+      "chainBroken": "Attention : la chaîne d'empreintes ne correspond plus à partir de l'écriture n° {seq}.",
+      "empty": "Aucune écriture dans cet exercice.",
+      "columns": {
+        "number": "N°",
+        "date": "Date",
+        "account": "Compte",
+        "debit": "Débit",
+        "credit": "Crédit"
+      },
+      "tabs": {
+        "label": "Sections de la comptabilité",
+        "bank": "Banque",
+        "journal": "Journal",
+        "receipts": "Justificatifs",
+        "reports": "Rapports",
+        "vat": "TVA"
+      },
+      "welcomeFiduciary": "Bienvenue. Vous travaillez maintenant dans la comptabilité de votre client ; changez d'entreprise depuis l'en-tête.",
+      "unavailableTitle": "Comptabilité bientôt disponible pour ce pays",
+      "unavailableBody": "La facturation fonctionne déjà pour une entreprise en {country}. La comptabilité en partie double, le décompte de TVA et l'import bancaire arrivent avec le prochain lot ; d'ici là, exportez vos factures pour votre fiduciaire."
+    },
+    "bank": {
+      "title": "Banque",
+      "subtitle": "Importez le relevé de votre banque : l'assistant propose l'écriture de chaque mouvement, vous vérifiez et validez.",
+      "imported": "{count, plural, =0 {Aucun nouveau mouvement} one {# mouvement importé} other {# mouvements importés}}{duplicates, plural, =0 {.} one { (# déjà connu).} other { (# déjà connus).}}",
+      "validatedCount": "{count, plural, =0 {Aucune écriture validée.} one {# écriture validée.} other {# écritures validées.}}",
+      "errors": {
+        "file": "Choisissez un fichier de relevé (5 Mo au plus).",
+        "format": "Ce fichier n'est pas un relevé camt.053 lisible.",
+        "tooHigh": "Le montant dépasse le solde ouvert de la facture.",
+        "noChart": "Installez d'abord le plan comptable.",
+        "noFiscalYear": "Aucun exercice ouvert ne couvre la date de ce mouvement.",
+        "noProposal": "Choisissez d'abord un compte.",
+        "notFound": "Mouvement introuvable ou déjà traité.",
+        "vatPeriodClosed": "Cette date tombe dans une période TVA déjà validée : l'écriture ne peut plus y entrer.",
+        "plan": "L'import des relevés est réservé à la formule Pro."
+      },
+      "aiError": "L'assistant n'a pas pu répondre. Les mouvements restent à proposer ; réessayez plus tard.",
+      "aiOff": "L'assistant comptable n'est pas encore activé : seuls les paiements de factures reconnus par leur référence QR sont proposés automatiquement.",
+      "file": "Relevé bancaire (camt.053)",
+      "fileHint": "Fichier XML exporté depuis l'e-banking (« camt.053 » ou « relevé ISO 20022 »).",
+      "import": "Importer",
+      "toReview": "{count, plural, =0 {Rien à valider} one {# mouvement à valider} other {# mouvements à valider}}",
+      "propose": "Proposer les écritures",
+      "validateConfident": "Valider les {count} propositions sûres",
+      "nothing": "Tous les mouvements sont traités.",
+      "noSuggestion": "Aucune proposition : choisissez le compte.",
+      "paysInvoice": "Paiement de la facture {invoice}",
+      "confidence": "Certitude {value} %",
+      "validate": "Valider",
+      "ignore": "Ignorer",
+      "correct": "Choisir un autre compte",
+      "account": "Compte",
+      "choose": "Choisir",
+      "vatLabel": "TVA comprise",
+      "noVat": "Sans TVA",
+      "validateChoice": "Valider ce choix",
+      "unknownParty": "Contrepartie inconnue",
+      "done": "Déjà traités",
+      "status": {
+        "posted": "Comptabilisé",
+        "ignored": "Ignoré",
+        "new": "Nouveau",
+        "proposed": "Proposé"
+      },
+      "vat": {
+        "normal": "TVA normale",
+        "reduced": "TVA réduite",
+        "lodging": "TVA hébergement",
+        "exempt": "Exclu",
+        "export": "Exportation"
+      },
+      "rules": {
+        "title": "Règles apprises",
+        "hint": "Retenues à chaque validation : la même contrepartie sera proposée sur le même compte, sans passer par l'IA.",
+        "in": "(entrées)",
+        "out": "(sorties)",
+        "hits": "{count, plural, one {validée # fois} other {validée # fois}}",
+        "delete": "Oublier"
+      },
+      "planOnly": "L'import des relevés bancaires et les propositions de l'assistant sont compris dans la formule Pro."
+    },
+    "receipts": {
+      "title": "Justificatifs",
+      "subtitle": "Déposez vos factures fournisseurs et tickets (PDF ou photo). L'assistant les lit et les rattache au paiement correspondant du relevé bancaire.",
+      "added": "{count, plural, =0 {Aucun justificatif ajouté} one {# justificatif ajouté} other {# justificatifs ajoutés}}{rejected, plural, =0 {.} one { (# refusé : doublon, format ou taille).} other { (# refusés : doublons, format ou taille).}}",
+      "errors": {
+        "unreadable": "Ce PDF est une image scannée : déposez plutôt une photo nette du document.",
+        "failed": "L'assistant n'a pas pu lire ce justificatif. Réessayez plus tard.",
+        "notFound": "Justificatif introuvable.",
+        "plan": "La lecture des justificatifs est réservée aux formules Pro et Pro+."
+      },
+      "aiOff": "L'assistant n'est pas encore activé : les justificatifs sont conservés, et seront lus une fois l'assistant configuré.",
+      "files": "Factures ou tickets",
+      "filesHint": "PDF, JPEG, PNG ou WebP, 10 Mo au plus par fichier, 20 fichiers à la fois.",
+      "upload": "Déposer",
+      "empty": "Aucun justificatif pour l'instant.",
+      "invoiceNumber": "facture {number}",
+      "vat": "TVA {amount}",
+      "account": "compte {number}",
+      "matchedHint": "Rattaché à un paiement : il reste à valider l'écriture dans « Banque ».",
+      "read": "Lire",
+      "reread": "Relire",
+      "status": {
+        "new": "À lire",
+        "read": "Lu, paiement pas encore trouvé",
+        "error": "Illisible",
+        "matched": "Rattaché",
+        "posted": "Comptabilisé"
+      },
+      "planOnly": "La lecture automatique des justificatifs est comprise dans la formule Pro (50 par mois) et Pro+ (300 par mois)."
+    },
+    "reports": {
+      "title": "Rapports",
+      "period": "Exercice du {start} au {end}",
+      "provisional": "Chiffres provisoires, établis à partir du journal : ils deviennent définitifs à la clôture de l'exercice.",
+      "empty": "Aucune écriture dans cet exercice.",
+      "income": "Compte de résultat",
+      "balanceSheet": "Bilan",
+      "trial": "Balance des comptes",
+      "account": "Compte",
+      "amount": "Montant",
+      "profit": "Bénéfice de l'exercice",
+      "loss": "Perte de l'exercice",
+      "assets": "Actifs",
+      "liabilitiesEquity": "Passifs",
+      "totalAssets": "Total des actifs",
+      "totalLiabilities": "Total des passifs",
+      "equity": "Capitaux propres",
+      "currentResult": "Résultat de l'exercice en cours",
+      "balanced": "Le bilan est équilibré.",
+      "unbalanced": "Attention : le bilan n'est pas équilibré. Vérifiez les écritures d'ouverture.",
+      "debit": "Débit",
+      "credit": "Crédit",
+      "total": "Total",
+      "ledger": "Grand livre",
+      "back": "Retour aux rapports",
+      "noMovement": "Aucun mouvement sur ce compte dans cet exercice.",
+      "date": "Date",
+      "entry": "N°",
+      "text": "Libellé",
+      "balance": "Solde"
+    },
+    "vat": {
+      "title": "TVA",
+      "subtitle": "Décompte préparé à partir du journal, selon la méthode (effective ou TDFN) et le mode (convenu ou reçu) choisis dans les données de l'entreprise. Vérifiez, faites relire par l'assistant si vous le souhaitez, puis validez : les chiffres se reportent tels quels sur le formulaire de l'AFC.",
+      "validatedNotice": "Décompte validé. La période est close au journal, et la TVA est virée sur le compte de décompte 2201.",
+      "errors": {
+        "blocked": "Le décompte ne peut pas être validé tant que des points bloquants subsistent.",
+        "noFiscalYear": "Aucun exercice ouvert ne couvre la fin de cette période.",
+        "noChart": "Le plan comptable n'a pas les comptes TVA nécessaires.",
+        "plan": "La validation du décompte TVA est réservée à la formule Pro."
+      },
+      "periods": "Périodes",
+      "quarter": "T{q} {year}",
+      "done": "validé",
+      "period": "Du {start} au {end}",
+      "validatedOn": "Validé le {date}",
+      "draft": "À valider",
+      "figure": "Chiffre",
+      "label": "Libellé",
+      "amount": "CHF",
+      "anomalies": {
+        "notRegistered": "L'entreprise n'est pas inscrite au registre TVA (réglages de l'entreprise).",
+        "baseMismatch": "Le chiffre d'affaires imposable ne correspond pas exactement aux bases des taux : vérifiez les écritures de produits sans TVA.",
+        "pendingBank": "{count, plural, one {# mouvement bancaire de la période n'est pas encore validé.} other {# mouvements bancaires de la période ne sont pas encore validés.}}",
+        "unposted": "{count, plural, one {# facture de la période n'est pas encore comptabilisée.} other {# factures de la période ne sont pas encore comptabilisées.}}",
+        "inputWithoutReceipt": "{count, plural, one {# dépense déduit de l'impôt préalable sans justificatif rattaché.} other {# dépenses déduisent de l'impôt préalable sans justificatif rattaché.}}",
+        "alreadyValidated": "Cette période chevauche un décompte déjà validé.",
+        "noNetTaxRate": "Indiquez votre taux de la dette fiscale nette dans les données de l'entreprise.",
+        "inputUnderNetTaxRate": "De l'impôt préalable a été comptabilisé dans la période : avec la méthode TDFN, il n'est pas déductible.",
+        "exportsSplit": "Des exportations ou prestations à l'étranger figurent en E2 : ventilez-les entre E1 (hors UE), E2 (prestations UE) et F2 (livraisons intracommunautaires), et déposez la DES si besoin."
+      },
+      "figures": {
+        "200": "Total des contre-prestations convenues",
+        "220": "Prestations exonérées (exportations)",
+        "230": "Prestations exclues du champ de l'impôt",
+        "289": "Total des déductions",
+        "299": "Chiffre d'affaires imposable",
+        "303": "Prestations au taux normal 8,1 %",
+        "313": "Prestations au taux réduit 2,6 %",
+        "343": "Prestations d'hébergement 3,8 %",
+        "302": "Prestations au taux normal 7,7 % (avant 2024)",
+        "312": "Prestations au taux réduit 2,5 % (avant 2024)",
+        "342": "Prestations d'hébergement 3,7 % (avant 2024)",
+        "399": "Total de l'impôt dû",
+        "400": "Impôt préalable sur le matériel et les prestations de services",
+        "405": "Impôt préalable sur les investissements et autres charges",
+        "479": "Total de l'impôt préalable",
+        "500": "Montant à payer à l'AFC",
+        "510": "Solde en votre faveur",
+        "322": "Chiffre d'affaires au taux de la dette fiscale nette",
+        "332": "Chiffre d'affaires au second taux de la dette fiscale nette",
+        "321": "Chiffre d'affaires au taux net (avant 2024)",
+        "331": "Chiffre d'affaires au second taux net (avant 2024)"
+      },
+      "payBy": "À payer à l'AFC d'ici le {date}.",
+      "reviewIntro": "L'assistant peut relire la période et signaler ce qui mérite votre attention.",
+      "review": "Faire relire",
+      "reviewing": "Relecture…",
+      "reviewFailed": "L'assistant n'a pas pu répondre. Réessayez plus tard.",
+      "reviewNothing": "L'assistant n'a rien relevé d'inhabituel.",
+      "cannotValidate": "Réglez d'abord les points en rouge.",
+      "validateHint": "En validant, les chiffres sont figés et plus aucune écriture ne pourra être datée dans cette période.",
+      "validate": "Valider le décompte",
+      "semester": "S{q} {year}",
+      "tax": "Impôt",
+      "planOnly": "Le décompte TVA préparé et validé dans InvoiceLead est compris dans la formule Pro. Vous pouvez consulter les chiffres ci-dessous.",
+      "figuresDe": {
+        "81": "Kz 81 · Prestations imposables à 19 %",
+        "86": "Kz 86 · Prestations imposables à 7 %",
+        "35": "Kz 35/36 · Prestations à d'autres taux",
+        "21": "Kz 21 · Prestations non imposables en Allemagne (autre pays de l'UE)",
+        "48": "Kz 48 · Chiffre d'affaires exonéré sans déduction",
+        "66": "Kz 66 · Taxe déductible (Vorsteuer)",
+        "83": "Kz 83 · Solde à payer (négatif : remboursement)"
+      },
+      "figuresFr": {
+        "A1": "A1 · Ventes et prestations de services imposables (HT)",
+        "E2": "E2 · Autres opérations non imposables (à ventiler E1, E2, F2)",
+        "08": "08 · Taux normal 20 %",
+        "9B": "9B · Taux réduit 10 %",
+        "09": "09 · Taux réduit 5,5 %",
+        "OT": "Autres taux",
+        "16": "16 · Total de la TVA brute due",
+        "19": "19 · TVA déductible sur immobilisations",
+        "20": "20 · TVA déductible sur autres biens et services",
+        "23": "23 · Total TVA déductible",
+        "28": "28 · TVA nette due",
+        "25": "25 · Crédit de TVA"
+      },
+      "figuresGb": {
+        "1": "Case 1 · TVA due sur les ventes",
+        "2": "Case 2 · TVA due sur les acquisitions UE (Irlande du Nord)",
+        "3": "Case 3 · Total de la TVA due",
+        "4": "Case 4 · TVA récupérable sur les achats",
+        "5": "Case 5 · Montant net à payer ou à récupérer",
+        "6": "Case 6 · Ventes totales hors TVA",
+        "7": "Case 7 · Achats totaux hors TVA",
+        "8": "Case 8 · Livraisons de biens vers l'UE (Irlande du Nord)",
+        "9": "Case 9 · Acquisitions de biens de l'UE (Irlande du Nord)"
+      },
+      "figuresUs": {
+        "S1": "Ventes brutes",
+        "S2": "Ventes non taxables (exonérées ou hors de l'État)",
+        "S3": "Ventes taxables",
+        "S4": "Sales tax perçue, à reverser"
+      },
+      "titleUs": "Relevé de sales tax",
+      "xmlDownload": "Télécharger le décompte au format eCH-0217, à déposer sur le portail de l'AFC",
+      "xmlNoUid": "Le fichier eCH-0217 demande le numéro IDE de l'entreprise (réglages)."
+    },
+    "reminders": {
+      "title": "Relances",
+      "back": "Toutes les factures",
+      "subtitle": "Factures échues dont la relance suivante est due (10, 25 puis 40 jours après l'échéance). L'e-mail part dans la langue de la facture, avec le PDF et sa QR-facture.",
+      "sendAll": "Envoyer toutes les relances par e-mail",
+      "sentCount": "{count, plural, =0 {Aucune relance envoyée.} one {# relance envoyée.} other {# relances envoyées.}}",
+      "results": {
+        "sent": "Relance envoyée.",
+        "recorded": "Relance notée comme envoyée.",
+        "notDue": "Cette relance n'est plus due.",
+        "noEmail": "Pas d'adresse e-mail pour ce client, ou envoi non configuré.",
+        "failed": "L'envoi a échoué. Réessayez plus tard."
+      },
+      "empty": "Aucune relance à faire aujourd'hui.",
+      "line": "{level, select, 1 {1re relance} 2 {2e relance} other {Dernière relance}} · {days} jours de retard · échue le {due}",
+      "noEmail": "pas d'e-mail",
+      "send": "Envoyer",
+      "markManual": "Noter comme envoyée (courrier)",
+      "email": {
+        "link": "Consulter en ligne :",
+        "subject1": "Rappel : facture {number} de {company}",
+        "subject2": "2e rappel : facture {number} de {company}",
+        "subject3": "Dernier rappel : facture {number} de {company}",
+        "body1": "Bonjour,\n\nSauf erreur de notre part, notre facture {number} échue le {due} n'a pas encore été réglée. Le montant ouvert est de {currency} {amount}.\n\nSi le paiement est en cours, merci de ne pas tenir compte de ce message.\n\nMeilleures salutations\n{company}",
+        "body2": "Bonjour,\n\nMalgré notre premier rappel, notre facture {number} échue le {due} reste impayée. Nous vous prions de régler le montant ouvert de {currency} {amount} dans les 10 jours.\n\nMeilleures salutations\n{company}",
+        "body3": "Bonjour,\n\nNotre facture {number} échue le {due} est toujours impayée malgré nos rappels. Nous vous prions de régler le montant ouvert de {currency} {amount} sous 10 jours. Sans paiement, nous serons contraints d'engager d'autres démarches.\n\nMeilleures salutations\n{company}",
+        "charges": "Montant ouvert de la facture : {currency} {open}\nFrais de rappel et intérêts moratoires : {currency} {charges}\nTotal à régler : {currency} {total}"
+      },
+      "chargesLine": "Facture ouverte {open} · frais {fee} · intérêts {interest} · déjà réclamés {before}",
+      "settings": {
+        "title": "Réglages des relances",
+        "auto": "Envoyer les relances automatiquement",
+        "autoHint": "Chaque matin, les relances dues partent par e-mail aux clients qui ont une adresse. Les autres restent dans cette liste.",
+        "fee": "Frais de rappel dès la 2e relance ({currency})",
+        "feeHint": "Vide ou 0 : aucun frais. À prévoir dans vos conditions générales.",
+        "interest": "Intérêt moratoire annuel (%)",
+        "interestHint": {
+          "CH": "Vide : aucun intérêt. Taux légal en Suisse : 5 % (art. 104 CO).",
+          "DE": "Vide : aucun intérêt. Entre entreprises, 9 points au-dessus du taux de base (§ 288 BGB).",
+          "FR": "Vide : aucun intérêt. Au moins trois fois le taux légal, plus l’indemnité de 40 € (art. L441-10 C. com.).",
+          "GB": "Vide : aucun intérêt. Entre entreprises, 8 points au-dessus du taux de la Banque d’Angleterre.",
+          "US": "Vide : aucun intérêt. Le taux maximal dépend de l’État et du contrat."
+        },
+        "save": "Enregistrer les réglages",
+        "plan": "Les 2e et 3e relances, l'envoi automatique, les frais de rappel et les intérêts moratoires font partie de la formule Pro.",
+        "results": {
+          "saved": "Réglages des relances enregistrés.",
+          "plan": "Ces réglages font partie de la formule Pro.",
+          "invalidFee": "Frais invalides (montant positif, au plus deux décimales).",
+          "invalidRate": "Taux invalide (entre 0 et 20 %, par exemple 5)."
+        }
+      }
+    },
+    "recurring": {
+      "title": "Factures récurrentes",
+      "back": "Toutes les factures",
+      "subtitle": "Chaque échéance crée une nouvelle facture à partir du modèle. Avec l'envoi automatique, elle est émise, comptabilisée et envoyée au client chaque matin où elle est due.",
+      "created": "Récurrence enregistrée.",
+      "empty": "Aucune facture récurrente. Ouvrez une facture et choisissez « Rendre récurrente ».",
+      "line": "Tous les {interval, plural, one {mois} other {# mois}} · prochaine le {next} · modèle {model}",
+      "draftModel": "brouillon",
+      "autoSend": "émise et envoyée automatiquement",
+      "draftOnly": "créée en brouillon",
+      "paused": "en pause",
+      "model": "Voir le modèle",
+      "pause": "Mettre en pause",
+      "resume": "Reprendre",
+      "delete": "Supprimer"
+    },
+    "plan": {
+      "upgrade": "Passer à Pro",
+      "free": "Gratuit",
+      "pro": "Pro",
+      "proplus": "Pro+",
+      "usage": "Formule {plan}{hasLimit, select, yes { : {invoices} factures sur {invoiceLimit} ce mois-ci, {contacts} contacts sur {contactLimit}} other {}}."
+    },
+    "orgSwitch": {
+      "label": "Entreprise",
+      "switch": "Changer d'entreprise",
+      "client": "client"
+    },
+    "team": {
+      "title": "Équipe",
+      "subtitle": "Les personnes de l'entreprise viennent du Compte Lead. Ici, vous choisissez ce que chacune fait dans InvoiceLead.",
+      "seats": "{used} sur {seats} {seats, plural, one {place utilisée} other {places utilisées}}",
+      "members": "Membres",
+      "name": "Personne",
+      "leadRole": "Rôle Lead",
+      "appRole": "Dans InvoiceLead",
+      "leadRoles": {
+        "admin": "Administrateur",
+        "manager": "Responsable",
+        "user": "Utilisateur",
+        "fiduciary": "Fiduciaire"
+      },
+      "roles": {
+        "all": "Factures et comptabilité",
+        "billing": "Factures seulement",
+        "accounting": "Comptabilité seulement",
+        "readonly": "Lecture seule",
+        "none": "Pas d'accès"
+      },
+      "managerRole": "Tout, réglages compris",
+      "noSeat": "sans place",
+      "save": "Enregistrer",
+      "saved": "Rôle enregistré.",
+      "addHint": "Pour ajouter une personne, invitez-la dans votre organisation depuis le Compte Lead. Elle apparaît ici après sa première connexion.",
+      "fiduciaryTitle": "Fiduciaire",
+      "fiduciaryHint": "Votre fiduciaire accède gratuitement à la comptabilité (banque, justificatifs, journal, TVA, clôture) avec son propre Compte Lead. Elle voit les factures sans pouvoir les modifier.",
+      "fiduciaryEmail": "Adresse e-mail de la fiduciaire",
+      "invite": "Inviter",
+      "invited": "Invitation envoyée à {email}.",
+      "inviteLink": "Transmettez ce lien à {email}, valable {days} jours :",
+      "pending": "Invitation en attente jusqu'au {date}",
+      "cancel": "Annuler",
+      "remove": "Retirer l'accès",
+      "removed": "Accès retiré.",
+      "noFiduciary": "Aucune fiduciaire n'a accès pour l'instant.",
+      "planOnly": "L'accès fiduciaire est compris dans les formules Pro et Pro+.",
+      "managersOnly": "Seuls les responsables de l'entreprise modifient l'équipe.",
+      "errors": {
+        "invalid": "Adresse e-mail invalide.",
+        "forbidden": "Seuls les responsables de l'entreprise modifient l'équipe.",
+        "plan": "L'accès fiduciaire est compris dans les formules Pro et Pro+.",
+        "failed": "L'e-mail n'a pas pu partir. Transmettez le lien ci-dessous."
+      },
+      "emailSubject": "{org} vous donne accès à sa comptabilité",
+      "emailBody": "Bonjour,\n\n{org} vous invite à accéder à sa comptabilité dans InvoiceLead. Connectez-vous avec votre Compte Lead depuis ce lien (valable {days} jours) :"
+    },
+    "invite": {
+      "title": "Invitation fiduciaire",
+      "loginBody": "Connectez-vous avec votre Compte Lead pour accepter l'invitation. Utilisez l'adresse à laquelle vous l'avez reçue.",
+      "login": "Se connecter avec mon Compte Lead",
+      "accepted": "Vous avez maintenant accès à la comptabilité de {org}.",
+      "open": "Ouvrir {org}",
+      "invalid": "Ce lien d'invitation n'est pas valable ou a déjà servi.",
+      "expired": "Ce lien d'invitation a expiré. Demandez-en un nouveau.",
+      "wrongEmail": "Cette invitation a été envoyée à une autre adresse que {email}. Connectez-vous avec le bon Compte Lead.",
+      "logout": "Changer de compte",
+      "accept": "Accepter l'invitation"
+    },
+    "crmImport": {
+      "title": "Lead gagné dans CRMlead",
+      "subtitle": "Relisez ce que CRMlead transmet. Le client est repris s'il existe déjà (même fiche, même e-mail ou même nom), sinon créé.",
+      "invalid": "Ce lien CRMlead est incomplet ou illisible. Relancez la création depuis CRMlead.",
+      "contactLimit": "Votre formule a atteint sa limite de contacts. Passez à Pro pour ajouter ce client.",
+      "quote": "Devis",
+      "invoice": "Facture",
+      "net": "Total hors TVA",
+      "hint": "Un brouillon est créé ; vous pourrez le modifier avant de l'émettre. Un même lead ne donne qu'une pièce.",
+      "forbidden": "Votre rôle ne permet pas de créer des factures.",
+      "createQuote": "Créer le devis",
+      "createInvoice": "Créer la facture",
+      "fromCrm": "Brouillon créé depuis CRMlead. Vérifiez-le, puis émettez-le."
+    },
+    "feedback": {
+      "title": "Donner mon avis",
+      "subtitle": "InvoiceLead est en bêta privée. Une idée, un problème, un compliment : tout est lu.",
+      "kind": "Type d'avis",
+      "kinds": {
+        "idea": "Idée",
+        "problem": "Problème",
+        "praise": "Ça me plaît"
+      },
+      "message": "Votre message",
+      "send": "Envoyer",
+      "sent": "Merci, votre avis est bien arrivé.",
+      "invalid": "Écrivez quelques mots avant d'envoyer."
+    },
+    "onlinePayments": {
+      "title": "Paiement en ligne",
+      "subtitle": "Vos clients paient une facture depuis son lien, par carte, TWINT, SEPA ou ACH selon ce que votre compte Stripe accepte. L'argent va directement sur votre compte Stripe.",
+      "notConfigured": "Le paiement en ligne n'est pas encore activé sur InvoiceLead.",
+      "notLinked": "Aucun compte Stripe relié.",
+      "linked": "Compte Stripe relié : {account}.",
+      "connect": "Relier mon compte Stripe",
+      "disconnect": "Détacher",
+      "connected": "Compte Stripe relié.",
+      "disconnected": "Compte Stripe détaché.",
+      "howItWorks": "Chaque paiement reçu est enregistré sur la facture et comptabilisé sur le compte d'attente du prestataire ; le versement de Stripe sur votre banque le solde, et le reste correspond aux frais.",
+      "errors": {
+        "state": "Le retour de Stripe n'a pas pu être vérifié. Recommencez.",
+        "denied": "La liaison a été annulée sur Stripe.",
+        "failed": "Stripe n'a pas confirmé la liaison. Réessayez plus tard."
+      }
+    },
+    "apiSettings": {
+      "title": "API et webhooks",
+      "subtitle": "Reliez InvoiceLead à vos outils : l'API REST ({base}) crée contacts, devis, factures et paiements ; les webhooks préviennent vos outils quand une facture est émise ou payée.",
+      "plan": "L'API et les webhooks font partie de la formule Pro+.",
+      "keys": {
+        "title": "Clés d'API",
+        "empty": "Aucune clé.",
+        "name": "Nom de la clé (par exemple « Boutique en ligne »)",
+        "create": "Créer une clé",
+        "created": "Copiez cette clé maintenant : elle ne sera plus affichée. Envoyez-la dans l'en-tête Authorization: Bearer.",
+        "meta": "créée le {created}, utilisée : {used}",
+        "never": "jamais",
+        "revoke": "Révoquer",
+        "revoked": "Clé révoquée."
+      },
+      "webhooks": {
+        "title": "Webhooks",
+        "hint": "Chaque événement est envoyé en POST JSON, signé dans l'en-tête InvoiceLead-Signature (HMAC-SHA256 de « t.corps » avec le secret). En cas d'échec, il est renvoyé plus tard, jusqu'à cinq fois.",
+        "empty": "Aucune adresse.",
+        "url": "Adresse de réception (https)",
+        "events": "Événements",
+        "create": "Ajouter le webhook",
+        "created": "Copiez ce secret de signature maintenant : il ne sera plus affiché.",
+        "disable": "Supprimer",
+        "disabled": "Webhook supprimé.",
+        "delivery": "{event} : {status} ({code}), {date}",
+        "status": {
+          "pending": "en attente",
+          "delivered": "livré",
+          "failed": "abandonné"
+        }
+      },
+      "errors": {
+        "plan": "L'API et les webhooks font partie de la formule Pro+.",
+        "invalid": "Nom obligatoire (60 caractères au plus).",
+        "tooMany": "Nombre maximal atteint.",
+        "url": "Adresse invalide : https vers un serveur public, sans identifiants.",
+        "events": "Choisissez au moins un événement."
+      }
+    }
+  },
+  "footer": {
+    "product": "Produit",
+    "home": "Accueil",
+    "family": "Famille Lead",
+    "account": "Compte",
+    "login": "Connexion",
+    "signup": "Inscription",
+    "scanlead": "Scanlead, la capture de leads sur les salons",
+    "crmlead": "CRMlead, le CRM qui suit vos contacts",
+    "features": "Fonctions",
+    "pricing": "Tarifs",
+    "faq": "FAQ",
+    "legal": "Légal",
+    "imprint": "Mentions légales",
+    "privacy": "Confidentialité",
+    "terms": "Conditions",
+    "dpa": "Sous-traitance (DPA)"
+  },
+  "notFound": {
+    "title": "Page introuvable",
+    "body": "Cette adresse n'existe pas, ou plus, sur InvoiceLead.",
+    "home": "Retour à l'accueil"
+  },
+  "legal": {
+    "home": "Accueil",
+    "titles": {
+      "imprint": "Mentions légales",
+      "privacy": "Confidentialité",
+      "terms": "Conditions générales",
+      "dpa": "Accord de sous-traitance"
+    }
+  },
+  "pricing": {
+    "title": "Des tarifs simples, pour toute la famille Lead",
+    "subtitle": "Une seule formule ouvre InvoiceLead, Scanlead et CRMlead. Prix hors TVA.",
+    "notice": "InvoiceLead ouvre par étapes : les fonctions marquées « Bientôt » arrivent dans les prochaines versions. L'inscription est gratuite.",
+    "monthly": "par mois",
+    "yearly": "ou {price} par an (2 mois offerts)",
+    "popular": "Recommandé",
+    "soon": "Bientôt",
+    "cta": {
+      "free": "Commencer gratuitement",
+      "paid": "Choisir {plan}"
+    },
+    "plans": {
+      "free": {
+        "name": "Gratuit",
+        "tagline": "Pour démarrer comme indépendant",
+        "features": [
+          "1 utilisateur, 1 entreprise",
+          "10 factures par mois, devis illimités",
+          "50 contacts",
+          "QR-facture, documents en DE, FR, IT, EN",
+          "Comptabilité alimentée par vos factures",
+          "Mention « Créé avec InvoiceLead »"
+        ]
+      },
+      "pro": {
+        "name": "Pro",
+        "tagline": "Pour les PME qui facturent chaque semaine",
+        "features": [
+          "Factures et contacts illimités",
+          "2 utilisateurs et accès fiduciaire gratuit",
+          "Relances automatiques sur 3 niveaux",
+          "Décompte TVA (effective et TDFN)",
+          "Import bancaire camt et lettrage",
+          "Factures récurrentes, multidevise"
+        ]
+      },
+      "proPlus": {
+        "name": "Pro+",
+        "tagline": "Pour les équipes et plusieurs sociétés",
+        "features": [
+          "5 utilisateurs avec rôles",
+          "Jusqu'à 3 sociétés",
+          "Connexion bancaire directe",
+          "eBill, API et webhooks",
+          "Archivage conforme GeBüV",
+          "Support prioritaire"
+        ]
+      }
+    },
+    "footer": "Facturé en euros par la famille Lead (Quantum Liquid LLC). Résiliable à tout moment."
+  },
+  "faq": {
+    "title": "Questions fréquentes",
+    "items": [
+      {
+        "q": "InvoiceLead produit-il des QR-factures conformes ?",
+        "a": "Oui. La section paiement suit la norme SIX en vigueur (version 2.3, adresses structurées), avec référence QR ou SCOR selon votre compte bancaire."
+      },
+      {
+        "q": "Puis-je tenir toute ma comptabilité dans InvoiceLead ?",
+        "a": "C'est l'objectif : comptabilité en partie double sur le plan comptable PME, écritures créées par vos factures et paiements, bilan, compte de résultat et décompte TVA. Ces fonctions ouvrent progressivement."
+      },
+      {
+        "q": "Quelles méthodes de TVA sont prévues ?",
+        "a": "La méthode effective et celle du taux de la dette fiscale nette, sur contre-prestations convenues ou reçues. Le décompte sera exporté au format XML eCH-0217, accepté par le portail de l'AFC."
+      },
+      {
+        "q": "Qu'est-ce que le Compte Lead ?",
+        "a": "Le compte unique de la famille Lead : le même identifiant pour InvoiceLead, Scanlead et CRMlead, et une formule payée dans une application ouvre les autres."
+      },
+      {
+        "q": "Ma fiduciaire peut-elle accéder à ma comptabilité ?",
+        "a": "Oui, un accès fiduciaire gratuit est prévu dès la formule Pro."
+      },
+      {
+        "q": "Où sont hébergées mes données ?",
+        "a": "Aux États-Unis (Vercel et Neon, Ohio), chiffrées en transit et au repos. Le détail figure dans la politique de confidentialité."
+      },
+      {
+        "q": "Puis-je récupérer mes données ?",
+        "a": "Oui, à tout moment, et pendant 30 jours après une résiliation. Vos livres doivent être conservés dix ans : l'export est prévu pour cela."
+      },
+      {
+        "q": "Faut-il une carte bancaire pour commencer ?",
+        "a": "Non. La formule Gratuite ne demande aucune carte et n'a pas de limite de durée."
+      }
+    ]
+  },
+  "shared": {
+    "download": "Télécharger le PDF",
+    "poweredBy": "Envoyé avec InvoiceLead",
+    "pay": "Payer en ligne",
+    "paid": "Merci. Le paiement est en cours de confirmation ; la facture passera à « payée » dès que Stripe l'aura confirmé.",
+    "payError": "Le paiement en ligne n'a pas pu démarrer. Réessayez ou payez par virement."
+  }
+}

@@ -1,0 +1,173 @@
+import { and, eq } from "drizzle-orm";
+import { afterAll, beforeEach, describe, expect, it } from "vitest";
+import { attachLeadIdentity } from "@/server/auth/attach";
+import { createSession, findSession } from "@/server/auth/session";
+import { canEditSettings, canSetUpAccounting } from "@/server/company";
+import { memberships, organizations } from "@/server/db/schema";
+import { can } from "@/server/roles";
+import {
+  acceptInvitation,
+  hasSeat,
+  inviteFiduciary,
+  listTeam,
+  listUserOrganizations,
+  removeFiduciary,
+  seated,
+  setAppRole,
+  switchOrganization,
+} from "@/server/team";
+import { claims } from "../support/claims";
+import { testDb } from "../support/db";
+import { setTestEnv } from "../support/env";
+
+const t = testDb();
+const db = t.database;
+setTestEnv();
+beforeEach(() => t.reset());
+afterAll(() => t.close());
+
+const base = claims().lead;
+if (!base) throw new Error("droits absents");
+const pro = { ...base, plan: { code: "pro", name: "Pro", rank: 1, seats: 2 } };
+
+describe("droits", () => {
+  it("responsables : tout ; utilisateurs selon leur rôle ; fiduciaire : comptabilité", () => {
+    expect(can({ role: "admin", appRole: "readonly" }, "company")).toBe(true);
+    expect(can({ role: "user", appRole: null }, "billing")).toBe(true);
+    expect(can({ role: "user", appRole: null }, "accounting")).toBe(true);
+    expect(can({ role: "user", appRole: null }, "setup")).toBe(false);
+    expect(can({ role: "user", appRole: "billing" }, "accounting")).toBe(false);
+    expect(can({ role: "user", appRole: "accounting" }, "billing")).toBe(false);
+    expect(can({ role: "user", appRole: "readonly" }, "billing")).toBe(false);
+    expect(can({ role: "fiduciary", appRole: null }, "accounting")).toBe(true);
+    expect(can({ role: "fiduciary", appRole: null }, "setup")).toBe(true);
+    expect(can({ role: "fiduciary", appRole: null }, "billing")).toBe(false);
+    expect(can({ role: "fiduciary", appRole: null }, "company")).toBe(false);
+  });
+
+  it("places : responsables d'abord, puis par arrivée ; bloqués et fiduciaires hors compte", () => {
+    const at = (n: number) => new Date(2026, 0, n);
+    const members = [
+      { userId: "u1", role: "user", appRole: null, createdAt: at(1) },
+      { userId: "u2", role: "user", appRole: "none", createdAt: at(2) },
+      { userId: "a", role: "admin", appRole: null, createdAt: at(3) },
+      { userId: "f", role: "fiduciary", appRole: null, createdAt: at(4) },
+      { userId: "u3", role: "user", appRole: null, createdAt: at(5) },
+    ];
+    expect([...seated(members, 2)]).toEqual(["a", "u1"]);
+  });
+});
+
+describe("équipe", () => {
+  it("rôle choisi par un responsable, place selon la formule du Compte Lead", async () => {
+    const admin = await attachLeadIdentity(db, claims({ lead: pro }));
+    const bob = await attachLeadIdentity(
+      db,
+      claims({ sub: "sub-bob", email: "bob@atelier.test", org_role: "user", lead: pro }),
+    );
+    const eve = await attachLeadIdentity(
+      db,
+      claims({ sub: "sub-eve", email: "eve@atelier.test", org_role: "user", lead: pro }),
+    );
+    const org = admin.organization;
+    const who = (u: { user: { id: string } }) => ({ organizationId: org.id, userId: u.user.id });
+    const [fresh] = await db.select().from(organizations).where(eq(organizations.id, org.id));
+    if (!fresh) throw new Error("organisation absente");
+
+    // Deux places : l'administratrice et Bob, arrivé avant Eve.
+    expect(await hasSeat(db, fresh, admin.user.id)).toBe(true);
+    expect(await hasSeat(db, fresh, bob.user.id)).toBe(true);
+    expect(await hasSeat(db, fresh, eve.user.id)).toBe(false);
+
+    expect(await setAppRole(db, who(bob), eve.user.id, "billing")).toBe("forbidden");
+    expect(await setAppRole(db, who(admin), admin.user.id, "none")).toBe("invalid");
+    expect(await setAppRole(db, who(admin), bob.user.id, "patron")).toBe("invalid");
+    expect(await setAppRole(db, who(admin), bob.user.id, "none")).toBe("saved");
+    // Bob bloqué libère sa place pour Eve.
+    expect(await hasSeat(db, fresh, eve.user.id)).toBe(true);
+    expect(await hasSeat(db, fresh, bob.user.id)).toBe(false);
+
+    // Une nouvelle connexion relit le rôle Lead sans toucher au rôle InvoiceLead.
+    await attachLeadIdentity(
+      db,
+      claims({ sub: "sub-bob", email: "bob@atelier.test", org_role: "user", lead: pro }),
+    );
+    const [row] = await db
+      .select()
+      .from(memberships)
+      .where(and(eq(memberships.organizationId, org.id), eq(memberships.userId, bob.user.id)));
+    expect(row?.appRole).toBe("none");
+    expect((await listUserOrganizations(db, bob.user.id)).length).toBe(0);
+  });
+});
+
+describe("fiduciaire", () => {
+  it("invitation, acceptation avec la bonne adresse, changement d'entreprise, retrait", async () => {
+    const client = await attachLeadIdentity(db, claims({ lead: pro }));
+    const fid = await attachLeadIdentity(
+      db,
+      claims({
+        sub: "sub-fid",
+        email: "compta@fidu.test",
+        org: "org-fidu",
+        org_name: "Fidu SA",
+      }),
+    );
+    const clientWho = { organizationId: client.organization.id, userId: client.user.id };
+
+    expect(
+      await inviteFiduciary(
+        db,
+        { organizationId: client.organization.id, userId: fid.user.id },
+        "x@y.ch",
+      ),
+    ).toBe("forbidden");
+    expect(await inviteFiduciary(db, clientWho, "pas une adresse")).toBe("invalid");
+    const inv = await inviteFiduciary(db, clientWho, " Compta@Fidu.test ");
+    if (typeof inv === "string") throw new Error(inv);
+    expect(inv.email).toBe("compta@fidu.test");
+    expect((await listTeam(db, client.organization.id)).invitations).toHaveLength(1);
+
+    // Mauvaise personne, mauvais jeton.
+    expect(
+      (await acceptInvitation(db, { id: client.user.id, email: "autre@x.ch" }, inv.token)).status,
+    ).toBe("wrongEmail");
+    expect((await acceptInvitation(db, fid.user, "jeton-inconnu-0123456789")).status).toBe(
+      "invalid",
+    );
+
+    const ok = await acceptInvitation(db, fid.user, inv.token);
+    expect(ok).toMatchObject({ status: "accepted", organizationId: client.organization.id });
+    expect((await acceptInvitation(db, fid.user, inv.token)).status).toBe("invalid");
+
+    const team = await listTeam(db, client.organization.id);
+    expect(team.fiduciaries.map((f) => f.email)).toEqual(["compta@fidu.test"]);
+    expect(team.invitations).toHaveLength(0);
+    expect(await canSetUpAccounting(db, client.organization.id, fid.user.id)).toBe(true);
+    expect(await canEditSettings(db, client.organization.id, fid.user.id)).toBe(false);
+    const orgs = await listUserOrganizations(db, fid.user.id);
+    expect(orgs.map((o) => o.name)).toEqual(["Fidu SA", "Atelier Muster GmbH"]);
+
+    // La fiduciaire passe sur son client ; le retrait fait tomber la session.
+    const { token } = await createSession(db, {
+      userId: fid.user.id,
+      organizationId: fid.organization.id,
+      idToken: null,
+    });
+    const own = await findSession(db, token);
+    if (!own) throw new Error("session absente");
+    expect(await switchOrganization(db, own.session.id, fid.user.id, client.organization.id)).toBe(
+      true,
+    );
+    const onClient = await findSession(db, token);
+    expect(onClient?.organization.id).toBe(client.organization.id);
+    expect(onClient?.membership.role).toBe("fiduciary");
+
+    expect(await removeFiduciary(db, clientWho, client.user.id)).toBe("invalid");
+    expect(await removeFiduciary(db, clientWho, fid.user.id)).toBe("removed");
+    expect(await findSession(db, token)).toBeNull();
+    expect(await switchOrganization(db, own.session.id, fid.user.id, client.organization.id)).toBe(
+      false,
+    );
+  });
+});

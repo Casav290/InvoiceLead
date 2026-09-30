@@ -1,0 +1,545 @@
+import { and, eq, gte, inArray, isNull, lte, or, sql } from "drizzle-orm";
+import { netRateFigure, RATE_FIGURES } from "@/countries/ch/vat-return";
+import { chartPack } from "@/countries/charts";
+import { ustvaFigures } from "@/countries/de/vat-return";
+import { ca3Figures } from "@/countries/fr/vat-return";
+import { mtdFigures } from "@/countries/gb/vat-return";
+import { salesTaxFigures } from "@/countries/us/sales-tax-report";
+import { roundHalfAwayFromZero, vatOf } from "@/lib/money";
+import { aiLanguageName, chatJson } from "./ai";
+import type { Db } from "./db";
+import {
+  accounts,
+  auditLog,
+  bankTransactions,
+  invoiceLines,
+  invoicePayments,
+  invoices,
+  journalEntries,
+  journalLines,
+  organizations,
+  receipts,
+  type VatAnomaly,
+  type VatFigures,
+  vatReturns,
+} from "./db/schema";
+import { appendEntry, LedgerError, roleAccounts } from "./ledger";
+
+type Who = { organizationId: string; userId: string };
+
+export type VatReturnDraft = {
+  method: "effective" | "net_tax_rate";
+  figures: VatFigures;
+  anomalies: VatAnomaly[];
+  /** Base et TVA par taux, pour l'affichage détaillé. */
+  rates: { rateBp: number; figure: string; baseCents: number; taxCents: number }[];
+};
+
+const ISO = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * Prépare le décompte d'une période à partir du journal (méthode effective, contre-prestations
+ * convenues) : chiffre d'affaires, déductions, TVA due par taux, impôt préalable, solde.
+ */
+export async function draftVatReturn(
+  database: Db,
+  organizationId: string,
+  start: string,
+  end: string,
+): Promise<VatReturnDraft> {
+  if (!ISO.test(start) || !ISO.test(end) || end < start) throw new Error("period");
+  const anomalies: VatAnomaly[] = [];
+  const [org] = await database
+    .select({
+      vatRegistered: organizations.vatRegistered,
+      vatMethod: organizations.vatMethod,
+      vatSettlement: organizations.vatSettlement,
+      netTaxRateBp: organizations.netTaxRateBp,
+      country: organizations.country,
+    })
+    .from(organizations)
+    .where(eq(organizations.id, organizationId));
+  const germany = org?.country === "DE";
+  const france = org?.country === "FR";
+  const uk = org?.country === "GB";
+  const usa = org?.country === "US";
+  const swiss = !germany && !france && !uk && !usa;
+  const chart = chartPack(org?.country);
+  // La TDFN n'existe qu'en Suisse.
+  const method = swiss && org?.vatMethod === "net_tax_rate" ? "net_tax_rate" : "effective";
+  if (!org?.vatRegistered) anomalies.push({ code: "notRegistered", severity: "block" });
+  if (method === "net_tax_rate" && !org?.netTaxRateBp)
+    anomalies.push({ code: "noNetTaxRate", severity: "block" });
+
+  const roles = await roleAccounts(database, organizationId);
+  const inPeriod = and(
+    eq(journalEntries.organizationId, organizationId),
+    gte(journalEntries.entryDate, start),
+    lte(journalEntries.entryDate, end),
+  );
+  const lines = await database
+    .select({
+      accountId: journalLines.accountId,
+      number: accounts.number,
+      type: accounts.type,
+      debit: journalLines.debitCents,
+      credit: journalLines.creditCents,
+      rateBp: journalLines.vatRateBp,
+      base: journalLines.vatBaseCents,
+      sourceType: journalEntries.sourceType,
+      sourceId: journalEntries.sourceId,
+    })
+    .from(journalLines)
+    .innerJoin(journalEntries, eq(journalEntries.id, journalLines.entryId))
+    .innerJoin(accounts, eq(accounts.id, journalLines.accountId))
+    .where(and(inPeriod, sql`${journalEntries.sourceType} <> 'vat'`));
+
+  // Chiffre d'affaires : produits d'exploitation (classe 3) et annexes (classe 7).
+  let turnover = 0;
+  let zeroRated = 0;
+  const byRate = new Map<number, { base: number; tax: number }>();
+  let input400 = 0;
+  let input405 = 0;
+  // Achats hors TVA (case 7 britannique) : charges et immobilisations, hors écritures d'ouverture
+  // et de clôture.
+  let purchases = 0;
+  // Contre-prestations reçues : la TVA des factures devient due au paiement, pas à l'émission.
+  const received = org?.vatSettlement === "received";
+  for (const l of lines) {
+    const fromDocument = l.sourceType === "invoice" || l.sourceType === "credit_note";
+    if (received && fromDocument && (l.type === "revenue" || l.accountId === roles.vat_output))
+      continue;
+    if (chart.isTurnover(l)) {
+      const amount = l.credit - l.debit;
+      turnover += amount;
+      if (!l.rateBp) zeroRated += amount;
+    }
+    if (l.accountId === roles.vat_output && l.rateBp) {
+      const r = byRate.get(l.rateBp) ?? { base: 0, tax: 0 };
+      r.base += l.base ?? 0;
+      r.tax += l.credit - l.debit;
+      byRate.set(l.rateBp, r);
+    }
+    if (l.accountId === roles.vat_input_material) input400 += l.debit - l.credit;
+    const regular = l.sourceType !== "closing" && l.sourceType !== "opening";
+    if (regular && (l.type === "expense" || (l.type === "asset" && /^0/.test(l.number))))
+      purchases += l.debit - l.credit;
+    if (l.accountId === roles.vat_input_invest) input405 += l.debit - l.credit;
+  }
+
+  // Exportations (exonérées, art. 23 LTVA) : lignes de factures au code « export » de la période.
+  const [exports] = await database
+    .select({
+      net: sql<string>`coalesce(sum(case when ${invoices.kind} = 'credit_note' then -${invoiceLines.netCents} else ${invoiceLines.netCents} end), 0)`,
+    })
+    .from(invoiceLines)
+    .innerJoin(invoices, eq(invoices.id, invoiceLines.invoiceId))
+    .where(
+      and(
+        eq(invoices.organizationId, organizationId),
+        inArray(invoices.kind, ["invoice", "credit_note"]),
+        eq(invoices.status, "issued"),
+        gte(invoices.issueDate, start),
+        lte(invoices.issueDate, end),
+        eq(invoiceLines.vatCode, "export"),
+      ),
+    );
+  let f220 = received ? 0 : Number(exports?.net ?? 0);
+  if (received) {
+    // Chaque paiement reçu dans la période emporte sa part de chaque taux de la facture payée.
+    const paid = await database
+      .select({
+        invoiceId: invoicePayments.invoiceId,
+        amount: invoicePayments.amountCents,
+        total: invoices.totalCents,
+      })
+      .from(invoicePayments)
+      .innerJoin(invoices, eq(invoices.id, invoicePayments.invoiceId))
+      .where(
+        and(
+          eq(invoicePayments.organizationId, organizationId),
+          gte(invoicePayments.paidOn, start),
+          lte(invoicePayments.paidOn, end),
+        ),
+      );
+    for (const p of paid) {
+      if (p.total <= 0) continue;
+      const groups = await database
+        .select({
+          rateBp: invoiceLines.vatRateBp,
+          code: invoiceLines.vatCode,
+          net: sql<string>`sum(${invoiceLines.netCents})`,
+        })
+        .from(invoiceLines)
+        .where(eq(invoiceLines.invoiceId, p.invoiceId))
+        .groupBy(invoiceLines.vatRateBp, invoiceLines.vatCode);
+      for (const g of groups) {
+        const share = (cents: number) => roundHalfAwayFromZero((cents * p.amount) / p.total) + 0;
+        const net = share(Number(g.net));
+        turnover += net;
+        if (!g.rateBp) {
+          zeroRated += net;
+          if (g.code === "export") f220 += net;
+          continue;
+        }
+        const r = byRate.get(g.rateBp) ?? { base: 0, tax: 0 };
+        r.base += net;
+        r.tax += share(vatOf(Number(g.net), g.rateBp));
+        byRate.set(g.rateBp, r);
+      }
+    }
+  }
+  const f230 = zeroRated - f220;
+  const f289 = f220 + f230;
+  const f299 = turnover - f289;
+
+  const collected = [...byRate.values()].reduce((sum, v) => sum + v.tax, 0);
+  let rates: VatReturnDraft["rates"];
+  let figures: VatFigures;
+  if (method === "net_tax_rate") {
+    // TDFN : chiffre d'affaires TVA comprise, impôt au taux net, pas d'impôt préalable.
+    const gross200 = turnover + collected;
+    const taxable = gross200 - f289;
+    const rateBp = org?.netTaxRateBp ?? 0;
+    const figure = netRateFigure(end);
+    const tax = roundHalfAwayFromZero((taxable * rateBp) / 10_000) + 0;
+    rates = [{ rateBp, figure, baseCents: taxable, taxCents: tax }];
+    figures = {
+      "200": gross200,
+      "220": f220,
+      "230": f230,
+      "289": f289,
+      "299": taxable,
+      [figure]: taxable,
+      [`${figure}t`]: tax,
+      "399": tax,
+      "500": Math.max(0, tax),
+      "510": Math.max(0, -tax),
+      collected,
+    };
+    if (input400 + input405 !== 0)
+      anomalies.push({ code: "inputUnderNetTaxRate", severity: "warn" });
+  } else if (usa) {
+    rates = [...byRate.entries()].map(([rateBp, v]) => ({
+      rateBp,
+      figure: "S3",
+      baseCents: v.base,
+      taxCents: v.tax,
+    }));
+    figures = salesTaxFigures({ byRate, exports: f220, exempt: f230, inputVat: 0 });
+  } else if (uk) {
+    rates = [...byRate.entries()]
+      .sort(([a], [b]) => b - a)
+      .map(([rateBp, v]) => ({ rateBp, figure: "1", baseCents: v.base, taxCents: v.tax }));
+    figures = mtdFigures({
+      byRate,
+      exports: f220,
+      exempt: f230,
+      inputVat: input400 + input405,
+      turnoverNet: turnover,
+      purchasesNet: purchases,
+    });
+  } else if (france) {
+    rates = [...byRate.entries()]
+      .sort(([a], [b]) => b - a)
+      .map(([rateBp, v]) => ({
+        rateBp,
+        figure: rateBp === 2000 ? "08" : rateBp === 1000 ? "9B" : rateBp === 550 ? "09" : "OT",
+        baseCents: v.base,
+        taxCents: v.tax,
+      }));
+    figures = ca3Figures({
+      byRate,
+      exports: f220,
+      exempt: f230,
+      inputVat: input400 + input405,
+      inputInvest: input405,
+    });
+    // Exportations hors UE (E1), prestations UE (E2) et livraisons intracommunautaires (F2) : à ventiler.
+    if (f220 !== 0) anomalies.push({ code: "exportsSplit", severity: "warn" });
+  } else if (germany) {
+    rates = [...byRate.entries()]
+      .sort(([a], [b]) => b - a)
+      .map(([rateBp, v]) => ({
+        rateBp,
+        figure: rateBp === 1900 ? "81" : rateBp === 700 ? "86" : "35",
+        baseCents: v.base,
+        taxCents: v.tax,
+      }));
+    figures = ustvaFigures({
+      byRate,
+      exports: f220,
+      exempt: f230,
+      inputVat: input400 + input405,
+    });
+  } else {
+    rates = [...byRate.entries()]
+      .sort(([a], [b]) => b - a)
+      .map(([rateBp, v]) => ({
+        rateBp,
+        figure: RATE_FIGURES[rateBp] ?? "?",
+        baseCents: v.base,
+        taxCents: v.tax,
+      }));
+    const f399 = collected;
+    const f479 = input400 + input405;
+    figures = {
+      "200": turnover,
+      "220": f220,
+      "230": f230,
+      "289": f289,
+      "299": f299,
+      "399": f399,
+      "400": input400,
+      "405": input405,
+      "479": f479,
+      "500": Math.max(0, f399 - f479),
+      "510": Math.max(0, f479 - f399),
+    };
+    for (const r of rates) {
+      figures[r.figure] = r.baseCents;
+      figures[`${r.figure}t`] = r.taxCents;
+    }
+  }
+
+  // Contrôles de cohérence (méthode effective : les bases par taux font le chiffre imposable).
+  const basesTotal = [...byRate.values()].reduce((sum, v) => sum + v.base, 0);
+  if (swiss && method === "effective" && Math.abs(basesTotal - f299) > 100)
+    anomalies.push({ code: "baseMismatch", severity: "warn", detail: String(basesTotal - f299) });
+  const pendingBank = await database
+    .select({ n: sql<number>`count(*)::int` })
+    .from(bankTransactions)
+    .where(
+      and(
+        eq(bankTransactions.organizationId, organizationId),
+        inArray(bankTransactions.status, ["new", "proposed"]),
+        gte(bankTransactions.bookingDate, start),
+        lte(bankTransactions.bookingDate, end),
+      ),
+    );
+  if ((pendingBank[0]?.n ?? 0) > 0)
+    anomalies.push({ code: "pendingBank", severity: "block", count: pendingBank[0]?.n });
+  const unposted = await database
+    .select({ n: sql<number>`count(*)::int` })
+    .from(invoices)
+    .where(
+      and(
+        eq(invoices.organizationId, organizationId),
+        inArray(invoices.kind, ["invoice", "credit_note"]),
+        eq(invoices.status, "issued"),
+        isNull(invoices.journalEntryId),
+        gte(invoices.issueDate, start),
+        lte(invoices.issueDate, end),
+      ),
+    );
+  if ((unposted[0]?.n ?? 0) > 0)
+    anomalies.push({ code: "unposted", severity: "block", count: unposted[0]?.n });
+  // Impôt préalable déduit sans justificatif rattaché : l'AFC peut le refuser.
+  const withoutReceipt = await database
+    .select({ n: sql<number>`count(distinct ${journalEntries.id})::int` })
+    .from(journalLines)
+    .innerJoin(journalEntries, eq(journalEntries.id, journalLines.entryId))
+    .leftJoin(receipts, eq(receipts.journalEntryId, journalEntries.id))
+    .where(
+      and(
+        inPeriod,
+        eq(journalEntries.sourceType, "bank"),
+        or(
+          roles.vat_input_material
+            ? eq(journalLines.accountId, roles.vat_input_material)
+            : sql`false`,
+          roles.vat_input_invest ? eq(journalLines.accountId, roles.vat_input_invest) : sql`false`,
+        ),
+        isNull(receipts.id),
+      ),
+    );
+  if ((withoutReceipt[0]?.n ?? 0) > 0)
+    anomalies.push({ code: "inputWithoutReceipt", severity: "warn", count: withoutReceipt[0]?.n });
+  const [overlap] = await database
+    .select({ id: vatReturns.id })
+    .from(vatReturns)
+    .where(
+      and(
+        eq(vatReturns.organizationId, organizationId),
+        lte(vatReturns.periodStart, end),
+        gte(vatReturns.periodEnd, start),
+      ),
+    );
+  if (overlap) anomalies.push({ code: "alreadyValidated", severity: "block" });
+
+  return { method, figures, anomalies, rates };
+}
+
+export async function listVatReturns(database: Db, organizationId: string) {
+  return database.select().from(vatReturns).where(eq(vatReturns.organizationId, organizationId));
+}
+
+/**
+ * Relecture par l'assistant : il reçoit les chiffres et les principales dépenses de la période, et
+ * signale ce qui mérite un coup d'œil humain. Ses remarques n'empêchent jamais la validation.
+ */
+export async function aiReview(
+  database: Db,
+  organizationId: string,
+  start: string,
+  end: string,
+  draft: VatReturnDraft,
+  language: "de" | "fr" | "en",
+): Promise<string[]> {
+  const expenses = await database
+    .select({
+      date: journalEntries.entryDate,
+      text: journalEntries.description,
+      account: accounts.number,
+      name: accounts.nameDe,
+      amount: journalLines.debitCents,
+      rate: journalLines.vatRateBp,
+    })
+    .from(journalLines)
+    .innerJoin(journalEntries, eq(journalEntries.id, journalLines.entryId))
+    .innerJoin(accounts, eq(accounts.id, journalLines.accountId))
+    .where(
+      and(
+        eq(journalEntries.organizationId, organizationId),
+        gte(journalEntries.entryDate, start),
+        lte(journalEntries.entryDate, end),
+        eq(accounts.type, "expense"),
+        sql`${journalLines.debitCents} > 0`,
+      ),
+    )
+    .orderBy(sql`${journalLines.debitCents} desc`)
+    .limit(40);
+  const [org] = await database
+    .select({ country: organizations.country })
+    .from(organizations)
+    .where(eq(organizations.id, organizationId));
+  const germany = org?.country === "DE";
+  const france = org?.country === "FR";
+  const uk = org?.country === "GB";
+  const raw = await chatJson([
+    {
+      role: "system",
+      content: [
+        germany
+          ? "You review a German small business VAT pre-return (Umsatzsteuer-Voranmeldung) before a human validates it."
+          : france
+            ? "You review a French small business VAT return (CA3) before a human validates it."
+            : uk
+              ? "You review a UK small business VAT return (Making Tax Digital, nine boxes) before a human validates it."
+              : "You review a Swiss SME VAT return (effective method) before a human validates it.",
+        `Point out only concrete, checkable issues: expenses booked without input VAT that usually carry ${germany ? "German" : france ? "French" : uk ? "UK" : "Swiss"} VAT, input VAT on items that are exempt (insurance, salaries, bank fees, taxes), unusual amounts, possible private expenses.`,
+        `Write at most 5 short points in ${aiLanguageName(language)}, understandable by a non-accountant.`,
+        'Answer JSON only: {"points":["..."]}. Return {"points":[]} when nothing stands out.',
+      ].join("\n"),
+    },
+    {
+      role: "user",
+      content: JSON.stringify({
+        period: { start, end },
+        figures: Object.fromEntries(
+          Object.entries(draft.figures).map(([k, v]) => [k, (v / 100).toFixed(2)]),
+        ),
+        expenses: expenses.map((e) => ({
+          date: e.date,
+          text: e.text,
+          account: `${e.account} ${e.name}`,
+          amount: (e.amount / 100).toFixed(2),
+          vat_rate: e.rate ? `${e.rate / 100} %` : null,
+        })),
+      }),
+    },
+  ]);
+  const points = (raw as { points?: unknown })?.points;
+  return Array.isArray(points)
+    ? points
+        .filter((p): p is string => typeof p === "string")
+        .slice(0, 5)
+        .map((p) => p.slice(0, 400))
+    : [];
+}
+
+/** Impôt préalable total d'un décompte, quel que soit le pays. */
+const inputOf = (f: VatFigures) => f["479"];
+
+export type ValidateVatResult = "validated" | "blocked" | "noFiscalYear" | "noChart";
+
+/**
+ * Validation humaine : les chiffres sont figés, la TVA due et l'impôt préalable sont virés sur le
+ * compte de décompte TVA (2201) à la fin de la période, et la période se ferme au journal.
+ */
+export async function validateVatReturn(
+  database: Db,
+  who: Who,
+  start: string,
+  end: string,
+): Promise<ValidateVatResult> {
+  const draft = await draftVatReturn(database, who.organizationId, start, end);
+  if (draft.anomalies.some((a) => a.severity === "block")) return "blocked";
+  const roles = await roleAccounts(database, who.organizationId);
+  if (!roles.vat_output || !roles.vat_settlement || !roles.sales_deductions) return "noChart";
+  // Plans sans compte d'impôt préalable (sales tax américaine) : rien à virer de ce côté.
+  if (!roles.vat_input_material && (inputOf(draft.figures) ?? 0) !== 0) return "noChart";
+  const f = draft.figures;
+  // Le plan allemand n'a qu'un compte de Vorsteuer : pas de chiffre 405 à virer.
+  if (!roles.vat_input_invest && (f["405"] ?? 0) !== 0) return "noChart";
+  const net = (f["399"] ?? 0) - (f["479"] ?? 0);
+  // TDFN : la TVA encaissée sort de 2200, l'impôt dû va sur 2201, l'écart revient au chiffre
+  // d'affaires (déductions sur ventes).
+  const collected = f.collected ?? 0;
+  try {
+    await database.transaction(async (tx) => {
+      const tdb = tx as unknown as Db;
+      let entryId: string | null = null;
+      const all =
+        draft.method === "net_tax_rate"
+          ? [
+              { accountId: roles.vat_output ?? "", amountCents: collected },
+              { accountId: roles.vat_settlement ?? "", amountCents: -(f["399"] ?? 0) },
+              {
+                accountId: roles.sales_deductions ?? "",
+                amountCents: (f["399"] ?? 0) - collected,
+              },
+            ]
+          : [
+              { accountId: roles.vat_output ?? "", amountCents: f["399"] ?? 0 },
+              {
+                accountId: roles.vat_input_material ?? "",
+                amountCents: -(f["400"] ?? f["66"] ?? 0),
+              },
+              { accountId: roles.vat_input_invest ?? "", amountCents: -(f["405"] ?? 0) },
+              { accountId: roles.vat_settlement ?? "", amountCents: -net },
+            ];
+      const postings = all.filter((p) => p.amountCents !== 0);
+      if (postings.length >= 2) {
+        const entry = await appendEntry(tdb, who, {
+          entryDate: end,
+          description: `MWST-Abrechnung / Décompte TVA ${start} – ${end}`,
+          sourceType: "vat",
+          postings,
+        });
+        entryId = entry.id;
+      }
+      await tx.insert(vatReturns).values({
+        organizationId: who.organizationId,
+        periodStart: start,
+        periodEnd: end,
+        figures: f,
+        anomalies: draft.anomalies,
+        journalEntryId: entryId,
+        validatedBy: who.userId,
+      });
+      await tx.insert(auditLog).values({
+        organizationId: who.organizationId,
+        userId: who.userId,
+        action: "vat_return.validate",
+        entity: "organization",
+        entityId: who.organizationId,
+        data: { start, end, payable: f["500"], credit: f["510"] },
+      });
+    });
+  } catch (e) {
+    if (e instanceof LedgerError) return e.message === "noFiscalYear" ? "noFiscalYear" : "noChart";
+    throw e;
+  }
+  return "validated";
+}

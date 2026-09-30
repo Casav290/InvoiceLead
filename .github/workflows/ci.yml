@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_HOST_AUTH_METHOD: trust
+          POSTGRES_DB: invoicelead_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgres://postgres@localhost:5432/invoicelead_test
+      TEST_DATABASE_URL: postgres://postgres@localhost:5432/invoicelead_test
+      E2E_DATABASE_URL: postgres://postgres@localhost:5432/invoicelead_test
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Lint et format (Biome)
+        run: npx biome ci .
+      - name: Types
+        run: npx tsc --noEmit
+      - name: Migrations
+        run: npm run db:migrate
+      - name: Tests unitaires et d'intégration
+        run: npx vitest run
+      - name: Build
+        run: npx next build
+      - name: Navigateur Playwright
+        run: npx playwright install --with-deps chromium
+      - name: Tests de bout en bout et audit Trait net
+        run: npx playwright test
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7

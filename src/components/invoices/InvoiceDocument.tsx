@@ -1,0 +1,206 @@
+import { getTranslations } from "next-intl/server";
+import { countryPack } from "@/countries";
+import { formatRate } from "@/countries/ch/vat";
+import { addressLines } from "@/lib/address";
+import { formatFxRate, toHome } from "@/lib/currencies";
+import { formatDate } from "@/lib/fiscal-year";
+import { computeTotals, formatQuantity } from "@/lib/invoice-math";
+import { formatAmount } from "@/lib/money";
+import { taxNumberLabel } from "@/lib/swiss-ids";
+import type { Invoice, InvoiceLine, PartySnapshot } from "@/server/db/schema";
+
+function Address({
+  party,
+  home,
+  language,
+}: {
+  party: PartySnapshot;
+  home: string;
+  language: string;
+}) {
+  const [name, ...rest] = addressLines(party, home, language);
+  return (
+    <address className="text-[13px] leading-relaxed not-italic">
+      <strong className="block">{name}</strong>
+      {rest.map((line) => (
+        <span key={line} className="block">
+          {line}
+        </span>
+      ))}
+    </address>
+  );
+}
+
+/**
+ * Facture telle qu'elle a été émise, dans sa langue, à partir des données figées. Sert d'aperçu à
+ * l'écran ; le PDF avec QR-facture reprendra la même mise en page.
+ */
+export async function InvoiceDocument({
+  invoice,
+  lines,
+  relatedNumber,
+}: {
+  invoice: Invoice;
+  lines: InvoiceLine[];
+  relatedNumber?: string | null;
+}) {
+  const lang = invoice.language;
+  const t = await getTranslations({ locale: lang, namespace: "app.invoices.document" });
+  const tk = await getTranslations({
+    locale: lang,
+    namespace:
+      invoice.kind === "quote"
+        ? "app.quotes"
+        : invoice.kind === "credit_note"
+          ? "app.creditNotes"
+          : "app.invoices",
+  });
+  const tu = await getTranslations({ locale: lang, namespace: "app.invoices.units" });
+  const sender = invoice.sender;
+  const style = countryPack(sender?.country).amounts;
+  const dateStyle = countryPack(sender?.country).dates;
+  // États-Unis : sales tax, pas de TVA, dans les libellés.
+  const us = sender?.country === "US";
+  const recipient = invoice.recipient;
+  const totals = computeTotals(lines);
+  return (
+    <article
+      lang={lang}
+      data-testid="invoice-document"
+      className="border border-line-strong bg-panel px-5 py-6 sm:px-10 sm:py-10"
+    >
+      <div className="grid gap-6 sm:grid-cols-2">
+        {sender ? (
+          <div>
+            <Address party={sender} home={sender.country} language={invoice.language} />
+            {sender.vatNumber ? (
+              <p className="mt-1 text-[12px] text-ink-2">{sender.vatNumber}</p>
+            ) : null}
+            {sender.taxNumber ? (
+              <p className="text-[12px] text-ink-2">
+                {taxNumberLabel(sender.country)} {sender.taxNumber}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+        {recipient ? (
+          <div className="sm:pt-10">
+            <Address party={recipient} home={sender?.country ?? "CH"} language={invoice.language} />
+          </div>
+        ) : null}
+      </div>
+      <h2 className="mt-10 text-[22px] leading-tight">
+        {invoice.title || tk("docTitle")} {invoice.number}
+      </h2>
+      <dl className="mt-3 grid grid-cols-[auto_1fr] gap-x-4 text-[13px] text-ink-2">
+        <dt>{t("issueDate")}</dt>
+        <dd className="tabular-nums">{formatDate(invoice.issueDate, dateStyle)}</dd>
+        <dt>{t("serviceDate")}</dt>
+        <dd className="tabular-nums">{formatDate(invoice.serviceDate, dateStyle)}</dd>
+        {invoice.kind === "credit_note" ? null : (
+          <>
+            <dt>{tk("docDue")}</dt>
+            <dd className="tabular-nums">{formatDate(invoice.dueDate, dateStyle)}</dd>
+          </>
+        )}
+      </dl>
+      {relatedNumber ? (
+        <p className="mt-3 text-[13px]">{t("relatedLine", { number: relatedNumber })}</p>
+      ) : null}
+      {invoice.introText ? (
+        <p className="mt-6 text-[14px] whitespace-pre-line">{invoice.introText}</p>
+      ) : null}
+      <div className="mt-6 overflow-x-auto">
+        <table className="w-full text-left text-[13px]">
+          <thead>
+            <tr className="border-b border-line-strong text-[10.5px] font-extrabold tracking-[0.09em] text-ink-muted uppercase">
+              <th className="py-2 pr-3">{t("description")}</th>
+              <th className="py-2 pr-3 text-right">{t("quantity")}</th>
+              <th className="hidden py-2 pr-3 text-right sm:table-cell">{t("unitPrice")}</th>
+              {invoice.vatRegistered ? (
+                <th className="hidden py-2 pr-3 text-right sm:table-cell">
+                  {t(us ? "vatUs" : "vat")}
+                </th>
+              ) : null}
+              <th className="py-2 text-right">{t("amount")}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {lines.map((l) => (
+              <tr key={l.id} className="border-b border-line-soft align-top">
+                <td className="py-2 pr-3 whitespace-pre-line [overflow-wrap:anywhere]">
+                  {l.description}
+                </td>
+                <td className="py-2 pr-3 text-right whitespace-nowrap tabular-nums">
+                  {formatQuantity(l.quantityMilli)} {tu(l.unit)}
+                </td>
+                <td className="hidden py-2 pr-3 text-right tabular-nums sm:table-cell">
+                  {formatAmount(l.unitPriceCents, style)}
+                </td>
+                {invoice.vatRegistered ? (
+                  <td className="hidden py-2 pr-3 text-right sm:table-cell">
+                    {formatRate(l.vatRateBp, lang)}
+                  </td>
+                ) : null}
+                <td className="py-2 text-right tabular-nums">{formatAmount(l.netCents, style)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <dl className="mt-4 ml-auto max-w-sm text-[13px]">
+        {invoice.vatRegistered ? (
+          <>
+            <div className="flex justify-between gap-4">
+              <dt>{t(us ? "netUs" : "net")}</dt>
+              <dd className="tabular-nums">{formatAmount(invoice.netCents, style)}</dd>
+            </div>
+            {totals.vat
+              .filter((v) => v.rateBp > 0)
+              .map((v) => (
+                <div key={v.rateBp} className="flex justify-between gap-4 text-ink-2">
+                  <dt>
+                    {t(us ? "vatLineUs" : "vatLine", {
+                      rate: formatRate(v.rateBp, lang),
+                      base: formatAmount(v.netCents, style),
+                    })}
+                  </dt>
+                  <dd className="tabular-nums">{formatAmount(v.vatCents, style)}</dd>
+                </div>
+              ))}
+          </>
+        ) : null}
+        <div className="mt-2 flex justify-between gap-4 border-t border-line-strong pt-2 text-[15px] font-extrabold">
+          <dt>{t("total")}</dt>
+          <dd className="tabular-nums" data-testid="invoice-total">
+            {invoice.currency} {formatAmount(invoice.totalCents, style)}
+          </dd>
+        </div>
+      </dl>
+      {invoice.fxRate && sender ? (
+        <p className="mt-3 text-right text-[12px] text-ink-2" data-testid="invoice-fx">
+          {t("fxLine", {
+            currency: invoice.currency,
+            rate: formatFxRate(invoice.fxRate),
+            home: countryPack(sender.country).currency,
+            total: formatAmount(toHome(invoice.totalCents, invoice.fxRate), style),
+          })}
+          {invoice.vatRegistered && invoice.vatCents > 0
+            ? `, ${t("fxVatLine", {
+                home: countryPack(sender.country).currency,
+                vat: formatAmount(toHome(invoice.vatCents, invoice.fxRate), style),
+              })}`
+            : null}
+        </p>
+      ) : null}
+      {invoice.footerText ? (
+        <p className="mt-8 text-[13px] whitespace-pre-line text-ink-2">{invoice.footerText}</p>
+      ) : null}
+      {invoice.kind === "invoice" && (sender?.iban || sender?.qrIban) ? (
+        <p className="mt-8 text-[12px] text-ink-muted">
+          {t("payTo", { iban: sender.qrIban ?? sender.iban ?? "" })}
+        </p>
+      ) : null}
+    </article>
+  );
+}
