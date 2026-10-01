@@ -20,9 +20,13 @@ export default function proxy(request: NextRequest) {
   // chaque page (requireAppSession) : ce filtre n'est qu'un raccourci.
   const match = decodedPath(request.nextUrl.pathname).match(PROTECTED);
   if (match && !request.cookies.has(SESSION_COOKIE)) {
+    // Vers la connexion, avec la page demandée pour y revenir. Pas tout droit vers le Compte Lead :
+    // un préchargement de Next suivrait la redirection et lancerait une connexion en arrière-plan.
+    const locale = match[1]?.toLowerCase() ?? "de";
     const url = request.nextUrl.clone();
-    url.pathname = `/${match[1]?.toLowerCase()}/login`;
-    url.search = "";
+    const wanted = `${request.nextUrl.pathname}${request.nextUrl.search}`;
+    url.pathname = `/${locale}/login`;
+    url.search = `?${new URLSearchParams({ next: wanted })}`;
     return NextResponse.redirect(url);
   }
   return intl(request);

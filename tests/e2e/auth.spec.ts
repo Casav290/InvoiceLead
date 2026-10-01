@@ -1,9 +1,23 @@
 import { expect, test } from "@playwright/test";
 import { LEAD, login } from "./helpers";
 
-test("l'application sans session renvoie vers la connexion", async ({ page }) => {
-  await page.goto("/de/app");
-  await expect(page).toHaveURL(/\/de\/login$/);
+test("sans session, la page demandée passe par le Compte Lead puis se rouvre", async ({ page }) => {
+  const res = await page.request.get("/fr/app/invoices?kind=quote", { maxRedirects: 0 });
+  expect([303, 307, 308]).toContain(res.status());
+  const location = res.headers().location ?? "";
+  expect(location).toContain("/fr/login?next=");
+  expect(decodeURIComponent(location)).toContain("next=/fr/app/invoices?kind=quote");
+  await page.goto("/fr/app/invoices");
+  await expect(page).toHaveURL(/\/fr\/app\/invoices$/);
+});
+
+test("une adresse de retour étrangère est ignorée", async ({ page }) => {
+  await page.goto("/auth/lead/start?locale=de&next=https%3A%2F%2Fevil.example%2F");
+  await expect(page).toHaveURL(/\/de\/app$/);
+});
+
+test("l'écran de connexion ne reste que pour dire une erreur", async ({ page }) => {
+  await page.goto("/de/login?erreur=session");
   await expect(page.getByTestId("lead-login")).toBeVisible();
 });
 
@@ -50,8 +64,9 @@ test("déconnexion : session locale et Compte Lead fermés", async ({ page }) =>
   }[];
   expect(logouts.at(-1)?.client_id).toBe("invoicelead");
   expect(logouts.at(-1)?.id_token_hint).toBeTruthy();
-  await page.goto("/de/app");
-  await expect(page).toHaveURL(/\/de\/login$/);
+  // Plus de session : l'application renvoie vers le Compte Lead.
+  const again = await page.request.get("/de/app", { maxRedirects: 0 });
+  expect(again.headers().location ?? "").toContain("/de/login?next=");
 });
 
 test("un compte Lead sans InvoiceLead dans sa formule entre en version gratuite", async ({
@@ -98,7 +113,7 @@ test("un retour sans demande en cours est refusé proprement", async ({ page }) 
 });
 
 test("un état falsifié au retour est refusé", async ({ page }) => {
-  await page.goto("/de/login");
+  await page.goto("/de/login?erreur=session");
   // Départ réel (cookie posé), mais retour avec un autre `state`.
   const start = await page.request.get("/auth/lead/start?locale=de", { maxRedirects: 0 });
   expect(start.status()).toBe(303);
@@ -110,8 +125,7 @@ test("un chemin encodé ne contourne pas le filtre du proxy", async ({ page }) =
   const res = await page.request.get("/de/%61pp", { maxRedirects: 0 });
   expect([303, 307, 308]).toContain(res.status());
   expect(await res.text()).not.toContain("dashboard-title");
-  await page.goto("/de/%61pp");
-  await expect(page).toHaveURL(/\/de\/login$/);
+  expect(res.headers().location ?? "").toContain("/de/login");
 });
 
 test("déconnexion au clavier depuis le menu", async ({ page }) => {

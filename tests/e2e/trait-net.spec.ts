@@ -11,8 +11,8 @@ const WIDTHS = [
 const PUBLIC_PAGES = [
   "/de",
   "/fr",
-  "/de/login",
-  "/fr/login",
+  "/de/login?erreur=session",
+  "/fr/login?erreur=lead",
   "/de/signup",
   "/fr/signup",
   "/fr/nexiste-pas",

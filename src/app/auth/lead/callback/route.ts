@@ -43,7 +43,10 @@ export async function GET(request: NextRequest) {
       organizationId: organization.id,
       idToken: tokens.id_token,
     });
-    const next = saved.invite ? `/${locale}/invite?token=${saved.invite}` : `/${locale}/app`;
+    // Retour sur la page demandée avant la connexion, sinon le tableau de bord.
+    const next = saved.invite
+      ? `/${locale}/invite?token=${saved.invite}`
+      : (saved.next ?? `/${locale}/app`);
     const response = done(`${APP_URL}${next}`);
     response.cookies.set(SESSION_COOKIE, session.token, cookieOptions(SESSION_HOURS * 3600));
     return response;

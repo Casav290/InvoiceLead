@@ -4,6 +4,17 @@ import { sign, unsign } from "./crypto";
 /** Jeton d'invitation : base64url de 32 octets. */
 export const INVITE_TOKEN = /^[A-Za-z0-9_-]{20,100}$/;
 
+/**
+ * Page à rouvrir après la connexion : une adresse de l'application, sur ce site seulement
+ * (« /fr/app/invoices/… »), avec une recherche simple. Rien d'autre n'est suivi.
+ */
+export const NEXT_PATH = /^\/(de|fr|en)\/app(\/[A-Za-z0-9_\-/]*)?(\?[A-Za-z0-9=&%._-]*)?$/;
+
+export function safeNext(value: string | null | undefined): string | undefined {
+  if (!value || value.length > 500 || value.includes("//")) return undefined;
+  return NEXT_PATH.test(value) ? value : undefined;
+}
+
 const saved = z.object({
   state: z.string().min(1),
   nonce: z.string().min(1),
@@ -11,6 +22,8 @@ const saved = z.object({
   locale: z.enum(["de", "fr", "en"]),
   /** Jeton d'invitation de fiduciaire à reprendre après la connexion. */
   invite: z.string().regex(INVITE_TOKEN).optional(),
+  /** Page demandée avant la connexion, reprise au retour. */
+  next: z.string().regex(NEXT_PATH).optional(),
 });
 
 export type SavedLogin = z.infer<typeof saved>;
