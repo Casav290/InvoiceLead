@@ -24,7 +24,7 @@ import {
 } from "@/server/invoices";
 import { postPending } from "@/server/ledger";
 import { addPayment, deletePayment, parsePaymentForm } from "@/server/payments";
-import { featureAccess, quotaAccess } from "@/server/plans";
+import { featureAccess } from "@/server/plans";
 import { flushWebhooks } from "@/server/webhooks";
 
 /** Comptabilise ce qui peut l'être ; une panne ici ne doit jamais bloquer la facturation. */
@@ -102,11 +102,8 @@ export async function issueInvoiceAction(form: FormData) {
   const session = await requirePermission(locale, "billing");
   const id = String(form.get("id") ?? "");
   const path = `/${locale}/app/${section(kindOf(form))}`;
-  if (
-    kindOf(form) === "invoice" &&
-    !(await quotaAccess(db(), session.organization, "invoices")).allowed
-  )
-    redirect(`${path}/${id}?error=planLimit`);
+  // Les 10 factures du mois de la formule gratuite se comptent dans issueInvoice, d'après le type
+  // du brouillon en base (« planLimit ») : le champ « kind » du formulaire ne sert qu'à l'adresse.
   const result = await issueInvoice(
     db(),
     { organizationId: session.organization.id, userId: session.user.id },

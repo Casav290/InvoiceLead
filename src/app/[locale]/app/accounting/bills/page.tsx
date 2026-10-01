@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { AccountingNav } from "@/components/accounting/AccountingNav";
-import { ProLock } from "@/components/app/ProLock";
 import { Button } from "@/components/ui/button";
 import { countryPack } from "@/countries";
 import { Link } from "@/i18n/navigation";
@@ -10,8 +9,6 @@ import { formatAmount } from "@/lib/money";
 import { requireAppSession } from "@/server/auth/guard";
 import { listBills } from "@/server/bills";
 import { db } from "@/server/db";
-import { lockFor } from "@/server/plan-lock";
-import { quotaAccess } from "@/server/plans";
 import { can } from "@/server/roles";
 import { dualApprovalAction, importEInvoicesAction } from "./actions";
 
@@ -45,43 +42,6 @@ export default async function BillsPage({ params, searchParams }: Props) {
   const bills = await listBills(db(), organization.id);
   const toPay = bills.filter((b) => b.status === "approved");
   const hidden = <input type="hidden" name="locale" value={locale} />;
-  // Chaque e-facture importée compte dans les pièces lues du mois (Gratuit 20).
-  const tp = await getTranslations({ locale, namespace: "app.plan" });
-  const reads = await quotaAccess(db(), organization, "aiReads");
-  const usedUp = tp("used.aiReads", { limit: reads.limit, plan: reads.tier });
-  const importLock = await lockFor(locale, organization, reads, usedUp);
-  const importForm = (
-    <form
-      action={importEInvoicesAction}
-      className="flex flex-wrap items-end gap-3 border border-line-strong bg-panel px-5 py-4"
-    >
-      {hidden}
-      <div className="min-w-0 flex-1">
-        <label htmlFor="einvoice-files" className="mb-1 block text-[13px] font-semibold">
-          {t("importLabel")}
-        </label>
-        <input
-          id="einvoice-files"
-          name="files"
-          type="file"
-          multiple
-          required
-          accept="application/xml,text/xml,.xml,application/pdf"
-          aria-describedby="einvoice-hint"
-          className="block w-full text-[13px]"
-        />
-        <span id="einvoice-hint" className="mt-1 block text-[12px] text-ink-muted">
-          {t("importHint")}
-        </span>
-        <span className="mt-1 block text-[12px] text-ink-2" data-testid="einvoice-quota">
-          {tp("quota.aiReads", { used: reads.used, limit: reads.limit })}
-        </span>
-      </div>
-      <Button type="submit" variant="secondary" data-testid="einvoice-import">
-        {t("import")}
-      </Button>
-    </form>
-  );
   const notice =
     q.imported !== undefined
       ? t("imported", { count: Number(q.imported) || 0, rejected: Number(q.rejected) || 0 })
@@ -111,22 +71,43 @@ export default async function BillsPage({ params, searchParams }: Props) {
           {notice}
         </p>
       ) : null}
-      {q.error === "none" || q.error === "noIban" || q.error === "quota" ? (
+      {q.error === "none" || q.error === "noIban" ? (
         <p
           role="alert"
           className="mt-6 border border-hot-fg bg-hot-bg px-4 py-3 text-[13px] text-hot-fg"
         >
-          {q.error === "quota" ? usedUp : t(`errors.${q.error}`)}
+          {t(`errors.${q.error}`)}
         </p>
       ) : null}
 
-      {importLock ? (
-        <ProLock lock={importLock} testId="einvoice-lock" className="mt-6">
-          {importForm}
-        </ProLock>
-      ) : (
-        <div className="mt-6">{importForm}</div>
-      )}
+      {/* E-factures lues sans IA : ouvertes à toutes les formules, hors compteur. */}
+      <form
+        action={importEInvoicesAction}
+        className="mt-6 flex flex-wrap items-end gap-3 border border-line-strong bg-panel px-5 py-4"
+      >
+        {hidden}
+        <div className="min-w-0 flex-1">
+          <label htmlFor="einvoice-files" className="mb-1 block text-[13px] font-semibold">
+            {t("importLabel")}
+          </label>
+          <input
+            id="einvoice-files"
+            name="files"
+            type="file"
+            multiple
+            required
+            accept="application/xml,text/xml,.xml,application/pdf"
+            aria-describedby="einvoice-hint"
+            className="block w-full text-[13px]"
+          />
+          <span id="einvoice-hint" className="mt-1 block text-[12px] text-ink-muted">
+            {t("importHint")}
+          </span>
+        </div>
+        <Button type="submit" variant="secondary" data-testid="einvoice-import">
+          {t("import")}
+        </Button>
+      </form>
 
       {toPay.length > 0 ? (
         <form

@@ -38,7 +38,7 @@ export default async function ReceiptsPage({ params, searchParams }: Props) {
   const tp = await getTranslations({ locale, namespace: "app.plan" });
   const rows = await listReceipts(db(), organization.id);
   const hidden = <input type="hidden" name="locale" value={locale} />;
-  // Lectures du mois (tickets, justificatifs, e-factures) : une fois utilisées, dépôt et relecture
+  // Lectures du mois par l'IA (tickets, justificatifs) : une fois utilisées, dépôt et relecture
   // restent visibles mais grisés.
   const reads = await quotaAccess(db(), organization, "aiReads");
   const usedUp = tp("used.aiReads", { limit: reads.limit, plan: reads.tier });

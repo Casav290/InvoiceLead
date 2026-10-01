@@ -151,6 +151,8 @@
       "blockedBody": "Un responsable de {org} a retiré votre accès à InvoiceLead. Demandez-lui de le rétablir dans les réglages de l'équipe.",
       "seatTitle": "Toutes les places sont prises",
       "seatBody": "La formule de {org} compte {seats, plural, one {# utilisateur} other {# utilisateurs}}, déjà tous occupés. Un responsable peut passer à une formule supérieure ou libérer une place.",
+      "fiduciaryTitle": "Accès fiduciaire suspendu",
+      "fiduciaryBody": "{org} est en formule gratuite. L'accès fiduciaire fait partie de la formule Pro : il revient dès que {org} repasse à Pro.",
       "otherOrgs": "Travailler dans une autre entreprise",
       "betaTitle": "InvoiceLead est en bêta privée",
       "betaBody": "{org} n'est pas encore sur la liste de la bêta. Nous ouvrons les accès par petits groupes ; écrivez-nous à hello@invoicelead.io pour y figurer."
@@ -275,6 +277,7 @@
         "netTaxRate": "Indiquez le taux accordé par l'AFC (entre 0,1 et 15 %).",
         "ustId": "USt-IdNr. invalide (DE suivi de 9 chiffres, clé de contrôle).",
         "countryLocked": "Le pays ne change plus une fois une pièce émise.",
+        "countryDrafts": "Des brouillons sont dans une autre devise que celle du nouveau pays. Supprimez-les avant de changer de pays, ou passez à Pro pour facturer en devise étrangère.",
         "taxNumber": "Steuernummer invalide (10 à 13 chiffres).",
         "taxIdRequired": "Indiquez l'USt-IdNr. ou la Steuernummer : l'un des deux figure sur chaque facture.",
         "frVatId": "Numéro de TVA invalide (FR, clé à 2 chiffres, SIREN).",
@@ -1218,7 +1221,7 @@
       "validate": "Valider le décompte",
       "semester": "S{q} {year}",
       "tax": "Impôt",
-      "planOnly": "Le décompte TVA préparé et validé dans InvoiceLead est compris dans la formule Pro. Vous pouvez consulter les chiffres ci-dessous.",
+      "planOnly": "Le décompte TVA, calculé et validé dans InvoiceLead, fait partie de la formule Pro. En formule gratuite, vous voyez sa structure et ses contrôles ; les montants s'affichent avec Pro.",
       "figuresDe": {
         "81": "Kz 81 · Prestations imposables à 19 %",
         "86": "Kz 86 · Prestations imposables à 7 %",
@@ -1263,7 +1266,10 @@
       "xmlDownload": "Télécharger le décompte au format eCH-0217, à déposer sur le portail de l'AFC",
       "xmlNoUid": "Le fichier eCH-0217 demande le numéro IDE de l'entreprise (réglages).",
       "validatePlan": "Fonction Pro. Passez à Pro pour valider et déposer votre décompte.",
-      "planOnlyUs": "Le relevé de sales tax préparé et validé dans InvoiceLead est compris dans la formule Pro. Vous pouvez consulter les chiffres ci-dessous."
+      "planOnlyUs": "Le relevé de sales tax, calculé et validé dans InvoiceLead, fait partie de la formule Pro. En formule gratuite, vous voyez sa structure et ses contrôles ; les montants s'affichent avec Pro.",
+      "figuresPlan": "Fonction Pro. Les montants du décompte s'affichent avec Pro.",
+      "figuresPlanUs": "Fonction Pro. Les montants du relevé s'affichent avec Pro.",
+      "amountHidden": "Montant affiché avec Pro"
     },
     "reminders": {
       "title": "Relances",
@@ -1312,7 +1318,10 @@
           "US": "Vide : aucun intérêt. Le taux maximal dépend de l’État et du contrat."
         },
         "save": "Enregistrer les réglages",
-        "plan": "Les 2e et 3e relances, l'envoi automatique, les frais de rappel et les intérêts moratoires font partie de la formule Pro.",
+        "smartTitle": "Relances intelligentes",
+        "smartCourtesy": "Rappel courtois {days} jours avant l'échéance aux clients qui paient souvent en retard.",
+        "smartRhythm": "Rythme adapté aux paiements de chaque client : première relance après {reliable} jours pour les bons payeurs, après {late} jours pour les retardataires.",
+        "plan": "Les 2e et 3e relances, l'envoi automatique, les frais de rappel, les intérêts moratoires et les relances intelligentes font partie de la formule Pro.",
         "results": {
           "saved": "Réglages des relances enregistrés.",
           "plan": "Ces réglages font partie de la formule Pro.",
@@ -1331,7 +1340,7 @@
       "week": "Semaine du {date}",
       "later": "Plus tard",
       "forecastEmpty": "Aucune facture ouverte.",
-      "levelPlan": "Fonction Pro. La formule gratuite envoie la première relance, les suivantes font partie de Pro."
+      "levelPlan": "Fonction Pro. La formule gratuite envoie la première relance ; les suivantes font partie de Pro."
     },
     "recurring": {
       "title": "Factures récurrentes",
@@ -1355,7 +1364,7 @@
       "free": "Gratuit",
       "pro": "Pro",
       "proplus": "Pro+",
-      "usage": "Formule {plan}{hasLimit, select, yes { : {invoices} factures sur {invoiceLimit} ce mois-ci, {contacts} contacts sur {contactLimit}} other {}}.",
+      "usage": "{tier, select, free {Formule gratuite : {invoices, plural, one {# facture} other {# factures}} sur {invoiceLimit} ce mois-ci, {contacts, plural, one {# contact} other {# contacts}} sur {contactLimit}.} pro {Formule Pro.} other {Formule Pro+.}}",
       "upgradePlus": "Passer à Pro+",
       "locked": "Fonction Pro. Passez à Pro pour l'utiliser.",
       "lockedPlus": "Fonction Pro+. Passez à Pro+ pour l'utiliser.",
@@ -1403,6 +1412,7 @@
       },
       "managerRole": "Tout, réglages compris",
       "noSeat": "sans place",
+      "moreSeats": "{tier, select, pro {Pro compte {pro} places et Pro+ en compte {plus}.} other {Pro+ compte {plus} places.}}",
       "save": "Enregistrer",
       "saved": "Rôle enregistré.",
       "addHint": "Pour ajouter une personne, invitez-la dans votre organisation depuis le Compte Lead. Elle apparaît ici après sa première connexion.",
@@ -1418,6 +1428,7 @@
       "removed": "Accès retiré.",
       "noFiduciary": "Aucune fiduciaire n'a accès pour l'instant.",
       "planOnly": "L'accès fiduciaire est compris dans les formules Pro et Pro+.",
+      "suspended": "Accès suspendu : l'accès fiduciaire fait partie de la formule Pro.",
       "managersOnly": "Seuls les responsables de l'entreprise modifient l'équipe.",
       "errors": {
         "invalid": "Adresse e-mail invalide.",
@@ -1489,7 +1500,7 @@
     "apiSettings": {
       "title": "API et webhooks",
       "subtitle": "Reliez InvoiceLead à vos outils : l'API REST ({base}) crée contacts, devis, factures et paiements ; les webhooks préviennent vos outils quand une facture est émise ou payée.",
-      "plan": "L'API et les webhooks font partie de la formule Pro+.",
+      "plan": "L'API, le serveur MCP et les webhooks font partie de la formule Pro+.",
       "keys": {
         "title": "Clés d'API",
         "empty": "Aucune clé.",
@@ -1512,6 +1523,7 @@
         "disable": "Supprimer",
         "disabled": "Webhook supprimé.",
         "delivery": "{event} : {status} ({code}), {date}",
+        "noCode": "sans réponse",
         "status": {
           "pending": "en attente",
           "delivered": "livré",
@@ -1519,7 +1531,7 @@
         }
       },
       "errors": {
-        "plan": "L'API et les webhooks font partie de la formule Pro+.",
+        "plan": "L'API, le serveur MCP et les webhooks font partie de la formule Pro+.",
         "invalid": "Nom obligatoire (60 caractères au plus).",
         "tooMany": "Nombre maximal atteint.",
         "url": "Adresse invalide : https vers un serveur public, sans identifiants.",
@@ -1899,7 +1911,7 @@
           "50 contacts",
           "QR-facture, documents en DE, FR, IT, EN",
           "Comptabilité alimentée par vos factures",
-          "20 pièces lues par l'IA chaque mois (tickets, justificatifs, e-factures)",
+          "20 pièces lues par l'IA chaque mois (tickets, justificatifs), e-factures reçues sans limite",
           "Assistant : 10 questions par mois",
           "Première relance à la main, 5 par mois",
           "1 facture récurrente active",
@@ -1918,7 +1930,7 @@
           "Relances automatiques sur 3 niveaux, frais et intérêts",
           "Décompte TVA (effective et TDFN)",
           "Import bancaire camt sans limite, récapitulatif du pilote le lundi",
-          "Factures récurrentes, multidevise"
+          "Factures récurrentes sans limite, multidevise"
         ]
       },
       "proPlus": {
@@ -1971,11 +1983,11 @@
       },
       {
         "q": "Que comprend la formule gratuite ?",
-        "a": "Chaque mois : 10 factures, 20 pièces lues par l'IA, 10 questions à l'assistant, 5 premières relances et 1 relevé bancaire avec le pilote automatique. Elle compte aussi 50 contacts et 1 facture récurrente active. Les fonctions Pro restent visibles dans l'application, en gris avec la marque Pro, pour que vous sachiez qu'elles existent."
+        "a": "Chaque mois : 10 factures, 20 pièces lues par l'IA, 10 questions à l'assistant, 5 relances de premier niveau et 1 relevé bancaire avec le pilote automatique. Elle compte aussi 50 contacts et 1 facture récurrente active, et reçoit les e-factures sans limite. Les fonctions Pro et Pro+ restent visibles dans l'application, en gris avec leur marque, pour que vous sachiez qu'elles existent."
       },
       {
         "q": "Faut-il une carte bancaire pour commencer ?",
-        "a": "Non. La formule Gratuite ne demande aucune carte et n'a pas de limite de durée."
+        "a": "Non. La formule gratuite ne demande aucune carte et n'a pas de limite de durée."
       }
     ]
   },

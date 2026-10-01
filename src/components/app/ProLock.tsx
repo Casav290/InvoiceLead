@@ -68,7 +68,8 @@ export function LockNote({
 /**
  * Fonction grisée : les champs et boutons restent visibles à leur place mais sont désactivés
  * (fieldset disabled, aria-disabled), en gris lisible ; la raison et le lien de mise à niveau
- * suivent, hors du bloc désactivé, donc atteignables au clavier.
+ * suivent, hors du bloc désactivé, donc atteignables au clavier. Le cadre est celui du verrou : le
+ * bloc enveloppé perd sa propre bordure, pour un seul trait (Trait net).
  */
 export function ProLock({
   lock,
@@ -92,7 +93,7 @@ export function ProLock({
         disabled
         aria-disabled="true"
         aria-describedby={noteId}
-        className="m-0 min-w-0 border-0 p-0 text-ink-muted grayscale"
+        className="m-0 min-w-0 border-0 p-0 text-ink-muted grayscale [&>*]:border-0"
       >
         {children}
       </fieldset>

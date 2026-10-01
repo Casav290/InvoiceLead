@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { attachLeadIdentity } from "@/server/auth/attach";
 import { createContact, parseContactForm } from "@/server/contacts";
@@ -152,8 +152,20 @@ describe("allocations mensuelles", () => {
     await refundQuota(db, free.id, "aiReads", "2026-10-01");
     expect((await quotaAccess(db, free, "aiReads", "2026-10-01")).used).toBe(19);
     expect(await consume(free, "aiReads", 2)).toBe(1);
+    // Sans ligne du mois : rien à rendre, rien d'écrit.
     await refundQuota(db, free.id, "assistant", "2026-10-01");
     expect((await quotaAccess(db, free, "assistant", "2026-10-01")).used).toBe(0);
+    // Une ligne à 1, rendue deux fois (panne de l'IA rejouée) : elle reste à 0, sans erreur, même
+    // avec la contrainte « used >= 0 » de la table.
+    expect(await consume(free, "assistant", 1)).toBe(1);
+    await refundQuota(db, free.id, "assistant", "2026-10-01");
+    await expect(refundQuota(db, free.id, "assistant", "2026-10-01")).resolves.toBeUndefined();
+    const [row] = await db
+      .select()
+      .from(planUsage)
+      .where(and(eq(planUsage.organizationId, free.id), eq(planUsage.key, "assistant")));
+    expect(row?.used).toBe(0);
+    expect(await consume(free, "assistant", 10)).toBe(10);
   });
 
   it("repartent à zéro le premier du mois (UTC) et restent propres à l'entreprise", async () => {

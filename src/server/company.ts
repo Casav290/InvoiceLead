@@ -18,7 +18,8 @@ import {
   normalizeUid,
 } from "@/lib/swiss-ids";
 import type { Db } from "./db";
-import { auditLog, invoices, memberships, organizations } from "./db/schema";
+import { auditLog, invoices, memberships, organizations, supplierBills } from "./db/schema";
+import { featureAccess } from "./plans";
 import { can } from "./roles";
 
 export const LEGAL_FORMS = [
@@ -290,11 +291,15 @@ export async function saveCompanySettings(
   database: Db,
   who: { organizationId: string; userId: string },
   data: CompanyInput,
-): Promise<"saved" | "forbidden" | "countryLocked"> {
+): Promise<"saved" | "forbidden" | "countryLocked" | "countryDrafts"> {
   if (!(await canEditSettings(database, who.organizationId, who.userId))) return "forbidden";
   // Le pays fixe la devise et les taux : il ne change plus une fois une pièce émise.
   const [current] = await database
-    .select({ country: organizations.country })
+    .select({
+      country: organizations.country,
+      leadPlan: organizations.leadPlan,
+      entitlements: organizations.entitlements,
+    })
     .from(organizations)
     .where(eq(organizations.id, who.organizationId));
   if (current && current.country !== data.country) {
@@ -304,6 +309,31 @@ export async function saveCompanySettings(
       .where(and(eq(invoices.organizationId, who.organizationId), ne(invoices.status, "draft")))
       .limit(1);
     if (issued) return "countryLocked";
+    // Sans la formule Pro (multidevise), un brouillon resté dans l'ancienne devise deviendrait une
+    // pièce en devise étrangère : le pays ne change qu'une fois ces brouillons supprimés.
+    const currency = countryPack(data.country).currency;
+    if (!featureAccess(current, "multiCurrency").allowed) {
+      const [draft] = await database
+        .select({ id: invoices.id })
+        .from(invoices)
+        .where(
+          and(eq(invoices.organizationId, who.organizationId), ne(invoices.currency, currency)),
+        )
+        .limit(1);
+      const [bill] = await database
+        .select({ id: supplierBills.id })
+        .from(supplierBills)
+        .where(
+          and(
+            eq(supplierBills.organizationId, who.organizationId),
+            eq(supplierBills.status, "draft"),
+            eq(supplierBills.source, "manual"),
+            ne(supplierBills.currency, currency),
+          ),
+        )
+        .limit(1);
+      if (draft || bill) return "countryDrafts";
+    }
   }
   const complete = !!(
     data.legalName &&

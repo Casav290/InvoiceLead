@@ -10,6 +10,8 @@ test("entreprise française : facture en euros à 20 %, SIRET, Factur-X, PCG et 
     email: `fr-${run}@durand.test`,
     org: `org-fr-${run}`,
     org_name: "Atelier Durand SAS",
+    // Le décompte de TVA (montants calculés) fait partie de la formule Pro.
+    plan: "pro",
   });
 
   await page.goto("/fr/app/settings/company");

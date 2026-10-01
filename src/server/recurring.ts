@@ -254,11 +254,11 @@ export async function runRecurring(
         .update(recurringInvoices)
         .set({ nextDate: addMonths(r.nextDate, r.intervalMonths), lastInvoiceId: created.id })
         .where(eq(recurringInvoices.id, r.id));
-      if (r.autoSend && !(await quotaAccess(database, org, "invoices", today)).allowed) {
-        run.held += 1;
-      } else if (r.autoSend) {
+      if (r.autoSend) {
+        // Formule gratuite : au-delà des 10 factures du mois, issueInvoice la laisse en brouillon.
         const issued = await issueInvoice(database, who, created.id);
-        if (typeof issued === "object") {
+        if (issued === "planLimit") run.held += 1;
+        else if (typeof issued === "object") {
           run.issued += 1;
           await postPending(database, who);
           if (send && (await send(who, created.id))) run.sent += 1;

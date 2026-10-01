@@ -34,8 +34,8 @@ export async function saveCompany(
     parsed.data,
   );
   if (result === "forbidden") return { status: "forbidden", values, round };
-  if (result === "countryLocked")
-    return { status: "invalid", errors: { country: "countryLocked" }, values, round };
+  if (result === "countryLocked" || result === "countryDrafts")
+    return { status: "invalid", errors: { country: result }, values, round };
   revalidatePath(`/${locale}/app`, "layout");
   return { status: "saved", round };
 }

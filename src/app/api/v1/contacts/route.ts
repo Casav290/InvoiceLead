@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
 import { apiError, contactJson, jsonBody, toForm, withApi } from "@/server/api";
-import { createContact, listContacts, parseContactForm } from "@/server/contacts";
+import { createContactWithinPlan, listContacts, parseContactForm } from "@/server/contacts";
 import { db } from "@/server/db";
-import { quotaAccess } from "@/server/plans";
 
 export const dynamic = "force-dynamic";
 
@@ -26,13 +25,12 @@ export async function POST(request: Request) {
     ]);
     const parsed = parseContactForm(form);
     if (!parsed.ok) return apiError(422, "invalid", parsed.errors);
-    if (!(await quotaAccess(db(), organization, "contacts")).allowed)
-      return apiError(403, "plan_limit");
-    const contact = await createContact(
+    const contact = await createContactWithinPlan(
       db(),
       { organizationId: organization.id, userId },
       parsed.data,
     );
+    if (contact === "planLimit") return apiError(403, "plan_limit");
     return NextResponse.json({ data: contactJson(contact) }, { status: 201 });
   });
 }

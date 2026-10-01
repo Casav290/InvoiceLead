@@ -7,7 +7,8 @@ import { REQUESTED_PATH_HEADER } from "@/lib/cookies";
 import { betaAllowed } from "../beta";
 import { db } from "../db";
 import { env } from "../env";
-import { can, hasAppAccess, type Permission } from "../roles";
+import { featureAccess } from "../plans";
+import { can, hasAppAccess, isFiduciary, type Permission } from "../roles";
 import { hasSeat } from "../team";
 import { pickLocale, safeNext } from "./login-cookie";
 import { type CurrentSession, getSession } from "./session";
@@ -30,11 +31,19 @@ export async function requireSession(locale: string): Promise<CurrentSession> {
 
 /** Raison pour laquelle la personne n'entre pas dans l'application, ou null si elle entre. */
 export const accessProblem = cache(
-  async (session: CurrentSession): Promise<"plan" | "beta" | "blocked" | "seat" | null> => {
+  async (
+    session: CurrentSession,
+  ): Promise<"plan" | "beta" | "blocked" | "fiduciary" | "seat" | null> => {
     if (!session.organization.hasAccess) return "plan";
     const beta = { leadOrg: session.organization.leadOrg ?? "", email: session.user.email };
     if (!betaAllowed(env().BETA_ALLOWLIST, beta)) return "beta";
     if (!hasAppAccess(session.membership)) return "blocked";
+    // Fiduciaire d'une entreprise revenue en formule gratuite : accès suspendu (formule Pro).
+    if (
+      isFiduciary(session.membership) &&
+      !featureAccess(session.organization, "fiduciary").allowed
+    )
+      return "fiduciary";
     if (!(await hasSeat(db(), session.organization, session.user.id))) return "seat";
     return null;
   },

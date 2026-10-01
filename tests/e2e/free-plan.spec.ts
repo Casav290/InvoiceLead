@@ -50,8 +50,9 @@ test("formule gratuite : chaque fonction Pro reste visible, grisée, avec sa mar
   await freeCompany(page, "grise");
 
   // Tableau de bord : la formule, ses limites et toutes les allocations du mois.
-  await expect(page.getByTestId("plan-usage")).toContainText("Formule Gratuit");
-  await expect(page.getByTestId("plan-usage")).toContainText("0 factures sur 10");
+  await expect(page.getByTestId("plan-usage")).toContainText(
+    "Formule gratuite\u202f: 0 facture sur 10 ce mois-ci, 0 contact sur 50.",
+  );
   const quotas: [string, RegExp][] = [
     ["quota-aiReads", /0 sur 20 ce mois-ci/],
     ["quota-assistant", /0 sur 10 ce mois-ci/],
@@ -68,11 +69,22 @@ test("formule gratuite : chaque fonction Pro reste visible, grisée, avec sa mar
   await setupBilling(page);
   await chartAndYear(page);
 
-  // Décompte TVA : onglet marqué Pro, chiffres consultables, relecture et validation grisées.
+  // Décompte TVA : onglet marqué Pro, structure visible, montants réservés à Pro (ils ne sont
+  // pas dans la page), relecture et validation grisées.
   await page.goto("/fr/app/accounting/vat");
   await expect(page.getByTestId("accounting-tab-vat").getByTestId("pro-badge")).toHaveText("Pro");
   await expect(page.getByTestId("accounting-tab-bank").getByTestId("pro-badge")).toHaveCount(0);
-  await expect(page.getByTestId("vat-figures")).toBeVisible();
+  const figures = page.getByTestId("vat-figures");
+  await expect(figures).toHaveAttribute("data-masked", "true");
+  await expect(figures.getByTestId("figure-200")).toBeVisible();
+  await expect(figures.getByTestId("vat-amount-hidden").first()).toBeVisible();
+  await expect(figures.locator("tbody")).not.toContainText(/\d+\.\d{2}/);
+  await expect(figures.getByTestId("vat-figures-lock")).toContainText(
+    "Les montants du décompte s'affichent avec Pro.",
+  );
+  await expect(
+    figures.getByTestId("vat-figures-lock").getByRole("link", { name: "Passer à Pro" }),
+  ).toHaveAttribute("href", /^https:\/\//);
   await expect(
     page.getByTestId("plan-notice").getByRole("link", { name: "Passer à Pro" }),
   ).toHaveAttribute("href", /^https:\/\//);
@@ -124,13 +136,22 @@ test("formule gratuite : chaque fonction Pro reste visible, grisée, avec sa mar
   ).toHaveText("EUR (Pro)");
   await expect(page.getByTestId("bill-form").getByTestId("currency-lock")).toBeVisible();
 
-  // Relances : réglages Pro grisés.
+  // Relances : réglages Pro grisés, relances intelligentes comprises.
   await page.goto("/fr/app/invoices/reminders");
   await expectLocked(
     page.getByTestId("reminder-settings-lock"),
     "Pro",
-    "font partie de la formule Pro",
+    "les relances intelligentes font partie de la formule Pro",
   );
+  await expect(
+    page.getByTestId("reminder-settings-lock").getByTestId("reminder-smart"),
+  ).toContainText("Rappel courtois 3 jours avant l'échéance");
+
+  // Factures fournisseurs : les e-factures, lues sans IA, s'importent sans compteur ni verrou.
+  await page.goto("/fr/app/accounting/bills");
+  await expect(page.getByTestId("einvoice-import")).toBeEnabled();
+  await expect(page.getByTestId("accounting-tab-bills").getByTestId("pro-badge")).toHaveCount(0);
+  await expect(page.getByText(/Pièces lues par l'IA/)).toHaveCount(0);
 
   // Facture émise : le panneau « facture récurrente » est là, la première est permise.
   await page.goto("/fr/app/invoices/new");
@@ -170,6 +191,15 @@ test("formule gratuite : chaque fonction Pro reste visible, grisée, avec sa mar
   await page.goto("/fr/app/settings/team");
   await expectLocked(page.getByTestId("fiduciary-lock"), "Pro", "formules Pro et Pro+");
   await expect(page.getByTestId("fiduciary-invite")).toBeDisabled();
+  // Places : 1 en formule gratuite ; la marque Pro et le lien disent qu'il y en a davantage.
+  const seats = page.getByTestId("seats-lock");
+  await expect(seats.getByTestId("pro-badge")).toHaveText("Pro");
+  await expect(seats).toContainText("Pro compte 2 places et Pro+ en compte 5.");
+  await expect(seats.getByRole("link", { name: "Passer à Pro" })).toHaveAttribute(
+    "href",
+    /^https:\/\//,
+  );
+  expect(await traitNetIssues(page)).toEqual([]);
 });
 
 test("formule gratuite : l'import du mois utilisé, la banque se grise et le serveur refuse la suite", async ({
@@ -252,7 +282,9 @@ test("formule gratuite : dix questions à l'assistant, puis la boîte grisée et
 test("tarifs et FAQ : les allocations gratuites décidées sont annoncées", async ({ page }) => {
   await page.goto("/fr/pricing");
   const free = page.getByTestId("plan-free");
-  await expect(free).toContainText("20 pièces lues par l'IA chaque mois");
+  await expect(free).toContainText(
+    "20 pièces lues par l'IA chaque mois (tickets, justificatifs), e-factures reçues sans limite",
+  );
   await expect(free).toContainText("10 questions par mois");
   await expect(free).toContainText("Première relance à la main, 5 par mois");
   await expect(free).toContainText("1 facture récurrente active");
@@ -262,6 +294,27 @@ test("tarifs et FAQ : les allocations gratuites décidées sont annoncées", asy
   await expect(page.getByTestId("plan-proPlus")).toContainText(
     "300 pièces lues par l'IA chaque mois",
   );
+  await expect(page.getByTestId("plan-pro")).toContainText(
+    "Factures récurrentes sans limite, multidevise",
+  );
+  // FAQ : la réponse elle-même porte les allocations décidées, en français et en allemand.
+  await page.goto("/fr/faq");
+  await page.getByText("Que comprend la formule gratuite\u202f?").click();
+  await expect(
+    page.getByText(
+      "Chaque mois\u202f: 10 factures, 20 pièces lues par l'IA, 10 questions à l'assistant, 5 relances de premier niveau et 1 relevé bancaire avec le pilote automatique.",
+      { exact: false },
+    ),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Les fonctions Pro et Pro+ restent visibles", { exact: false }),
+  ).toBeVisible();
   await page.goto("/de/faq");
-  await expect(page.getByText("Was umfasst das Gratis-Abo?")).toBeVisible();
+  await page.getByText("Was umfasst das Gratis-Abo?").click();
+  await expect(
+    page.getByText(
+      "Jeden Monat: 10 Rechnungen, 20 von der KI gelesene Belege, 10 Fragen an den Assistenten, 5 Mahnungen der ersten Stufe und 1 Kontoauszug mit Autopilot.",
+      { exact: false },
+    ),
+  ).toBeVisible();
 });

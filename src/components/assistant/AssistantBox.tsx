@@ -70,7 +70,7 @@ export function AssistantBox({
           <button
             key={s}
             type="button"
-            className="border border-line-strong px-2.5 py-1 text-[12px] text-ink-2 hover:bg-rowhover disabled:hover:bg-transparent"
+            className="border border-line-strong px-2.5 py-1 text-[12px] text-ink-2 hover:bg-rowhover disabled:border-line disabled:bg-muted disabled:text-ink-muted disabled:hover:bg-muted"
             onClick={() => {
               if (input.current) input.current.value = s;
             }}

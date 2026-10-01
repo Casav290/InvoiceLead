@@ -145,7 +145,7 @@ export default async function ApiSettingsPage({ params, searchParams }: Props) {
                           {t("webhooks.delivery", {
                             event: d.event,
                             status: t(`webhooks.status.${d.status}`),
-                            code: d.lastStatus ?? "–",
+                            code: d.lastStatus ?? t("webhooks.noCode"),
                             date: day(d.createdAt) ?? "",
                           })}
                         </li>

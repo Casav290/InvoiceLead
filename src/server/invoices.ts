@@ -22,6 +22,7 @@ import {
   type PartySnapshot,
 } from "./db/schema";
 import { fetchFxRate } from "./fx";
+import { lockQuota, quotaAccess } from "./plans";
 import { PRODUCT_UNITS } from "./products";
 import { emitEvent, invoiceSummary } from "./webhooks";
 
@@ -509,11 +510,16 @@ export type IssueResult =
   | "companyIncomplete"
   | "vatChanged"
   | "creditTooHigh"
-  | "fxRate";
+  | "fxRate"
+  | "planLimit";
 
 /**
  * Émet un brouillon : numéro définitif, expéditeur et destinataire figés. Le numéro est pris dans la
  * même transaction que le changement d'état, si bien qu'un échec ne laisse aucun trou.
+ *
+ * Les factures émises du mois (formule gratuite : 10) se comptent ici, d'après le type lu en base
+ * et sous un verrou de l'entreprise : ni un type forgé dans le formulaire, ni deux émissions
+ * simultanées, ni la tâche des récurrences ne passent au-delà. Devis et avoirs ne comptent pas.
  */
 export async function issueInvoice(
   database: Db,
@@ -558,6 +564,11 @@ export async function issueInvoice(
     let fxRate = row.invoice.currency === org.currency ? null : (row.invoice.fxRate ?? fetchedRate);
 
     const kind = row.invoice.kind as DocumentKind;
+    if (kind === "invoice") {
+      const t = tx as unknown as Db;
+      await lockQuota(t, org.id, "invoices");
+      if (!(await quotaAccess(t, org, "invoices")).allowed) return "planLimit";
+    }
     if (kind === "credit_note") {
       // L'avoir ne peut dépasser ce qui reste à créditer sur sa facture, ni changer de client.
       const relatedId = row.invoice.relatedInvoiceId;

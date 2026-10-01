@@ -47,9 +47,10 @@ export const FEATURE_TIER: Record<Feature, Tier> = {
 };
 
 /**
- * Allocations. Par mois civil (UTC) : factures émises, lectures de pièces par l'IA (tickets,
- * justificatifs, e-factures, un seul compteur), questions à l'assistant, relances, imports de
- * relevés. En tout : contacts actifs, factures récurrentes actives.
+ * Allocations. Par mois civil (UTC) : factures émises, lectures de pièces par l'IA (tickets de
+ * notes de frais, justificatifs déposés ou relus, un seul compteur ; les e-factures, lues sans IA,
+ * n'y comptent pas), questions à l'assistant, relances, imports de relevés. En tout : contacts
+ * actifs, factures récurrentes actives.
  */
 export type Quota =
   | "invoices"
@@ -345,7 +346,7 @@ export async function organizationPlan(database: Db, organizationId: string): Pr
 
 /**
  * Verrou transactionnel par entreprise et par allocation : compte puis crée sans qu'une seconde
- * demande simultanée passe entre les deux (récurrences actives).
+ * demande simultanée passe entre les deux (factures émises du mois, contacts, récurrences actives).
  */
 export async function lockQuota(database: Db, organizationId: string, quota: Quota) {
   await database.execute(

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
-import { ProLock } from "@/components/app/ProLock";
+import { LockNote, ProBadge, ProLock } from "@/components/app/ProLock";
 import { fieldClass } from "@/components/forms/fields";
 import { FiduciaryInvite } from "@/components/settings/FiduciaryInvite";
 import { SettingsNav } from "@/components/settings/SettingsNav";
@@ -8,8 +8,8 @@ import { Button } from "@/components/ui/button";
 import { formatDate } from "@/lib/fiscal-year";
 import { requireAppSession } from "@/server/auth/guard";
 import { db } from "@/server/db";
-import { lockFor } from "@/server/plan-lock";
-import { featureAccess, seatsOf } from "@/server/plans";
+import { lockFor, planLock } from "@/server/plan-lock";
+import { featureAccess, PLANS, seatsOf, tierOf } from "@/server/plans";
 import { APP_ROLES, appRoleOf, can, isManager } from "@/server/roles";
 import { INVITATION_DAYS, listTeam, seated } from "@/server/team";
 import { cancelInvitationAction, removeFiduciaryAction, setAppRoleAction } from "./actions";
@@ -37,13 +37,26 @@ export default async function TeamPage({ params, searchParams }: Props) {
   const { members, fiduciaries, invitations } = await listTeam(db(), organization.id);
   const seats = seatsOf(organization);
   const withSeat = seated(members, seats);
-  // Accès fiduciaire : formule Pro ; en dessous, l'invitation reste visible, grisée.
-  const fiduciaryLock = await lockFor(
-    locale,
-    organization,
-    featureAccess(organization, "fiduciary"),
-    t("planOnly"),
-  );
+  // Accès fiduciaire : formule Pro ; en dessous, l'invitation reste visible, grisée, et l'accès
+  // d'une fiduciaire déjà invitée est suspendu (rendu au retour à Pro).
+  const fiduciaryAccess = featureAccess(organization, "fiduciary");
+  const fiduciaryLock = await lockFor(locale, organization, fiduciaryAccess, t("planOnly"));
+  // Places : la formule suivante en donne davantage ; marque et lien à côté du compteur.
+  const tier = tierOf(organization);
+  const nextTier = tier === "free" ? "pro" : tier === "pro" ? "proplus" : null;
+  const seatsLock =
+    nextTier && PLANS[nextTier].seats > seats
+      ? await planLock(
+          locale,
+          organization,
+          nextTier,
+          t("moreSeats", {
+            tier: nextTier,
+            pro: PLANS.pro.seats,
+            plus: PLANS.proplus.seats,
+          }),
+        )
+      : null;
   const notice = q.saved ? t("saved") : q.removed ? t("removed") : null;
 
   return (
@@ -114,6 +127,13 @@ export default async function TeamPage({ params, searchParams }: Props) {
           })}
         </ul>
         <p className="border-t border-line px-5 py-3 text-[13px] text-ink-muted">{t("addHint")}</p>
+        {seatsLock ? (
+          <LockNote
+            lock={seatsLock}
+            testId="seats-lock"
+            className="border-t border-line-strong bg-muted px-5 py-3"
+          />
+        ) : null}
       </section>
 
       <section className="mt-8 border border-line-strong bg-panel" data-testid="team-fiduciary">
@@ -126,10 +146,21 @@ export default async function TeamPage({ params, searchParams }: Props) {
               className="flex flex-wrap items-center gap-3 border-t border-line-soft px-5 py-3"
               data-testid="fiduciary"
             >
-              <p className="min-w-0 flex-1 text-[14px] [overflow-wrap:anywhere]">
-                <span className="font-semibold">{f.name || f.email}</span>{" "}
-                <span className="text-[12px] text-ink-muted">{f.email}</span>
-              </p>
+              <div className="min-w-0 flex-1">
+                <p className="text-[14px] [overflow-wrap:anywhere]">
+                  <span className="font-semibold">{f.name || f.email}</span>{" "}
+                  <span className="text-[12px] text-ink-muted">{f.email}</span>
+                </p>
+                {fiduciaryAccess.allowed ? null : (
+                  <p
+                    className="mt-1 flex flex-wrap items-center gap-2 text-[12px] text-ink-2"
+                    data-testid="fiduciary-suspended"
+                  >
+                    <ProBadge tier="pro" />
+                    {t("suspended")}
+                  </p>
+                )}
+              </div>
               {editable ? (
                 <form action={removeFiduciaryAction}>
                   <input type="hidden" name="locale" value={locale} />
