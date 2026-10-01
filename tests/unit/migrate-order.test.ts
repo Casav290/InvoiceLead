@@ -9,8 +9,8 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 /**
  * Deux branches parties du même `main`, chacune avec sa migration, fusionnées dans un ordre ou dans
  * l'autre : `scripts/migrate.mjs` doit laisser la base complète dans les deux cas. Ici, la branche de
- * la connexion (`0039_login_return`, rejouable) et une autre branche dont la migration est datée après
- * elle (comme la `0038_plan_usage` des formules). Chaque cas sur une base jetable, effacée à la fin.
+ * la connexion (`0039_login_return`, rejouable) et une autre branche, fictive, dont la migration est
+ * datée après elle. Chaque cas sur une base jetable, effacée à la fin.
  */
 
 const ROOT = fileURLToPath(new URL("../..", import.meta.url));

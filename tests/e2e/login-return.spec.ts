@@ -1,5 +1,5 @@
 import { type BrowserContext, expect, test } from "@playwright/test";
-import { LEAD, login } from "./helpers";
+import { APP, LEAD, login } from "./helpers";
 
 /**
  * Reconnexion par le Compte Lead : la personne revient toujours sur la page qu'elle demandait, même
@@ -7,7 +7,6 @@ import { LEAD, login } from "./helpers";
  * plein envoi de formulaire, ou quand un autre onglet a déjà mené la demande à bout.
  */
 
-const APP = "http://localhost:3100";
 const INVITE = "I".repeat(43);
 
 async function dropCookies(context: BrowserContext, drop: (name: string) => boolean) {
@@ -324,7 +323,7 @@ test("invitation de fiduciaire : session échue avant « Accepter », retour sur
   const relogin = fidu.waitForResponse((r) => r.url().includes("/auth/lead/callback"));
   await fidu.getByTestId("invite-accept").click();
   await relogin;
-  await expect(fidu).toHaveURL(`http://localhost:3100${link.pathname}${link.search}`);
+  await expect(fidu).toHaveURL(`${APP}${link.pathname}${link.search}`);
   await fidu.getByTestId("invite-accept").click();
   await fidu.waitForURL(/\/fr\/app\/accounting\?welcome=fiduciary/);
   await expect(fidu.getByTestId("org-name")).toHaveText("Échéance Sàrl");

@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { LEAD, login } from "./helpers";
+import { APP, LEAD, login } from "./helpers";
 
 test("sans session, la page demandée passe par le Compte Lead puis se rouvre", async ({ page }) => {
   const res = await page.request.get("/fr/app/invoices?kind=quote", { maxRedirects: 0 });
@@ -49,9 +49,7 @@ test("session expirée : la page demandée se rouvre après la reconnexion", asy
   page,
   context,
 }) => {
-  await context.addCookies([
-    { name: "il_session", value: "expiree", url: "http://localhost:3100/" },
-  ]);
+  await context.addCookies([{ name: "il_session", value: "expiree", url: `${APP}/` }]);
   await page.goto("/fr/app/invoices?kind=quote");
   await expect(page).toHaveURL(/\/fr\/app\/invoices\?kind=quote$/);
 });
@@ -203,7 +201,7 @@ test("un état falsifié au retour est refusé", async ({ page, context }) => {
     maxRedirects: 0,
   });
   expect(back.status()).toBe(303);
-  expect(back.headers().location).toBe("http://localhost:3100/auth/lead/start?locale=de&retry=1");
+  expect(back.headers().location).toBe(`${APP}/auth/lead/start?locale=de&retry=1`);
   expect(back.headers()["set-cookie"] ?? "").not.toContain("il_session=");
   expect((await context.cookies()).some((c) => c.name === "il_session")).toBe(false);
   // La relance revient elle aussi sans sa demande : l'écran d'erreur, plus de relance.
@@ -233,9 +231,7 @@ test("deux retours sans leur demande, à la suite : chacun a sa relance, aucun �
     const back = await context.request.get(`/auth/lead/callback?code=x&state=${states[i]}`, {
       maxRedirects: 0,
     });
-    expect(back.headers().location).toBe(
-      `http://localhost:3100/auth/lead/start?locale=fr&next=${next}&retry=1`,
-    );
+    expect(back.headers().location).toBe(`${APP}/auth/lead/start?locale=fr&next=${next}&retry=1`);
   }
   const one = await context.newPage();
   const two = await context.newPage();
@@ -274,7 +270,7 @@ test("écran d'erreur : en-tête, pied de page et langue gardent la page demand�
   const de = header.getByRole("link", { name: "de", exact: true });
   await expect(de).toHaveAttribute("href", `/de/login?erreur=lead&next=${deNext}`);
   await de.click();
-  await expect(page).toHaveURL(`http://localhost:3100/de/login?erreur=lead&next=${deNext}`);
+  await expect(page).toHaveURL(`${APP}/de/login?erreur=lead&next=${deNext}`);
   await expect(page.getByTestId("lead-login")).toHaveAttribute(
     "href",
     `/auth/lead/start?locale=de&next=${deNext}`,
