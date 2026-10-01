@@ -48,6 +48,9 @@ export default async function ApiSettingsPage({ params, searchParams }: Props) {
       <p className="mt-2 text-[15px] text-ink-muted">
         {t("subtitle", { base: `${env().APP_URL}/api/v1` })}
       </p>
+      <p className="mt-2 text-[13px] text-ink-2" data-testid="mcp-url">
+        {t("mcp", { url: `${env().APP_URL}/api/mcp` })}
+      </p>
       {q.revoked || q.disabled ? (
         <p
           role="status"

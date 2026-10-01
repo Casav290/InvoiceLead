@@ -39,6 +39,13 @@ export type InvoicePdfLabels = {
   scanToPay?: string;
   /** Pièce en devise : cours figé et contre-valeur dans la monnaie de l'entreprise. */
   fxLine?: string;
+  /**
+   * Bon de livraison : désignations et quantités seulement, sans prix ni paiement, avec une ligne
+   * de réception à signer.
+   */
+  deliveryNote?: { received: string };
+  /** Confirmation de commande ou bon de livraison : pas d'échéance. */
+  hideDueDate?: boolean;
 };
 
 const mm = (v: number) => (v * 72) / 25.4;
@@ -230,7 +237,7 @@ export function renderInvoicePdf(
     [labels.issueDate, formatDate(invoice.issueDate, dateStyle)],
     [labels.serviceDate, formatDate(invoice.serviceDate, dateStyle)],
   ];
-  if (invoice.kind !== "credit_note")
+  if (invoice.kind !== "credit_note" && !labels.hideDueDate)
     meta.push([labels.dueDate, formatDate(invoice.dueDate, dateStyle)]);
   for (const [k, v] of meta) {
     const y = doc.y;
@@ -247,29 +254,34 @@ export function renderInvoicePdf(
   }
 
   // Lignes
-  const withVat = invoice.vatRegistered;
+  const delivery = !!labels.deliveryNote;
+  const withVat = invoice.vatRegistered && !delivery;
   const cols = {
     amount: { x: RIGHT - mm(26), w: mm(26) },
     vat: { x: RIGHT - mm(26) - mm(16), w: mm(14) },
     price: { x: RIGHT - mm(26) - mm(16) - mm(26), w: mm(24) },
     qty: { x: RIGHT - mm(26) - mm(16) - mm(26) - mm(26), w: mm(24) },
   };
+  // Bon de livraison : la quantité prend la place du montant.
+  if (delivery) cols.qty = { x: RIGHT - mm(30), w: mm(30) };
   const descWidth = cols.qty.x - LEFT - mm(3);
   const header = () => {
     const y = doc.y;
     doc.font(F.bold).fontSize(8).fillColor(MUTED);
     doc.text(labels.description.toUpperCase(), LEFT, y, { width: descWidth });
     doc.text(labels.quantity.toUpperCase(), cols.qty.x, y, { width: cols.qty.w, align: "right" });
-    doc.text(labels.unitPrice.toUpperCase(), cols.price.x, y, {
-      width: cols.price.w,
-      align: "right",
-    });
-    if (withVat)
-      doc.text(labels.vat.toUpperCase(), cols.vat.x, y, { width: cols.vat.w, align: "right" });
-    doc.text(labels.amount.toUpperCase(), cols.amount.x, y, {
-      width: cols.amount.w,
-      align: "right",
-    });
+    if (!delivery) {
+      doc.text(labels.unitPrice.toUpperCase(), cols.price.x, y, {
+        width: cols.price.w,
+        align: "right",
+      });
+      if (withVat)
+        doc.text(labels.vat.toUpperCase(), cols.vat.x, y, { width: cols.vat.w, align: "right" });
+      doc.text(labels.amount.toUpperCase(), cols.amount.x, y, {
+        width: cols.amount.w,
+        align: "right",
+      });
+    }
     const after = y + 12;
     doc.moveTo(LEFT, after).lineTo(RIGHT, after).lineWidth(0.8).strokeColor(INK).stroke();
     doc.fillColor(INK).font(F.regular).fontSize(9);
@@ -290,16 +302,18 @@ export function renderInvoicePdf(
       width: cols.qty.w,
       align: "right",
     });
-    doc.text(fmt(l.unitPriceCents), cols.price.x, y, {
-      width: cols.price.w,
-      align: "right",
-    });
-    if (withVat)
-      doc.text(formatRate(l.vatRateBp, invoice.language), cols.vat.x, y, {
-        width: cols.vat.w,
+    if (!delivery) {
+      doc.text(fmt(l.unitPriceCents), cols.price.x, y, {
+        width: cols.price.w,
         align: "right",
       });
-    doc.text(fmt(l.netCents), cols.amount.x, y, { width: cols.amount.w, align: "right" });
+      if (withVat)
+        doc.text(formatRate(l.vatRateBp, invoice.language), cols.vat.x, y, {
+          width: cols.vat.w,
+          align: "right",
+        });
+      doc.text(fmt(l.netCents), cols.amount.x, y, { width: cols.amount.w, align: "right" });
+    }
     const next = y + h;
     doc
       .moveTo(LEFT, next - 3)
@@ -308,6 +322,32 @@ export function renderInvoicePdf(
       .strokeColor(LINE)
       .stroke();
     doc.y = next;
+  }
+
+  if (labels.deliveryNote) {
+    doc.font(F.regular).fontSize(9).fillColor(INK);
+    if (invoice.footerText)
+      doc.moveDown(1.5).text(invoice.footerText, LEFT, doc.y, { width: RIGHT - LEFT });
+    if (doc.y + mm(30) > BOTTOM) doc.addPage();
+    doc.moveDown(3).text(labels.deliveryNote.received, LEFT, doc.y, { width: RIGHT - LEFT });
+    const y = doc.y + mm(14);
+    doc
+      .moveTo(LEFT, y)
+      .lineTo(LEFT + mm(70), y)
+      .lineWidth(0.5)
+      .strokeColor(INK)
+      .stroke();
+    doc
+      .moveTo(LEFT + mm(90), y)
+      .lineTo(RIGHT, y)
+      .stroke();
+    if (labels.poweredBy)
+      doc
+        .fontSize(7)
+        .fillColor(MUTED)
+        .text(labels.poweredBy, LEFT, y + mm(8));
+    doc.end();
+    return done;
   }
 
   // Totaux

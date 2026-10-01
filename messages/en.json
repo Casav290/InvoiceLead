@@ -78,7 +78,9 @@
       "products": "Items",
       "invoices": "Invoices",
       "quotes": "Quotes",
-      "accounting": "Accounting"
+      "accounting": "Accounting",
+      "time": "Time",
+      "expenses": "Expenses"
     },
     "switcher": {
       "open": "Switch app",
@@ -111,7 +113,8 @@
       "complete": "Complete",
       "done": "Done",
       "start": "Start",
-      "forbidden": "Your role does not allow this action. A manager can change it in the team settings."
+      "forbidden": "Your role does not allow this action. A manager can change it in the team settings.",
+      "askBooks": "Ask your books a question"
     },
     "noAccess": {
       "title": "Your plan does not include InvoiceLead",
@@ -614,7 +617,18 @@
       "issueHint": "Issuing assigns the next number and locks the invoice. Save your latest changes first.",
       "deleteDraft": "Delete this draft",
       "completeCompany": "Complete company details",
+      "orderPdf": "Order confirmation (PDF)",
+      "deliveryPdf": "Delivery note (PDF)",
+      "deposit": {
+        "title": "Deposits",
+        "percent": "Deposit in %",
+        "create": "Create deposit invoice",
+        "hint": "Percentage of the net amount, one line per tax rate. The final invoice from the quote deducts the issued deposits.",
+        "draft": "Draft"
+      },
       "issueErrors": {
+        "percent": "The deposit percentage must be between 0 and 100.",
+        "tooHigh": "The deposits would exceed the quote amount.",
         "companyIncomplete": "Company details (address and IBAN) must be complete before you issue an invoice.",
         "vatChanged": "VAT registration has changed since the draft was saved. Save the draft again.",
         "notDraft": "This invoice has already been issued.",
@@ -625,7 +639,8 @@
         "closed": "This payment is already posted in a closed fiscal year: it can no longer be deleted.",
         "planLimit": "You have reached the Free plan limit of 10 invoices per month. Upgrade to Pro for unlimited invoicing.",
         "recurring": "The recurrence could not be saved.",
-        "fxRate": "The day's exchange rate could not be retrieved. Enter the rate in the draft, then issue again."
+        "fxRate": "The day's exchange rate could not be retrieved. Enter the rate in the draft, then issue again.",
+        "depositDraft": "A deposit invoice for this quote is still a draft: issue or delete it before creating the final invoice."
       },
       "addLine": "Add line",
       "removeLine": "Remove",
@@ -720,6 +735,13 @@
         "total": "Total",
         "payTo": "Please pay to account {iban}.",
         "referenceLine": "Reference: {reference}",
+        "orderTitle": "Order confirmation",
+        "orderPrefix": "OC",
+        "deliveryTitle": "Delivery note",
+        "deliveryPrefix": "DN",
+        "fromQuote": "As per our quote {number}",
+        "fromInvoice": "Relates to invoice {number}",
+        "deliveryReceived": "Goods received in good condition (date, name and signature):",
         "relatedLine": "Relates to invoice {number}",
         "poweredBy": "Created with InvoiceLead · invoicelead.io",
         "smallBusinessDe": "Gemäß § 19 UStG wird keine Umsatzsteuer berechnet (no VAT charged under the small business scheme, § 19 UStG).",
@@ -824,7 +846,7 @@
         }
       },
       "remindersLink": "Payment reminders",
-      "reminderLine": "{level, select, 1 {1st reminder} 2 {2nd reminder} other {Final reminder}} on {date} ({channel, select, email {email} other {post}})",
+      "reminderLine": "{level, select, 0 {Friendly reminder} 1 {1st reminder} 2 {2nd reminder} other {Final reminder}} on {date} ({channel, select, email {email} other {post}})",
       "recurringLink": "Recurring",
       "recurring": {
         "title": "Make recurring",
@@ -947,7 +969,10 @@
         "journal": "Journal",
         "receipts": "Receipts",
         "reports": "Reports",
-        "vat": "VAT"
+        "vat": "VAT",
+        "review": "To review",
+        "bills": "Suppliers",
+        "cashflow": "Cash flow"
       },
       "welcomeFiduciary": "Welcome. You are now working in your client's accounts; switch company from the header.",
       "unavailableTitle": "Accounting coming soon for this country",
@@ -1012,7 +1037,10 @@
         "hits": "{count, plural, one {validated # time} other {validated # times}}",
         "delete": "Forget"
       },
-      "planOnly": "Bank statement import and assistant proposals are included in the Pro plan."
+      "planOnly": "Bank statement import and assistant proposals are included in the Pro plan.",
+      "autoPosted": "{count, plural, one {# transaction} other {# transactions}} posted by the autopilot.",
+      "autoReview": "Review them",
+      "paysBill": "Supplier invoice payment"
     },
     "receipts": {
       "title": "Receipts",
@@ -1040,9 +1068,12 @@
         "read": "Read, payment not found yet",
         "error": "Unreadable",
         "matched": "Matched",
-        "posted": "Posted"
+        "posted": "Posted",
+        "billed": "Supplier invoice"
       },
-      "planOnly": "Automatic receipt reading is included in the Pro plan (50 per month) and Pro+ (300 per month)."
+      "planOnly": "Automatic receipt reading is included in the Pro plan (50 per month) and Pro+ (300 per month).",
+      "toBill": "Create the bill to pay",
+      "captureLink": "Take a photo with your phone"
     },
     "reports": {
       "title": "Reports",
@@ -1073,7 +1104,16 @@
       "date": "Date",
       "entry": "No.",
       "text": "Description",
-      "balance": "Balance"
+      "balance": "Balance",
+      "export": {
+        "title": "Export for your accountant",
+        "consultant": "DATEV consultant number",
+        "client": "Client number",
+        "datev": "Download DATEV batch",
+        "datevHint": "Posting batch in DATEV format (EXTF, SKR04) for the displayed financial year; VAT is passed on through BU keys. Your Steuerberater gives you the numbers.",
+        "fec": "Download FEC",
+        "fecHint": "French audit file (fichier des écritures comptables, art. A47 A-1 LPF) for the displayed financial year, for a tax audit or your accountant."
+      }
     },
     "vat": {
       "title": "VAT",
@@ -1198,7 +1238,7 @@
         "failed": "Sending failed. Try again later."
       },
       "empty": "No reminders to send today.",
-      "line": "{level, select, 1 {1st reminder} 2 {2nd reminder} other {Final reminder}} · {days} days overdue · due on {due}",
+      "line": "{level, select, 0 {Friendly reminder} 1 {1st reminder} 2 {2nd reminder} other {Final reminder}} · {days, plural, =0 {due today} other {{days} days late}} · due {due}",
       "noEmail": "no email",
       "send": "Send",
       "markManual": "Mark as sent (post)",
@@ -1210,7 +1250,9 @@
         "body1": "Hello,\n\nUnless we are mistaken, our invoice {number}, due on {due}, has not been paid yet. The outstanding amount is {currency} {amount}.\n\nIf payment is already on its way, please disregard this message.\n\nKind regards\n{company}",
         "body2": "Hello,\n\nDespite our first reminder, our invoice {number}, due on {due}, remains unpaid. Please pay the outstanding amount of {currency} {amount} within 10 days.\n\nKind regards\n{company}",
         "body3": "Hello,\n\nOur invoice {number}, due on {due}, is still unpaid despite our reminders. Please pay the outstanding amount of {currency} {amount} within 10 days. Without payment, we will have to take further steps.\n\nKind regards\n{company}",
-        "charges": "Open invoice amount: {currency} {open}\nReminder fees and late payment interest: {currency} {charges}\nTotal due: {currency} {total}"
+        "charges": "Open invoice amount: {currency} {open}\nReminder fees and late payment interest: {currency} {charges}\nTotal due: {currency} {total}",
+        "subject0": "Friendly reminder: invoice {number} from {company} due soon",
+        "body0": "Hello,\n\nA friendly reminder: our invoice {number} is due on {due}. The amount is {currency} {amount}.\n\nIf the payment is already on its way, thank you very much and please disregard this message.\n\nKind regards\n{company}"
       },
       "chargesLine": "Invoice open {open} · fee {fee} · interest {interest} · already charged {before}",
       "settings": {
@@ -1235,7 +1277,18 @@
           "invalidFee": "Invalid fee (a positive amount, at most two decimals).",
           "invalidRate": "Invalid rate (between 0 and 20%, for example 5)."
         }
-      }
+      },
+      "courtesyLine": "Friendly reminder before the due date ({due})",
+      "profile": {
+        "late": "usually pays {days} days after the due date",
+        "reliable": "pays on time",
+        "normal": "usually pays {days} days after the due date"
+      },
+      "forecastTitle": "Expected payments",
+      "forecastHint": "Open invoices, on the date each customer usually pays.",
+      "week": "Week of {date}",
+      "later": "Later",
+      "forecastEmpty": "No open invoices."
     },
     "recurring": {
       "title": "Recurring invoices",
@@ -1408,7 +1461,313 @@
         "tooMany": "Maximum reached.",
         "url": "Invalid URL: https to a public server, without credentials.",
         "events": "Choose at least one event."
+      },
+      "mcp": "MCP server for Claude, ChatGPT or another assistant: {url}, with an API key in the Authorization header."
+    },
+    "review": {
+      "title": "To review",
+      "subtitle": "The autopilot posts what is certain on its own. Here you approve its work in one click, undo an entry that is wrong, and see what deserves a look.",
+      "autopilot": "Autopilot",
+      "autopilotHint": "Posts without a click the payments recognised by their reference, transactions covered by a rule confirmed at least three times and AI suggestions that are 97% certain. A possible duplicate or an unusual amount always waits for a person.",
+      "save": "Save",
+      "planOnly": "The autopilot is part of the Pro plan, with bank import.",
+      "enabled": "Autopilot on: {count, plural, =0 {nothing to post right now} one {# transaction posted} other {# transactions posted}}.",
+      "disabled": "Autopilot off. Suggestions wait for your approval.",
+      "approved": "{count, plural, =0 {Nothing to approve.} one {# entry approved.} other {# entries approved.}}",
+      "undone": "Entry reversed. The transaction is back for review under Bank, and the rule that suggested it is forgotten.",
+      "queueTitle": "Posted automatically, to approve ({count})",
+      "queueEmpty": "Nothing to approve.",
+      "bookedTo": "To {account}",
+      "bookedInvoice": "Invoice payment",
+      "undo": "Undo",
+      "approve": "Checked, approve all ({count})",
+      "anomaliesTitle": "Things to look at ({count})",
+      "anomaliesEmpty": "No anomaly found.",
+      "kinds": {
+        "duplicate": "Possible duplicate: same amount and counterparty within a few days.",
+        "missingReceipt": "Receipt missing for this expense.",
+        "unusualAmount": "Unusual amount for this counterparty (usually {usual})."
+      },
+      "addReceipt": "Upload the receipt",
+      "openBank": "See in Bank",
+      "errors": {
+        "closed": "This entry is in a closed financial year or VAT period and can no longer be undone.",
+        "notFound": "Entry not found or already handled.",
+        "plan": "The autopilot is part of the Pro plan."
+      },
+      "digest": {
+        "subject": "InvoiceLead: your books this week, {company}",
+        "body": "Hello,\n\nThis week the autopilot posted {auto, plural, =0 {no transaction} one {# transaction} other {# transactions}} for {company}.\n\nTo approve: {approve}\nTo review under Bank: {review}\nThings to look at: {anomalies}\n\nSee everything and approve in one click: {link}\n\nInvoiceLead"
       }
+    },
+    "bills": {
+      "title": "Supplier bills",
+      "new": "New supplier bill",
+      "back": "All supplier bills",
+      "subtitle": "Bills received, read by AI or imported as e-invoices, to approve and then pay with one file for your online banking. The bank statement settles them on its own afterwards.",
+      "empty": "No supplier bill. Import an e-invoice, create one from a receipt or enter it by hand.",
+      "importLabel": "E-invoices received (XRechnung, ZUGFeRD, Factur-X, UBL)",
+      "importHint": "XML files, or PDFs with the XML attached. Read without AI, to the cent.",
+      "import": "Import",
+      "imported": "{count, plural, =0 {No bill imported} one {# bill imported} other {# bills imported}}{rejected, plural, =0 {.} other {, # file(s) not recognised as e-invoices.}}",
+      "deleted": "Draft deleted.",
+      "dualOn": "Dual approval on.",
+      "dualOff": "Dual approval off.",
+      "exportHint": "{count, plural, one {# approved bill} other {# approved bills}} to pay, {total} in total. Upload the pain.001 file to your online banking, which pays each one on its due date.",
+      "export": "Download the payment file (pain.001)",
+      "groups": {
+        "draft": "To approve",
+        "approved": "To pay",
+        "scheduled": "Payment sent",
+        "paid": "Paid"
+      },
+      "status": {
+        "draft": "Draft",
+        "approved": "Approved, to pay",
+        "scheduled": "Payment sent",
+        "paid": "Paid"
+      },
+      "due": "due {date}",
+      "dualApproval": "Dual approval of supplier bills",
+      "dualApprovalHint": "Two different people approve each bill before it is posted and payable.",
+      "saveSetting": "Save",
+      "sections": {
+        "supplier": "Supplier",
+        "invoice": "Bill",
+        "payment": "Payment"
+      },
+      "fields": {
+        "supplierName": "Supplier",
+        "supplierStreet": "Street and number",
+        "supplierPostalCode": "Postcode",
+        "supplierTown": "Town",
+        "supplierCountry": "Country (code)",
+        "number": "Bill number",
+        "issueDate": "Bill date",
+        "dueDate": "Due date",
+        "currency": "Currency",
+        "total": "Amount to pay, VAT included",
+        "vatCode": "VAT included",
+        "account": "Expense account",
+        "description": "Description",
+        "iban": "Supplier's IBAN",
+        "bic": "BIC (optional)",
+        "paymentReference": "Payment reference"
+      },
+      "hints": {
+        "supplierCountry": "Two letters: CH, DE, FR…",
+        "dueDate": "Empty: 30 days after the bill date.",
+        "total": "For example 107.70",
+        "account": "Learnt from the supplier from the first approved bill.",
+        "paymentReference": "QR reference, RF reference or free text."
+      },
+      "noVat": "No VAT",
+      "choose": "Choose…",
+      "save": "Save",
+      "invalid": "Some fields need correcting.",
+      "notEditable": "This bill can no longer be changed.",
+      "saved": "Bill saved.",
+      "approve": "Approve",
+      "approveSecond": "Approve (2nd approval)",
+      "approveHint": "Once approved, the bill is posted (expense and input VAT against payables) and ready to pay.",
+      "waitingSecond": "You gave the first approval. Another person must approve.",
+      "secondNeeded": "First approval given by someone else. Your approval posts the bill.",
+      "approvedNotice": "Bill approved and posted.",
+      "firstApprovalNotice": "First approval saved. A second person must approve.",
+      "paidNotice": "Payment recorded.",
+      "delete": "Delete draft",
+      "openReceipt": "See the receipt",
+      "openEInvoice": "See the e-invoice",
+      "paidOn": "Paid on",
+      "money": "Paid from",
+      "moneyBank": "Bank",
+      "moneyCash": "Cash",
+      "markPaid": "Mark as paid",
+      "markPaidHint": "Only for a payment outside an imported statement: otherwise the debit on the statement settles the bill on its own.",
+      "errors": {
+        "required": "Required field.",
+        "tooLong": "Text too long.",
+        "date": "Invalid date.",
+        "amount": "Invalid amount.",
+        "iban": "Invalid IBAN (check digits).",
+        "noAccount": "Choose the expense account first.",
+        "sameApprover": "The second approval must come from another person.",
+        "fxRate": "The day's exchange rate could not be retrieved. Try again later.",
+        "noChart": "Install the chart of accounts first.",
+        "noFiscalYear": "No open financial year on the bill date.",
+        "vatPeriodClosed": "The VAT period of this date is already validated.",
+        "notFound": "Bill not found or already handled.",
+        "none": "No approved bill with an IBAN to pay.",
+        "noIban": "Enter the company's IBAN in the settings first.",
+        "plan": "Importing e-invoices is part of the Pro plan."
+      },
+      "claim": "Expense claim"
+    },
+    "time": {
+      "title": "Time",
+      "subtitle": "The timer or a quick entry, linked to a project; billable hours become an invoice in one click.",
+      "projectsLink": "{count, plural, =0 {Projects} one {# project} other {# projects}}",
+      "noProjects": "Create a project for a customer first.",
+      "createProject": "Create project",
+      "timer": "Timer",
+      "project": "Project",
+      "description": "Description",
+      "start": "Start",
+      "stop": "Stop",
+      "manual": "Entry",
+      "date": "Date",
+      "duration": "Duration",
+      "billable": "Billable",
+      "add": "Add",
+      "recent": "Last two weeks",
+      "empty": "No time logged.",
+      "notBillable": "not billable",
+      "invoiced": "invoiced",
+      "running": "timer running",
+      "delete": "Delete",
+      "added": "Time added.",
+      "stopped": "Timer stopped, time saved.",
+      "projects": "Projects",
+      "projectsSubtitle": "Hours spent, still to invoice, revenue invoiced and the hourly rate actually earned.",
+      "back": "Time",
+      "allProjects": "All projects",
+      "hours": "Hours",
+      "unbilled": "To invoice",
+      "invoicedNet": "Invoiced (net)",
+      "effectiveRate": "Effective hourly rate",
+      "ofBudget": "of {budget} planned",
+      "noProjectsYet": "No projects.",
+      "noArchived": "No archived projects.",
+      "showArchived": "Show archived projects",
+      "showActive": "Show active projects",
+      "noCustomers": "Add a customer under Contacts first.",
+      "newProject": "New project",
+      "projectName": "Project name",
+      "customer": "Customer",
+      "hourlyRate": "Hourly rate excl. VAT ({currency})",
+      "budgetHours": "Budget in hours (optional)",
+      "saved": "Project saved.",
+      "archivedLabel": "archived",
+      "invoiceHint": "{hours} billable hours not yet invoiced, {amount} excl. VAT.",
+      "invoiceHours": "Invoice the hours",
+      "entries": "Time logged",
+      "editProject": "Edit project",
+      "save": "Save",
+      "archive": "Archive project",
+      "unarchive": "Reactivate project",
+      "errors": {
+        "project": "Project not found or archived.",
+        "date": "Invalid date.",
+        "duration": "Invalid duration (for example 1:30, 1.5 or 45m).",
+        "required": "Required field.",
+        "amount": "Invalid amount.",
+        "hours": "Invalid number of hours.",
+        "contact": "Customer not found.",
+        "nothing": "No billable hours to invoice.",
+        "invalid": "Invalid entry."
+      }
+    },
+    "capture": {
+      "title": "Photograph a receipt",
+      "subtitle": "A receipt or a bill: AI reads the photo and links it to the payment as soon as it shows up in the statement.",
+      "take": "Take a photo",
+      "sending": "Sending and reading…",
+      "read": "Receipt read",
+      "saved": "Receipt saved.",
+      "rejected": "The photo could not be saved (format, size or plan limit).",
+      "recent": "Latest receipts",
+      "all": "All receipts",
+      "planOnly": "Reading receipts is part of the Pro plan."
+    },
+    "assistant": {
+      "title": "Assistant",
+      "subtitle": "A question about your numbers, in plain words. The assistant answers from your books and changes nothing.",
+      "question": "Your question",
+      "ask": "Ask",
+      "thinking": "Thinking…",
+      "disclaimer": "Answer drawn from your books at the time of the question. Check it before any important decision.",
+      "suggestions": {
+        "owed": "Who owes me the most?",
+        "result": "How is my result this year?",
+        "toPay": "What do I have to pay this month?",
+        "unbilled": "Which hours are still to invoice?"
+      },
+      "links": {
+        "invoices": "Invoices",
+        "reminders": "Reminders",
+        "bank": "Bank",
+        "review": "To review",
+        "bills": "Suppliers",
+        "reports": "Balance sheet and P&L",
+        "vat": "VAT",
+        "time": "Projects"
+      },
+      "errors": {
+        "plan": "The assistant is part of the Pro plan.",
+        "off": "The AI assistant is not configured yet.",
+        "empty": "Ask a question.",
+        "failed": "The assistant could not answer. Try again in a moment."
+      }
+    },
+    "expenses": {
+      "title": "Expense claims",
+      "subtitle": "Expenses paid out of your own pocket and trips with your own vehicle. Once approved by accounting, they are reimbursed with the supplier bills.",
+      "expense": "Expense",
+      "mileage": "Mileage",
+      "mine": "My expense claims",
+      "empty": "No expense claims yet.",
+      "submit": "Send to accounting",
+      "added": "Expense claim sent to accounting.",
+      "delete": "Remove",
+      "fields": {
+        "date": "Date",
+        "description": "Purpose",
+        "amount": "Amount paid ({currency})",
+        "vat": "Tax included",
+        "account": "Category",
+        "receipt": "Receipt (photo or PDF)",
+        "claimant": "Reimburse to",
+        "iban": "IBAN for the reimbursement",
+        "trip": "Trip (from, to, purpose)",
+        "km": "Distance",
+        "rate": "Rate per unit ({currency})"
+      },
+      "hints": {
+        "iban": "Optional: without an IBAN, the reimbursement is made separately.",
+        "rate": {
+          "CH": "Usual rate in Switzerland: 70 centimes per kilometre.",
+          "DE": "German flat rate: 30 cents per kilometre (§ 9 EStG).",
+          "FR": "French tax administration mileage scale, depending on the vehicle's power.",
+          "GB": "HMRC: 45 pence per mile for the first 10,000 miles; enter miles.",
+          "US": "IRS standard mileage rate; enter miles."
+        }
+      },
+      "errors": {
+        "date": "Invalid date.",
+        "required": "Please fill in the required fields.",
+        "iban": "Invalid IBAN.",
+        "amount": "Invalid amount.",
+        "km": "Invalid distance.",
+        "type": "Receipt format not supported (PDF, JPEG, PNG or WebP).",
+        "size": "Receipt too large (10 MB at most).",
+        "duplicate": "This receipt was already sent.",
+        "role": "Your role does not allow expense claims.",
+        "invalid": "Invalid input."
+      }
+    },
+    "cashflow": {
+      "title": "Cash flow",
+      "subtitle": "Forecast for the next thirteen weeks, recalculated on every visit.",
+      "opening": "Cash today (bank and cash)",
+      "verdictLabel": "Forecast",
+      "shortfall": "Shortfall expected in the week of {date}: {amount}.",
+      "noShortfall": "No shortfall expected. Cash in thirteen weeks: {amount}.",
+      "week": "Week of",
+      "in": "Receipts",
+      "out": "Payments",
+      "closing": "Cash",
+      "later": "Beyond: receipts {in}, payments {out}.",
+      "method": "Receipts: open invoices at the date each customer usually pays. Payments: supplier bills and expense claims at their due date. Anything already due counts in the current week."
     }
   },
   "footer": {

@@ -54,17 +54,31 @@ test("déconnexion : session locale et Compte Lead fermés", async ({ page }) =>
   await expect(page).toHaveURL(/\/de\/login$/);
 });
 
-test("une formule sans InvoiceLead montre l'écran de mise à niveau", async ({ page }) => {
+test("un compte Lead sans InvoiceLead dans sa formule entre en version gratuite", async ({
+  page,
+}) => {
+  await login(page, "fr", {
+    sub: "sub-noa",
+    email: "noa@libre.test",
+    name: "Noa",
+    org: "org-libre",
+    org_name: "Libre Sàrl",
+    access: false,
+  });
+  await expect(page.getByTestId("dashboard-title")).toBeVisible();
+});
+
+test("une application retirée montre l'écran sans accès", async ({ page }) => {
   await login(
     page,
     "fr",
     {
-      sub: "sub-noa",
-      email: "noa@libre.test",
-      name: "Noa",
-      org: "org-libre",
-      org_name: "Libre Sàrl",
-      access: false,
+      sub: "sub-ret",
+      email: "ret@libre.test",
+      name: "Ret",
+      org: "org-retired",
+      org_name: "Retraite Sàrl",
+      status: "retired",
     },
     "**/fr/no-access",
   );
@@ -75,10 +89,6 @@ test("une formule sans InvoiceLead montre l'écran de mise à niveau", async ({ 
   expect([303, 307, 308]).toContain(direct.status());
   expect(direct.headers().location).toContain("/fr/no-access");
   expect(await direct.text()).not.toContain("dashboard-title");
-  await expect(page.getByRole("link", { name: "Mettre à niveau" })).toHaveAttribute(
-    "href",
-    "https://scanlead.io/billing",
-  );
 });
 
 test("un retour sans demande en cours est refusé proprement", async ({ page }) => {

@@ -37,6 +37,8 @@ export const ACCOUNT_ROLES = [
   "retained_earnings",
   "annual_result",
   "revenue_default",
+  /** Produits au taux réduit, quand le plan les sépare (Allemagne : 4300, compte automatique 7 %). */
+  "revenue_reduced",
   "sales_deductions",
   "rounding",
   "bad_debt",

@@ -243,7 +243,7 @@ async function writeInvoice(
   data: InvoiceInput,
   id: string | null,
   kind: DocumentKind,
-  links: { sourceQuoteId?: string; relatedInvoiceId?: string } = {},
+  links: { sourceQuoteId?: string; relatedInvoiceId?: string; deposit?: boolean } = {},
 ): Promise<SaveResult> {
   if (kind === "credit_note" && id) {
     // Un avoir reste au nom du client de sa facture, quoi que dise le formulaire.
@@ -333,6 +333,7 @@ async function writeInvoice(
           ...values,
           kind,
           sourceQuoteId: links.sourceQuoteId ?? null,
+          deposit: links.deposit ?? false,
           relatedInvoiceId: links.relatedInvoiceId ?? null,
           organizationId: who.organizationId,
           createdBy: who.userId,
@@ -689,10 +690,24 @@ export async function convertQuoteToInvoice(
   who: Who,
   quoteId: string,
   today: string,
-): Promise<Invoice | "notConvertible" | "contact"> {
+): Promise<Invoice | "notConvertible" | "contact" | "depositDraft"> {
   const found = await getInvoice(database, who.organizationId, quoteId);
   if (found?.invoice.kind !== "quote") return "notConvertible";
   const { invoice: quote, lines } = found;
+  // Un acompte encore en brouillon ne serait pas déduit : il faut l'émettre ou le supprimer avant.
+  const [pendingDeposit] = await database
+    .select({ id: invoices.id })
+    .from(invoices)
+    .where(
+      and(
+        eq(invoices.organizationId, who.organizationId),
+        eq(invoices.sourceQuoteId, quoteId),
+        eq(invoices.deposit, true),
+        eq(invoices.status, "draft"),
+      ),
+    )
+    .limit(1);
+  if (pendingDeposit) return "depositDraft";
   return database
     .transaction(async (tx) => {
       const [claimed] = await tx
@@ -707,6 +722,12 @@ export async function convertQuoteToInvoice(
         )
         .returning({ id: invoices.id });
       if (!claimed) return "notConvertible";
+      const deductions = await depositDeductions(
+        tx as unknown as Db,
+        who.organizationId,
+        quoteId,
+        quote.language,
+      );
       const result = await writeInvoice(
         tx as unknown as Db,
         who,
@@ -720,14 +741,17 @@ export async function convertQuoteToInvoice(
           serviceDate: today,
           dueDate: null,
           currency: quote.currency as Currency,
-          lines: lines.map((l) => ({
-            productId: l.productId,
-            description: l.description,
-            quantityMilli: l.quantityMilli,
-            unit: l.unit as InvoiceLineInput["unit"],
-            unitPriceCents: l.unitPriceCents,
-            vatCode: (l.vatCode as VatCode | null) ?? "normal",
-          })),
+          lines: [
+            ...lines.map((l) => ({
+              productId: l.productId,
+              description: l.description,
+              quantityMilli: l.quantityMilli,
+              unit: l.unit as InvoiceLineInput["unit"],
+              unitPriceCents: l.unitPriceCents,
+              vatCode: (l.vatCode as VatCode | null) ?? "normal",
+            })),
+            ...deductions,
+          ],
         },
         null,
         "invoice",
@@ -752,6 +776,173 @@ export async function convertQuoteToInvoice(
       if (e instanceof Error && /rollback/i.test(e.message)) return "contact" as const;
       throw e;
     });
+}
+
+const DEPOSIT_TEXT = {
+  de: {
+    line: (percent: string, quote: string) => `Anzahlung ${percent} % gemäss Offerte ${quote}`,
+    less: (invoice: string) => `Abzüglich Anzahlungsrechnung ${invoice}`,
+  },
+  fr: {
+    line: (percent: string, quote: string) => `Acompte de ${percent}\u202f% selon l’offre ${quote}`,
+    less: (invoice: string) => `Moins facture d’acompte ${invoice}`,
+  },
+  en: {
+    line: (percent: string, quote: string) => `Deposit of ${percent}% as per quote ${quote}`,
+    less: (invoice: string) => `Less deposit invoice ${invoice}`,
+  },
+} as const;
+
+/**
+ * Lignes qui déduisent les factures d'acompte émises sur un devis : une par ligne d'acompte, en
+ * quantité négative au même prix et au même code TVA, si bien que la TVA déjà facturée est reprise.
+ */
+async function depositDeductions(
+  database: Db,
+  organizationId: string,
+  quoteId: string,
+  language: string,
+): Promise<InvoiceLineInput[]> {
+  const rows = await database
+    .select({
+      id: invoices.id,
+      number: invoices.number,
+      totalCents: invoices.totalCents,
+      line: invoiceLines,
+    })
+    .from(invoices)
+    .innerJoin(invoiceLines, eq(invoiceLines.invoiceId, invoices.id))
+    .where(
+      and(
+        eq(invoices.organizationId, organizationId),
+        eq(invoices.sourceQuoteId, quoteId),
+        eq(invoices.deposit, true),
+        eq(invoices.status, "issued"),
+      ),
+    )
+    .orderBy(invoices.issueDate, invoiceLines.position);
+  const text = DEPOSIT_TEXT[documentLanguage(language)];
+  // Acompte annulé par avoir : seule la part non créditée se déduit.
+  const remaining = new Map<string, number>();
+  for (const r of rows)
+    if (!remaining.has(r.id))
+      remaining.set(
+        r.id,
+        r.totalCents > 0
+          ? Math.max(0, r.totalCents - (await creditedCents(database, r.id))) / r.totalCents
+          : 0,
+      );
+  return rows
+    .filter((r) => (remaining.get(r.id) ?? 0) > 0)
+    .map((r) => ({
+      productId: null,
+      description: text.less(r.number ?? ""),
+      quantityMilli: -Math.round(r.line.quantityMilli * (remaining.get(r.id) ?? 0)),
+      unit: r.line.unit as InvoiceLineInput["unit"],
+      unitPriceCents: r.line.unitPriceCents,
+      vatCode: (r.line.vatCode as VatCode | null) ?? "normal",
+    }));
+}
+
+export type DepositResult = Invoice | "notConvertible" | "percent" | "tooHigh" | "contact";
+
+/**
+ * Facture d'acompte sur un devis émis ou accepté : un pourcentage du montant hors TVA, une ligne par
+ * taux de TVA. Le devis reste ouvert ; sa facture finale déduira les acomptes émis. Les acomptes
+ * (brouillons compris) ne peuvent pas dépasser le devis.
+ */
+export async function createDepositInvoice(
+  database: Db,
+  who: Who,
+  quoteId: string,
+  percent: number,
+  today: string,
+): Promise<DepositResult> {
+  if (!Number.isFinite(percent) || percent <= 0 || percent > 100) return "percent";
+  const found = await getInvoice(database, who.organizationId, quoteId);
+  if (found?.invoice.kind !== "quote" || !["issued", "accepted"].includes(found.invoice.status))
+    return "notConvertible";
+  const { invoice: quote, lines } = found;
+  const groups = new Map<string, number>();
+  for (const l of lines) {
+    const code = l.vatCode ?? "normal";
+    groups.set(code, (groups.get(code) ?? 0) + l.netCents);
+  }
+  // Acomptes déjà demandés (brouillons compris), sans la part annulée par avoir.
+  const previous = await database
+    .select({ id: invoices.id, netCents: invoices.netCents, totalCents: invoices.totalCents })
+    .from(invoices)
+    .where(
+      and(
+        eq(invoices.organizationId, who.organizationId),
+        eq(invoices.sourceQuoteId, quoteId),
+        eq(invoices.deposit, true),
+      ),
+    );
+  let alreadyNet = 0;
+  for (const d of previous) {
+    const credited = await creditedCents(database, d.id);
+    const share = d.totalCents > 0 ? Math.max(0, d.totalCents - credited) / d.totalCents : 0;
+    alreadyNet += Math.round(d.netCents * share);
+  }
+  const depositLines = [...groups]
+    .map(([code, net]) => ({ code, cents: Math.round((net * percent) / 100) }))
+    .filter((g) => g.cents > 0);
+  const total = depositLines.reduce((s, g) => s + g.cents, 0);
+  if (total === 0) return "percent";
+  if (alreadyNet + total > quote.netCents) return "tooHigh";
+  const text = DEPOSIT_TEXT[documentLanguage(quote.language)];
+  const shown = String(Math.round(percent * 100) / 100);
+  const result = await writeInvoice(
+    database,
+    who,
+    {
+      contactId: quote.contactId,
+      language: documentLanguage(quote.language),
+      title: null,
+      introText: null,
+      footerText: quote.footerText,
+      issueDate: today,
+      serviceDate: today,
+      dueDate: null,
+      currency: quote.currency as Currency,
+      lines: depositLines.map((g) => ({
+        productId: null,
+        description: text.line(shown, quote.number ?? ""),
+        quantityMilli: 1000,
+        unit: "flat",
+        unitPriceCents: g.cents,
+        vatCode: g.code as VatCode,
+      })),
+    },
+    null,
+    "invoice",
+    { sourceQuoteId: quoteId, deposit: true },
+  );
+  if (result === "contact") return "contact";
+  if (typeof result !== "object" || !result) throw new Error("deposit_failed");
+  return result;
+}
+
+/** Factures d'acompte d'un devis, pour l'afficher sur sa page. */
+export async function depositInvoices(database: Db, organizationId: string, quoteId: string) {
+  return database
+    .select({
+      id: invoices.id,
+      number: invoices.number,
+      status: invoices.status,
+      totalCents: invoices.totalCents,
+      netCents: invoices.netCents,
+    })
+    .from(invoices)
+    .where(
+      and(
+        eq(invoices.organizationId, organizationId),
+        eq(invoices.sourceQuoteId, quoteId),
+        eq(invoices.deposit, true),
+      ),
+    )
+    .orderBy(invoices.createdAt);
 }
 
 /** Somme des avoirs émis sur une facture. */

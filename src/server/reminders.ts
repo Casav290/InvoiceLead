@@ -2,6 +2,12 @@ import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { getTranslations } from "next-intl/server";
 import { formatDate } from "@/lib/fiscal-year";
 import { formatAmount } from "@/lib/money";
+import {
+  COURTESY_DAYS,
+  type PaymentProfile,
+  paymentProfiles,
+  reminderSchedule,
+} from "./collections";
 import type { Db } from "./db";
 import {
   auditLog,
@@ -47,6 +53,9 @@ export type DueReminder = {
   interestCents: number;
   /** Total réclamé : facture ouverte, frais et intérêts déjà réclamés, et ceux de cette relance. */
   totalDueCents: number;
+  /** Profil de paiement du client (formule Pro) et son retard moyen habituel. */
+  risk: PaymentProfile["risk"];
+  avgDaysLate: number | null;
 };
 
 /** Intérêt moratoire simple, sur 365 jours. */
@@ -77,11 +86,13 @@ export async function dueReminders(
       currency: invoices.currency,
       dueDate: invoices.dueDate,
       customer: contacts.name,
+      contactId: invoices.contactId,
       email: contacts.email,
       lastLevel:
         sql<number>`coalesce((select max(r.level) from invoice_reminders r where r.invoice_id = ${invoices.id}), 0)`.mapWith(
           Number,
         ),
+      courtesySent: sql<boolean>`exists (select 1 from invoice_reminders r where r.invoice_id = ${invoices.id} and r.level = 0)`,
       interestSoFar:
         sql<number>`coalesce((select sum(r.interest_cents) from invoice_reminders r where r.invoice_id = ${invoices.id} and r.waived_at is null), 0)`.mapWith(
           Number,
@@ -94,15 +105,28 @@ export async function dueReminders(
         eq(invoices.organizationId, organizationId),
         eq(invoices.kind, "invoice"),
         eq(invoices.status, "issued"),
-        sql`${invoices.dueDate} < ${today}`,
+        // Échues, ou bientôt échues (rappel courtois des retardataires, formule Pro).
+        sql`${invoices.dueDate} <= ${addDays(today, pro ? COURTESY_DAYS : -1)}`,
       ),
     )
     .orderBy(invoices.dueDate);
+  // Formule Pro : rythme adapté au comportement de paiement de chaque client.
+  const profiles = pro
+    ? await paymentProfiles(database, organizationId, [...new Set(rows.map((r) => r.contactId))])
+    : new Map<string, PaymentProfile>();
   const out: DueReminder[] = [];
   for (const r of rows) {
-    const level = r.lastLevel + 1;
-    const days = REMINDER_DAYS[level - 1];
-    if (level > maxLevel || days === undefined || addDays(r.dueDate, days) > today) continue;
+    const profile = profiles.get(r.contactId);
+    const risk = profile?.risk ?? "unknown";
+    const schedule = pro ? reminderSchedule(risk) : REMINDER_DAYS;
+    // Rappel courtois (niveau 0) : client retardataire, échéance dans les trois jours, rien envoyé.
+    const courtesy =
+      pro && risk === "late" && r.lastLevel === 0 && !r.courtesySent && r.dueDate >= today;
+    if (r.dueDate >= today && !courtesy) continue;
+    const level = courtesy ? 0 : r.lastLevel + 1;
+    const days = courtesy ? 0 : schedule[level - 1];
+    if (!courtesy && (level > maxLevel || days === undefined || addDays(r.dueDate, days) > today))
+      continue;
     const balance = await invoiceBalance(database, r.id, r.total);
     const charged = balance.chargesCents ?? 0;
     const open = balance.openCents - charged;
@@ -113,9 +137,10 @@ export async function dueReminders(
     // Frais et intérêts : formule Pro, factures dans la monnaie de l'entreprise.
     const charges = pro && r.currency === org.currency;
     const feeCents = charges && level >= 2 ? org.reminderFeeCents : 0;
-    const interestCents = charges
-      ? Math.max(0, lateInterest(open, org.lateInterestBp, daysLate) - r.interestSoFar)
-      : 0;
+    const interestCents =
+      charges && level >= 1
+        ? Math.max(0, lateInterest(open, org.lateInterestBp, daysLate) - r.interestSoFar)
+        : 0;
     out.push({
       invoiceId: r.id,
       number: r.number ?? "",
@@ -129,6 +154,8 @@ export async function dueReminders(
       feeCents,
       interestCents,
       totalDueCents: open + charged + feeCents + interestCents,
+      risk,
+      avgDaysLate: profile?.avgDaysLate ?? null,
     });
   }
   return out;

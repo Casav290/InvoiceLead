@@ -38,6 +38,15 @@ export default async function DashboardPage({
         {t("title", { name: firstName })}
       </h1>
       <p className="mt-2 text-[15px] text-ink-muted">{t("subtitle", { org: organization.name })}</p>
+      <p className="mt-4">
+        <Link
+          href="/app/assistant"
+          className="inline-block border border-accent px-3 py-2 text-[13px] font-semibold text-accent-dark hover:bg-accent-pale"
+          data-testid="dashboard-assistant"
+        >
+          {t("askBooks")}
+        </Link>
+      </p>
       {forbidden ? (
         <p
           role="alert"

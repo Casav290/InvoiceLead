@@ -4,7 +4,7 @@
  * tests ne prouveraient rien du branchement réel (même principe que les faux fournisseurs de CRMlead).
  *
  *   node tests/support/fake-lead-id.mjs            (port 4010)
- *   POST /test/next-user  {sub,email,name,org,org_name,org_role,access,plan}  choisit la prochaine personne
+ *   POST /test/next-user  {sub,email,name,org,org_name,org_role,access,plan,status}  choisit la prochaine personne
  *   POST /resend/emails   imite l'API d'envoi de Resend (clé « re_test ») ; GET /test/emails les relit
  *   POST /ai/chat/completions  faux assistant comptable : chaque sortie d'argent va en frais bancaires
  */
@@ -163,7 +163,7 @@ createServer(async (req, res) => {
             access: u.access,
             name: "InvoiceLead",
             url: "http://localhost:3100",
-            status: "live",
+            status: u.status ?? "live",
             upgrade_url: "https://scanlead.io/billing",
           },
         },
@@ -248,6 +248,16 @@ createServer(async (req, res) => {
     if (req.headers.authorization !== "Bearer ai_test") return send(res, 401, { error: "key" });
     const body = JSON.parse((await readBody(req)) || "{}");
     const system = String(body.messages?.[0]?.content ?? "");
+    if (system.includes("bookkeeping assistant of InvoiceLead")) {
+      // Assistant : le faux modèle répond avec les chiffres reçus, comme le vrai doit le faire.
+      const { facts } = JSON.parse(String(body.messages?.[1]?.content ?? "{}"));
+      const answer = `Vos clients vous doivent ${facts.company.currency} ${facts.receivables.openTotal.toFixed(2)}, dont ${facts.receivables.overdueTotal.toFixed(2)} en retard.`;
+      return send(res, 200, {
+        choices: [
+          { message: { content: JSON.stringify({ answer, links: ["invoices", "nope"] }) } },
+        ],
+      });
+    }
     if (system.includes("receipts")) {
       // Lecture de justificatif : le faux modèle relit le montant et le fournisseur dans le texte.
       const text = String(body.messages?.[1]?.content ?? "");

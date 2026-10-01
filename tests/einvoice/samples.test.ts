@@ -2,6 +2,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { expect, it } from "vitest";
 import { buildEch0217 } from "@/countries/ch/ech0217";
 import { buildCii } from "@/countries/de/cii";
+import { buildPain001 } from "@/lib/pain001";
 import type { Invoice, InvoiceLine } from "@/server/db/schema";
 import { renderInvoicePdf } from "@/server/invoice-pdf";
 
@@ -313,4 +314,68 @@ it("écrit des décomptes eCH-0217 (méthode effective et TDFN)", () => {
   if (!effective || !tdfn) throw new Error("ech0217");
   writeFileSync(`${OUT}/ech0217-effective.xml`, effective);
   writeFileSync(`${OUT}/ech0217-tdfn.xml`, tdfn);
+});
+
+it("écrit un ordre de paiement pain.001 (QR, RF, libre, SEPA)", () => {
+  mkdirSync(OUT, { recursive: true });
+  const base = {
+    amountCents: 43_240,
+    currency: "CHF",
+    executionDate: "2026-10-05",
+    creditorName: "Druckerei Muster & Co AG",
+    creditorStreet: "Hardturmstrasse 3",
+    creditorPostalCode: "8005",
+    creditorTown: "Zürich",
+    creditorCountry: "CH",
+    bic: null,
+    message: "R-2026-117",
+  };
+  writeFileSync(
+    `${OUT}/pain001-ch.xml`,
+    buildPain001({
+      messageId: "IL-20261001-1",
+      createdAt: new Date("2026-10-01T08:00:00Z"),
+      debtorName: "Atelier Muster GmbH",
+      debtorIban: "CH9300762011623852957",
+      debtorCountry: "CH",
+      payments: [
+        {
+          ...base,
+          id: "QR1",
+          iban: "CH4431999123000889012",
+          reference: "210000000003139471430009017",
+        },
+        { ...base, id: "RF1", iban: "CH5604835012345678009", reference: "RF18539007547034" },
+        { ...base, id: "FREE1", iban: "CH5604835012345678009", reference: null },
+        {
+          ...base,
+          id: "EUR1",
+          currency: "EUR",
+          iban: "DE89370400440532013000",
+          reference: null,
+          executionDate: "2026-10-07",
+        },
+      ],
+    }),
+  );
+  writeFileSync(
+    `${OUT}/pain001-sepa.xml`,
+    buildPain001({
+      messageId: "IL-20261001-2",
+      createdAt: new Date("2026-10-01T08:00:00Z"),
+      debtorName: "Werkstatt Müller GmbH",
+      debtorIban: "DE89370400440532013000",
+      debtorCountry: "DE",
+      payments: [
+        {
+          ...base,
+          id: "SEPA1",
+          currency: "EUR",
+          creditorCountry: "FR",
+          iban: "FR1420041010050500013M02606",
+          reference: "RF18539007547034",
+        },
+      ],
+    }),
+  );
 });

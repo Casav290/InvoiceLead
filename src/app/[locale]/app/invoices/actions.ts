@@ -9,6 +9,7 @@ import { db } from "@/server/db";
 import {
   convertQuoteToInvoice,
   createCreditNote,
+  createDepositInvoice,
   createInvoice,
   type DocumentKind,
   deleteDraft,
@@ -152,6 +153,24 @@ export async function convertQuoteAction(form: FormData) {
   revalidatePath(`/${locale}/app/invoices`);
   if (typeof result === "string") redirect(`/${locale}/app/quotes/${id}?error=${result}`);
   redirect(`/${locale}/app/invoices/${result.id}?converted=1`);
+}
+
+export async function depositInvoiceAction(form: FormData) {
+  const locale = pickLocale(form.get("locale"));
+  const session = await requirePermission(locale, "billing");
+  const id = String(form.get("id") ?? "");
+  const percent = Number(String(form.get("percent") ?? "").replace(",", "."));
+  const result = await createDepositInvoice(
+    db(),
+    { organizationId: session.organization.id, userId: session.user.id },
+    id,
+    percent,
+    new Date().toISOString().slice(0, 10),
+  );
+  revalidatePath(`/${locale}/app/quotes/${id}`);
+  if (typeof result === "string") redirect(`/${locale}/app/quotes/${id}?error=${result}`);
+  revalidatePath(`/${locale}/app/invoices`);
+  redirect(`/${locale}/app/invoices/${result.id}?saved=1`);
 }
 
 export async function createCreditNoteAction(form: FormData) {

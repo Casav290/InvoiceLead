@@ -82,9 +82,23 @@ for (const size of WIDTHS) {
       expect(await traitNetIssues(page)).toEqual([]);
       await page.goto("/de/app/invoices/recurring");
       expect(await traitNetIssues(page)).toEqual([]);
+      await page.goto("/fr/app/time");
+      expect(await traitNetIssues(page)).toEqual([]);
+      await page.goto("/en/app/assistant");
+      expect(await traitNetIssues(page)).toEqual([]);
+      await page.goto("/fr/app/accounting/receipts/capture");
+      expect(await traitNetIssues(page)).toEqual([]);
+      await page.goto("/de/app/time/projects");
+      expect(await traitNetIssues(page)).toEqual([]);
       await page.goto("/de/app/accounting");
       expect(await traitNetIssues(page)).toEqual([]);
       await page.goto("/fr/app/accounting/bank");
+      expect(await traitNetIssues(page)).toEqual([]);
+      await page.goto("/fr/app/accounting/review");
+      expect(await traitNetIssues(page)).toEqual([]);
+      await page.goto("/fr/app/accounting/bills");
+      expect(await traitNetIssues(page)).toEqual([]);
+      await page.goto("/de/app/accounting/bills/new");
       expect(await traitNetIssues(page)).toEqual([]);
       await page.goto("/de/app/accounting/receipts");
       expect(await traitNetIssues(page)).toEqual([]);
@@ -103,7 +117,7 @@ for (const size of WIDTHS) {
           email: `na${size.width}@libre.test`,
           org: `org-na-${size.width}`,
           org_name: "Libre Sàrl",
-          access: false,
+          status: "retired",
         },
         "**/fr/no-access",
       );

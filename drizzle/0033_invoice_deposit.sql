@@ -1,0 +1,1 @@
+ALTER TABLE "invoices" ADD COLUMN "deposit" boolean DEFAULT false NOT NULL;

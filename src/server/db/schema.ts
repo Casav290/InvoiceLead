@@ -83,6 +83,13 @@ export const organizations = pgTable("organizations", {
   salesTaxRateBp: doublePrecision("sales_tax_rate_bp"),
   /** Compte Stripe connecté (Stripe Connect) qui reçoit les paiements en ligne des clients. */
   stripeAccountId: text("stripe_account_id"),
+  /**
+   * Pilote automatique : les propositions sûres (référence de paiement, règle confirmée, IA très
+   * confiante) sont comptabilisées sans clic ; la personne ne relit que les exceptions.
+   */
+  autopilot: boolean("autopilot").notNull().default(false),
+  /** Factures fournisseurs : deux personnes différentes approuvent avant le paiement. */
+  dualApproval: boolean("dual_approval").notNull().default(false),
   /** Relances envoyées chaque jour par la tâche quotidienne (formule Pro), sans clic. */
   reminderAuto: boolean("reminder_auto").notNull().default(false),
   /** Frais de rappel dès la deuxième relance, en centimes ; 0 : aucun. */
@@ -372,6 +379,10 @@ export const invoices = pgTable(
     journalEntryId: uuid("journal_entry_id"),
     /** Origine dans une autre application de la famille, « crmlead:<id du lead> » : évite les doublons. */
     externalRef: text("external_ref"),
+    /** Projet facturé (heures reprises du suivi du temps). */
+    projectId: uuid("project_id"),
+    /** Facture d'acompte sur un devis (`source_quote_id`), déduite de la facture finale. */
+    deposit: boolean("deposit").notNull().default(false),
     issuedAt: timestamp("issued_at", { withTimezone: true }),
     createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
     createdAt: createdAt(),
@@ -539,6 +550,13 @@ export type BankProposal =
       confidence: number;
       explanation: string;
       source: "ai" | "rule" | "receipt";
+    }
+  | {
+      kind: "bill";
+      billId: string;
+      confidence: number;
+      explanation: string;
+      source: "reference" | "ai";
     };
 
 /** Mouvement d'un relevé bancaire importé, en attente de validation humaine. */
@@ -562,6 +580,10 @@ export const bankTransactions = pgTable(
     paymentId: uuid("payment_id"),
     validatedBy: uuid("validated_by").references(() => users.id, { onDelete: "set null" }),
     validatedAt: timestamp("validated_at", { withTimezone: true }),
+    /** Comptabilisé par le pilote automatique, sans clic : à revoir dans le récapitulatif. */
+    autoPosted: boolean("auto_posted").notNull().default(false),
+    /** Écriture automatique approuvée par une personne. */
+    reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
     createdAt: createdAt(),
   },
   (t) => [
@@ -630,6 +652,10 @@ export type ReceiptExtraction = {
   description: string | null;
   accountNumber: string | null;
   confidence: number;
+  /** Section paiement d'une facture fournisseur : échéance, compte et référence du créancier. */
+  dueDate?: string | null;
+  iban?: string | null;
+  paymentReference?: string | null;
 };
 
 /**
@@ -648,7 +674,7 @@ export const receipts = pgTable(
     contentType: text("content_type").notNull(),
     sizeBytes: integer("size_bytes").notNull(),
     sha256: text("sha256").notNull(),
-    status: text("status").notNull().default("new"), // new | read | error | matched | posted
+    status: text("status").notNull().default("new"), // new | read | error | matched | billed | posted
     extraction: jsonb("extraction").$type<ReceiptExtraction>(),
     bankTransactionId: uuid("bank_transaction_id"),
     journalEntryId: uuid("journal_entry_id"),
@@ -869,3 +895,127 @@ export const webhookDeliveries = pgTable(
     index("webhook_deliveries_endpoint_idx").on(t.endpointId, t.createdAt),
   ],
 );
+
+/**
+ * Facture fournisseur à payer : lue d'un justificatif, d'une e-facture reçue (XRechnung, ZUGFeRD,
+ * Factur-X) ou saisie. Approuvée, elle est comptabilisée (charge et impôt préalable contre
+ * fournisseurs) ; payée par le fichier pain.001 puis retrouvée dans le relevé, elle est soldée.
+ */
+export const supplierBills = pgTable(
+  "supplier_bills",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    contactId: uuid("contact_id").references(() => contacts.id, { onDelete: "set null" }),
+    supplierName: text("supplier_name").notNull(),
+    /** Adresse du créancier, exigée par le virement (pain.001). */
+    supplierStreet: text("supplier_street"),
+    supplierPostalCode: text("supplier_postal_code"),
+    supplierTown: text("supplier_town"),
+    supplierCountry: text("supplier_country"),
+    iban: text("iban"),
+    bic: text("bic"),
+    /** Référence structurée (QRR, RF…) ou communication libre du créancier. */
+    paymentReference: text("payment_reference"),
+    number: text("number"),
+    issueDate: date("issue_date", { mode: "string" }).notNull(),
+    dueDate: date("due_date", { mode: "string" }).notNull(),
+    currency: text("currency").notNull().default("CHF"),
+    totalCents: bigint("total_cents", { mode: "number" }).notNull(),
+    vatCode: text("vat_code"),
+    accountId: uuid("account_id").references(() => accounts.id, { onDelete: "set null" }),
+    description: text("description"),
+    /** draft | approved | scheduled (fichier de paiement produit) | paid */
+    status: text("status").notNull().default("draft"),
+    // manual | receipt | einvoice | expense (note de frais) | mileage (indemnité kilométrique)
+    source: text("source").notNull().default("manual"),
+    /** Note de frais : la personne de l'équipe à rembourser. */
+    claimantId: uuid("claimant_id").references(() => users.id, { onDelete: "set null" }),
+    /** Indemnité kilométrique : distance (en mètres) et taux par kilomètre (en centimes). */
+    distanceMeters: integer("distance_meters"),
+    ratePerKmCents: integer("rate_per_km_cents"),
+    receiptId: uuid("receipt_id"),
+    /** Cours figé à l'approbation pour une facture en devise. */
+    fxRate: doublePrecision("fx_rate"),
+    firstApprovedBy: uuid("first_approved_by").references(() => users.id, { onDelete: "set null" }),
+    approvedBy: uuid("approved_by").references(() => users.id, { onDelete: "set null" }),
+    approvedAt: timestamp("approved_at", { withTimezone: true }),
+    exportedAt: timestamp("exported_at", { withTimezone: true }),
+    paidOn: date("paid_on", { mode: "string" }),
+    journalEntryId: uuid("journal_entry_id"),
+    paymentEntryId: uuid("payment_entry_id"),
+    bankTransactionId: uuid("bank_transaction_id"),
+    createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    index("supplier_bills_org_status_idx").on(t.organizationId, t.status, t.dueDate),
+    uniqueIndex("supplier_bills_receipt_idx")
+      .on(t.receiptId)
+      .where(sql`${t.receiptId} is not null`),
+    check("supplier_bills_positive", sql`${t.totalCents} > 0`),
+  ],
+);
+
+export type SupplierBill = typeof supplierBills.$inferSelect;
+
+/** Projet d'un client : le temps saisi s'y rattache, puis se facture. */
+export const projects = pgTable(
+  "projects",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    contactId: uuid("contact_id")
+      .notNull()
+      .references(() => contacts.id, { onDelete: "restrict" }),
+    name: text("name").notNull(),
+    /** Tarif horaire hors TVA, en centimes, repris sur chaque saisie. */
+    hourlyRateCents: bigint("hourly_rate_cents", { mode: "number" }).notNull().default(0),
+    /** Budget en heures, pour suivre l'avancement ; vide : sans budget. */
+    budgetMinutes: integer("budget_minutes"),
+    archivedAt: timestamp("archived_at", { withTimezone: true }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [index("projects_org_idx").on(t.organizationId, t.archivedAt)],
+);
+
+export type Project = typeof projects.$inferSelect;
+
+/**
+ * Temps passé sur un projet. Un chrono en cours a `startedAt` et pas encore de durée. Facturé, il
+ * porte la facture : il n'est plus repris, et redevient facturable si le brouillon est supprimé.
+ */
+export const timeEntries = pgTable(
+  "time_entries",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
+    workDate: date("work_date", { mode: "string" }).notNull(),
+    minutes: integer("minutes").notNull().default(0),
+    description: text("description"),
+    billable: boolean("billable").notNull().default(true),
+    rateCents: bigint("rate_cents", { mode: "number" }).notNull().default(0),
+    startedAt: timestamp("started_at", { withTimezone: true }),
+    invoiceId: uuid("invoice_id").references(() => invoices.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    index("time_entries_project_idx").on(t.projectId, t.workDate),
+    index("time_entries_user_running_idx").on(t.userId, t.startedAt),
+    check("time_entries_minutes", sql`${t.minutes} >= 0 and ${t.minutes} <= 1440`),
+  ],
+);
+
+export type TimeEntry = typeof timeEntries.$inferSelect;

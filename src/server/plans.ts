@@ -16,6 +16,7 @@ export type Feature =
   | "fiduciary"
   | "multiCurrency"
   | "reminders"
+  | "assistant"
   | "api";
 
 type Limits = {
@@ -52,6 +53,7 @@ export const LIMITS: Record<Tier, Limits> = {
       "fiduciary",
       "multiCurrency",
       "reminders",
+      "assistant",
     ],
     poweredBy: false,
   },
@@ -68,6 +70,7 @@ export const LIMITS: Record<Tier, Limits> = {
       "fiduciary",
       "multiCurrency",
       "reminders",
+      "assistant",
       "api",
     ],
     poweredBy: false,

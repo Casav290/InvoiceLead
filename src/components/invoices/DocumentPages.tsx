@@ -6,6 +6,7 @@ import {
   createCreditNoteAction,
   deleteDraftAction,
   deletePaymentAction,
+  depositInvoiceAction,
   issueInvoiceAction,
   quoteOutcomeAction,
 } from "@/app/[locale]/app/invoices/actions";
@@ -27,7 +28,7 @@ import { requireAppSession } from "@/server/auth/guard";
 import { db } from "@/server/db";
 import { emailConfigured } from "@/server/email";
 import { invoiceOptions } from "@/server/invoice-options";
-import { type DocumentKind, getInvoice, listInvoices } from "@/server/invoices";
+import { type DocumentKind, depositInvoices, getInvoice, listInvoices } from "@/server/invoices";
 import { invoiceBalance, listPayments, paymentState } from "@/server/payments";
 import { hasFeature } from "@/server/plans";
 import { addMonths } from "@/server/recurring";
@@ -53,6 +54,9 @@ const ERRORS = [
   "closed",
   "planLimit",
   "recurring",
+  "percent",
+  "tooHigh",
+  "depositDraft",
 ];
 
 /** Objet et message proposés, dans la langue de la pièce. */
@@ -293,6 +297,9 @@ export async function DocumentDetailPage({
   const payments = billed ? await listPayments(db(), organization.id, invoice.id) : [];
   const reminders = billed ? await listReminders(db(), organization.id, invoice.id) : [];
   const section = sectionOf(kind);
+  const deposits =
+    kind === "quote" && !draft ? await depositInvoices(db(), organization.id, invoice.id) : [];
+  const amounts = countryPack(organization.country).amounts;
   // Allemagne : XRechnung pour les factures et avoirs émis.
   const xrechnung =
     organization.country === "DE" && kind !== "quote" && !draft
@@ -426,6 +433,26 @@ export async function DocumentDetailPage({
                 {t("download")}
               </a>
             </Button>
+            {kind === "quote" && ["issued", "accepted", "invoiced"].includes(invoice.status) ? (
+              <Button asChild variant="secondary">
+                <a
+                  href={`/${locale}/app/quotes/${invoice.id}/pdf?as=order`}
+                  data-testid="document-order"
+                >
+                  {t("orderPdf")}
+                </a>
+              </Button>
+            ) : null}
+            {kind !== "credit_note" ? (
+              <Button asChild variant="ghost">
+                <a
+                  href={`/${locale}/app/${section}/${invoice.id}/pdf?as=delivery`}
+                  data-testid="document-delivery"
+                >
+                  {t("deliveryPdf")}
+                </a>
+              </Button>
+            ) : null}
             {xrechnung ? (
               "xml" in xrechnung ? (
                 <Button asChild variant="secondary">
@@ -482,6 +509,52 @@ export async function DocumentDetailPage({
               </form>
             ) : null}
           </div>
+          {kind === "quote" &&
+          (deposits.length > 0 || ["issued", "accepted"].includes(invoice.status)) ? (
+            <section className="mb-4 border border-line-strong bg-panel" data-testid="deposits">
+              <h2 className="border-b border-line bg-head px-5 py-3 text-[10.5px] font-extrabold tracking-[0.09em] text-ink-muted uppercase">
+                {t("deposit.title")}
+              </h2>
+              {deposits.length > 0 ? (
+                <ul className="px-5 pt-3 text-[13px]">
+                  {deposits.map((d) => (
+                    <li key={d.id} className="flex justify-between gap-4 py-1">
+                      <Link
+                        href={`/app/invoices/${d.id}`}
+                        className="font-semibold text-accent-dark hover:underline"
+                      >
+                        {d.number ?? t("deposit.draft")}
+                      </Link>
+                      <span className="tabular-nums">
+                        {invoice.currency} {formatAmount(d.totalCents, amounts)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+              {["issued", "accepted"].includes(invoice.status) ? (
+                <form action={depositInvoiceAction} className="flex flex-wrap items-end gap-3 p-5">
+                  {hidden}
+                  <label className="block">
+                    <span className="mb-1 block text-[13px] font-semibold">
+                      {t("deposit.percent")}
+                    </span>
+                    <input
+                      name="percent"
+                      defaultValue="30"
+                      inputMode="decimal"
+                      required
+                      className="h-10 w-24 border border-line-strong bg-panel px-3 text-[14px]"
+                    />
+                  </label>
+                  <Button type="submit" variant="secondary" data-testid="deposit-create">
+                    {t("deposit.create")}
+                  </Button>
+                  <p className="w-full text-[12px] text-ink-muted">{t("deposit.hint")}</p>
+                </form>
+              ) : null}
+            </section>
+          ) : null}
           <SendPanel
             locale={locale}
             id={invoice.id}

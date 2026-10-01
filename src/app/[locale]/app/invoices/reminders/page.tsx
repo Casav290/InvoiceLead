@@ -6,6 +6,7 @@ import { Link } from "@/i18n/navigation";
 import { formatDate } from "@/lib/fiscal-year";
 import { formatAmount } from "@/lib/money";
 import { requireAppSession } from "@/server/auth/guard";
+import { expectedCollections } from "@/server/collections";
 import { db } from "@/server/db";
 import { emailConfigured } from "@/server/email";
 import { hasFeature } from "@/server/plans";
@@ -35,7 +36,11 @@ export default async function RemindersPage({ params, searchParams }: Props) {
   const amounts = countryPack(organization.country).amounts;
   const q = await searchParams;
   const t = await getTranslations({ locale, namespace: "app.reminders" });
-  const rows = await dueReminders(db(), organization.id, new Date().toISOString().slice(0, 10));
+  const today = new Date().toISOString().slice(0, 10);
+  const rows = await dueReminders(db(), organization.id, today);
+  const forecast = await expectedCollections(db(), organization.id, organization.currency, today);
+  const forecastTotal =
+    forecast.weeks.reduce((s, w) => s + w.expectedCents, 0) + forecast.laterCents;
   const canEmail = emailConfigured();
   const hidden = <input type="hidden" name="locale" value={locale} />;
   const ok = q.result === "sent" || q.result === "recorded";
@@ -101,7 +106,12 @@ export default async function RemindersPage({ params, searchParams }: Props) {
                 </span>
               </div>
               <p className="mt-1 text-[12px] text-ink-2">
-                {t("line", { level: r.level, days: r.daysLate, due: formatDate(r.dueDate) })}
+                {r.level === 0
+                  ? t("courtesyLine", { due: formatDate(r.dueDate) })
+                  : t("line", { level: r.level, days: r.daysLate, due: formatDate(r.dueDate) })}
+                {r.risk !== "unknown"
+                  ? ` · ${t(`profile.${r.risk}`, { days: Math.round(r.avgDaysLate ?? 0) })}`
+                  : ""}
                 {r.email ? "" : ` · ${t("noEmail")}`}
               </p>
               {r.totalDueCents > r.openCents ? (
@@ -140,6 +150,41 @@ export default async function RemindersPage({ params, searchParams }: Props) {
           ))}
         </ul>
       )}
+
+      <section className="mt-10 border border-line-strong bg-panel" data-testid="forecast">
+        <h2 className="border-b border-line bg-head px-5 py-3 text-[10.5px] font-extrabold tracking-[0.09em] text-ink-muted uppercase">
+          {t("forecastTitle")}
+        </h2>
+        <p className="px-5 pt-3 text-[12px] text-ink-muted">{t("forecastHint")}</p>
+        {forecastTotal === 0 ? (
+          <p className="px-5 py-4 text-[13px] text-ink-2">{t("forecastEmpty")}</p>
+        ) : (
+          <ul className="px-5 py-3 text-[13px]">
+            {forecast.weeks
+              .filter((w) => w.expectedCents > 0)
+              .map((w) => (
+                <li
+                  key={w.weekStart}
+                  className="flex justify-between gap-4 border-b border-line py-2 last:border-b-0"
+                  data-testid="forecast-week"
+                >
+                  <span>{t("week", { date: formatDate(w.weekStart) })}</span>
+                  <span className="font-semibold tabular-nums">
+                    {organization.currency} {formatAmount(w.expectedCents, amounts)}
+                  </span>
+                </li>
+              ))}
+            {forecast.laterCents > 0 ? (
+              <li className="flex justify-between gap-4 py-2">
+                <span>{t("later")}</span>
+                <span className="font-semibold tabular-nums">
+                  {organization.currency} {formatAmount(forecast.laterCents, amounts)}
+                </span>
+              </li>
+            ) : null}
+          </ul>
+        )}
+      </section>
 
       <section className="mt-10 border border-line-strong bg-panel" data-testid="reminder-settings">
         <h2 className="border-b border-line bg-head px-5 py-3 text-[10.5px] font-extrabold tracking-[0.09em] text-ink-muted uppercase">

@@ -78,7 +78,9 @@
       "products": "Artikel",
       "invoices": "Rechnungen",
       "quotes": "Offerten",
-      "accounting": "Buchhaltung"
+      "accounting": "Buchhaltung",
+      "time": "Zeit",
+      "expenses": "Spesen"
     },
     "switcher": {
       "open": "Anwendung wechseln",
@@ -111,7 +113,8 @@
       "complete": "Ergänzen",
       "done": "Erledigt",
       "start": "Starten",
-      "forbidden": "Ihre Rolle erlaubt diese Aktion nicht. Eine verantwortliche Person kann sie in den Team-Einstellungen ändern."
+      "forbidden": "Ihre Rolle erlaubt diese Aktion nicht. Eine verantwortliche Person kann sie in den Team-Einstellungen ändern.",
+      "askBooks": "Fragen Sie Ihre Buchhaltung"
     },
     "noAccess": {
       "title": "Ihr Abo enthält InvoiceLead nicht",
@@ -614,7 +617,18 @@
       "issueHint": "Beim Ausstellen erhält die Rechnung die nächste Nummer und wird unveränderlich. Speichern Sie zuerst Ihre letzten Änderungen.",
       "deleteDraft": "Diesen Entwurf löschen",
       "completeCompany": "Unternehmensdaten ergänzen",
+      "orderPdf": "Auftragsbestätigung (PDF)",
+      "deliveryPdf": "Lieferschein (PDF)",
+      "deposit": {
+        "title": "Anzahlungen",
+        "percent": "Anzahlung in %",
+        "create": "Anzahlungsrechnung erstellen",
+        "hint": "Prozentsatz des Nettobetrags, eine Zeile pro Steuersatz. Die Schlussrechnung aus dem Angebot zieht die gestellten Anzahlungen ab.",
+        "draft": "Entwurf"
+      },
       "issueErrors": {
+        "percent": "Der Anzahlungsprozentsatz muss zwischen 0 und 100 liegen.",
+        "tooHigh": "Die Anzahlungen würden den Angebotsbetrag übersteigen.",
         "companyIncomplete": "Die Unternehmensdaten (Adresse und IBAN) müssen vollständig sein, bevor Sie eine Rechnung ausstellen.",
         "vatChanged": "Die MWST-Pflicht hat sich seit dem Speichern geändert. Speichern Sie den Entwurf erneut.",
         "notDraft": "Diese Rechnung ist bereits ausgestellt.",
@@ -625,7 +639,8 @@
         "closed": "Diese Zahlung ist in einem abgeschlossenen Geschäftsjahr verbucht und kann nicht mehr gelöscht werden.",
         "planLimit": "Sie haben die 10 Rechnungen pro Monat des Gratis-Abos erreicht. Mit Pro stellen Sie unbegrenzt Rechnungen aus.",
         "recurring": "Die Wiederholung konnte nicht gespeichert werden.",
-        "fxRate": "Der Tageskurs konnte nicht abgerufen werden. Bitte den Kurs im Entwurf erfassen und erneut ausstellen."
+        "fxRate": "Der Tageskurs konnte nicht abgerufen werden. Bitte den Kurs im Entwurf erfassen und erneut ausstellen.",
+        "depositDraft": "Eine Anzahlungsrechnung zu dieser Offerte ist noch ein Entwurf: Stellen Sie sie aus oder löschen Sie sie, bevor Sie die Schlussrechnung erstellen."
       },
       "addLine": "Position hinzufügen",
       "removeLine": "Entfernen",
@@ -720,6 +735,13 @@
         "total": "Total",
         "payTo": "Zahlbar auf das Konto {iban}.",
         "referenceLine": "Referenz: {reference}",
+        "orderTitle": "Auftragsbestätigung",
+        "orderPrefix": "AB",
+        "deliveryTitle": "Lieferschein",
+        "deliveryPrefix": "LS",
+        "fromQuote": "Gemäss unserer Offerte {number}",
+        "fromInvoice": "Betrifft Rechnung {number}",
+        "deliveryReceived": "Ware in einwandfreiem Zustand erhalten (Datum, Name und Unterschrift):",
         "relatedLine": "Betrifft Rechnung {number}",
         "poweredBy": "Erstellt mit InvoiceLead · invoicelead.io",
         "smallBusinessDe": "Gemäss § 19 UStG wird keine Umsatzsteuer berechnet (Kleinunternehmerregelung).",
@@ -824,7 +846,7 @@
         }
       },
       "remindersLink": "Mahnungen",
-      "reminderLine": "{level, select, 1 {1. Mahnung} 2 {2. Mahnung} other {Letzte Mahnung}} am {date} ({channel, select, email {E-Mail} other {Post}})",
+      "reminderLine": "{level, select, 0 {Freundliche Erinnerung} 1 {1. Mahnung} 2 {2. Mahnung} other {Letzte Mahnung}} am {date} ({channel, select, email {E-Mail} other {Post}})",
       "recurringLink": "Wiederkehrend",
       "recurring": {
         "title": "Wiederkehrend machen",
@@ -947,7 +969,10 @@
         "journal": "Journal",
         "receipts": "Belege",
         "reports": "Auswertungen",
-        "vat": "MWST"
+        "vat": "MWST",
+        "review": "Zu prüfen",
+        "bills": "Kreditoren",
+        "cashflow": "Liquidität"
       },
       "welcomeFiduciary": "Willkommen. Sie arbeiten jetzt in der Buchhaltung Ihres Kunden; das Unternehmen wechseln Sie in der Kopfzeile.",
       "unavailableTitle": "Buchhaltung für dieses Land folgt bald",
@@ -1012,7 +1037,10 @@
         "hits": "{count, plural, one {# Mal bestätigt} other {# Mal bestätigt}}",
         "delete": "Vergessen"
       },
-      "planOnly": "Der Import von Kontoauszügen und die Vorschläge des Assistenten sind im Pro-Abo enthalten."
+      "planOnly": "Der Import von Kontoauszügen und die Vorschläge des Assistenten sind im Pro-Abo enthalten.",
+      "autoPosted": "{count, plural, one {# Bewegung} other {# Bewegungen}} vom Autopiloten verbucht.",
+      "autoReview": "Prüfen",
+      "paysBill": "Zahlung einer Lieferantenrechnung"
     },
     "receipts": {
       "title": "Belege",
@@ -1040,9 +1068,12 @@
         "read": "Gelesen, Zahlung noch nicht gefunden",
         "error": "Unlesbar",
         "matched": "Zugeordnet",
-        "posted": "Verbucht"
+        "posted": "Verbucht",
+        "billed": "Lieferantenrechnung"
       },
-      "planOnly": "Das automatische Lesen von Belegen ist in Pro (50 pro Monat) und Pro+ (300 pro Monat) enthalten."
+      "planOnly": "Das automatische Lesen von Belegen ist in Pro (50 pro Monat) und Pro+ (300 pro Monat) enthalten.",
+      "toBill": "Als Kreditorenrechnung erfassen",
+      "captureLink": "Mit dem Handy fotografieren"
     },
     "reports": {
       "title": "Auswertungen",
@@ -1073,7 +1104,16 @@
       "date": "Datum",
       "entry": "Nr.",
       "text": "Text",
-      "balance": "Saldo"
+      "balance": "Saldo",
+      "export": {
+        "title": "Export für die Steuerberatung",
+        "consultant": "DATEV-Beraternummer",
+        "client": "Mandantennummer",
+        "datev": "DATEV-Buchungsstapel herunterladen",
+        "datevHint": "Buchungsstapel im DATEV-Format (EXTF, SKR04) des angezeigten Geschäftsjahres; die Umsatzsteuer wird über BU-Schlüssel übergeben. Die Nummern erhalten Sie von Ihrer Steuerberatung.",
+        "fec": "FEC herunterladen",
+        "fecHint": "Fichier des écritures comptables des angezeigten Geschäftsjahres (Art. A47 A-1 LPF)."
+      }
     },
     "vat": {
       "title": "MWST",
@@ -1198,7 +1238,7 @@
         "failed": "Der Versand ist fehlgeschlagen. Versuchen Sie es später erneut."
       },
       "empty": "Heute sind keine Mahnungen fällig.",
-      "line": "{level, select, 1 {1. Mahnung} 2 {2. Mahnung} other {Letzte Mahnung}} · {days} Tage überfällig · fällig seit {due}",
+      "line": "{level, select, 0 {Freundliche Erinnerung} 1 {1. Mahnung} 2 {2. Mahnung} other {Letzte Mahnung}} · {days, plural, =0 {heute fällig} other {{days} Tage überfällig}} · fällig am {due}",
       "noEmail": "keine E-Mail",
       "send": "Senden",
       "markManual": "Als gesendet vermerken (Post)",
@@ -1210,7 +1250,9 @@
         "body1": "Guten Tag\n\nGemäss unserer Buchhaltung ist unsere Rechnung {number}, fällig am {due}, noch offen. Der offene Betrag beträgt {currency} {amount}.\n\nFalls die Zahlung bereits unterwegs ist, betrachten Sie diese Nachricht bitte als gegenstandslos.\n\nFreundliche Grüsse\n{company}",
         "body2": "Guten Tag\n\nTrotz unserer Zahlungserinnerung ist unsere Rechnung {number}, fällig am {due}, weiterhin offen. Wir bitten Sie, den offenen Betrag von {currency} {amount} innert 10 Tagen zu begleichen.\n\nFreundliche Grüsse\n{company}",
         "body3": "Guten Tag\n\nUnsere Rechnung {number}, fällig am {due}, ist trotz unserer Mahnungen noch offen. Bitte begleichen Sie den offenen Betrag von {currency} {amount} innert 10 Tagen. Andernfalls sehen wir uns gezwungen, weitere Schritte einzuleiten.\n\nFreundliche Grüsse\n{company}",
-        "charges": "Offener Rechnungsbetrag: {currency} {open}\nMahngebühren und Verzugszinsen: {currency} {charges}\nZu bezahlen: {currency} {total}"
+        "charges": "Offener Rechnungsbetrag: {currency} {open}\nMahngebühren und Verzugszinsen: {currency} {charges}\nZu bezahlen: {currency} {total}",
+        "subject0": "Freundliche Erinnerung: Rechnung {number} von {company} bald fällig",
+        "body0": "Guten Tag\n\nEine freundliche Erinnerung: Unsere Rechnung {number} wird am {due} fällig. Der Betrag beläuft sich auf {currency} {amount}.\n\nFalls die Zahlung bereits unterwegs ist, herzlichen Dank, und betrachten Sie diese Nachricht als gegenstandslos.\n\nFreundliche Grüsse\n{company}"
       },
       "chargesLine": "Offene Rechnung {open} · Gebühr {fee} · Zinsen {interest} · bereits gefordert {before}",
       "settings": {
@@ -1235,7 +1277,18 @@
           "invalidFee": "Ungültige Gebühr (positiver Betrag, höchstens zwei Nachkommastellen).",
           "invalidRate": "Ungültiger Satz (zwischen 0 und 20 %, zum Beispiel 5)."
         }
-      }
+      },
+      "courtesyLine": "Freundliche Erinnerung vor Fälligkeit am {due}",
+      "profile": {
+        "late": "zahlt im Schnitt {days} Tage nach Fälligkeit",
+        "reliable": "zahlt pünktlich",
+        "normal": "zahlt im Schnitt {days} Tage nach Fälligkeit"
+      },
+      "forecastTitle": "Erwartete Zahlungseingänge",
+      "forecastHint": "Offene Rechnungen, am Tag, an dem der Kunde üblicherweise zahlt.",
+      "week": "Woche vom {date}",
+      "later": "Später",
+      "forecastEmpty": "Keine offenen Rechnungen."
     },
     "recurring": {
       "title": "Wiederkehrende Rechnungen",
@@ -1408,7 +1461,313 @@
         "tooMany": "Höchstzahl erreicht.",
         "url": "Ungültige Adresse: https zu einem öffentlichen Server, ohne Zugangsdaten.",
         "events": "Wählen Sie mindestens ein Ereignis."
+      },
+      "mcp": "MCP-Server für Claude, ChatGPT oder einen anderen Assistenten: {url}, mit einem API-Schlüssel im Header Authorization."
+    },
+    "review": {
+      "title": "Zu prüfen",
+      "subtitle": "Der Autopilot verbucht selbstständig, was sicher ist. Hier genehmigen Sie seine Arbeit mit einem Klick, machen eine unpassende Buchung rückgängig und sehen, was einen Blick verdient.",
+      "autopilot": "Autopilot",
+      "autopilotHint": "Verbucht ohne Klick Zahlungen, die an ihrer Referenz erkannt werden, Bewegungen mit einer mindestens dreimal bestätigten Regel und KI-Vorschläge mit 97 % Sicherheit. Mögliche Doppelungen und ungewöhnliche Beträge warten immer auf eine Person.",
+      "save": "Speichern",
+      "planOnly": "Der Autopilot ist zusammen mit dem Bankimport Teil des Pro-Abos.",
+      "enabled": "Autopilot aktiviert: {count, plural, =0 {im Moment nichts zu verbuchen} one {# Bewegung verbucht} other {# Bewegungen verbucht}}.",
+      "disabled": "Autopilot ausgeschaltet. Die Vorschläge warten auf Ihre Bestätigung.",
+      "approved": "{count, plural, =0 {Nichts zu genehmigen.} one {# Buchung genehmigt.} other {# Buchungen genehmigt.}}",
+      "undone": "Buchung storniert. Die Bewegung ist wieder unter Bank zu prüfen, und die Regel, die sie vorgeschlagen hatte, ist vergessen.",
+      "queueTitle": "Selbstständig verbucht, zu genehmigen ({count})",
+      "queueEmpty": "Nichts zu genehmigen.",
+      "bookedTo": "Auf {account}",
+      "bookedInvoice": "Rechnungszahlung",
+      "undo": "Rückgängig",
+      "approve": "Geprüft, alles genehmigen ({count})",
+      "anomaliesTitle": "Auffälligkeiten ({count})",
+      "anomaliesEmpty": "Keine Auffälligkeiten.",
+      "kinds": {
+        "duplicate": "Mögliche Doppelung: gleicher Betrag und gleiche Gegenpartei innert weniger Tage.",
+        "missingReceipt": "Beleg fehlt für diese Ausgabe.",
+        "unusualAmount": "Ungewöhnlicher Betrag für diese Gegenpartei (üblich {usual})."
+      },
+      "addReceipt": "Beleg hochladen",
+      "openBank": "Unter Bank ansehen",
+      "errors": {
+        "closed": "Diese Buchung liegt in einem abgeschlossenen Geschäftsjahr oder einer abgeschlossenen MWST-Periode und kann nicht mehr rückgängig gemacht werden.",
+        "notFound": "Buchung nicht gefunden oder bereits erledigt.",
+        "plan": "Der Autopilot ist Teil des Pro-Abos."
+      },
+      "digest": {
+        "subject": "InvoiceLead: Ihre Buchhaltung der Woche, {company}",
+        "body": "Guten Tag\n\nDiese Woche hat der Autopilot für {company} {auto, plural, =0 {keine Bewegung} one {# Bewegung} other {# Bewegungen}} verbucht.\n\nZu genehmigen: {approve}\nUnter Bank zu prüfen: {review}\nAuffälligkeiten: {anomalies}\n\nAlles ansehen und mit einem Klick genehmigen: {link}\n\nInvoiceLead"
       }
+    },
+    "bills": {
+      "title": "Lieferantenrechnungen",
+      "new": "Neue Lieferantenrechnung",
+      "back": "Alle Lieferantenrechnungen",
+      "subtitle": "Erhaltene Rechnungen, von der KI gelesen oder als E-Rechnung importiert: genehmigen und mit einer Datei fürs E-Banking bezahlen. Der Kontoauszug gleicht sie danach selbst aus.",
+      "empty": "Keine Lieferantenrechnungen. Importieren Sie eine E-Rechnung, erfassen Sie eine aus einem Beleg oder von Hand.",
+      "importLabel": "Erhaltene E-Rechnungen (XRechnung, ZUGFeRD, Factur-X, UBL)",
+      "importHint": "XML-Dateien oder PDF mit eingebettetem XML. Ohne KI gelesen, auf den Rappen genau.",
+      "import": "Importieren",
+      "imported": "{count, plural, =0 {Keine Rechnung importiert} one {# Rechnung importiert} other {# Rechnungen importiert}}{rejected, plural, =0 {.} other {, # Datei(en) nicht als E-Rechnung erkannt.}}",
+      "deleted": "Entwurf gelöscht.",
+      "dualOn": "Vier-Augen-Prinzip eingeschaltet.",
+      "dualOff": "Vier-Augen-Prinzip ausgeschaltet.",
+      "exportHint": "{count, plural, one {# genehmigte Rechnung} other {# genehmigte Rechnungen}} zu bezahlen, total {total}. Die pain.001-Datei laden Sie ins E-Banking, das jede Zahlung zur Fälligkeit ausführt.",
+      "export": "Zahlungsdatei herunterladen (pain.001)",
+      "groups": {
+        "draft": "Zu genehmigen",
+        "approved": "Zu bezahlen",
+        "scheduled": "Zahlung übermittelt",
+        "paid": "Bezahlt"
+      },
+      "status": {
+        "draft": "Entwurf",
+        "approved": "Genehmigt, zu bezahlen",
+        "scheduled": "Zahlung übermittelt",
+        "paid": "Bezahlt"
+      },
+      "due": "fällig {date}",
+      "dualApproval": "Vier-Augen-Prinzip für Lieferantenrechnungen",
+      "dualApprovalHint": "Zwei verschiedene Personen genehmigen jede Rechnung, bevor sie verbucht und zahlbar wird.",
+      "saveSetting": "Speichern",
+      "sections": {
+        "supplier": "Lieferant",
+        "invoice": "Rechnung",
+        "payment": "Zahlung"
+      },
+      "fields": {
+        "supplierName": "Lieferant",
+        "supplierStreet": "Strasse und Nummer",
+        "supplierPostalCode": "PLZ",
+        "supplierTown": "Ort",
+        "supplierCountry": "Land (Code)",
+        "number": "Rechnungsnummer",
+        "issueDate": "Rechnungsdatum",
+        "dueDate": "Fälligkeit",
+        "currency": "Währung",
+        "total": "Zu zahlender Betrag inkl. MWST",
+        "vatCode": "Enthaltene MWST",
+        "account": "Aufwandkonto",
+        "description": "Beschreibung",
+        "iban": "IBAN des Lieferanten",
+        "bic": "BIC (freiwillig)",
+        "paymentReference": "Zahlungsreferenz"
+      },
+      "hints": {
+        "supplierCountry": "Zwei Buchstaben: CH, DE, FR …",
+        "dueDate": "Leer: 30 Tage nach Rechnungsdatum.",
+        "total": "Zum Beispiel 107.70",
+        "account": "Wird ab der ersten genehmigten Rechnung vom Lieferanten gelernt.",
+        "paymentReference": "QR-Referenz, RF-Referenz oder freie Mitteilung."
+      },
+      "noVat": "Ohne MWST",
+      "choose": "Auswählen …",
+      "save": "Speichern",
+      "invalid": "Einige Felder sind zu korrigieren.",
+      "notEditable": "Diese Rechnung kann nicht mehr geändert werden.",
+      "saved": "Rechnung gespeichert.",
+      "approve": "Genehmigen",
+      "approveSecond": "Genehmigen (2. Freigabe)",
+      "approveHint": "Genehmigt wird die Rechnung verbucht (Aufwand und Vorsteuer gegen Kreditoren) und ist zahlbereit.",
+      "waitingSecond": "Sie haben die erste Freigabe erteilt. Eine andere Person muss genehmigen.",
+      "secondNeeded": "Erste Freigabe durch eine andere Person erteilt. Ihre Genehmigung verbucht die Rechnung.",
+      "approvedNotice": "Rechnung genehmigt und verbucht.",
+      "firstApprovalNotice": "Erste Freigabe gespeichert. Eine zweite Person muss genehmigen.",
+      "paidNotice": "Zahlung erfasst.",
+      "delete": "Entwurf löschen",
+      "openReceipt": "Beleg ansehen",
+      "openEInvoice": "E-Rechnung ansehen",
+      "paidOn": "Bezahlt am",
+      "money": "Bezahlt von",
+      "moneyBank": "Bank",
+      "moneyCash": "Kasse",
+      "markPaid": "Als bezahlt erfassen",
+      "markPaidHint": "Nur für eine Zahlung ausserhalb eines importierten Kontoauszugs: sonst gleicht die Belastung im Auszug die Rechnung selbst aus.",
+      "errors": {
+        "required": "Pflichtfeld.",
+        "tooLong": "Text zu lang.",
+        "date": "Ungültiges Datum.",
+        "amount": "Ungültiger Betrag.",
+        "iban": "Ungültige IBAN (Prüfziffer).",
+        "noAccount": "Wählen Sie zuerst das Aufwandkonto.",
+        "sameApprover": "Die zweite Freigabe muss von einer anderen Person kommen.",
+        "fxRate": "Der Tageskurs konnte nicht abgerufen werden. Bitte später erneut versuchen.",
+        "noChart": "Installieren Sie zuerst den Kontenplan.",
+        "noFiscalYear": "Kein offenes Geschäftsjahr am Rechnungsdatum.",
+        "vatPeriodClosed": "Die MWST-Periode dieses Datums ist bereits abgeschlossen.",
+        "notFound": "Rechnung nicht gefunden oder bereits erledigt.",
+        "none": "Keine genehmigte Rechnung mit IBAN zu bezahlen.",
+        "noIban": "Erfassen Sie zuerst die IBAN des Unternehmens in den Einstellungen.",
+        "plan": "Der Import von E-Rechnungen ist Teil des Pro-Abos."
+      },
+      "claim": "Spesen"
+    },
+    "time": {
+      "title": "Zeit",
+      "subtitle": "Stoppuhr oder schnelle Erfassung, einem Projekt zugeordnet; verrechenbare Stunden werden mit einem Klick zur Rechnung.",
+      "projectsLink": "{count, plural, =0 {Projekte} one {# Projekt} other {# Projekte}}",
+      "noProjects": "Erstellen Sie zuerst ein Projekt für einen Kunden.",
+      "createProject": "Projekt erstellen",
+      "timer": "Stoppuhr",
+      "project": "Projekt",
+      "description": "Beschreibung",
+      "start": "Starten",
+      "stop": "Stoppen",
+      "manual": "Erfassung",
+      "date": "Datum",
+      "duration": "Dauer",
+      "billable": "Verrechenbar",
+      "add": "Hinzufügen",
+      "recent": "Letzte zwei Wochen",
+      "empty": "Keine Zeit erfasst.",
+      "notBillable": "nicht verrechenbar",
+      "invoiced": "verrechnet",
+      "running": "Stoppuhr läuft",
+      "delete": "Löschen",
+      "added": "Zeit erfasst.",
+      "stopped": "Stoppuhr gestoppt, Zeit gespeichert.",
+      "projects": "Projekte",
+      "projectsSubtitle": "Geleistete Stunden, offen zu verrechnen, verrechneter Umsatz und tatsächlich erzielter Stundensatz.",
+      "back": "Zeit",
+      "allProjects": "Alle Projekte",
+      "hours": "Stunden",
+      "unbilled": "Zu verrechnen",
+      "invoicedNet": "Verrechnet (netto)",
+      "effectiveRate": "Erzielter Stundensatz",
+      "ofBudget": "von {budget} geplant",
+      "noProjectsYet": "Keine Projekte.",
+      "noArchived": "Keine archivierten Projekte.",
+      "showArchived": "Archivierte Projekte anzeigen",
+      "showActive": "Aktive Projekte anzeigen",
+      "noCustomers": "Erfassen Sie zuerst einen Kunden unter Kontakte.",
+      "newProject": "Neues Projekt",
+      "projectName": "Projektname",
+      "customer": "Kunde",
+      "hourlyRate": "Stundensatz exkl. MWST ({currency})",
+      "budgetHours": "Budget in Stunden (freiwillig)",
+      "saved": "Projekt gespeichert.",
+      "archivedLabel": "archiviert",
+      "invoiceHint": "{hours} h verrechenbar und noch nicht verrechnet, {amount} exkl. MWST.",
+      "invoiceHours": "Stunden verrechnen",
+      "entries": "Erfasste Zeit",
+      "editProject": "Projekt bearbeiten",
+      "save": "Speichern",
+      "archive": "Projekt archivieren",
+      "unarchive": "Projekt reaktivieren",
+      "errors": {
+        "project": "Projekt nicht gefunden oder archiviert.",
+        "date": "Ungültiges Datum.",
+        "duration": "Ungültige Dauer (zum Beispiel 1:30, 1.5 oder 45m).",
+        "required": "Pflichtfeld.",
+        "amount": "Ungültiger Betrag.",
+        "hours": "Ungültige Stundenzahl.",
+        "contact": "Kunde nicht gefunden.",
+        "nothing": "Keine verrechenbaren Stunden offen.",
+        "invalid": "Ungültige Eingabe."
+      }
+    },
+    "capture": {
+      "title": "Beleg fotografieren",
+      "subtitle": "Quittung oder Rechnung: Die KI liest das Foto und ordnet es der Zahlung zu, sobald sie im Kontoauszug erscheint.",
+      "take": "Fotografieren",
+      "sending": "Senden und lesen …",
+      "read": "Beleg gelesen",
+      "saved": "Beleg gespeichert.",
+      "rejected": "Das Foto konnte nicht gespeichert werden (Format, Grösse oder Abo-Limite).",
+      "recent": "Letzte Belege",
+      "all": "Alle Belege",
+      "planOnly": "Das Lesen von Belegen ist Teil des Pro-Abos."
+    },
+    "assistant": {
+      "title": "Assistent",
+      "subtitle": "Eine Frage zu Ihren Zahlen, in Alltagssprache. Der Assistent antwortet aus Ihren Büchern und ändert nichts.",
+      "question": "Ihre Frage",
+      "ask": "Fragen",
+      "thinking": "Überlegt …",
+      "disclaimer": "Antwort aus Ihren Büchern zum Zeitpunkt der Frage. Vor wichtigen Entscheiden prüfen.",
+      "suggestions": {
+        "owed": "Wer schuldet mir am meisten?",
+        "result": "Wie steht mein Ergebnis dieses Jahr?",
+        "toPay": "Was muss ich diesen Monat bezahlen?",
+        "unbilled": "Welche Stunden sind noch zu verrechnen?"
+      },
+      "links": {
+        "invoices": "Rechnungen",
+        "reminders": "Mahnungen",
+        "bank": "Bank",
+        "review": "Zu prüfen",
+        "bills": "Kreditoren",
+        "reports": "Bilanz und Erfolgsrechnung",
+        "vat": "MWST",
+        "time": "Projekte"
+      },
+      "errors": {
+        "plan": "Der Assistent ist Teil des Pro-Abos.",
+        "off": "Der KI-Assistent ist noch nicht eingerichtet.",
+        "empty": "Stellen Sie eine Frage.",
+        "failed": "Der Assistent konnte nicht antworten. Bitte gleich nochmals versuchen."
+      }
+    },
+    "expenses": {
+      "title": "Spesen",
+      "subtitle": "Selbst bezahlte Auslagen und Fahrten mit dem eigenen Fahrzeug. Nach der Freigabe durch die Buchhaltung werden sie mit den Lieferantenrechnungen vergütet.",
+      "expense": "Auslage",
+      "mileage": "Kilometer",
+      "mine": "Meine Spesen",
+      "empty": "Noch keine Spesen.",
+      "submit": "An die Buchhaltung senden",
+      "added": "Spesen an die Buchhaltung gesendet.",
+      "delete": "Entfernen",
+      "fields": {
+        "date": "Datum",
+        "description": "Zweck",
+        "amount": "Bezahlter Betrag ({currency})",
+        "vat": "Enthaltene MWST",
+        "account": "Kategorie",
+        "receipt": "Beleg (Foto oder PDF)",
+        "claimant": "Zu vergüten an",
+        "iban": "IBAN für die Vergütung",
+        "trip": "Fahrt (von, nach, Zweck)",
+        "km": "Kilometer",
+        "rate": "Satz pro km ({currency})"
+      },
+      "hints": {
+        "iban": "Freiwillig: Ohne IBAN erfolgt die Vergütung separat.",
+        "rate": {
+          "CH": "Üblicher Satz in der Schweiz: 70 Rappen pro Kilometer.",
+          "DE": "Kilometerpauschale: 30 Cent pro Kilometer (§ 9 EStG).",
+          "FR": "Barème kilométrique der französischen Steuerverwaltung, je nach Fahrzeugleistung.",
+          "GB": "HMRC: 45 Pence pro Meile für die ersten 10 000 Meilen; Meilen erfassen.",
+          "US": "IRS-Standardsatz; Meilen erfassen."
+        }
+      },
+      "errors": {
+        "date": "Ungültiges Datum.",
+        "required": "Bitte die Pflichtfelder ausfüllen.",
+        "iban": "Ungültige IBAN.",
+        "amount": "Ungültiger Betrag.",
+        "km": "Ungültige Distanz.",
+        "type": "Belegformat nicht unterstützt (PDF, JPEG, PNG oder WebP).",
+        "size": "Beleg zu gross (höchstens 10 MB).",
+        "duplicate": "Dieser Beleg wurde bereits gesendet.",
+        "role": "Ihre Rolle erlaubt keine Spesenerfassung.",
+        "invalid": "Ungültige Eingabe."
+      }
+    },
+    "cashflow": {
+      "title": "Liquidität",
+      "subtitle": "Planung der nächsten dreizehn Wochen, bei jedem Aufruf neu berechnet.",
+      "opening": "Flüssige Mittel heute (Bank und Kasse)",
+      "verdictLabel": "Planung",
+      "shortfall": "Unterdeckung erwartet in der Woche vom {date}: {amount}.",
+      "noShortfall": "Keine Unterdeckung erwartet. Flüssige Mittel in dreizehn Wochen: {amount}.",
+      "week": "Woche vom",
+      "in": "Eingänge",
+      "out": "Zahlungen",
+      "closing": "Flüssige Mittel",
+      "later": "Danach: Eingänge {in}, Zahlungen {out}.",
+      "method": "Eingänge: offene Rechnungen zum Datum, an dem der Kunde üblicherweise zahlt. Zahlungen: Lieferantenrechnungen und Spesen bei Fälligkeit. Bereits Fälliges zählt in der laufenden Woche."
     }
   },
   "footer": {

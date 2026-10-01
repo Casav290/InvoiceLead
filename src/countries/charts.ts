@@ -25,9 +25,12 @@ export type ChartPack = {
   isTurnover: (account: { number: string; type: string }) => boolean;
   /** Compte d'impôt préalable pour une charge ou un investissement. */
   inputVatRole: (account: { number: string; type: string }) => AccountRole;
+  /** Compte des frais de déplacement : notes de frais et indemnités kilométriques. */
+  travelAccount: string;
 };
 
 const CH: ChartPack = {
+  travelAccount: "5820",
   templateAccounts,
   typesByClass: TYPES_BY_CLASS,
   classLabels: "classes",
@@ -39,6 +42,7 @@ const CH: ChartPack = {
 };
 
 const DE: ChartPack = {
+  travelAccount: "6670",
   templateAccounts: (template) =>
     CHART_ACCOUNTS_DE.filter((x) => !x.only || x.only === template).sort((x, y) =>
       x.number.localeCompare(y.number),
@@ -53,6 +57,7 @@ const DE: ChartPack = {
 };
 
 const FR: ChartPack = {
+  travelAccount: "625100",
   templateAccounts: (template) =>
     CHART_ACCOUNTS_FR.filter((x) => !x.only || x.only === template).sort((x, y) =>
       x.number.localeCompare(y.number),
@@ -67,6 +72,7 @@ const FR: ChartPack = {
 };
 
 const GB: ChartPack = {
+  travelAccount: "7400",
   templateAccounts: (template) =>
     CHART_ACCOUNTS_GB.filter((x) => !x.only || x.only === template).sort((x, y) =>
       x.number.localeCompare(y.number),
@@ -81,6 +87,7 @@ const GB: ChartPack = {
 };
 
 const US: ChartPack = {
+  travelAccount: "6800",
   templateAccounts: (template) =>
     CHART_ACCOUNTS_US.filter((x) => !x.only || x.only === template).sort((x, y) =>
       x.number.localeCompare(y.number),

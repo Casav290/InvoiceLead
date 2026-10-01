@@ -5,6 +5,7 @@ import { VAT_CODES, type VatCode } from "@/countries/ch/vat";
 import { chartPack } from "@/countries/charts";
 import { roundHalfAwayFromZero } from "@/lib/money";
 import { aiLanguageName, chatJson } from "./ai";
+import { billProposals, payBillFromBank } from "./bills";
 import { counterpartyKey, directionOf, learnRule, ruleConfidence } from "./booking-rules";
 import type { Db } from "./db";
 import {
@@ -134,7 +135,8 @@ export async function proposeAll(
     .limit(200);
   if (pending.length === 0) return { proposed: 0, aiError: false };
   const open = await openInvoices(database, who.organizationId);
-  const proposals = new Map<string, BankProposal>();
+  // Sorties : d'abord les factures fournisseurs approuvées (référence, ou montant et fournisseur).
+  const proposals = await billProposals(database, who.organizationId, pending, options.language);
 
   for (const tx of pending) {
     if (tx.amountCents <= 0 || !tx.reference) continue;
@@ -408,6 +410,8 @@ export async function validateTransaction(
   who: Who,
   id: string,
   override?: { accountId: string; vatCode: VatCode | null },
+  /** false : comptabilisation par le pilote automatique, qui n'apprend pas de lui-même. */
+  options: { learn?: boolean } = {},
 ): Promise<ValidateResult> {
   if (!UUID.test(id)) return "notFound";
   const [tx] = await database
@@ -442,6 +446,32 @@ export async function validateTransaction(
       })
       .where(eq(bankTransactions.id, id));
     await postPending(database, who);
+    return "posted";
+  }
+
+  if (proposal.kind === "bill") {
+    // Paiement d'une facture fournisseur : fournisseurs contre banque, la facture est soldée.
+    try {
+      const entry = await payBillFromBank(database, who, tx, proposal.billId);
+      await database
+        .update(bankTransactions)
+        .set({
+          status: "posted",
+          journalEntryId: entry.id,
+          proposal,
+          validatedBy: who.userId,
+          validatedAt: new Date(),
+        })
+        .where(eq(bankTransactions.id, id));
+    } catch (e) {
+      if (e instanceof LedgerError) {
+        if (e.message === "noFiscalYear") return "noFiscalYear";
+        if (e.message === "vatPeriodClosed") return "vatPeriodClosed";
+        if (e.message === "already") return "notFound";
+        return "noChart";
+      }
+      throw e;
+    }
     return "posted";
   }
 
@@ -495,12 +525,13 @@ export async function validateTransaction(
     }
     throw e;
   }
-  await learnRule(database, who, {
-    counterparty: tx.counterparty,
-    amountCents: tx.amountCents,
-    accountId: proposal.accountId,
-    vatCode: proposal.vatCode,
-  });
+  if (options.learn !== false)
+    await learnRule(database, who, {
+      counterparty: tx.counterparty,
+      amountCents: tx.amountCents,
+      accountId: proposal.accountId,
+      vatCode: proposal.vatCode,
+    });
   return "posted";
 }
 

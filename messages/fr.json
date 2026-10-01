@@ -78,7 +78,9 @@
       "products": "Articles",
       "invoices": "Factures",
       "quotes": "Devis",
-      "accounting": "Comptabilité"
+      "accounting": "Comptabilité",
+      "time": "Temps",
+      "expenses": "Frais"
     },
     "switcher": {
       "open": "Changer d'application",
@@ -111,7 +113,8 @@
       "complete": "Compléter",
       "done": "Fait",
       "start": "Commencer",
-      "forbidden": "Votre rôle ne permet pas cette action. Un responsable peut le changer dans les réglages de l'équipe."
+      "forbidden": "Votre rôle ne permet pas cette action. Un responsable peut le changer dans les réglages de l'équipe.",
+      "askBooks": "Posez une question à votre comptabilité"
     },
     "noAccess": {
       "title": "Votre formule n'inclut pas InvoiceLead",
@@ -614,7 +617,18 @@
       "issueHint": "L'émission attribue le numéro suivant et fige la facture. Enregistrez d'abord vos dernières modifications.",
       "deleteDraft": "Supprimer ce brouillon",
       "completeCompany": "Compléter les données de l'entreprise",
+      "orderPdf": "Confirmation de commande (PDF)",
+      "deliveryPdf": "Bon de livraison (PDF)",
+      "deposit": {
+        "title": "Acomptes",
+        "percent": "Acompte en %",
+        "create": "Créer une facture d'acompte",
+        "hint": "Pourcentage du montant hors TVA, une ligne par taux. La facture finale tirée du devis déduira les acomptes émis.",
+        "draft": "Brouillon"
+      },
       "issueErrors": {
+        "percent": "Le pourcentage d'acompte doit être compris entre 0 et 100.",
+        "tooHigh": "Les acomptes dépasseraient le montant du devis.",
         "companyIncomplete": "Les données de l'entreprise (adresse et IBAN) doivent être complètes avant d'émettre une facture.",
         "vatChanged": "L'assujettissement à la TVA a changé depuis l'enregistrement. Enregistrez à nouveau le brouillon.",
         "notDraft": "Cette facture est déjà émise.",
@@ -625,7 +639,8 @@
         "closed": "Ce paiement est déjà comptabilisé dans un exercice fermé : il ne peut plus être supprimé.",
         "planLimit": "Vous avez atteint les 10 factures du mois de la formule gratuite. Passez à Pro pour facturer sans limite.",
         "recurring": "La récurrence n'a pas pu être enregistrée.",
-        "fxRate": "Le cours du jour n'a pas pu être obtenu. Saisissez le cours dans le brouillon, puis émettez à nouveau."
+        "fxRate": "Le cours du jour n'a pas pu être obtenu. Saisissez le cours dans le brouillon, puis émettez à nouveau.",
+        "depositDraft": "Une facture d'acompte de ce devis est encore en brouillon : émettez-la ou supprimez-la avant de créer la facture finale."
       },
       "addLine": "Ajouter une ligne",
       "removeLine": "Retirer",
@@ -720,6 +735,13 @@
         "total": "Total",
         "payTo": "À verser sur le compte {iban}.",
         "referenceLine": "Référence : {reference}",
+        "orderTitle": "Confirmation de commande",
+        "orderPrefix": "CC",
+        "deliveryTitle": "Bon de livraison",
+        "deliveryPrefix": "BL",
+        "fromQuote": "Selon notre offre {number}",
+        "fromInvoice": "Concerne la facture {number}",
+        "deliveryReceived": "Marchandise reçue en bon état (date, nom et signature) :",
         "relatedLine": "Concerne la facture {number}",
         "poweredBy": "Créé avec InvoiceLead · invoicelead.io",
         "smallBusinessDe": "Conformément au § 19 UStG, aucune taxe sur le chiffre d'affaires n'est facturée (petite entreprise).",
@@ -824,7 +846,7 @@
         }
       },
       "remindersLink": "Relances",
-      "reminderLine": "{level, select, 1 {1re relance} 2 {2e relance} other {Dernière relance}} le {date} ({channel, select, email {e-mail} other {courrier}})",
+      "reminderLine": "{level, select, 0 {Rappel courtois} 1 {1re relance} 2 {2e relance} other {Dernière relance}} le {date} ({channel, select, email {e-mail} other {courrier}})",
       "recurringLink": "Récurrentes",
       "recurring": {
         "title": "Rendre récurrente",
@@ -947,7 +969,10 @@
         "journal": "Journal",
         "receipts": "Justificatifs",
         "reports": "Rapports",
-        "vat": "TVA"
+        "vat": "TVA",
+        "review": "À vérifier",
+        "bills": "Fournisseurs",
+        "cashflow": "Trésorerie"
       },
       "welcomeFiduciary": "Bienvenue. Vous travaillez maintenant dans la comptabilité de votre client ; changez d'entreprise depuis l'en-tête.",
       "unavailableTitle": "Comptabilité bientôt disponible pour ce pays",
@@ -1012,7 +1037,10 @@
         "hits": "{count, plural, one {validée # fois} other {validée # fois}}",
         "delete": "Oublier"
       },
-      "planOnly": "L'import des relevés bancaires et les propositions de l'assistant sont compris dans la formule Pro."
+      "planOnly": "L'import des relevés bancaires et les propositions de l'assistant sont compris dans la formule Pro.",
+      "autoPosted": "{count, plural, one {# mouvement comptabilisé} other {# mouvements comptabilisés}} par le pilote automatique.",
+      "autoReview": "Les revoir",
+      "paysBill": "Paiement d’une facture fournisseur"
     },
     "receipts": {
       "title": "Justificatifs",
@@ -1040,9 +1068,12 @@
         "read": "Lu, paiement pas encore trouvé",
         "error": "Illisible",
         "matched": "Rattaché",
-        "posted": "Comptabilisé"
+        "posted": "Comptabilisé",
+        "billed": "Facture fournisseur"
       },
-      "planOnly": "La lecture automatique des justificatifs est comprise dans la formule Pro (50 par mois) et Pro+ (300 par mois)."
+      "planOnly": "La lecture automatique des justificatifs est comprise dans la formule Pro (50 par mois) et Pro+ (300 par mois).",
+      "toBill": "Créer la facture à payer",
+      "captureLink": "Photographier avec le téléphone"
     },
     "reports": {
       "title": "Rapports",
@@ -1073,7 +1104,16 @@
       "date": "Date",
       "entry": "N°",
       "text": "Libellé",
-      "balance": "Solde"
+      "balance": "Solde",
+      "export": {
+        "title": "Export pour la fiduciaire",
+        "consultant": "N° de conseiller DATEV",
+        "client": "N° de mandant",
+        "datev": "Télécharger le lot DATEV",
+        "datevHint": "Lot d'écritures au format DATEV (EXTF, SKR04) de l'exercice affiché : la TVA est reprise par les clés BU. Les numéros sont ceux que votre Steuerberater utilise.",
+        "fec": "Télécharger le FEC",
+        "fecHint": "Fichier des écritures comptables de l'exercice affiché (art. A47 A-1 du LPF), à remettre à l'administration en cas de contrôle ou à votre expert-comptable."
+      }
     },
     "vat": {
       "title": "TVA",
@@ -1198,7 +1238,7 @@
         "failed": "L'envoi a échoué. Réessayez plus tard."
       },
       "empty": "Aucune relance à faire aujourd'hui.",
-      "line": "{level, select, 1 {1re relance} 2 {2e relance} other {Dernière relance}} · {days} jours de retard · échue le {due}",
+      "line": "{level, select, 0 {Rappel courtois} 1 {1re relance} 2 {2e relance} other {Dernière relance}} · {days, plural, =0 {échue aujourd'hui} other {{days} jours de retard}} · échue le {due}",
       "noEmail": "pas d'e-mail",
       "send": "Envoyer",
       "markManual": "Noter comme envoyée (courrier)",
@@ -1210,7 +1250,9 @@
         "body1": "Bonjour,\n\nSauf erreur de notre part, notre facture {number} échue le {due} n'a pas encore été réglée. Le montant ouvert est de {currency} {amount}.\n\nSi le paiement est en cours, merci de ne pas tenir compte de ce message.\n\nMeilleures salutations\n{company}",
         "body2": "Bonjour,\n\nMalgré notre premier rappel, notre facture {number} échue le {due} reste impayée. Nous vous prions de régler le montant ouvert de {currency} {amount} dans les 10 jours.\n\nMeilleures salutations\n{company}",
         "body3": "Bonjour,\n\nNotre facture {number} échue le {due} est toujours impayée malgré nos rappels. Nous vous prions de régler le montant ouvert de {currency} {amount} sous 10 jours. Sans paiement, nous serons contraints d'engager d'autres démarches.\n\nMeilleures salutations\n{company}",
-        "charges": "Montant ouvert de la facture : {currency} {open}\nFrais de rappel et intérêts moratoires : {currency} {charges}\nTotal à régler : {currency} {total}"
+        "charges": "Montant ouvert de la facture : {currency} {open}\nFrais de rappel et intérêts moratoires : {currency} {charges}\nTotal à régler : {currency} {total}",
+        "subject0": "Petit rappel : facture {number} de {company} bientôt échue",
+        "body0": "Bonjour,\n\nPetit rappel amical : notre facture {number} arrive à échéance le {due}. Le montant est de {currency} {amount}.\n\nSi le paiement est déjà en route, merci beaucoup et ne tenez pas compte de ce message.\n\nMeilleures salutations\n{company}"
       },
       "chargesLine": "Facture ouverte {open} · frais {fee} · intérêts {interest} · déjà réclamés {before}",
       "settings": {
@@ -1235,7 +1277,18 @@
           "invalidFee": "Frais invalides (montant positif, au plus deux décimales).",
           "invalidRate": "Taux invalide (entre 0 et 20 %, par exemple 5)."
         }
-      }
+      },
+      "courtesyLine": "Rappel courtois avant l’échéance du {due}",
+      "profile": {
+        "late": "paie en moyenne {days} jours après l’échéance",
+        "reliable": "paie à temps",
+        "normal": "paie en moyenne {days} jours après l’échéance"
+      },
+      "forecastTitle": "Encaissements attendus",
+      "forecastHint": "Factures ouvertes, à la date où chaque client paie d'habitude.",
+      "week": "Semaine du {date}",
+      "later": "Plus tard",
+      "forecastEmpty": "Aucune facture ouverte."
     },
     "recurring": {
       "title": "Factures récurrentes",
@@ -1408,7 +1461,313 @@
         "tooMany": "Nombre maximal atteint.",
         "url": "Adresse invalide : https vers un serveur public, sans identifiants.",
         "events": "Choisissez au moins un événement."
+      },
+      "mcp": "Serveur MCP pour Claude, ChatGPT ou un autre assistant : {url}, avec une clé d'API dans l'en-tête Authorization."
+    },
+    "review": {
+      "title": "À vérifier",
+      "subtitle": "Le pilote automatique comptabilise seul ce qui est sûr. Ici, vous approuvez son travail d'un clic, annulez une écriture qui ne convient pas, et voyez ce qui mérite un coup d'œil.",
+      "autopilot": "Pilote automatique",
+      "autopilotHint": "Comptabilise sans clic les paiements reconnus par leur référence, les mouvements couverts par une règle confirmée au moins trois fois et les propositions de l'IA sûres à 97 %. Un doublon possible ou un montant inhabituel attend toujours une personne.",
+      "save": "Enregistrer",
+      "planOnly": "Le pilote automatique fait partie de la formule Pro, avec l'import bancaire.",
+      "enabled": "Pilote automatique activé : {count, plural, =0 {rien à comptabiliser pour le moment} one {# mouvement comptabilisé} other {# mouvements comptabilisés}}.",
+      "disabled": "Pilote automatique coupé. Les propositions attendent votre validation.",
+      "approved": "{count, plural, =0 {Rien à approuver.} one {# écriture approuvée.} other {# écritures approuvées.}}",
+      "undone": "Écriture annulée par extourne. Le mouvement est de nouveau à relire dans Banque, et la règle qui l'avait proposée est oubliée.",
+      "queueTitle": "Comptabilisé seul, à approuver ({count})",
+      "queueEmpty": "Rien à approuver.",
+      "bookedTo": "Sur {account}",
+      "bookedInvoice": "Paiement de facture",
+      "undo": "Annuler",
+      "approve": "J'ai vérifié, tout approuver ({count})",
+      "anomaliesTitle": "Points à regarder ({count})",
+      "anomaliesEmpty": "Aucune anomalie relevée.",
+      "kinds": {
+        "duplicate": "Doublon possible : même montant et même contrepartie à quelques jours près.",
+        "missingReceipt": "Justificatif manquant pour cette dépense.",
+        "unusualAmount": "Montant inhabituel pour cette contrepartie (habituellement {usual})."
+      },
+      "addReceipt": "Déposer le justificatif",
+      "openBank": "Voir dans Banque",
+      "errors": {
+        "closed": "Cette écriture est dans un exercice ou une période TVA fermés : elle ne peut plus être annulée.",
+        "notFound": "Écriture introuvable ou déjà traitée.",
+        "plan": "Le pilote automatique fait partie de la formule Pro."
+      },
+      "digest": {
+        "subject": "InvoiceLead : votre comptabilité de la semaine, {company}",
+        "body": "Bonjour,\n\nCette semaine, le pilote automatique a comptabilisé {auto, plural, =0 {aucun mouvement} one {# mouvement} other {# mouvements}} pour {company}.\n\nÀ approuver : {approve}\nÀ relire dans Banque : {review}\nPoints à regarder : {anomalies}\n\nTout voir et approuver en un clic : {link}\n\nInvoiceLead"
       }
+    },
+    "bills": {
+      "title": "Factures fournisseurs",
+      "new": "Nouvelle facture fournisseur",
+      "back": "Toutes les factures fournisseurs",
+      "subtitle": "Les factures reçues, lues par l'IA ou importées en e-facture, à approuver puis payer en un fichier pour votre e-banking. Le relevé bancaire les solde ensuite tout seul.",
+      "empty": "Aucune facture fournisseur. Importez une e-facture, créez-en une depuis un justificatif ou saisissez-la.",
+      "importLabel": "E-factures reçues (XRechnung, ZUGFeRD, Factur-X, UBL)",
+      "importHint": "Fichiers XML, ou PDF avec le XML joint. Lus sans IA, au centime.",
+      "import": "Importer",
+      "imported": "{count, plural, =0 {Aucune facture importée} one {# facture importée} other {# factures importées}}{rejected, plural, =0 {.} other {, # fichier(s) non reconnu(s) comme e-facture.}}",
+      "deleted": "Brouillon supprimé.",
+      "dualOn": "Double validation activée.",
+      "dualOff": "Double validation coupée.",
+      "exportHint": "{count, plural, one {# facture approuvée} other {# factures approuvées}} à payer, {total} au total. Le fichier pain.001 se charge dans votre e-banking, qui exécute chaque paiement à son échéance.",
+      "export": "Télécharger le fichier de paiement (pain.001)",
+      "groups": {
+        "draft": "À approuver",
+        "approved": "À payer",
+        "scheduled": "Paiement transmis",
+        "paid": "Payées"
+      },
+      "status": {
+        "draft": "Brouillon",
+        "approved": "Approuvée, à payer",
+        "scheduled": "Paiement transmis",
+        "paid": "Payée"
+      },
+      "due": "échéance {date}",
+      "dualApproval": "Double validation des factures fournisseurs",
+      "dualApprovalHint": "Deux personnes différentes approuvent chaque facture avant qu'elle soit comptabilisée et payable.",
+      "saveSetting": "Enregistrer",
+      "sections": {
+        "supplier": "Fournisseur",
+        "invoice": "Facture",
+        "payment": "Paiement"
+      },
+      "fields": {
+        "supplierName": "Fournisseur",
+        "supplierStreet": "Rue et numéro",
+        "supplierPostalCode": "NPA",
+        "supplierTown": "Localité",
+        "supplierCountry": "Pays (code)",
+        "number": "Numéro de facture",
+        "issueDate": "Date de facture",
+        "dueDate": "Échéance",
+        "currency": "Devise",
+        "total": "Montant à payer, TVA comprise",
+        "vatCode": "TVA comprise",
+        "account": "Compte de charge",
+        "description": "Description",
+        "iban": "IBAN du fournisseur",
+        "bic": "BIC (facultatif)",
+        "paymentReference": "Référence de paiement"
+      },
+      "hints": {
+        "supplierCountry": "Deux lettres : CH, DE, FR…",
+        "dueDate": "Vide : 30 jours après la date de facture.",
+        "total": "Par exemple 107.70",
+        "account": "Appris du fournisseur dès la première facture approuvée.",
+        "paymentReference": "Référence QR, référence RF, ou communication libre."
+      },
+      "noVat": "Sans TVA",
+      "choose": "Choisir…",
+      "save": "Enregistrer",
+      "invalid": "Certains champs sont à corriger.",
+      "notEditable": "Cette facture n'est plus modifiable.",
+      "saved": "Facture enregistrée.",
+      "approve": "Approuver",
+      "approveSecond": "Approuver (2e validation)",
+      "approveHint": "Approuvée, la facture est comptabilisée (charge et impôt préalable contre fournisseurs) et prête à payer.",
+      "waitingSecond": "Vous avez donné la première validation. Une autre personne doit approuver.",
+      "secondNeeded": "Première validation donnée par une autre personne. Votre approbation la comptabilise.",
+      "approvedNotice": "Facture approuvée et comptabilisée.",
+      "firstApprovalNotice": "Première validation enregistrée. Une deuxième personne doit approuver.",
+      "paidNotice": "Paiement enregistré.",
+      "delete": "Supprimer le brouillon",
+      "openReceipt": "Voir le justificatif",
+      "openEInvoice": "Voir la facture électronique",
+      "paidOn": "Payée le",
+      "money": "Payée depuis",
+      "moneyBank": "Banque",
+      "moneyCash": "Caisse",
+      "markPaid": "Noter comme payée",
+      "markPaidHint": "Seulement pour un paiement hors relevé importé : sinon, le débit du relevé solde la facture tout seul.",
+      "errors": {
+        "required": "Champ obligatoire.",
+        "tooLong": "Texte trop long.",
+        "date": "Date invalide.",
+        "amount": "Montant invalide.",
+        "iban": "IBAN invalide (clé de contrôle).",
+        "noAccount": "Choisissez d'abord le compte de charge.",
+        "sameApprover": "La deuxième validation doit venir d'une autre personne.",
+        "fxRate": "Le cours de change du jour n'a pas pu être obtenu. Réessayez plus tard.",
+        "noChart": "Installez d'abord le plan comptable.",
+        "noFiscalYear": "Aucun exercice ouvert à la date de la facture.",
+        "vatPeriodClosed": "La période TVA de cette date est déjà validée.",
+        "notFound": "Facture introuvable ou déjà traitée.",
+        "none": "Aucune facture approuvée avec un IBAN à payer.",
+        "noIban": "Saisissez d'abord l'IBAN de l'entreprise dans les réglages.",
+        "plan": "L'import des e-factures fait partie de la formule Pro."
+      },
+      "claim": "Note de frais"
+    },
+    "time": {
+      "title": "Temps",
+      "subtitle": "Le chrono ou une saisie rapide, rattachés à un projet ; les heures facturables deviennent une facture en un clic.",
+      "projectsLink": "{count, plural, =0 {Projets} one {# projet} other {# projets}}",
+      "noProjects": "Créez d'abord un projet pour un client.",
+      "createProject": "Créer le projet",
+      "timer": "Chrono",
+      "project": "Projet",
+      "description": "Description",
+      "start": "Démarrer",
+      "stop": "Arrêter",
+      "manual": "Saisie",
+      "date": "Date",
+      "duration": "Durée",
+      "billable": "Facturable",
+      "add": "Ajouter",
+      "recent": "Deux dernières semaines",
+      "empty": "Aucun temps saisi.",
+      "notBillable": "non facturable",
+      "invoiced": "facturé",
+      "running": "chrono en cours",
+      "delete": "Supprimer",
+      "added": "Temps ajouté.",
+      "stopped": "Chrono arrêté, temps enregistré.",
+      "projects": "Projets",
+      "projectsSubtitle": "Heures passées, reste à facturer, chiffre d'affaires facturé et tarif horaire réellement obtenu.",
+      "back": "Temps",
+      "allProjects": "Tous les projets",
+      "hours": "Heures",
+      "unbilled": "À facturer",
+      "invoicedNet": "Facturé (HT)",
+      "effectiveRate": "Tarif horaire obtenu",
+      "ofBudget": "sur {budget} prévues",
+      "noProjectsYet": "Aucun projet.",
+      "noArchived": "Aucun projet archivé.",
+      "showArchived": "Voir les projets archivés",
+      "showActive": "Voir les projets actifs",
+      "noCustomers": "Ajoutez d'abord un client dans Contacts.",
+      "newProject": "Nouveau projet",
+      "projectName": "Nom du projet",
+      "customer": "Client",
+      "hourlyRate": "Tarif horaire hors TVA ({currency})",
+      "budgetHours": "Budget en heures (facultatif)",
+      "saved": "Projet enregistré.",
+      "archivedLabel": "archivé",
+      "invoiceHint": "{hours} h facturables pas encore facturées, {amount} hors TVA.",
+      "invoiceHours": "Facturer les heures",
+      "entries": "Temps saisis",
+      "editProject": "Modifier le projet",
+      "save": "Enregistrer",
+      "archive": "Archiver le projet",
+      "unarchive": "Réactiver le projet",
+      "errors": {
+        "project": "Projet introuvable ou archivé.",
+        "date": "Date invalide.",
+        "duration": "Durée invalide (par exemple 1:30, 1.5 ou 45m).",
+        "required": "Champ obligatoire.",
+        "amount": "Montant invalide.",
+        "hours": "Nombre d'heures invalide.",
+        "contact": "Client introuvable.",
+        "nothing": "Aucune heure facturable à facturer.",
+        "invalid": "Saisie invalide."
+      }
+    },
+    "capture": {
+      "title": "Photographier un justificatif",
+      "subtitle": "Un ticket, une facture : la photo est lue par l'IA et rattachée au paiement dès qu'il arrive dans le relevé.",
+      "take": "Photographier",
+      "sending": "Envoi et lecture…",
+      "read": "Justificatif lu",
+      "saved": "Justificatif enregistré.",
+      "rejected": "La photo n'a pas pu être enregistrée (format, taille ou limite de la formule).",
+      "recent": "Derniers justificatifs",
+      "all": "Tous les justificatifs",
+      "planOnly": "La lecture des justificatifs fait partie de la formule Pro."
+    },
+    "assistant": {
+      "title": "Assistant",
+      "subtitle": "Une question sur vos chiffres, en langage courant. L'assistant répond à partir de vos livres, sans rien modifier.",
+      "question": "Votre question",
+      "ask": "Demander",
+      "thinking": "Réflexion…",
+      "disclaimer": "Réponse tirée de vos livres à l'instant de la question. À vérifier avant toute décision importante.",
+      "suggestions": {
+        "owed": "Qui me doit le plus ?",
+        "result": "Où en est mon résultat cette année ?",
+        "toPay": "Que dois-je payer ce mois-ci ?",
+        "unbilled": "Quelles heures restent à facturer ?"
+      },
+      "links": {
+        "invoices": "Factures",
+        "reminders": "Relances",
+        "bank": "Banque",
+        "review": "À vérifier",
+        "bills": "Fournisseurs",
+        "reports": "Bilan et résultat",
+        "vat": "TVA",
+        "time": "Projets"
+      },
+      "errors": {
+        "plan": "L'assistant fait partie de la formule Pro.",
+        "off": "L'assistant IA n'est pas encore configuré.",
+        "empty": "Posez une question.",
+        "failed": "L'assistant n'a pas pu répondre. Réessayez dans un instant."
+      }
+    },
+    "expenses": {
+      "title": "Notes de frais",
+      "subtitle": "Dépenses payées de votre poche et trajets avec votre véhicule. Une fois approuvées par la comptabilité, elles sont remboursées avec les factures fournisseurs.",
+      "expense": "Dépense",
+      "mileage": "Kilomètres",
+      "mine": "Mes notes de frais",
+      "empty": "Aucune note de frais pour l'instant.",
+      "submit": "Envoyer à la comptabilité",
+      "added": "Note de frais envoyée à la comptabilité.",
+      "delete": "Retirer",
+      "fields": {
+        "date": "Date",
+        "description": "Objet",
+        "amount": "Montant payé ({currency})",
+        "vat": "TVA comprise",
+        "account": "Catégorie",
+        "receipt": "Justificatif (photo ou PDF)",
+        "claimant": "À rembourser à",
+        "iban": "IBAN pour le remboursement",
+        "trip": "Trajet (de, à, motif)",
+        "km": "Kilomètres",
+        "rate": "Taux par km ({currency})"
+      },
+      "hints": {
+        "iban": "Facultatif : sans IBAN, le remboursement se fait à part.",
+        "rate": {
+          "CH": "Taux usuel en Suisse : 70 centimes par kilomètre.",
+          "DE": "Forfait allemand : 30 centimes par kilomètre (§ 9 EStG).",
+          "FR": "Barème kilométrique de l'administration fiscale, selon la puissance du véhicule.",
+          "GB": "HMRC : 45 pence par mile pour les 10 000 premiers miles ; saisissez des miles.",
+          "US": "Taux standard de l'IRS ; saisissez des miles."
+        }
+      },
+      "errors": {
+        "date": "Date invalide.",
+        "required": "Remplissez les champs obligatoires.",
+        "iban": "IBAN invalide.",
+        "amount": "Montant invalide.",
+        "km": "Distance invalide.",
+        "type": "Format de justificatif non pris en charge (PDF, JPEG, PNG ou WebP).",
+        "size": "Justificatif trop volumineux (10 Mo au plus).",
+        "duplicate": "Ce justificatif a déjà été envoyé.",
+        "role": "Votre rôle ne permet pas de saisir des notes de frais.",
+        "invalid": "Saisie invalide."
+      }
+    },
+    "cashflow": {
+      "title": "Trésorerie",
+      "subtitle": "Prévision des treize prochaines semaines, recalculée à chaque visite.",
+      "opening": "Liquidités aujourd'hui (banque et caisse)",
+      "verdictLabel": "Prévision",
+      "shortfall": "Découvert prévu la semaine du {date} : {amount}.",
+      "noShortfall": "Pas de découvert prévu. Liquidités dans treize semaines : {amount}.",
+      "week": "Semaine du",
+      "in": "Encaissements",
+      "out": "Paiements",
+      "closing": "Liquidités",
+      "later": "Au-delà : encaissements {in}, paiements {out}.",
+      "method": "Encaissements : factures ouvertes à la date où chaque client paie d'habitude. Paiements : factures fournisseurs et notes de frais à leur échéance. Ce qui est déjà échu compte dans la semaine en cours."
     }
   },
   "footer": {
