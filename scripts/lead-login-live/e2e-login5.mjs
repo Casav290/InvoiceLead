@@ -29,6 +29,12 @@
  * CRM-TEAM-INVITE-EMAIL la preuve de l'administrateur (X-Lead-Id-Token). Les liens d'import longs d'une même
  * machine comptent pour un seul réseau (20 pages gardées par heure, login-pages.ts) : entre deux rejeux
  * rapprochés, vider login_pages (`delete from login_pages where client is not null`).
+ *
+ * Intégration du lot 7 (pile reconstruite) : CRM-FIRSTBYTE-ACCEPT-LANGUAGE (premier octet sans ui_locales),
+ * CRM-STALE-RELOAD-ONE-DEPARTURE (vieil écran rechargé, un seul départ), IL-ERROR-SCREEN-LINKS (liens de l'écran
+ * d'erreur), IL-FIDU-CRM-IMPORT (lien d'import d'une fiduciaire), CRM-FORGOT-THROTTLE (adresses 192.0.2.x et
+ * 198.18-19.x.x en X-Forwarded-For, compteurs effacés ensuite), CRM-113-LEGACY-COLLEAGUES (collègues invités par
+ * CRMlead), CRM-MEMBERS-PROOF (preuve de l'administrateur, renvoi) et, avec CRM_GOOGLE, CRM-REAUTH-GOOGLE-2FA.
  */
 import { execFileSync } from "node:child_process";
 import { createHash, createHmac, hkdfSync, randomBytes, randomUUID } from "node:crypto";
@@ -2179,6 +2185,831 @@ await step(
   },
 );
 
+// ---------- intégration du lot 7 : chaque correction rejouée sur la pile reconstruite ----------
+const LEAD_NAMES = {
+  fr: "Compte Lead",
+  en: "Lead account",
+  de: "Lead-Konto",
+  it: "Account Lead",
+  es: "Cuenta Lead",
+};
+/** Un lien d'import de CRMlead ordinaire (un devis), comme le bouton « Créer le devis dans InvoiceLead ». */
+function handoffLink(label) {
+  const enc = (o) => Buffer.from(JSON.stringify(o)).toString("base64url");
+  const id = randomUUID();
+  return `/fr/app/import/crmlead?d=${enc({
+    v: 1,
+    kind: "quote",
+    lead: { id, title: `Devis ${label} ${stamp}` },
+    contact: {
+      id: `lead:${id}`,
+      kind: "company",
+      name: `Client ${label} ${stamp} SA`,
+      country: "CH",
+    },
+    lines: [
+      { description: "Pose", quantity: 1, unit: "flat", unitPriceCents: 120000, vatCode: "normal" },
+    ],
+  })}`;
+}
+
+await step(
+  "CRM-FIRSTBYTE-ACCEPT-LANGUAGE : sans ui_locales ni lang, la langue du navigateur dès le premier octet, sans bascule",
+  async () => {
+    // La demande qu'InvoiceLead fabrique, privée de sa langue (autre client de la famille, lien fait à la main).
+    const tmp = await browser.newContext();
+    const { next: asked } = await ilAuthorize(tmp, "locale=de");
+    await tmp.close();
+    const u = new URL(asked, CRM);
+    u.searchParams.delete("ui_locales");
+    const bare = u.pathname + u.search;
+    expect(asked.includes("ui_locales=de") && !bare.includes("ui_locales"), `demande : ${bare}`);
+    const head = (html) => ({
+      lang: html.match(/<html lang="([^"]*)"/)?.[1],
+      title: html.match(/<title>([^<]*)<\/title>/)?.[1],
+      name: html.match(/data-lead-name[^>]*>([^<]*)</)?.[1],
+    });
+    // Premier octet, lu par le serveur : Accept-Language, sinon le français ; et `Vary`.
+    const req = await browser.newContext();
+    for (const [accept, l] of [
+      ["en-US,en;q=0.9", "en"],
+      ["de-CH,de;q=0.9", "de"],
+      ["it-CH", "it"],
+      ["ja-JP", "fr"],
+      ["fr-CH", "fr"],
+    ]) {
+      for (const path of [
+        `/login?next=${encodeURIComponent(bare)}`,
+        "/verification?app=invoicelead&jeton=x",
+      ]) {
+        const r = await req.request.get(`${CRM}${path}`, {
+          headers: { "accept-language": accept },
+        });
+        const h = head(await r.text());
+        expect(
+          h.lang === l && h.title === LEAD_NAMES[l] && h.name === LEAD_NAMES[l],
+          `${accept} ${path.slice(0, 20)} : ${JSON.stringify(h)}`,
+        );
+        expect(
+          /accept-language/i.test(r.headers().vary ?? ""),
+          `${accept} : Vary ${r.headers().vary}`,
+        );
+      }
+    }
+    // La langue demandée par l'application passe avant celle du navigateur.
+    const kept = head(
+      await (
+        await req.request.get(`${CRM}/login?next=${encodeURIComponent(asked)}`, {
+          headers: { "accept-language": "en-US" },
+        })
+      ).text(),
+    );
+    expect(
+      kept.lang === "de" && kept.title === "Lead-Konto",
+      `ui_locales=de : ${JSON.stringify(kept)}`,
+    );
+    // CRMlead direct : son écran, en français comme avant.
+    const directHtml = await (
+      await req.request.get(`${CRM}/login`, { headers: { "accept-language": "en-US" } })
+    ).text();
+    expect(
+      /CRMlead/.test(head(directHtml).title ?? "") && !directHtml.includes("data-lead-app"),
+      `CRMlead direct : ${JSON.stringify(head(directHtml))}`,
+    );
+    await req.close();
+
+    // Dans le navigateur : titre, `lang` et nom relevés à chaque changement, du premier octet à l'écran prêt.
+    const watch = async (locale, path, chosen) => {
+      const ctx = await browser.newContext({ locale });
+      const seen = [];
+      await ctx.exposeBinding("__fb", (_s, e) => seen.push(e));
+      if (chosen) {
+        const p0 = await ctx.newPage();
+        await p0.goto(`${CRM}/robots.txt`);
+        await p0.evaluate((l) => localStorage.setItem("crmlead.lang", l), chosen);
+        await p0.close();
+      }
+      await ctx.addInitScript(() => {
+        const snap = (why) => {
+          try {
+            if (location.port !== "3301" || !document.documentElement) return;
+            window.__fb({
+              why,
+              url: location.pathname,
+              title: document.title,
+              lang: document.documentElement.lang,
+              name: document.querySelector("[data-lead-name]")?.textContent ?? "",
+              text: (document.body?.innerText ?? "").replace(/\s+/g, " ").slice(0, 70),
+            });
+          } catch {}
+        };
+        snap("init");
+        document.addEventListener("DOMContentLoaded", () => snap("dcl"));
+        new MutationObserver(() => snap("mut")).observe(document, {
+          subtree: true,
+          childList: true,
+          characterData: true,
+          attributes: true,
+          attributeFilter: ["lang"],
+        });
+        // Juste avant chaque image affichée : ce que la personne voit vraiment.
+        const frame = () => {
+          snap("raf");
+          requestAnimationFrame(frame);
+        };
+        requestAnimationFrame(frame);
+      });
+      const p = await ctx.newPage();
+      await p.goto(`${CRM}${path}`);
+      await p.waitForSelector('[data-testid="suite-brand"]', { timeout: 15000 });
+      await sleep(1200);
+      await ctx.close();
+      return seen.filter((e) => e.title);
+    };
+    const others = (l) => Object.entries(LEAD_NAMES).filter(([k]) => k !== l);
+    for (const [locale, path, l, chosen] of [
+      ["en-US", bare, "en"],
+      ["de-CH", bare, "de"],
+      ["fr-CH", bare, "fr"],
+      ["ja-JP", bare, "fr"],
+      ["en-US", `/signup?next=${encodeURIComponent(bare)}`, "en"],
+      ["en-US", "/verification?app=invoicelead&jeton=x", "en"],
+      ["de-CH", "/verification?app=invoicelead&jeton=x", "de"],
+      ["en-US", bare, "it", "it"],
+      ["de-CH", `/login?next=${encodeURIComponent(asked)}`, "de"],
+    ]) {
+      const what = `${locale}${chosen ? ` (choix ${chosen})` : ""} ${path.slice(0, 24)}`;
+      const all = await watch(locale, path, chosen);
+      // Choix au sélecteur : les scripts du premier octet corrigent titre, `lang` et nom pendant l'analyse, avant
+      // toute image. L'observateur voit l'état d'avant chaque script (point de microtâches de l'analyseur) : on
+      // juge ici sur les images affichées (requestAnimationFrame) et la fin de l'analyse.
+      const seen = chosen ? all.filter((e) => e.why === "raf" || e.why === "dcl") : all;
+      if (chosen)
+        console.log(
+          `  ${what} : états avant script, jamais affichés : ${[...new Set(all.filter((e) => e.why === "mut" && (e.title !== LEAD_NAMES[l] || (e.name && e.name !== LEAD_NAMES[l]))).map((e) => `${e.title}|${e.lang}|${e.name}`))].join(" ; ") || "aucun"}`,
+        );
+      const bad = seen.filter(
+        (e) =>
+          e.title !== LEAD_NAMES[l] ||
+          e.lang !== l ||
+          (e.name && e.name !== LEAD_NAMES[l]) ||
+          others(l).some(([, n]) => e.text.includes(n)),
+      );
+      const flips = [...new Set(seen.map((e) => `${e.title}|${e.lang}|${e.name}`))];
+      expect(seen.length > 2, `${what} : ${seen.length} relevés`);
+      expect(
+        !bad.length,
+        `${what} : ${bad.length} relevés hors « ${LEAD_NAMES[l]} »/${l} : ${flips.join(" ; ")} | ${bad[0]?.text}`,
+      );
+      expect(
+        seen.some((e) => e.text.includes(LEAD_NAMES[l])),
+        `${what} : nom absent de l'écran (${seen.at(-1)?.text})`,
+      );
+      console.log(`  ${what} : ${seen.length} relevés, toujours ${LEAD_NAMES[l]}/${l}`);
+    }
+  },
+);
+
+await step(
+  "CRM-STALE-RELOAD-ONE-DEPARTURE : vieil écran rechargé, Compte Lead ouvert ailleurs : un seul départ, la page demandée",
+  async () => {
+    const target = `${IL}/fr/app/quotes?status=open`;
+    let email = "";
+    const rounds = [];
+    for (const variant of ["InvoiceLead", "CRMlead direct", "InvoiceLead, demande de 4 h"])
+      for (let i = 0; i < 3; i++) rounds.push(variant);
+    for (const [n, variant] of rounds.entries()) {
+      const ctx = await newCtx(browser, "fr-CH", "stale");
+      const from = events.length;
+      // 1. Sans session nulle part : l'écran neutre du Compte Lead, laissé ouvert.
+      const stale = await ctx.newPage();
+      await stale.goto(target);
+      await waitAt(stale, `${CRM}/login?next=`, `${variant} : vieil écran`);
+      await stale.waitForSelector("#auth-password");
+      const old = new URLSearchParams(
+        (new URL(stale.url()).searchParams.get("next") ?? "").split("?")[1],
+      ).get("state");
+      // 2. Ailleurs, dans un autre onglet : le Compte Lead s'ouvre.
+      const other = await ctx.newPage();
+      if (!email) email = await signupFromIl(other, "fr", "stale");
+      else if (variant === "CRMlead direct") {
+        await other.goto(`${CRM}/login`);
+        await passwordLogin(other, email);
+        await other.waitForURL((x) => x.href.startsWith(CRM) && !/\/login/.test(x.pathname), {
+          timeout: 20000,
+        });
+      } else {
+        await other.goto(`${IL}/auth/lead/start?locale=fr`);
+        await waitAt(other, `${CRM}/login?next=`, `${variant} : écran de l'autre onglet`);
+        await passwordLogin(other, email);
+        await waitAt(other, `${IL}/fr/app`, `${variant} : autre onglet connecté`);
+      }
+      await other.close();
+      expect(
+        stale.url().startsWith(`${CRM}/login?next=`),
+        `${variant} : le vieil écran est déjà parti (${stale.url()})`,
+      );
+      // 3. Plus de trois heures : demande, session InvoiceLead et ancienne marque de relance échues.
+      await dropCookies(
+        ctx,
+        (c) => c === "il_session" || c === "il_login_retry" || c.startsWith("il_lead_login_"),
+      );
+      if (variant.endsWith("4 h"))
+        await stale.evaluate(() => {
+          const k = "crmlead.leadid.next";
+          const v = JSON.parse(sessionStorage.getItem(k) ?? "null");
+          if (v) sessionStorage.setItem(k, JSON.stringify({ ...v, at: Date.now() - 4 * 3600e3 }));
+        });
+      // 4. L'onglet est rechargé (F5, onglet restauré, économiseur de mémoire).
+      const departures = [];
+      stale.on("request", (r) => {
+        if (r.isNavigationRequest() && r.url().startsWith(`${CRM}/oauth/authorize?`))
+          departures.push(new URL(r.url()).searchParams.get("state"));
+      });
+      await stale.reload();
+      await waitAt(stale, target, `${variant} (${n + 1}) : arrivée`);
+      await sleep(1500);
+      expect(stale.url() === target, `${variant} (${n + 1}) : ${stale.url()}`);
+      const again = departures.filter((s) => s === old).length;
+      expect(
+        again === 1,
+        `${variant} (${n + 1}) : ${again} départs avec l'ancienne demande (${departures.length} en tout)`,
+      );
+      expect(
+        (await ilWho(ctx)).startsWith(`${email}|`),
+        `${variant} : session ${await ilWho(ctx)}`,
+      );
+      neutralSince(from, "stale", (e) => /next=|\/oauth\//.test(e.url));
+      await ctx.close();
+    }
+    console.log(`  ${rounds.length} rechargements, un seul départ chacun`);
+  },
+);
+
+await step(
+  "IL-ERROR-SCREEN-LINKS : écran d'erreur, en-tête, pied de page et langue gardent la page ou l'invitation",
+  async () => {
+    const ctx = await newCtx(browser, "fr-CH", "errl");
+    const p = await ctx.newPage();
+    const email = await signupFromIl(p, "fr", "errl");
+    const from = events.length;
+    const page = "/fr/app/quotes?status=draft&q=Dupont";
+    const screen = `${IL}/fr/login?erreur=lead&next=${encodeURIComponent(page)}`;
+    const hrefs = async () =>
+      p.evaluate(() => ({
+        header: [...document.querySelectorAll('header a[href^="/auth/lead/start"]')].map((a) =>
+          a.getAttribute("href"),
+        ),
+        footer: [...document.querySelectorAll('footer a[href^="/auth/lead/start"]')].map((a) =>
+          a.getAttribute("href"),
+        ),
+        langs: Object.fromEntries(
+          [...document.querySelectorAll("a[hreflang]")].map((a) => [
+            a.getAttribute("hreflang"),
+            a.getAttribute("href"),
+          ]),
+        ),
+      }));
+    // A. Page demandée : chaque lien de l'écran (connexion, inscription, en-tête et pied de page) la garde.
+    await dropCookies(ctx, (n) => n === "il_session");
+    await p.goto(screen);
+    expect(p.url() === screen, `écran d'erreur : ${p.url()}`);
+    const h = await hrefs();
+    const nextQ = `next=${encodeURIComponent(page)}`;
+    expect(
+      h.header.length === 2 && h.footer.length === 2,
+      `liens : ${h.header.length}+${h.footer.length}`,
+    );
+    for (const href of [...h.header, ...h.footer])
+      expect(href.includes(nextQ), `lien sans la page demandée : ${href}`);
+    expect(
+      h.langs.de ===
+        `/de/login?erreur=lead&next=${encodeURIComponent(page.replace("/fr/", "/de/"))}`,
+      `lien DE : ${h.langs.de}`,
+    );
+    // « Connexion » de l'en-tête puis du pied de page : retour silencieux sur la page demandée.
+    for (const where of ["header", "footer"]) {
+      await dropCookies(ctx, (n) => n === "il_session");
+      await p.goto(screen);
+      await p
+        .locator(`${where} a[href^="/auth/lead/start"]:not([href*="signup=1"])`)
+        .first()
+        .click();
+      await waitAt(p, `${IL}${page}`, `${where} « Connexion »`);
+      expect(p.url() === `${IL}${page}`, `${where} « Connexion » : ${p.url()}`);
+    }
+    // « Créer un compte » de l'en-tête, Compte Lead déjà ouvert : la page demandée aussi.
+    await dropCookies(ctx, (n) => n === "il_session");
+    await p.goto(screen);
+    await p.locator('header a[href*="signup=1"]').first().click();
+    await waitAt(p, `${IL}${page}`, "« Créer un compte »");
+    // La langue : l'écran d'erreur en allemand, la même page en allemand, puis son bouton y mène.
+    await dropCookies(ctx, (n) => n === "il_session");
+    await p.goto(screen);
+    await p.locator('a[hreflang="de"]').first().click();
+    await p.waitForURL(at(`${IL}/de/login?erreur=lead`), { timeout: 15000 });
+    await p.locator('[data-testid="lead-login"]').waitFor({ timeout: 10000 });
+    const deHref = await p.locator('[data-testid="lead-login"]').getAttribute("href");
+    expect(
+      deHref.includes(`next=${encodeURIComponent("/de/app/quotes?status=draft&q=Dupont")}`),
+      `bouton DE : ${deHref}`,
+    );
+    await p.locator('[data-testid="lead-login"]').click();
+    await waitAt(p, `${IL}/de/app/quotes?status=draft&q=Dupont`, "DE : page demandée");
+    // B. Invitation de fiduciaire : tous les liens ramènent sur elle.
+    const token = fiduciaryInvite(OWNER, email);
+    const inviteScreen = `${IL}/fr/login?erreur=lead&invite=${token}`;
+    await dropCookies(ctx, (n) => n === "il_session");
+    await p.goto(inviteScreen);
+    const hi = await hrefs();
+    for (const href of [...hi.header, ...hi.footer])
+      expect(href.includes(`invite=${token}`), `invitation, lien : ${href}`);
+    expect(
+      hi.langs.de === `/de/login?erreur=lead&invite=${token}`,
+      `invitation, DE : ${hi.langs.de}`,
+    );
+    await p.locator('header a[href^="/auth/lead/start"]:not([href*="signup=1"])').first().click();
+    await waitAt(p, `${IL}/fr/invite?token=${token}`, "invitation, en-tête");
+    await dropCookies(ctx, (n) => n === "il_session");
+    await p.goto(inviteScreen);
+    await p.locator('footer a[href*="signup=1"]').first().click();
+    await waitAt(
+      p,
+      `${IL}/fr/invite?token=${token}`,
+      "invitation, pied de page « Créer un compte »",
+    );
+    expect(accepted(token) === "f", "invitation acceptée sans clic");
+    // C. Contrôle : les autres pages publiques gardent des liens simples, /de/login sans erreur repart aussitôt.
+    for (const path of ["/fr", "/fr/pricing", "/fr/faq"]) {
+      await p.goto(`${IL}${path}`);
+      const x = await hrefs();
+      expect(
+        x.header.join(" ") === "/auth/lead/start?locale=fr /auth/lead/start?locale=fr&signup=1",
+        `${path} : ${x.header.join(" ")}`,
+      );
+      expect(
+        Object.values(x.langs).every((v) => !v.includes("?")),
+        `${path} : langues ${JSON.stringify(x.langs)}`,
+      );
+    }
+    const plain = await fetch(`${IL}/de/login`, { redirect: "manual" });
+    expect(
+      plain.status >= 300 &&
+        plain.status < 400 &&
+        (plain.headers.get("location") ?? "").includes("/auth/lead/start?locale=de"),
+      `/de/login : ${plain.status} ${plain.headers.get("location")}`,
+    );
+    neutralSince(from, "errl");
+    await ctx.close();
+  },
+);
+
+await step(
+  "IL-FIDU-CRM-IMPORT : lien de son propre CRMlead, fiduciaire passée chez un client : son entreprise, le devis créé",
+  async () => {
+    const client = ownerOrg();
+    const clientId = ilq(
+      `select m.organization_id from memberships m join users u on u.id = m.user_id
+        where u.email = '${OWNER}' and m.role <> 'fiduciary' limit 1`,
+    );
+    const ctx = await newCtx(browser, "fr-CH", "fidimp");
+    const p = await ctx.newPage();
+    const email = await signupFromIl(p, "fr", "fidimp");
+    const own = ownOrgOf(email);
+    const from = events.length;
+    const token = fiduciaryInvite(OWNER, email);
+    await p.goto(`${IL}/fr/invite?token=${token}`);
+    await p.locator('[data-testid="invite-accept"]').click();
+    await waitAt(p, `${IL}/fr/app/accounting?welcome=fiduciary`, "acceptation");
+    expect((await orgName(p)) === client, `après l'acceptation : ${await orgName(p)}`);
+    const link = handoffLink("fidimp");
+    const confirm = p.locator('[data-testid="crm-import-confirm"]');
+    /** Session vivante replacée chez le client (comme le sélecteur d'entreprise). */
+    const backToClient = async () => {
+      ilq(
+        `update sessions set organization_id = '${clientId}' where id = '${sha(decodeURIComponent(await ilToken(ctx)))}'`,
+      );
+      ilq(`update users set last_organization_id = '${clientId}' where email = '${email}'`);
+    };
+    // A. Session échue, dernière entreprise = le client : le lien s'ouvre dans sa propre entreprise.
+    await dropCookies(ctx, (n) => n === "il_session");
+    await p.goto(`${IL}${link}`);
+    await waitAt(p, `${IL}/fr/app/import/crmlead?d=`, "A : lien d'import");
+    expect(p.url() === `${IL}${link}`, `A : ${p.url().slice(0, 90)}`);
+    expect((await orgName(p)) === own, `A : entreprise ${await orgName(p)}`);
+    expect(await confirm.isEnabled(), "A : bouton « Créer le devis » désactivé");
+    await confirm.click();
+    await p.waitForURL(/\/fr\/app\/quotes\/[0-9a-f-]{36}\?from=crmlead/, { timeout: 20000 });
+    const quote = p.url().split("?")[0];
+    const quoteId = quote.split("/").pop();
+    const owner = ilq(
+      `select o.name from invoices i join organizations o on o.id = i.organization_id where i.id = '${quoteId}'`,
+    );
+    expect(owner === own, `A : devis créé chez ${owner}`);
+    // B. Revenue chez le client, session échue : sa propre pièce (lien de CRMlead) s'ouvre chez elle.
+    await backToClient();
+    await dropCookies(ctx, (n) => n === "il_session");
+    await p.goto(quote);
+    await waitAt(p, quote, "B : pièce");
+    await p.locator('[data-testid="document-status"]').waitFor({ timeout: 10000 });
+    expect((await orgName(p)) === own, `B : entreprise ${await orgName(p)}`);
+    // C. Session vivante chez le client : le lien d'import propose de passer chez elle et y revient.
+    await backToClient();
+    await p.goto(`${IL}${link}`);
+    expect((await orgName(p)) === client, `C : entreprise ${await orgName(p)}`);
+    expect(!(await confirm.isEnabled()), "C : bouton actif chez le client");
+    await p.locator('[data-testid="crm-import-switch"] button', { hasText: own }).click();
+    // Même adresse avant et après : on attend que la page soit celle de son entreprise.
+    await p
+      .locator('[data-testid="crm-import-switch"]')
+      .waitFor({ state: "detached", timeout: 15000 });
+    await p.locator('[data-testid="crm-import"]').waitFor({ timeout: 10000 });
+    expect(p.url() === `${IL}${link}`, `C : ${p.url().slice(0, 90)}`);
+    expect((await orgName(p)) === own, `C : entreprise ${await orgName(p)}`);
+    expect(await confirm.isEnabled(), "C : bouton désactivé après le passage");
+    // D. Session vivante chez le client : sa propre pièce, rien de la pièce avant le passage, puis la pièce.
+    await backToClient();
+    await p.goto(quote);
+    await p.locator('[data-testid="document-elsewhere"]').waitFor({ timeout: 10000 });
+    expect(
+      (await p.locator('[data-testid="document-status"]').count()) === 0,
+      "D : pièce montrée avant le passage",
+    );
+    await p.locator('[data-testid="document-elsewhere-switch"]').click();
+    await p.waitForURL((x) => x.href === quote, { timeout: 15000 }).catch(() => {});
+    await p.locator('[data-testid="document-status"]').waitFor({ timeout: 10000 });
+    expect((await orgName(p)) === own, `D : entreprise ${await orgName(p)}`);
+    // E. Contrôle du lot 6 : une page du client, session échue, rouvre chez le client.
+    await backToClient();
+    await dropCookies(ctx, (n) => n === "il_session");
+    await p.goto(`${IL}/fr/app/contacts`);
+    await waitAt(p, `${IL}/fr/app/contacts`, "E : page du client");
+    expect((await orgName(p)) === client, `E : entreprise ${await orgName(p)}`);
+    neutralSince(from, "fidimp");
+    await ctx.close();
+  },
+);
+
+await step(
+  "CRM-FORGOT-THROTTLE : cinq emails de réinitialisation par heure et par adresse, trente par origine",
+  async () => {
+    const ctx = await newCtx(browser, "fr-CH", "fgt");
+    const p = await ctx.newPage();
+    const email = await signupFromIl(p, "fr", "fgt");
+    // Comme l'écran (appNextForSso) : « + » de la requête envoyé en « %20 ».
+    const next = (await ilAuthorize(await browser.newContext(), "locale=fr")).next.replace(
+      /\+/g,
+      "%20",
+    );
+    const ipA = `192.0.2.${(stamp % 200) + 20}`;
+    const ipB = `198.18.${stamp % 250}.${(stamp % 200) + 21}`;
+    const ipC = `198.19.${stamp % 250}.${(stamp % 200) + 22}`;
+    const ghost = mail("fgt-inconnu");
+    const forgot = (address, ip, withNext = true) =>
+      ctx.request.post(`${CRM}/api/auth/forgot`, {
+        data: { email: address, ...(withNext ? { next } : {}) },
+        headers: { origin: CRM, "x-forwarded-for": ip },
+      });
+    const mails = (address, subject) =>
+      crmLog()
+        .split("\n")
+        .filter((l) => l.includes(`à ${address} — `) && subject.test(l)).length;
+    const live = () =>
+      crmq(
+        `select count(*) || '|' || coalesce(max(t.created_at)::text, '-') from auth_tokens t join users u on u.id = t.user_id
+          where u.email = '${email}' and t.purpose = 'reset' and t.consumed_at is null and t.expires_at > now()`,
+      );
+    try {
+      // Sept demandes pour la même adresse : sept réponses identiques, cinq emails du Compte Lead.
+      const before = mails(email, /Réinitialiser/);
+      const answers = [];
+      let fifth = "";
+      for (let i = 0; i < 7; i++) {
+        const r = await forgot(email, ipA);
+        answers.push(`${r.status()} ${JSON.stringify(await r.json().catch(() => null))}`);
+        if (i === 4) {
+          await sleep(500);
+          fifth = live();
+        }
+      }
+      expect(
+        answers.every((a) => a === '200 {"ok":true}'),
+        `réponses : ${answers.join(", ")}`,
+      );
+      await sleep(1500);
+      const sent = mails(email, /Réinitialiser/) - before;
+      expect(sent === 5, `${sent} emails pour une adresse`);
+      expect(
+        mails(email, /Réinitialiser le mot de passe de votre Compte Lead/) - before >= 5 &&
+          mails(email, /Réinitialiser.*CRMlead/) === 0,
+        "emails : pas au nom du Compte Lead",
+      );
+      // Au-delà du plafond, rien ne remplace le dernier lien : il reste valable.
+      expect(live() === fifth && fifth.startsWith("1|"), `dernier lien : ${fifth} puis ${live()}`);
+      // Une adresse inconnue : mêmes réponses, aucun email.
+      const ghostAnswers = [];
+      for (let i = 0; i < 7; i++) {
+        const r = await forgot(ghost, ipB);
+        ghostAnswers.push(`${r.status()} ${JSON.stringify(await r.json().catch(() => null))}`);
+      }
+      expect(
+        ghostAnswers.every((a) => a === '200 {"ok":true}'),
+        `adresse inconnue : ${ghostAnswers.join(", ")}`,
+      );
+      expect(mails(ghost, /./) === 0, "adresse inconnue : email envoyé");
+      // Une même origine, trente adresses : la trente et unième reçoit 429 et Retry-After.
+      const codes = [];
+      for (let i = 0; i < 31; i++) {
+        const r = await forgot(mail(`fgt-o${i}`), ipC, false);
+        codes.push(r.status());
+        if (i === 30)
+          expect(
+            r.status() === 429 && Number(r.headers()["retry-after"]) > 0,
+            `31e demande : ${r.status()} Retry-After ${r.headers()["retry-after"]}`,
+          );
+      }
+      expect(
+        codes.slice(0, 30).every((c) => c === 200),
+        `30 premières : ${codes.join(",")}`,
+      );
+      // L'écran du Compte Lead, depuis cette origine : « Trop de tentatives », dans l'écran neutre.
+      const from = events.length;
+      await ctx.setExtraHTTPHeaders({ "x-forwarded-for": ipC });
+      await ctx.clearCookies();
+      await p.goto(`${CRM}/mot-de-passe?next=${encodeURIComponent(next)}`);
+      await p.fill("#auth-email", mail("fgt-ecran"));
+      await p.locator("form button").last().click();
+      await p.getByText(/Trop de tentatives/).waitFor({ timeout: 10000 });
+      expect((await p.title()) === "Compte Lead", `écran : ${await p.title()}`);
+      neutralSince(from, "fgt");
+      await ctx.setExtraHTTPHeaders({});
+      // Contrôle : un autre réseau, CRMlead direct (sans demande d'application) : l'email de CRMlead part.
+      const direct = mail("fgt-direct");
+      const dc = await browser.newContext();
+      const s = await dc.request.post(`${CRM}/api/auth/signup`, {
+        data: {
+          accountName: "E2E5 fgt direct",
+          name: "Eve",
+          email: direct,
+          password: PASS,
+          locale: "fr",
+        },
+        headers: { origin: CRM },
+      });
+      expect(s.ok(), `inscription directe ${s.status()}`);
+      const d = await dc.request.post(`${CRM}/api/auth/forgot`, {
+        data: { email: direct },
+        headers: { origin: CRM, "x-forwarded-for": ipB },
+      });
+      expect(d.ok(), `CRMlead direct : ${d.status()}`);
+      expect(
+        await waitLog(crmLog, new RegExp(`à ${direct.replace(/[+.]/g, "\\$&")} — .*CRMlead`)),
+        "CRMlead direct : pas d'email de CRMlead",
+      );
+      await dc.close();
+    } finally {
+      crmq(
+        `delete from login_attempts where key in ('forgot-origin|${ipA}', 'forgot-origin|${ipB}', 'forgot-origin|${ipC}')
+            or key like 'forgot|eve+e2e5-fgt%-${stamp}@example.test'`,
+      );
+      await ctx.close();
+    }
+  },
+);
+
+await step(
+  "CRM-113-LEGACY-COLLEAGUES : collègues d'une organisation née d'InvoiceLead, invités par CRMlead, rendus muets par 113",
+  async () => {
+    expect(CRM_REPO, "CRM_REPO manquant");
+    /** Une organisation : créateur inscrit sur CRMlead (`viaUi` : avec son écran de bienvenue) puis passé par InvoiceLead. */
+    const org = async (label, { realLead = false, viaUi = false } = {}) => {
+      const ctx = await browser.newContext({ locale: "fr-CH" });
+      const creator = mail(`${label}-c`);
+      if (viaUi) {
+        const w = await ctx.newPage();
+        await w.goto(`${CRM}/signup`);
+        await w.fill("#auth-account", `E2E5 ${label}`);
+        await w.fill("#auth-name", "Eve");
+        await w.fill("#auth-email", creator);
+        await w.fill("#auth-password", PASS);
+        await w.locator("form button").last().click();
+        await waitAt(w, `${CRM}/bienvenue`, `${label} : bienvenue de CRMlead`);
+        const marked = () =>
+          crmq(
+            `select count(*) from onboarding_marks o join users u on u.id = o.user_id where u.email = '${creator}'`,
+          ) !== "0";
+        for (let i = 0; i < 40 && !marked(); i++) await sleep(250);
+        expect(marked(), `${label} : bienvenue non relevée`);
+        await w.close();
+      } else {
+        const r = await ctx.request.post(`${CRM}/api/auth/signup`, {
+          data: {
+            accountName: `E2E5 ${label}`,
+            name: "Eve",
+            email: creator,
+            password: PASS,
+            locale: "fr",
+          },
+          headers: { origin: CRM },
+        });
+        expect(r.ok(), `${label} : inscription ${r.status()}`);
+      }
+      if (realLead) {
+        const l = await ctx.request.post(`${CRM}/api/leads`, {
+          data: { title: "Un vrai lead" },
+          headers: { origin: CRM },
+        });
+        expect(l.ok(), `${label} : lead ${l.status()}`);
+      }
+      const account = crmq(`select account_id from users where email = '${creator}'`);
+      crmq(
+        `insert into lead_subscriptions (account_id, source_app, external_id, app_plan, plan_code, status)
+         values ('${account}', 'scanlead', 'e2e5-${label}-${stamp}', 'pro_plus', 'pro_plus', 'active') on conflict do nothing`,
+      );
+      // Réglages → Équipe de CRMlead, comme InvoiceLead le demandait avant ce lot.
+      const colleague = mail(`${label}-m`);
+      const inv = await ctx.request.post(`${CRM}/api/users`, {
+        data: { email: colleague, name: "Collègue" },
+        headers: { origin: CRM },
+      });
+      expect(inv.status() === 201, `${label} : invitation ${inv.status()}`);
+      const token = `jeton-${label}-${stamp}`;
+      crmq(
+        `update auth_tokens set token_hash = '${sha(token)}' where id = (select id from auth_tokens
+          where user_id = (select id from users where email = '${colleague}') and purpose = 'invite'
+          order by created_at desc limit 1)`,
+      );
+      const cc = await browser.newContext({ locale: "fr-CH" });
+      const acc = await cc.request.post(`${CRM}/api/auth/accept`, {
+        data: { token, password: PASS, name: "Collègue" },
+        headers: { origin: CRM },
+      });
+      expect(acc.ok(), `${label} : acceptation ${acc.status()}`);
+      // Chacun ouvre ensuite InvoiceLead (le créateur aussitôt après son inscription).
+      for (const [c, who] of [
+        [ctx, creator],
+        [cc, colleague],
+      ]) {
+        await c.clearCookies();
+        const p = await c.newPage();
+        await p.goto(`${IL}/auth/lead/start?locale=fr`);
+        await waitAt(p, `${CRM}/login?next=`, `${label} : écran`);
+        await passwordLogin(p, who);
+        await waitAt(p, `${IL}/fr/app`, `${label} : InvoiceLead`);
+        await p.close();
+      }
+      await ctx.close();
+      await cc.close();
+      return { creator, colleague };
+    };
+    const prefs = (email) =>
+      crmq(
+        `select coalesce(p.digest, '-') || '|' || coalesce(p.weekly_report::text, '-') || '|' || coalesce(l.tips::text, '-')
+            || '|' || (l.app_quiet_at is not null)::text
+         from users u left join notification_prefs p on p.user_id = u.id left join lifecycle_prefs l on l.user_id = u.id
+        where u.email = '${email}'`,
+      );
+    const weeklyDue = (email) =>
+      crmq(
+        `select (u.is_active and a.paused_at is null and coalesce(p.weekly_report, true))::text
+           from users u join accounts a on a.id = u.account_id left join notification_prefs p on p.user_id = u.id
+          where u.email = '${email}'`,
+      );
+    const born = await org("lg113");
+    const withLead = await org("lg113-lead", { realLead: true });
+    const native = await org("lg113-crm", { viaUi: true });
+    expect(weeklyDue(born.colleague) === "true", `avant 113 : ${prefs(born.colleague)}`);
+    const replay = () =>
+      execFileSync(
+        "psql",
+        [
+          "-U",
+          "postgres",
+          "-h",
+          "localhost",
+          "-d",
+          "crmlead_e2e",
+          "-q",
+          "-v",
+          "ON_ERROR_STOP=1",
+          "-f",
+          `${CRM_REPO}/db/113_free_plan_all_apps.sql`,
+        ],
+        { stdio: ["ignore", "ignore", "ignore"] },
+      );
+    replay();
+    expect(
+      /^off\|false\|false\|true$/.test(prefs(born.creator)),
+      `créateur : ${prefs(born.creator)}`,
+    );
+    expect(
+      /^off\|false\|false\|true$/.test(prefs(born.colleague)),
+      `collègue : ${prefs(born.colleague)}`,
+    );
+    expect(weeklyDue(born.colleague) === "false", "collègue : rapport du lundi encore dû");
+    for (const [what, who] of [
+      ["organisation avec un vrai lead, créateur", withLead.creator],
+      ["organisation avec un vrai lead, collègue", withLead.colleague],
+      ["organisation née sur CRMlead, créateur", native.creator],
+      ["organisation née sur CRMlead, collègue", native.colleague],
+    ])
+      expect(
+        (([d, w, , q]) => d !== "off" && w !== "false" && q === "false")(prefs(who).split("|")),
+        `${what} : ${prefs(who)}`,
+      );
+    // Rejouée : rien ne change, et le rapport rallumé par le collègue reste.
+    const c = await browser.newContext();
+    const lg = await c.request.post(`${CRM}/api/auth/login`, {
+      data: { email: born.colleague, password: PASS },
+      headers: { origin: CRM },
+    });
+    expect(lg.ok(), `connexion du collègue : ${lg.status()}`);
+    const wr = await c.request.put(`${CRM}/api/notifications/prefs`, {
+      data: { weeklyReport: true },
+      headers: { origin: CRM },
+    });
+    expect(wr.ok(), `rapport rallumé : ${wr.status()}`);
+    await c.close();
+    replay();
+    expect(
+      prefs(born.colleague).split("|")[1] === "true",
+      `113 rejouée : ${prefs(born.colleague)}`,
+    );
+  },
+);
+
+await step(
+  "CRM-MEMBERS-PROOF : inviter un collègue exige la preuve de l'administrateur, renvoi compris",
+  async () => {
+    const ctx = await newCtx(browser, "fr-CH", "prf");
+    const p = await ctx.newPage();
+    const manager = await signupFromIl(p, "fr", "prf");
+    const [org, inviter] = crmq(
+      `select account_id || '|' || id from users where email = '${manager}'`,
+    ).split("|");
+    crmq(
+      `insert into lead_subscriptions (account_id, source_app, external_id, app_plan, plan_code, status)
+       values ('${org}', 'scanlead', 'e2e5-prf-${stamp}', 'pro_plus', 'pro_plus', 'active') on conflict do nothing`,
+    );
+    await dropCookies(ctx, (n) => n === "il_session");
+    await p.goto(`${IL}/fr/app/settings/team`);
+    await waitAt(p, `${IL}/fr/app/settings/team`, "équipe");
+    // Depuis InvoiceLead : l'invitation, puis la même adresse encore (renvoi par /members/:id/invite).
+    const colleague = mail("prf-coll");
+    const sentTo = () =>
+      crmLog()
+        .split("\n")
+        .filter((l) => l.includes(`à ${colleague} — `)).length;
+    for (const round of [1, 2]) {
+      await p.goto(`${IL}/fr/app/settings/team`);
+      const form = p.locator('[data-testid="member-invite"]');
+      await form.locator('input[name="name"]').fill("Collègue preuve");
+      await form.locator('input[name="email"]').fill(colleague);
+      await form.locator('[data-testid="member-invite-submit"]').click();
+      for (let i = 0; i < 40 && sentTo() < round; i++) await sleep(250);
+      expect(sentTo() === round, `envoi ${round} : ${sentTo()} emails`);
+    }
+    // L'API : avec le jeton d'identité de l'administrateur, oui ; pour une autre organisation, non.
+    const cc = await ctx.request.post(`${CRM}/oauth/token`, {
+      form: {
+        grant_type: "client_credentials",
+        client_id: "invoicelead",
+        client_secret: process.env.LEAD_ID_CLIENT_SECRET ?? "lid_test_e2e_secret",
+        scope: "members",
+      },
+    });
+    const bearer = `Bearer ${(await cc.json()).access_token}`;
+    const proof = await idTokenOf(ctx);
+    const invite = (body) =>
+      ctx.request.post(`${CRM}/api/lead-id/v1/members/invite`, {
+        headers: { authorization: bearer, "x-lead-id-token": proof },
+        data: { name: "API", ...body },
+      });
+    const ok = await invite({ org, inviter, email: mail("prf-api") });
+    expect(ok.status() === 201, `avec la preuve : ${ok.status()}`);
+    const otherOrg = crmq(`select account_id from users where email = '${OWNER}'`);
+    const otherAdmin = crmq(`select id from users where email = '${OWNER}'`);
+    for (const [label, body] of [
+      ["autre organisation", { org: otherOrg, inviter, email: mail("prf-x1") }],
+      ["autre administrateur", { org: otherOrg, inviter: otherAdmin, email: mail("prf-x2") }],
+    ]) {
+      const r = await invite(body);
+      const b = await r.json().catch(() => ({}));
+      expect(
+        r.status() === 403 && b.error === "inviter_proof",
+        `${label} : ${r.status()} ${b.error}`,
+      );
+    }
+    expect(
+      crmq(
+        `select count(*) from users where email in ('${mail("prf-x1")}', '${mail("prf-x2")}')`,
+      ) === "0",
+      "invitation hors de son organisation",
+    );
+    await ctx.close();
+  },
+);
+
 // ---------- étapes Google (second CRMlead, faux Google) ----------
 const gq = (o) => ({ data: o, headers: { origin: CRM_G } });
 async function google(page, who, click = true) {
@@ -2905,6 +3736,118 @@ else {
     expect(r.status() === 200, `crmlead.io : ${r.status()}`);
     await ctx.close();
   });
+  await step(
+    "CRM-REAUTH-GOOGLE-2FA (CRMlead direct) : « Me reconnecter avec Google » avec la 2FA mène au code, puis au geste",
+    async () => {
+      const B32 = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+      const totp = (secret, offset = 0) => {
+        let bits = "";
+        for (const ch of secret.replace(/=+$/, ""))
+          bits += B32.indexOf(ch).toString(2).padStart(5, "0");
+        const key = [];
+        for (let i = 0; i + 8 <= bits.length; i += 8)
+          key.push(Number.parseInt(bits.slice(i, i + 8), 2));
+        const buf = Buffer.alloc(8);
+        buf.writeBigUInt64BE(BigInt(Math.floor(Date.now() / 30000) + offset));
+        const h = createHmac("sha1", Buffer.from(key)).update(buf).digest();
+        const o = h[h.length - 1] & 15;
+        return String((h.readUInt32BE(o) & 0x7fffffff) % 1e6).padStart(6, "0");
+      };
+      const who = mail("g-reauth");
+      const viaGoogle = async (page) => {
+        persona = { sub: `sub-${who}`, email: who, action: "hold" };
+        await waitAt(page, `${GOOGLE}/auth`, "chez Google");
+        await page.click("#ok");
+        await page.waitForURL(/sso=totp/, { timeout: 20000 });
+      };
+      const typeCode = async (page, code) => {
+        await page.locator("#auth-code").waitFor({ timeout: 10000 });
+        await page.fill("#auth-code", code);
+        await page.getByRole("button", { name: /Valider/ }).click();
+      };
+      // Compte né par Google (sans mot de passe), CRMlead direct, double authentification active.
+      const ctx = await browser.newContext({ locale: "fr-CH" });
+      const p = await ctx.newPage();
+      await p.goto(`${CRM_G}/signup`);
+      await p.fill("#auth-account", "E2E5 reconnexion Google");
+      await google(p, who);
+      await p.click("#ok");
+      await p.waitForURL(
+        (u) => u.href.startsWith(CRM_G) && !/^\/(api|signup|login)/.test(u.pathname),
+        {
+          timeout: 20000,
+        },
+      );
+      const api = (path, data = {}) => ctx.request.post(`${CRM_G}${path}`, gq(data));
+      const s1 = (await (await api("/api/auth/totp/begin")).json()).secret;
+      const on = await api("/api/auth/totp/confirm", { code: totp(s1) });
+      expect(on.ok(), `2FA : ${on.status()}`);
+      // Session ouverte depuis plus de dix minutes : couper la 2FA demande de se reconnecter.
+      crmq(
+        `update sessions set created_at = now() - interval '11 minutes'
+          where user_id = (select id from users where email = '${who}') and revoked_at is null`,
+      );
+      const refused = await api("/api/auth/totp/disable");
+      const rb = await refused.json().catch(() => ({}));
+      expect(
+        refused.status() === 403 && rb.error === "reauth_required",
+        `sans preuve : ${refused.status()} ${rb.error}`,
+      );
+      // Paramètres : « Désactiver », refusé, « Me reconnecter avec Google ».
+      await p.goto(`${CRM_G}/settings#me`);
+      const box = p.locator("#double-authentification");
+      await box.getByRole("button", { name: "Désactiver", exact: true }).click();
+      await box.getByRole("button", { name: /Désactiver la double/ }).click();
+      await box.getByRole("button", { name: /Me reconnecter avec Google/ }).click();
+      await viaGoogle(p);
+      const back = new URL(p.url());
+      expect(
+        back.pathname === "/login" &&
+          back.searchParams.get("reauth") === "1" &&
+          /^[A-Za-z0-9_-]{16}$/.test(back.searchParams.get("t") ?? ""),
+        `retour de Google : ${p.url()}`,
+      );
+      await typeCode(p, totp(s1, 1));
+      await p
+        .waitForURL((u) => u.pathname === "/settings" && u.hash === "#me", { timeout: 15000 })
+        .catch(() => {});
+      expect(new URL(p.url()).pathname === "/settings", `après le code : ${p.url()}`);
+      const off = await api("/api/auth/totp/disable");
+      expect(off.ok(), `couper la 2FA après le code : ${off.status()}`);
+      // Contrôles, 2FA rallumée : un onglet déconnecté (CRMlead direct, puis départ d'InvoiceLead) n'a pas reauth=1.
+      const s2 = (await (await api("/api/auth/totp/begin")).json()).secret;
+      const on2 = await api("/api/auth/totp/confirm", { code: totp(s2) });
+      expect(on2.ok(), `2FA rallumée : ${on2.status()}`);
+      await ctx.close();
+      const direct = await browser.newContext({ locale: "fr-CH" });
+      const d = await direct.newPage();
+      await d.goto(`${CRM_G}/login`);
+      await d.getByRole("button", { name: /Google/ }).click();
+      await viaGoogle(d);
+      expect(!d.url().includes("reauth=1") && !d.url().includes("next="), `direct : ${d.url()}`);
+      await typeCode(d, totp(s2, 0));
+      await d.waitForURL((u) => u.href.startsWith(CRM_G) && !/^\/(api|login)/.test(u.pathname), {
+        timeout: 15000,
+      });
+      await direct.close();
+      const il = await newCtx(browser, "fr-CH", "g-reauth-il");
+      const from = events.length;
+      const r = await il.newPage();
+      const { url } = await ilAuthorize(il, "locale=fr&next=%2Ffr%2Fapp%2Finvoices", CRM_G);
+      await r.goto(url);
+      await waitAt(r, `${CRM_G}/login?next=`, "départ d'InvoiceLead");
+      await r.getByRole("button", { name: /Google/ }).click();
+      await viaGoogle(r);
+      expect(
+        !r.url().includes("reauth=1") && r.url().includes("next="),
+        `InvoiceLead : ${r.url()}`,
+      );
+      await typeCode(r, totp(s2, 1));
+      await waitAt(r, `${IL}/fr/app/invoices`, "InvoiceLead : page demandée");
+      neutralSince(from, "g-reauth-il", (e) => /next=|\/oauth\//.test(e.url));
+      await il.close();
+    },
+  );
 }
 
 console.log("\nRESULTATS", JSON.stringify(results, null, 1));
