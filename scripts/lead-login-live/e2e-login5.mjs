@@ -97,7 +97,13 @@ const gServer = CRM_G
 // ---------- relevés : CRMlead visible sur un écran demandé par InvoiceLead ? ----------
 const events = [];
 const isBad = (e) =>
-  e.crmBrand || e.tagline || e.ssr || /CRMlead/.test(e.title) || e.crmIcon || e.dashboard;
+  e.crmBrand ||
+  e.tagline ||
+  e.ssr ||
+  /CRMlead/.test(e.title) ||
+  e.crmIcon ||
+  e.crmHead ||
+  e.dashboard;
 async function newCtx(browser, locale, tag) {
   const ctx = await browser.newContext({ locale, viewport: { width: 1280, height: 900 } });
   await ctx.exposeBinding("__e2e5", (_s, e) => events.push({ tag, ...e }));
@@ -108,7 +114,16 @@ async function newCtx(browser, locale, tag) {
         const leaves = Array.from(document.querySelectorAll("body *")).filter(
           (e) => e.children.length === 0,
         );
-        const icon = document.querySelector('link[rel="icon"]')?.getAttribute("href") ?? "";
+        // Toutes les icônes de l'onglet, l'icône d'écran d'accueil et le manifeste (pas seulement la première).
+        const heads = Array.from(
+          document.querySelectorAll(
+            'link[rel~="icon"], link[rel="apple-touch-icon"], link[rel="manifest"]',
+          ),
+        ).map((l) => l.getAttribute("href") ?? "");
+        const appTitle =
+          document
+            .querySelector('meta[name="apple-mobile-web-app-title"]')
+            ?.getAttribute("content") ?? "";
         const text = document.body?.innerText ?? "";
         window.__e2e5({
           why,
@@ -119,7 +134,8 @@ async function newCtx(browser, locale, tag) {
           ),
           tagline: text.includes("ne laisse aucun lead sans suite"),
           ssr: !!document.getElementById("ssr"),
-          crmIcon: icon.includes("favicon"),
+          crmIcon: heads.some((h) => /favicon|apple-touch|manifest/.test(h)),
+          crmHead: /CRMlead/.test(appTitle),
           dashboard: /Mes actions|My actions|Pipeline/.test(text),
           text: text.replace(/\s+/g, " ").slice(0, 80),
         });
@@ -144,7 +160,9 @@ function neutralSince(from, tag, keep = () => true) {
       ...new Map(seen.map((e) => [`${e.url}|${e.title}|${e.text.slice(0, 40)}`, e])).values(),
     ];
     const flags = (e) =>
-      ["crmBrand", "tagline", "ssr", "crmIcon", "dashboard"].filter((k) => e[k]).join("+");
+      ["crmBrand", "tagline", "ssr", "crmIcon", "crmHead", "dashboard"]
+        .filter((k) => e[k])
+        .join("+");
     for (const e of uniq.slice(0, 15))
       console.log(
         `  ${isBad(e) ? "!!" : "  "} ${e.url.slice(0, 70)} | ${e.title} | ${flags(e)} | ${e.text}`,
@@ -1028,6 +1046,251 @@ else {
       await Promise.all([att.close(), direct.close()]);
       // Écran « demande expirée » de la victime d'InvoiceLead : neutre dès le premier octet, icône comprise.
       neutralSince(from, "csrf");
+      await ctx.close();
+    },
+  );
+
+  // ---------- retour de Google sans trace dans ce navigateur (CRM-GOOGLE-LOGIN-CSRF, suite) ----------
+  /** Compte CRMlead direct, ouvert dans un contexte jetable : le navigateur testé reste déconnecté. */
+  async function directAccount(label) {
+    const tmp = await browser.newContext();
+    const email = mail(label);
+    const r = await tmp.request.post(
+      `${CRM_G}/api/auth/signup`,
+      gq({ accountName: `E2E5 ${label}`, name: "Eve", email, password: PASS, locale: "fr" }),
+    );
+    await tmp.close();
+    expect(r.ok(), `inscription directe ${label} : ${r.status()}`);
+    return email;
+  }
+  /** Adresse de retour obtenue dans un autre navigateur, pour son propre compte Google, jamais suivie. */
+  async function forgedReturn(label) {
+    const att = await browser.newContext();
+    const who = mail(label);
+    persona = { sub: `sub-${who}`, email: who, action: "auto" };
+    const s = await (
+      await att.request.post(
+        `${CRM_G}/api/auth/sso/google/start`,
+        gq({ mode: "login", locale: "fr" }),
+      )
+    ).json();
+    const back = (await att.request.get(s.url, { maxRedirects: 0 })).headers().location;
+    await att.close();
+    return back;
+  }
+  /** Trois départs directs de CRMlead depuis d'autres onglets du même navigateur. */
+  async function directDepartures(ctx) {
+    for (let i = 0; i < 3; i++)
+      await ctx.request.post(
+        `${CRM_G}/api/auth/sso/google/start`,
+        gq({ mode: "login", locale: "fr" }),
+      );
+  }
+  /** L'écran où le retour finit (plus de `retour=` dans l'adresse), formulaire affiché. */
+  async function settled(p, path = "/login") {
+    await p.waitForURL(
+      (u) => u.href.startsWith(`${CRM_G}${path}`) && !u.searchParams.has("retour"),
+      { timeout: 20000 },
+    );
+    await p.waitForSelector("#auth-password");
+    await sleep(800);
+  }
+  /** Ce que l'onglet montre de lui-même : titre, langue, icônes, manifeste, texte. */
+  const tabHead = (p) =>
+    p.evaluate(() => ({
+      title: document.title,
+      lang: document.documentElement.lang,
+      links: Array.from(
+        document.querySelectorAll(
+          'link[rel~="icon"], link[rel="apple-touch-icon"], link[rel="manifest"]',
+        ),
+      ).map((l) => `${l.rel}=${(l.getAttribute("href") ?? "").slice(0, 24)}`),
+      text: document.body.innerText.replace(/\s+/g, " "),
+    }));
+  const neutralHead = (h) =>
+    !/CRMlead/.test(h.title) &&
+    h.links.length > 0 &&
+    h.links.every((l) => l.startsWith("icon=data:image/svg"));
+  const crmHead = (h) =>
+    /CRMlead/.test(h.title) &&
+    h.links.some((l) => l.includes("favicon-32")) &&
+    h.links.some((l) => l.startsWith("manifest="));
+  const session = async (ctx) =>
+    (await (await ctx.request.get(`${CRM_G}/api/auth/me`)).json()).user?.email ?? null;
+
+  await step(
+    "CRM-GOOGLE-LOGIN-CSRF (allemand) : Lead-Konto après le retour fabriqué, rechargé, puis la page demandée",
+    async () => {
+      const email = await directAccount("g-vict-de");
+      const ctx = await newCtx(browser, "de-CH", "csrf-de");
+      const from = events.length;
+      const v = await ctx.newPage();
+      const { url } = await ilAuthorize(ctx, "locale=de&next=%2Fde%2Fapp%2Finvoices", CRM_G);
+      await v.goto(url);
+      await waitAt(v, `${CRM_G}/login?next=`, "écran Lead-Konto");
+      await v.waitForSelector("#auth-password");
+      await v.goto(await forgedReturn("g-att-de"));
+      await settled(v);
+      let h = await tabHead(v);
+      expect(
+        /Diese Anmeldeanfrage ist abgelaufen/.test(h.text),
+        `message : ${h.text.slice(0, 160)}`,
+      );
+      for (const when of ["retour", "rechargement"]) {
+        if (when === "rechargement") {
+          await v.reload();
+          await settled(v);
+          h = await tabHead(v);
+        }
+        expect(
+          neutralHead(h) && h.title === "Lead-Konto" && h.lang === "de",
+          `${when} : ${h.title} ${h.lang} ${h.links}`,
+        );
+        expect(
+          new URL(v.url()).searchParams.get("next")?.startsWith("/oauth/authorize?"),
+          `${when} : demande perdue ${v.url()}`,
+        );
+      }
+      expect(!(await session(ctx)), `session ouverte : ${await session(ctx)}`);
+      await passwordLogin(v, email);
+      await waitAt(v, `${IL}/de/app/invoices`, "arrivée après connexion");
+      neutralSince(from, "csrf-de");
+      await ctx.close();
+    },
+  );
+
+  await step(
+    "CRM-GOOGLE-LOGIN-CSRF (départ effacé) : retour valide sans son départ, l'écran reste celui d'InvoiceLead",
+    async () => {
+      // Connexion, reconnexion (`reauth=1`), inscription annulée chez Google.
+      for (const kind of ["connexion", "reconnexion", "inscription"]) {
+        const tag = `prune-${kind}`;
+        const email = await directAccount(tag);
+        const ctx = await newCtx(browser, "fr-CH", tag);
+        const from = events.length;
+        const p = await ctx.newPage();
+        if (kind === "reconnexion")
+          await ctx.request.post(`${CRM_G}/api/auth/login`, gq({ email, password: PASS }));
+        const a = await ilAuthorize(
+          ctx,
+          `locale=fr${kind === "inscription" ? "&signup=1" : ""}&next=%2Ffr%2Fapp%2Fquotes`,
+          CRM_G,
+        );
+        await p.goto(kind === "reconnexion" ? `${a.url}&prompt=login` : a.url);
+        const path = kind === "inscription" ? "/signup" : "/login";
+        await waitAt(p, `${CRM_G}${path}?`, "écran Compte Lead");
+        if (kind === "inscription") await p.fill("#auth-account", "E2E5 départ effacé");
+        await google(p, mail(`${tag}-g`));
+        const state = new URL(await p.locator("#ok").getAttribute("href")).searchParams.get(
+          "state",
+        );
+        await directDepartures(ctx);
+        const names = (await ctx.cookies()).map((c) => c.name);
+        expect(
+          !names.some((n) => n.endsWith(`_${state.slice(0, 16)}`)) &&
+            !names.includes("crmlead_sso_next"),
+          `${kind} : départ gardé ${names}`,
+        );
+        await p.click(kind === "inscription" ? "#deny" : "#ok");
+        await settled(p, path);
+        const h = await tabHead(p);
+        const q = new URL(p.url()).searchParams;
+        expect(neutralHead(h) && h.title === "Compte Lead", `${kind} : ${h.title} ${h.links}`);
+        expect(
+          q.get("next")?.startsWith("/oauth/authorize?") &&
+            (q.get("reauth") === "1") === (kind === "reconnexion"),
+          `${kind} : adresse ${p.url()}`,
+        );
+        const who = await session(ctx);
+        expect(who === (kind === "reconnexion" ? email : null), `${kind} : session ${who}`);
+        if (kind === "inscription") {
+          await p.fill("#auth-account", "E2E5 départ effacé");
+          await p.fill("#auth-name", "Eve E2E5");
+          await p.fill("#auth-email", mail(`${tag}-new`));
+          await p.fill("#auth-password", PASS);
+          await p.locator("form button").last().click();
+        } else await passwordLogin(p, email);
+        await waitAt(p, `${IL}/fr/app/quotes`, `${kind} : arrivée`, 30000);
+        neutralSince(from, tag);
+        await ctx.close();
+      }
+    },
+  );
+
+  await step(
+    "CRM-GOOGLE-LOGIN-CSRF (CRMlead direct) : un retour sans trace montre toujours CRMlead",
+    async () => {
+      const email = await directAccount("g-direct-lost");
+      const ctx = await browser.newContext({ locale: "fr-CH" });
+      const p = await ctx.newPage();
+      // Déconnecté, onglet neuf : l'adresse fabriquée ailleurs.
+      await p.goto(await forgedReturn("g-att-direct"));
+      await settled(p);
+      let h = await tabHead(p);
+      expect(crmHead(h), `adresse fabriquée : ${h.title} ${h.links}`);
+      // Son propre départ de CRMlead, effacé par trois autres : toujours CRMlead, sans demande.
+      await p.goto(`${CRM_G}/login`);
+      await google(p, mail("g-direct-g"));
+      await directDepartures(ctx);
+      await p.click("#ok");
+      await settled(p);
+      h = await tabHead(p);
+      expect(
+        crmHead(h) && !new URL(p.url()).searchParams.has("next"),
+        `départ effacé : ${h.title} ${h.links} ${p.url()}`,
+      );
+      await passwordLogin(p, email);
+      await p.waitForURL((u) => u.href.startsWith(CRM_G) && !/\/login/.test(u.pathname), {
+        timeout: 20000,
+      });
+      // Connecté : l'adresse fabriquée ne change rien, CRMlead reste affiché.
+      await p.goto(await forgedReturn("g-att-direct2"));
+      await sleep(2500);
+      expect((await session(ctx)) === email, `connecté : session ${await session(ctx)}`);
+      expect(/CRMlead/.test(await p.title()), `connecté : titre ${await p.title()}`);
+      await ctx.close();
+    },
+  );
+
+  await step(
+    "CRM-GOOGLE-LOGIN-CSRF (3 h) : retour de Google plus de trois heures après le départ d'InvoiceLead",
+    async () => {
+      const email = await directAccount("g-3h");
+      const ctx = await newCtx(browser, "fr-CH", "g3h");
+      const from = events.length;
+      const p = await ctx.newPage();
+      const { url } = await ilAuthorize(ctx, "locale=fr&next=%2Ffr%2Fapp%2Fexpenses", CRM_G);
+      await p.goto(url);
+      await waitAt(p, `${CRM_G}/login?next=`, "écran Compte Lead");
+      await p.waitForFunction(() => sessionStorage.getItem("crmlead.leadid.next"));
+      // Écran ouvert, Google choisi aussitôt, retour trois heures et une minute plus tard.
+      await p.evaluate(() => {
+        const k = "crmlead.leadid.next";
+        const v = JSON.parse(sessionStorage.getItem(k));
+        v.at = Date.now() - 3 * 3600_000 - 60_000;
+        sessionStorage.setItem(k, JSON.stringify(v));
+      });
+      await google(p, mail("g-3h-g"));
+      const state = new URL(await p.locator("#ok").getAttribute("href")).searchParams.get("state");
+      crmq(
+        `update sso_states set expires_at = now() - interval '1 minute' where state_hash = '${sha(state)}'`,
+      );
+      // Le départ (`__Host-` en production) et la dernière demande vivent trois heures, comme l'état.
+      await dropCookies(ctx, (n) => /^(__Host-)?crmlead_sso_(depart_|next)/.test(n));
+      await p.click("#ok");
+      await settled(p);
+      const h = await tabHead(p);
+      const screen = p.url();
+      await passwordLogin(p, email);
+      const landed = await p.waitForURL(at(`${IL}/fr/app/expenses`), { timeout: 20000 }).then(
+        () => true,
+        () => false,
+      );
+      expect(
+        neutralHead(h) && landed,
+        `retour tardif : écran « ${h.title} » ${h.links} (${screen}), après connexion ${p.url()}`,
+      );
+      neutralSince(from, "g3h");
       await ctx.close();
     },
   );
