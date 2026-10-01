@@ -1,7 +1,8 @@
 -- Rejouable : rien n'est effacé, chaque objet n'est créé que s'il manque.
 -- 0039 et non 0038 : la branche des formules (plans) a déjà sa 0038_plan_usage. Date du journal
--- (« when ») antérieure à la sienne : le migrateur de Drizzle n'applique que les migrations plus
--- récentes que la dernière appliquée, la 0038 des formules passera donc aussi après celle-ci.
+-- (« when ») antérieure à la sienne : la 0038 des formules passe donc aussi après celle-ci. Formules
+-- publiées avant, le migrateur de Drizzle sauterait celle-ci (il n'applique que les migrations plus
+-- récentes que la dernière appliquée) : scripts/migrate.mjs la rattrape, parce qu'elle est rejouable.
 CREATE TABLE IF NOT EXISTS "login_pages" (
 	"id" text PRIMARY KEY NOT NULL,
 	"next" text NOT NULL,
