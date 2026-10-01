@@ -40,11 +40,12 @@
   --color-ink-3: #57534e;
   --color-ink-muted: #67625c;
 
-  /* Action : la couleur d'InvoiceLead */
-  --color-accent: #2563eb;
-  --color-accent-dark: #1d4ed8;
-  --color-accent-pale: #dbeafe;
-  --color-accent-veil: #eff6ff;
+  /* Action : la couleur d'InvoiceLead, prune (315°), à côté du bleu de Scanlead et du vert de
+     CRMlead, et loin du rouge, de l'orange et du vert des statuts. */
+  --color-accent: #7a2e67;
+  --color-accent-dark: #5f2350;
+  --color-accent-pale: #f3e4ef;
+  --color-accent-veil: #faf3f8;
 
   /* Compte Lead et applications sœurs */
   --color-lead: #0e6d6e;

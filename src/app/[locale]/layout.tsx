@@ -34,7 +34,7 @@ export async function generateMetadata({
   };
 }
 
-export const viewport: Viewport = { themeColor: "#2563eb" };
+export const viewport: Viewport = { themeColor: "#7a2e67" };
 
 export default async function LocaleLayout({ children }: { children: React.ReactNode }) {
   const locale = await getLocale();
