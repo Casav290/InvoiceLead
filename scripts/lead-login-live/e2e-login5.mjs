@@ -14,6 +14,7 @@
  *   GOOGLE_CLIENT_ID=x GOOGLE_CLIENT_SECRET=y GOOGLE_AUTH_URL=http://127.0.0.1:8942/auth
  *   GOOGLE_TOKEN_URL=http://127.0.0.1:8942/token GOOGLE_USERINFO_URL=http://127.0.0.1:8942/userinfo
  *   (le faux Google tourne dans ce script, port GOOGLE_PORT). Sans elle, les étapes Google sont sautées ;
+ * - IL_URL : un autre InvoiceLead que celui de 3300 (son adresse de retour déclarée dans CRMlead) ;
  * - ONLY=<motif> : seulement les étapes dont le nom correspond ; DEBUG_NAV=1 : navigations de l'étape
  *   « envoi après expiration ».
  *
@@ -29,7 +30,7 @@ process.env.PW_EXPERIMENTAL_SERVICE_WORKER_NETWORK_EVENTS = "1";
 const { chromium } = await import("playwright");
 
 const SP = process.argv[2] ?? "/tmp";
-const IL = "http://localhost:3300",
+const IL = process.env.IL_URL ?? "http://localhost:3300",
   CRM = "http://localhost:3301";
 const CRM_G = process.env.CRM_GOOGLE ?? "";
 const CRM_REPO = process.env.CRM_REPO ?? "";
@@ -1210,7 +1211,8 @@ await step(
     const a = await ctx.newPage();
     await a.goto(`${IL}/de/app`);
     await ilLogout(a);
-    await a.waitForURL((u) => u.href.startsWith(IL) && !u.pathname.startsWith("/auth"), {
+    // Fini quand l'accueil revient (après /oauth/logout du Compte Lead).
+    await a.waitForURL((u) => u.href.startsWith(IL) && /^\/(de|fr|en)?$/.test(u.pathname), {
       timeout: 20000,
     });
     await a.close();
@@ -2032,11 +2034,12 @@ else {
         timeout: 20000,
       });
       expect((await session(ctx)) === who, `B connecté : ${await session(ctx)}`);
-      // Un autre onglet part chez Google pour InvoiceLead : c'est la dernière demande du navigateur.
-      const { next } = await ilAuthorize(ctx, "locale=fr&next=%2Ffr%2Fapp%2Fclients", CRM_G);
+      // Un autre onglet part chez Google pour InvoiceLead : c'est la dernière demande du navigateur
+      // (telle que l'écran du Compte Lead la confie au serveur, `%20` pour `+`).
+      const { next } = await ilAuthorize(ctx, "locale=fr&next=%2Ffr%2Fapp%2Finvoices", CRM_G);
       const s = await ctx.request.post(
         `${CRM_G}/api/auth/sso/google/start`,
-        gq({ mode: "login", locale: "fr", next }),
+        gq({ mode: "login", locale: "fr", next: next.replace(/\+/g, "%20") }),
       );
       expect(s.ok(), `départ de l'autre onglet : ${s.status()}`);
       // B : retour arrière jusqu'au choix du compte chez Google, même compte.
@@ -2070,7 +2073,7 @@ else {
       const chooser = b.url();
       // Un onglet d'InvoiceLead part aussi chez Google.
       const a = await ctx.newPage();
-      const { url } = await ilAuthorize(ctx, "locale=fr&next=%2Ffr%2Fapp%2Fclients", CRM_G);
+      const { url } = await ilAuthorize(ctx, "locale=fr&next=%2Ffr%2Fapp%2Finvoices", CRM_G);
       await a.goto(url);
       await waitAt(a, `${CRM_G}/login?next=`, "A écran Compte Lead");
       await a.waitForSelector("#auth-password");
@@ -2094,7 +2097,7 @@ else {
       await a.click("#ok");
       await settled(a);
       await passwordLogin(a, known);
-      await waitAt(a, `${IL}/fr/app/clients`, "A : arrivée");
+      await waitAt(a, `${IL}/fr/app/invoices`, "A : arrivée");
       neutralSince(from, "r11", (e) => /next=|\/oauth\//.test(e.url));
       await ctx.close();
     },
@@ -2123,7 +2126,7 @@ else {
       const a2 = await ilAuthorize(ctx, "locale=fr&next=%2Ffr%2Fapp%2Fexpenses", CRM_G);
       await ctx.request.post(
         `${CRM_G}/api/auth/sso/google/start`,
-        gq({ mode: "login", locale: "fr", next: a2.next }),
+        gq({ mode: "login", locale: "fr", next: a2.next.replace(/\+/g, "%20") }),
       );
       expect(
         !(await ctx.cookies()).some((c) => c.name.endsWith(`_${state.slice(0, 16)}`)),
