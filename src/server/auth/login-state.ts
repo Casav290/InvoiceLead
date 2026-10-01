@@ -12,6 +12,9 @@ import { INVITE_TOKEN, safeNext } from "./login-cookie";
  * Chiffrée et pas seulement signée : la page et le jeton d'invitation n'apparaissent ni dans les
  * adresses du Compte Lead, ni dans ses journaux, ni dans ses emails.
  *
+ * Une page trop longue pour le `state` (lien d'import de CRMlead) y laisse son chemin et la référence
+ * de la page entière, gardée côté serveur (login-pages.ts) : elle revient entière, elle aussi.
+ *
  * Ce `state` ne donne jamais de session : sans le cookie de la demande (PKCE, nonce), il ne sert
  * qu'à relancer une connexion complète vers la même page.
  *
@@ -19,13 +22,28 @@ import { INVITE_TOKEN, safeNext } from "./login-cookie";
  * le nom du cookie de la demande (les 16 premiers caractères, voir loginCookieName).
  */
 
-export type LoginRequest = { locale: "de" | "fr" | "en"; next?: string; invite?: string };
+export type LoginRequest = {
+  locale: "de" | "fr" | "en";
+  next?: string;
+  invite?: string;
+  /**
+   * Entrée venue d'une page du Compte Lead qui vient d'ouvrir ou de changer sa session (invitation
+   * acceptée, adresse confirmée) : la session InvoiceLead du navigateur, peut-être celle d'une autre
+   * personne, n'est jamais reprise telle quelle. Gardé pour la relance (start/route.ts).
+   */
+  fresh?: true;
+  /** Référence de la page entière quand elle est trop longue pour le `state` (login-pages.ts). */
+  ref?: string;
+};
+
+/** Référence d'une page gardée côté serveur : 22 caractères base64url (132 bits). */
+export const PAGE_REF = /^[A-Za-z0-9_-]{22}$/;
 
 /**
  * Longueur maximale d'une page gardée dans le `state`. L'adresse /oauth/authorize reste ainsi sous
  * 1 000 caractères (le Compte Lead la porte dans ses propres adresses et cookies). Une page plus
- * longue (lien d'import de CRMlead) reste entière dans le cookie de la demande ; le `state` en garde
- * le chemin seul.
+ * longue (lien d'import de CRMlead) reste entière dans le cookie de la demande et dans la table
+ * login_pages ; le `state` en garde le chemin seul et la référence de la page entière.
  */
 export const STATE_NEXT_MAX = 300;
 
@@ -41,6 +59,8 @@ const payload = z.object({
   t: z.number().int().positive(),
   n: z.string().optional(),
   i: z.string().regex(INVITE_TOKEN).optional(),
+  f: z.literal(1).optional(),
+  r: z.string().regex(PAGE_REF).optional(),
 });
 
 function key(secret: string): Buffer {
@@ -58,11 +78,15 @@ export function nextForState(next: string | undefined): string | undefined {
 
 export function sealState(request: LoginRequest, secret: string, now = Date.now()): string {
   const next = request.invite ? undefined : nextForState(request.next);
+  const cut = !request.invite && request.next !== undefined && next !== request.next;
   const body = {
     l: request.locale,
     t: Math.floor(now / 1000),
     ...(request.invite ? { i: request.invite } : {}),
     ...(next ? { n: next } : {}),
+    ...(request.fresh ? { f: 1 } : {}),
+    // La référence ne sert que si la page n'a pas tenu entière dans le `state`.
+    ...(cut && request.ref && PAGE_REF.test(request.ref) ? { r: request.ref } : {}),
   };
   const salt = randomBytes(SALT);
   const iv = randomBytes(IV);
@@ -111,5 +135,7 @@ export function openState(
     at,
     ...(parsed.i ? { invite: parsed.i } : {}),
     ...(next ? { next } : {}),
+    ...(parsed.f ? { fresh: true as const } : {}),
+    ...(parsed.r ? { ref: parsed.r } : {}),
   };
 }

@@ -30,6 +30,13 @@ export const users = pgTable(
     email: text("email").notNull(),
     name: text("name").notNull().default(""),
     locale: text("locale").notNull().default("de"),
+    /**
+     * Dernière entreprise choisie dans InvoiceLead (fiduciaire passée chez un client). Reprise à la
+     * reconnexion, tant que l'accès de la fiduciaire y tient (team.ts, resumeOrganization).
+     */
+    lastOrganizationId: uuid("last_organization_id").references(() => organizations.id, {
+      onDelete: "set null",
+    }),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -1049,4 +1056,20 @@ export const crmleadOutbox = pgTable(
       .on(t.invoiceId)
       .where(sql`${t.status} = 'pending'`),
   ],
+);
+
+/**
+ * Page à rouvrir après une connexion, trop longue pour voyager dans le `state` (lien d'import de
+ * CRMlead) : le `state` n'en porte que la référence (login-pages.ts). Elle revient ainsi même sans le
+ * cookie de la demande (lien de l'email ouvert sur un autre appareil, écran resté ouvert). La
+ * référence dépend du contenu : un même lien ne fait qu'une ligne. Effacée après 30 jours.
+ */
+export const loginPages = pgTable(
+  "login_pages",
+  {
+    id: text("id").primaryKey(),
+    next: text("next").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [index("login_pages_created_idx").on(t.createdAt)],
 );

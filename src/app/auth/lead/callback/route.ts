@@ -15,11 +15,13 @@ import {
   staleDone,
   stateOf,
 } from "@/server/auth/login-cookie";
+import { loadPage } from "@/server/auth/login-pages";
 import { openState } from "@/server/auth/login-state";
-import { cookieOptions, createSession, SESSION_HOURS } from "@/server/auth/session";
+import { cookieOptions, createSession, destroySession, SESSION_HOURS } from "@/server/auth/session";
 import { db } from "@/server/db";
 import { env } from "@/server/env";
 import { finishLogin } from "@/server/lead-id/leadId";
+import { resumeOrganization } from "@/server/team";
 
 export const dynamic = "force-dynamic";
 
@@ -55,12 +57,15 @@ export async function GET(request: NextRequest) {
     asked?.locale ??
     saved?.locale ??
     localeFromRequest(store.get("NEXT_LOCALE")?.value, request.headers.get("accept-language"));
-  // Ce que la demande voulait : l'invitation d'abord, sinon la page. Le cookie garde la page entière
-  // quand elle était trop longue pour le `state`. Un `state` d'avant le 01.10.2026 ne porte rien :
-  // l'ancien cookie seul le dit.
+  // Ce que la demande voulait : l'invitation d'abord, sinon la page. Une page trop longue pour le
+  // `state` revient entière par le cookie de la demande, sinon par sa référence (login-pages.ts) :
+  // le `state` seul n'en a que le chemin. Un `state` d'avant le 01.10.2026 ne porte rien : l'ancien
+  // cookie seul le dit.
   const legacy = asked ? null : saved;
   const invite = own?.invite ?? asked?.invite ?? legacy?.invite;
-  const next = own?.next ?? asked?.next ?? legacy?.next;
+  const kept =
+    !own?.next && asked?.ref ? await loadPage(db(), asked.ref, SESSION_SECRET) : undefined;
+  const next = own?.next ?? kept ?? asked?.next ?? legacy?.next;
   const wanted = invite ? invitePath(locale, invite) : next;
   // Pour repartir vers le Compte Lead : la trace d'abord (page entière), sinon la demande.
   const back = returnParams(finished?.target ?? wanted);
@@ -70,20 +75,37 @@ export async function GET(request: NextRequest) {
     response.cookies.set(cookieName, "", { ...cookieOptions(0), path: LOGIN_COOKIE_PATH });
     return response;
   };
+  // Session InvoiceLead déjà dans ce navigateur : remplacée par celle-ci au succès, et sa ligne
+  // effacée (elle peut être celle d'une autre personne : poste partagé, invitation d'un collègue).
+  const previous = store.get(SESSION_COOKIE)?.value;
 
   // Demande de connexion introuvable (plus de trois heures, cookie effacé, autre navigateur) : on la
   // relance une fois, sans écran, vers la même page. Le Compte Lead est maintenant ouvert :
   // l'aller-retour est invisible et la personne arrive sur sa page. Un second échec d'affilée montre
   // l'écran d'erreur, qui garde la page pour « Réessayer ».
   const retried = store.get(RETRY_COOKIE)?.value === "1";
+  // Entrée « fraîche » (invitation acceptée, adresse confirmée dans le Compte Lead) : la relance la
+  // garde, pour ne jamais retomber sur la session InvoiceLead d'une autre personne restée ici.
+  const fresh: Record<string, string> = asked?.fresh ? { fresh: "1" } : {};
   const restart = () => {
-    const again = new URLSearchParams({ locale, ...back });
+    const again = new URLSearchParams({ locale, ...back, ...fresh });
     const response = done(`${APP_URL}/auth/lead/start?${again}`);
     response.cookies.set(RETRY_COOKIE, "1", { ...cookieOptions(120), path: LOGIN_COOKIE_PATH });
     return response;
   };
-  const failed = (reason: "lead" | "session") =>
-    done(`${APP_URL}/${locale}/login?${new URLSearchParams({ erreur: reason, ...back })}`);
+  const failed = async (reason: "lead" | "session") => {
+    const response = done(
+      `${APP_URL}/${locale}/login?${new URLSearchParams({ erreur: reason, ...back })}`,
+    );
+    // Entrée fraîche qui n'aboutit pas : l'identité du Compte Lead n'est pas confirmée, la session
+    // InvoiceLead restée dans ce navigateur (peut-être celle d'une autre personne) ne doit pas
+    // prendre le relais derrière l'écran d'erreur. Seul un `state` scellé par ce serveur le dit.
+    if (asked?.fresh && previous) {
+      await destroySession(db(), previous).catch(() => null);
+      response.cookies.set(SESSION_COOKIE, "", cookieOptions(0));
+    }
+    return response;
+  };
   // Même demande déjà menée à bout dans un autre onglet (lien d'email, onglet resté ouvert) :
   // la session est ouverte, on va tout droit à la page qu'elle demandait.
   if (!saved && finished && store.get(SESSION_COOKIE)?.value)
@@ -101,11 +123,18 @@ export async function GET(request: NextRequest) {
       { state: stateOf(saved, state) ?? "", nonce: saved.nonce, verifier: saved.verifier },
     );
     const { user, organization } = await attachLeadIdentity(db(), claims);
+    // Fiduciaire passée chez un client : la session repart dans cette entreprise tant que son accès
+    // y tient, pour que la page demandée (fiche, liste) soit bien celle du client. Une invitation à
+    // accepter part de l'entreprise du Compte Lead : l'acceptation change d'entreprise.
+    const organizationId = invite
+      ? organization.id
+      : await resumeOrganization(db(), user, organization.id);
     const session = await createSession(db(), {
       userId: user.id,
-      organizationId: organization.id,
+      organizationId,
       idToken: tokens.id_token,
     });
+    if (previous) await destroySession(db(), previous).catch(() => null);
     // Retour sur la page demandée avant la connexion, sinon le tableau de bord.
     const landing = wanted ?? `/${locale}/app`;
     const response = done(`${APP_URL}${landing}`);

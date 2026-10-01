@@ -48,7 +48,9 @@ export default async function InvitePage({ params, searchParams }: Props) {
           ) : error ? (
             <form action="/auth/lead/logout" method="post">
               <input type="hidden" name="locale" value={locale} />
-              <Button type="submit" variant="secondary">
+              {/* Après la déconnexion, retour sur cette invitation pour la reprendre avec le bon compte. */}
+              <input type="hidden" name="invite" value={token} />
+              <Button type="submit" variant="secondary" data-testid="invite-switch">
                 {t("logout")}
               </Button>
             </form>

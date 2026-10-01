@@ -267,6 +267,13 @@
       "when": 1790841422400,
       "tag": "0037_crmlead_outbox",
       "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1790850000000,
+      "tag": "0039_login_return",
+      "breakpoints": true
     }
   ]
 }

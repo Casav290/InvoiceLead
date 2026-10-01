@@ -1,4 +1,5 @@
 import { timingSafeEqual } from "node:crypto";
+import { purgePages } from "@/server/auth/login-pages";
 import { sendAutopilotDigests } from "@/server/autopilot-digest";
 import { deliverCrmlead } from "@/server/crmlead-sync";
 import { db } from "@/server/db";
@@ -34,5 +35,7 @@ export async function GET(request: Request) {
   // Le lundi : récapitulatif du pilote automatique aux administrateurs.
   const digests =
     new Date(`${today}T00:00:00Z`).getUTCDay() === 1 ? await sendAutopilotDigests(db(), today) : 0;
-  return Response.json({ today, recurring, reminders, webhooks, crmlead, digests });
+  // Pages longues gardées pour une connexion (login-pages.ts) : effacées après 30 jours.
+  const loginPages = await purgePages(db());
+  return Response.json({ today, recurring, reminders, webhooks, crmlead, digests, loginPages });
 }

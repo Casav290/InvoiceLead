@@ -1,0 +1,16 @@
+-- Rejouable : rien n'est effacé, chaque objet n'est créé que s'il manque.
+-- 0039 et non 0038 : la branche des formules (plans) a déjà sa 0038_plan_usage. Date du journal
+-- (« when ») antérieure à la sienne : le migrateur de Drizzle n'applique que les migrations plus
+-- récentes que la dernière appliquée, la 0038 des formules passera donc aussi après celle-ci.
+CREATE TABLE IF NOT EXISTS "login_pages" (
+	"id" text PRIMARY KEY NOT NULL,
+	"next" text NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "login_pages_created_idx" ON "login_pages" USING btree ("created_at");--> statement-breakpoint
+ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "last_organization_id" uuid;--> statement-breakpoint
+DO $$ BEGIN
+	ALTER TABLE "users" ADD CONSTRAINT "users_last_organization_id_organizations_id_fk" FOREIGN KEY ("last_organization_id") REFERENCES "public"."organizations"("id") ON DELETE set null ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;

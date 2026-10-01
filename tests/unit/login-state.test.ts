@@ -21,6 +21,7 @@ import {
 import {
   nextForState,
   openState,
+  PAGE_REF,
   STATE_MAX_AGE_SECONDS,
   STATE_NEXT_MAX,
   sealState,
@@ -100,6 +101,26 @@ describe("demande de connexion dans le state", () => {
     );
   });
 
+  it("une page trop longue garde aussi la référence de la page entière", () => {
+    const ref = "R".repeat(22);
+    const long = openState(sealState({ locale: "fr", next: importLink(800), ref }, SECRET), SECRET);
+    expect(long).toMatchObject({ next: "/fr/app/import/crmlead", ref });
+    // Page qui tient entière, invitation, référence mal formée : pas de référence.
+    const short = sealState({ locale: "fr", next: "/fr/app/quotes", ref }, SECRET);
+    expect(openState(short, SECRET)?.ref).toBeUndefined();
+    const invite = sealState({ locale: "fr", invite: INVITE, next: importLink(800), ref }, SECRET);
+    expect(openState(invite, SECRET)?.ref).toBeUndefined();
+    const bad = sealState({ locale: "fr", next: importLink(800), ref: "x/y" }, SECRET);
+    expect(openState(bad, SECRET)?.ref).toBeUndefined();
+    expect(PAGE_REF.test(ref)).toBe(true);
+  });
+
+  it("garde l'entrée « fraîche » du Compte Lead, et seulement elle", () => {
+    const fresh = openState(sealState({ locale: "fr", fresh: true }, SECRET), SECRET);
+    expect(fresh).toMatchObject({ locale: "fr", fresh: true });
+    expect(openState(sealState({ locale: "fr" }, SECRET), SECRET)?.fresh).toBeUndefined();
+  });
+
   it("donne à chaque demande un nom de cookie à elle", () => {
     const names = new Set(
       Array.from({ length: 2000 }, () => loginCookieName(sealState({ locale: "fr" }, SECRET))),
@@ -111,8 +132,13 @@ describe("demande de connexion dans le state", () => {
   it("garde l'adresse /oauth/authorize sous 1 000 caractères, au pire", () => {
     const worst = [
       { locale: "fr" as const, next: `/fr/app/quotes?${"q".repeat(STATE_NEXT_MAX - 15)}` },
-      { locale: "fr" as const, next: importLink(NEXT_MAX) },
-      { locale: "fr" as const, invite: LONG_INVITE },
+      {
+        locale: "fr" as const,
+        next: importLink(NEXT_MAX),
+        ref: "R".repeat(22),
+        fresh: true as const,
+      },
+      { locale: "fr" as const, invite: LONG_INVITE, fresh: true as const },
     ];
     for (const request of worst) {
       expect(safeNext(request.next ?? "/fr/app")).toBeDefined();
@@ -194,6 +220,34 @@ describe("page de retour", () => {
     expect(safeNext("/fr/app//evil.example")).toBeUndefined();
     expect(safeNext("/fr/invite?token=x")).toBeUndefined();
     expect(safeNext("https://evil.example/fr/app")).toBeUndefined();
+  });
+
+  it("accepte une recherche telle qu'un navigateur l'écrit, « * » compris", () => {
+    const pages = [
+      "/fr/app/contacts?q=M%C3%BCller*",
+      "/de/app/contacts?q=%C3%84rzte+%26+Co&archived=1",
+      "/en/app/invoices?q=(A)!$;@/?|[1]{2}^'x'",
+    ];
+    for (const page of pages) {
+      expect(safeNext(page)).toBe(page);
+      expect(nextForState(page)).toBe(page);
+      expect(openState(sealState({ locale: "fr", next: page }, SECRET), SECRET)?.next).toBe(page);
+      expect(returnParams(page)).toEqual({ next: page });
+      expect(readDone(doneValue(page))?.target).toBe(page);
+    }
+    for (const bad of [
+      "/fr/app?x=a#b",
+      "/fr/app?x=a\\b",
+      "/fr/app?x=//evil",
+      "/fr/app?x=a b",
+      "/fr/app\r\nX",
+      "/fr/app?x=\r\nSet-Cookie:a=b",
+      "/fr/app?x=<script>",
+      '/fr/app?x="y"',
+      "/fr/app?x=`y`",
+      "/fr/app*",
+    ])
+      expect(safeNext(bad)).toBeUndefined();
   });
 
   it("une connexion aboutie peut mener à une page ou à une invitation, rien d'autre", () => {

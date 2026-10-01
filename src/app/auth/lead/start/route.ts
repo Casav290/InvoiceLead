@@ -12,6 +12,7 @@ import {
   sealLogin,
   stalePending,
 } from "@/server/auth/login-cookie";
+import { savePage } from "@/server/auth/login-pages";
 import { nextForState, sealState } from "@/server/auth/login-state";
 import { cookieOptions, findSession } from "@/server/auth/session";
 import { db } from "@/server/db";
@@ -35,18 +36,34 @@ export async function GET(request: NextRequest) {
   const next = invite ? undefined : safeNext(request.nextUrl.searchParams.get("next"));
   // Depuis « Créer un compte » : le Compte Lead ouvre directement son inscription.
   const signup = request.nextUrl.searchParams.get("signup") === "1";
+  // Depuis une page du Compte Lead qui vient d'ouvrir ou de changer sa session (invitation acceptée,
+  // adresse confirmée) : la session InvoiceLead de ce navigateur peut être celle d'une autre personne
+  // (poste partagé, administrateur qui essaie le lien). On repasse toujours par le Compte Lead, sans
+  // écran puisqu'il est ouvert : la session locale suit alors son identité (callback). Rien n'est
+  // effacé ici : n'importe quel site peut ouvrir cette adresse.
+  const fresh = request.nextUrl.searchParams.get("fresh") === "1";
 
   const current = (await cookies()).get(SESSION_COOKIE)?.value;
-  if (current && (await findSession(db(), current))) {
+  if (!fresh && current && (await findSession(db(), current))) {
     const target = invite ? invitePath(locale, invite) : (next ?? `/${locale}/app`);
     return NextResponse.redirect(`${APP_URL}${target}`, 303);
   }
 
   const login = startLogin({ locale, ...(signup ? { prompt: "create" as const } : {}) });
+  // Page trop longue pour le `state` (lien d'import de CRMlead) : gardée côté serveur, le `state`
+  // en porte la référence (login-pages.ts). Elle revient entière même sans le cookie de la demande.
+  const long = next !== undefined && nextForState(next) !== next;
+  const ref = long ? await savePage(db(), next, SESSION_SECRET) : undefined;
   // La demande (langue, page, invitation) part dans le `state`, chiffrée : elle revient même sans
   // ce cookie (login-state.ts). Le cookie garde ce qui prouve que le retour est le sien.
   const state = sealState(
-    { locale, ...(invite ? { invite } : {}), ...(next ? { next } : {}) },
+    {
+      locale,
+      ...(invite ? { invite } : {}),
+      ...(next ? { next } : {}),
+      ...(fresh ? { fresh: true as const } : {}),
+      ...(ref ? { ref } : {}),
+    },
     SESSION_SECRET,
   );
   const authorize = new URL(login.url);
@@ -60,8 +77,8 @@ export async function GET(request: NextRequest) {
       nonce: login.nonce,
       verifier: login.verifier,
       at: Date.now(),
-      // Page trop longue pour le `state` (lien d'import de CRMlead) : entière ici.
-      ...(next && nextForState(next) !== next ? { next } : {}),
+      // Page trop longue pour le `state` (lien d'import de CRMlead) : entière ici aussi.
+      ...(long ? { next } : {}),
     },
     SESSION_SECRET,
   );

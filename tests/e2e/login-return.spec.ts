@@ -330,3 +330,314 @@ test("invitation de fiduciaire : session échue avant « Accepter », retour sur
   await expect(fidu.getByTestId("org-name")).toHaveText("Échéance Sàrl");
   await fiduContext.close();
 });
+
+test("lien d'import long, retour sans le cookie de la demande : la page entière revient", async ({
+  page,
+  context,
+}) => {
+  const d = Buffer.from(
+    JSON.stringify({
+      v: 1,
+      kind: "quote",
+      lead: { id: `lead-ref-${Date.now()}`, title: "Rénovation de la façade et des combles" },
+      contact: { id: `co-ref-${Date.now()}`, name: "Menuiserie Dupont & Fils Sàrl" },
+      lines: [
+        {
+          description: "Rénovation complète, façade et toiture. ".repeat(10),
+          quantity: 1,
+          unit: "flat",
+          unitPriceCents: 1250000,
+        },
+      ],
+    }),
+  ).toString("base64url");
+  const link = `/fr/app/import/crmlead?d=${d}`;
+  expect(link.length).toBeGreaterThan(300);
+  const { authorize, state } = await startState(
+    context,
+    `locale=fr&next=${encodeURIComponent(link)}`,
+  );
+  // Le Compte Lead ne voit ni la page ni sa référence : tout est dans le `state` chiffré.
+  expect(authorize.toString()).not.toContain("crmlead");
+  // Lien de l'email ouvert ailleurs, ou écran resté ouvert : le cookie de la demande manque.
+  await context.clearCookies();
+  const back = await context.request.get(`/auth/lead/callback?code=x&state=${state}`, {
+    maxRedirects: 0,
+  });
+  expect(back.headers().location).toBe(
+    `${APP}/auth/lead/start?${new URLSearchParams({ locale: "fr", next: link })}`,
+  );
+  await context.clearCookies();
+  await page.goto(`/auth/lead/callback?code=x&state=${state}`);
+  await expect(page).toHaveURL(`${APP}${link}`);
+  await expect(page.getByTestId("crm-import")).toBeVisible();
+});
+
+test("recherche avec « * » après la fin de la session : retour sur la même recherche", async ({
+  page,
+  context,
+}) => {
+  await login(page, "fr");
+  const search = "/fr/app/contacts?q=M%C3%BCller*";
+  for (const expire of ["cookie", "serveur"] as const) {
+    if (expire === "cookie") await dropCookies(context, (name) => name === "il_session");
+    else await context.addCookies([{ name: "il_session", value: "expiree", url: `${APP}/` }]);
+    await page.goto(search);
+    await expect(page).toHaveURL(`${APP}${search}`);
+    await expect(page.locator("#contacts-q")).toHaveValue("Müller*");
+  }
+});
+
+test("fichier à télécharger après la fin de la session : retour sur la page de son formulaire", async ({
+  page,
+  context,
+}) => {
+  const year = "0b6f3f0e-6a51-4a1e-9a43-1f2d3c4b5a69";
+  const doc = "6c33e4a5-1b3d-489d-96ed-28de6a32fadd";
+  const cases: [string, string][] = [
+    [
+      `/de/app/accounting/reports/datev?year=${year}&consultant=1001&client=1`,
+      `/de/app/accounting/reports?year=${year}`,
+    ],
+    [`/fr/app/accounting/reports/fec?year=${year}`, `/fr/app/accounting/reports?year=${year}`],
+    ["/fr/app/accounting/vat/xml?period=2026-07-01", "/fr/app/accounting/vat?period=2026-07-01"],
+    [`/de/app/invoices/${doc}/xrechnung`, `/de/app/invoices/${doc}`],
+    [`/de/app/credit-notes/${doc}/xrechnung`, `/de/app/credit-notes/${doc}`],
+  ];
+  for (const [file, form] of cases) {
+    const locale = file.slice(1, 3);
+    // Sans cookie : l'écran de connexion garde la page du formulaire, jamais le fichier.
+    await context.clearCookies();
+    const cold = await context.request.get(file, { maxRedirects: 0 });
+    expect(cold.status()).toBe(307);
+    expect(cold.headers().location).toContain(
+      `/${locale}/login?${new URLSearchParams({ next: form })}`,
+    );
+    // Cookie encore là, session échue côté serveur : la garde de la route aussi.
+    await context.addCookies([{ name: "il_session", value: "expiree", url: `${APP}/` }]);
+    const warm = await context.request.get(file, { maxRedirects: 0 });
+    expect(warm.headers().location).toContain(
+      `/auth/lead/start?${new URLSearchParams({ locale, next: form })}`,
+    );
+  }
+  // Jusqu'au bout : la connexion ramène sur la page des rapports, l'onglet n'est pas laissé en plan.
+  await context.clearCookies();
+  await page.goto(cases[0]?.[0] ?? "");
+  await expect(page).toHaveURL(`${APP}${cases[0]?.[1]}`);
+});
+
+test("« Relier Stripe » après la fin de la session : retour sur la page Paiements", async ({
+  page,
+  context,
+}) => {
+  await context.addCookies([{ name: "il_session", value: "expiree", url: `${APP}/` }]);
+  const res = await context.request.get("/api/stripe/connect?locale=fr", { maxRedirects: 0 });
+  expect(res.headers().location).toContain(
+    "/auth/lead/start?locale=fr&next=%2Ffr%2Fapp%2Fsettings%2Fpayments",
+  );
+  await page.goto("/api/stripe/connect?locale=fr");
+  await expect(page).toHaveURL(`${APP}/fr/app/settings/payments`);
+  await expect(page.getByTestId("stripe-connect")).toBeVisible();
+});
+
+test("entrée fraîche du Compte Lead : jamais la session InvoiceLead d'une autre personne", async ({
+  page,
+  context,
+}) => {
+  const run = Date.now();
+  await login(page, "fr", {
+    sub: `sub-adm-${run}`,
+    email: `adm-${run}@atelier.test`,
+    name: "Admin Partagé",
+    org: `org-adm-${run}`,
+    org_name: "Poste Partagé Sàrl",
+  });
+  const admin = (await context.cookies()).find((c) => c.name === "il_session")?.value ?? "";
+  // Sans `fresh` : la session ouverte est reprise, sans aller-retour.
+  const plain = await context.request.get("/auth/lead/start?locale=fr", { maxRedirects: 0 });
+  expect(plain.headers().location).toBe(`${APP}/fr/app`);
+  // Le collègue vient d'accepter son invitation dans le Compte Lead, sur ce poste : `fresh=1`.
+  await page.request.post(`${LEAD}/test/next-user`, {
+    data: {
+      sub: `sub-col-${run}`,
+      email: `col-${run}@atelier.test`,
+      name: "Collègue Invité",
+      org: `org-col-${run}`,
+      org_name: "Collègue Sàrl",
+    },
+  });
+  await page.goto("/auth/lead/start?locale=fr&fresh=1");
+  await page.waitForURL(/\/fr\/app$/);
+  await expect(page.getByTestId("user-menu")).toHaveAttribute("aria-label", "Collègue Invité");
+  // La session de l'administrateur ne vaut plus rien.
+  const mine = (await context.cookies()).find((c) => c.name === "il_session")?.value ?? "";
+  await context.addCookies([{ name: "il_session", value: admin, url: `${APP}/` }]);
+  const old = await context.request.get("/fr/app", { maxRedirects: 0 });
+  expect(old.headers().location).toContain("/auth/lead/start");
+
+  // Entrée fraîche qui échoue : l'écran d'erreur, sans reprendre la session restée là.
+  await context.addCookies([{ name: "il_session", value: mine, url: `${APP}/` }]);
+  const { authorize } = await startState(context, "locale=fr&fresh=1");
+  const answer = await context.request.get(authorize.toString(), { maxRedirects: 0 });
+  const callback = new URL(answer.headers().location ?? "");
+  callback.searchParams.set("code", "falsifie");
+  await page.goto(callback.toString());
+  await expect(page).toHaveURL(/\/fr\/login\?erreur=lead/);
+  await expect(page.getByTestId("lead-login")).toBeVisible();
+  expect((await context.cookies()).some((c) => c.name === "il_session")).toBe(false);
+  await context.addCookies([{ name: "il_session", value: mine, url: `${APP}/` }]);
+  const gone = await context.request.get("/fr/app", { maxRedirects: 0 });
+  expect(gone.headers().location).toContain("/auth/lead/start");
+});
+
+test("invitation pour une autre adresse : « Changer de compte » ramène sur l'invitation", async ({
+  browser,
+  page,
+}) => {
+  const run = Date.now();
+  await login(page, "fr", {
+    sub: `sub-sw-${run}`,
+    email: `sw-${run}@atelier.test`,
+    org: `org-sw-${run}`,
+    org_name: "Changement Sàrl",
+    plan: "pro",
+  });
+  await page.goto("/fr/app/settings/team");
+  const fiduEmail = `fidu-sw-${run}@fidu.test`;
+  await page.getByLabel("Adresse e-mail de la fiduciaire").fill(fiduEmail);
+  await page.getByTestId("fiduciary-invite").click();
+  const link = new URL(await page.getByTestId("invite-link").inputValue());
+  const invite = `${link.pathname}${link.search}`;
+
+  const ctx = await browser.newContext();
+  const fidu = await ctx.newPage();
+  const signIn = fidu.getByRole("link", { name: "Se connecter avec mon Compte Lead" });
+  // Navigateur connecté avec un autre compte.
+  await fidu.request.post(`${LEAD}/test/next-user`, {
+    data: {
+      sub: `sub-wrong-${run}`,
+      email: `wrong-${run}@fidu.test`,
+      org: `org-wrong-${run}`,
+      org_name: "Mauvais Compte SA",
+    },
+  });
+  await fidu.goto(invite);
+  await signIn.click();
+  await fidu.waitForURL(`${APP}${invite}`);
+  await fidu.getByTestId("invite-accept").click();
+  await fidu.waitForURL(/&error=wrongEmail$/);
+  await fidu.getByTestId("invite-switch").click();
+  await fidu.waitForURL(`${APP}${invite}`);
+  await expect(signIn).toBeVisible();
+  const names = (await ctx.cookies()).map((c) => c.name);
+  expect(names).not.toContain("il_session");
+  expect(names).not.toContain("il_after_logout");
+  // Le bon compte : retour sur l'invitation, qui s'accepte.
+  await fidu.request.post(`${LEAD}/test/next-user`, {
+    data: {
+      sub: `sub-fidu-sw-${run}`,
+      email: fiduEmail,
+      org: `org-fidu-sw-${run}`,
+      org_name: "Fidu Changement SA",
+    },
+  });
+  await signIn.click();
+  await fidu.waitForURL(`${APP}${invite}`);
+  await fidu.getByTestId("invite-accept").click();
+  await fidu.waitForURL(/\/fr\/app\/accounting\?welcome=fiduciary/);
+  await expect(fidu.getByTestId("org-name")).toHaveText("Changement Sàrl");
+
+  // Déconnexion ordinaire (formulaire du menu) : l'accueil, comme avant.
+  await fidu.evaluate(() => {
+    const f = document.createElement("form");
+    f.method = "post";
+    f.action = "/auth/lead/logout";
+    const locale = document.createElement("input");
+    locale.name = "locale";
+    locale.value = "fr";
+    f.append(locale);
+    document.body.append(f);
+    f.submit();
+  });
+  await fidu.waitForURL(`${APP}/fr`);
+  // Cookie posé à la main : seule une adresse d'invitation est suivie, et il s'efface.
+  for (const value of ["//evil.example/x", "/fr/app/settings/team", `${invite}&next=/x`]) {
+    await ctx.addCookies([{ name: "il_after_logout", value, url: `${APP}/` }]);
+    await fidu.goto("/");
+    await expect(fidu).toHaveURL(`${APP}/fr`);
+    expect((await ctx.cookies()).map((c) => c.name)).not.toContain("il_after_logout");
+  }
+  await ctx.close();
+});
+
+test("fiduciaire : la reconnexion revient chez le client, sur la même fiche", async ({
+  browser,
+  page,
+}) => {
+  const run = Date.now();
+  await login(page, "fr", {
+    sub: `sub-cli-${run}`,
+    email: `cli-${run}@atelier.test`,
+    org: `org-cli-${run}`,
+    org_name: "Client Reprise Sàrl",
+    plan: "pro",
+  });
+  await page.goto("/fr/app/contacts/new");
+  await page
+    .getByTestId("contact-form")
+    .getByLabel("Nom ou raison sociale")
+    .fill("Client du client SA");
+  await page.getByTestId("contact-save").click();
+  await expect(page).toHaveURL(/\/fr\/app\/contacts\?saved=1$/);
+  await page.getByRole("link", { name: "Client du client SA" }).first().click();
+  await page.waitForURL(/\/fr\/app\/contacts\/[0-9a-f-]{36}$/);
+  const card = new URL(page.url()).pathname;
+  await page.goto("/fr/app/settings/team");
+  const fiduEmail = `fidu-rep-${run}@fidu.test`;
+  await page.getByLabel("Adresse e-mail de la fiduciaire").fill(fiduEmail);
+  await page.getByTestId("fiduciary-invite").click();
+  const link = new URL(await page.getByTestId("invite-link").inputValue());
+
+  const ctx = await browser.newContext();
+  const fidu = await ctx.newPage();
+  const asFidu = {
+    sub: `sub-fidu-rep-${run}`,
+    email: fiduEmail,
+    org: `org-fidu-rep-${run}`,
+    org_name: "Fidu Reprise SA",
+  };
+  const nextIsFidu = () => fidu.request.post(`${LEAD}/test/next-user`, { data: asFidu });
+  await nextIsFidu();
+  await fidu.goto(`${link.pathname}${link.search}`);
+  await fidu.getByRole("link", { name: "Se connecter avec mon Compte Lead" }).click();
+  await fidu.waitForURL(/\/fr\/invite\?token=/);
+  await fidu.getByTestId("invite-accept").click();
+  await fidu.waitForURL(/\/fr\/app\/accounting\?welcome=fiduciary/);
+  await fidu.goto(card);
+  await expect(fidu.locator("#contact-name")).toHaveValue("Client du client SA");
+
+  for (const expire of ["cookie", "serveur"] as const) {
+    if (expire === "cookie") await dropCookies(ctx, (name) => name === "il_session");
+    else await ctx.addCookies([{ name: "il_session", value: "expiree", url: `${APP}/` }]);
+    await nextIsFidu();
+    await fidu.reload();
+    await expect(fidu).toHaveURL(`${APP}${card}`);
+    await expect(fidu.locator("#contact-name")).toHaveValue("Client du client SA");
+    await expect(fidu.getByTestId("org-name")).toHaveText("Client Reprise Sàrl");
+  }
+  // Liste : celle du client, pas la sienne.
+  await fidu.goto("/fr/app/contacts");
+  await expect(fidu.getByRole("link", { name: "Client du client SA" }).first()).toBeVisible();
+
+  // Le client retire la fiduciaire : la reconnexion la ramène chez elle, sans accès au client.
+  await page.goto("/fr/app/settings/team");
+  await page.getByTestId("fiduciary-remove").click();
+  await expect(page.getByText("Accès retiré.")).toBeVisible();
+  await dropCookies(ctx, (name) => name === "il_session");
+  await nextIsFidu();
+  await fidu.goto("/fr/app/contacts");
+  await expect(fidu).toHaveURL(`${APP}/fr/app/contacts`);
+  await expect(fidu.getByTestId("org-name")).toHaveText("Fidu Reprise SA");
+  await expect(fidu.getByRole("link", { name: "Client du client SA" })).toHaveCount(0);
+  await ctx.close();
+});

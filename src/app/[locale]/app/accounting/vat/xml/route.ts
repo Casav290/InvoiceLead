@@ -2,6 +2,7 @@ import { and, eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import type { NextRequest } from "next/server";
 import { buildEch0217 } from "@/countries/ch/ech0217";
+import { returnPage } from "@/lib/return-page";
 import { requirePermission } from "@/server/auth/guard";
 import { db } from "@/server/db";
 import { vatReturns } from "@/server/db/schema";
@@ -14,7 +15,10 @@ export async function GET(
   { params }: { params: Promise<{ locale: string }> },
 ) {
   const { locale } = await params;
-  const { organization } = await requirePermission(locale, "accounting");
+  // Session expirée : retour sur la page de la TVA, jamais sur ce fichier (return-page.ts).
+  const { organization } = await requirePermission(locale, "accounting", {
+    next: returnPage(request.nextUrl.pathname, request.nextUrl.search),
+  });
   const start = request.nextUrl.searchParams.get("period") ?? "";
   if (organization.country !== "CH" || !/^\d{4}-\d{2}-\d{2}$/.test(start)) notFound();
   const [row] = await db()

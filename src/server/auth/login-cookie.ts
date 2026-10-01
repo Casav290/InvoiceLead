@@ -8,9 +8,13 @@ export const INVITE_TOKEN = /^[A-Za-z0-9_-]{20,100}$/;
 
 /**
  * Page à rouvrir après la connexion : une adresse de l'application, sur ce site seulement
- * (« /fr/app/invoices/… »), avec une recherche simple. Rien d'autre n'est suivi.
+ * (« /fr/app/invoices/… »), avec sa recherche telle qu'un navigateur l'écrit. Un formulaire GET
+ * laisse « * » tel quel (recherche « Müller* ») ; un lien collé dans la barre d'adresse garde aussi
+ * « ! $ ' ( ) ; @ / ? | [ ] { } ^ ». Jamais d'espace, de « # », de « \ », de guillemet, de chevron ni
+ * de caractère de contrôle ; « // » est refusé à part (safeNext). Rien d'autre n'est suivi.
  */
-export const NEXT_PATH = /^\/(de|fr|en)\/app(\/[A-Za-z0-9_\-/]*)?(\?[A-Za-z0-9=&%._~+,:-]*)?$/;
+export const NEXT_PATH =
+  /^\/(de|fr|en)\/app(\/[A-Za-z0-9_\-/]*)?(\?[A-Za-z0-9=&%._~+,:;!$'()*@/?|[\]{}^-]*)?$/;
 
 /**
  * Longueur maximale d'une page à rouvrir. Les liens « Créer la facture » de CRMlead

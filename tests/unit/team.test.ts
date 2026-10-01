@@ -3,7 +3,7 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { attachLeadIdentity } from "@/server/auth/attach";
 import { createSession, findSession } from "@/server/auth/session";
 import { canEditSettings, canSetUpAccounting } from "@/server/company";
-import { memberships, organizations } from "@/server/db/schema";
+import { memberships, organizations, users } from "@/server/db/schema";
 import { can } from "@/server/roles";
 import {
   acceptInvitation,
@@ -12,6 +12,7 @@ import {
   listTeam,
   listUserOrganizations,
   removeFiduciary,
+  resumeOrganization,
   seated,
   setAppRole,
   switchOrganization,
@@ -168,6 +169,88 @@ describe("fiduciaire", () => {
     expect(await findSession(db, token)).toBeNull();
     expect(await switchOrganization(db, own.session.id, fid.user.id, client.organization.id)).toBe(
       false,
+    );
+  });
+
+  it("reconnexion : retour chez le client choisi tant que l'accès y tient", async () => {
+    const client = await attachLeadIdentity(db, claims({ lead: pro }));
+    const login = () =>
+      attachLeadIdentity(
+        db,
+        claims({ sub: "sub-fid", email: "compta@fidu.test", org: "org-fidu", org_name: "Fidu SA" }),
+      );
+    const fid = await login();
+    const own = fid.organization.id;
+    const resume = async () => {
+      const again = await login();
+      return resumeOrganization(db, again.user, again.organization.id);
+    };
+    const lastOf = async () =>
+      (
+        await db
+          .select({ last: users.lastOrganizationId })
+          .from(users)
+          .where(eq(users.id, fid.user.id))
+      )[0]?.last ?? null;
+
+    // Jamais passée ailleurs : son entreprise.
+    expect(fid.user.lastOrganizationId).toBeNull();
+    expect(await resume()).toBe(own);
+
+    const inv = await inviteFiduciary(
+      db,
+      { organizationId: client.organization.id, userId: client.user.id },
+      "compta@fidu.test",
+    );
+    if (typeof inv === "string") throw new Error(inv);
+    await acceptInvitation(db, fid.user, inv.token);
+    const { token } = await createSession(db, {
+      userId: fid.user.id,
+      organizationId: own,
+      idToken: null,
+    });
+    const session = await findSession(db, token);
+    if (!session) throw new Error("session absente");
+    await switchOrganization(db, session.session.id, fid.user.id, client.organization.id);
+    expect(await lastOf()).toBe(client.organization.id);
+    // Session échue, nouvelle connexion : chez le client.
+    expect(await resume()).toBe(client.organization.id);
+
+    // Revenue d'elle-même dans sa propre entreprise : elle y reste.
+    await switchOrganization(db, session.session.id, fid.user.id, own);
+    expect(await resume()).toBe(own);
+    await switchOrganization(db, session.session.id, fid.user.id, client.organization.id);
+
+    // Le client retire la fiduciaire : sa propre entreprise, et le choix est oublié.
+    expect(
+      await removeFiduciary(
+        db,
+        { organizationId: client.organization.id, userId: client.user.id },
+        fid.user.id,
+      ),
+    ).toBe("removed");
+    expect(await resume()).toBe(own);
+    expect(await lastOf()).toBeNull();
+  });
+
+  it("reconnexion : une entreprise qui n'est pas celle d'une fiduciaire n'est jamais reprise", async () => {
+    const other = await attachLeadIdentity(
+      db,
+      claims({ org: "org-ancienne", org_name: "Ancienne" }),
+    );
+    // Même personne, passée dans un autre compte du Compte Lead : l'ancienne entreprise reste membre.
+    const now = await attachLeadIdentity(db, claims({ org: "org-nouvelle", org_name: "Nouvelle" }));
+    expect(now.user.id).toBe(other.user.id);
+    await db
+      .update(users)
+      .set({ lastOrganizationId: other.organization.id })
+      .where(eq(users.id, now.user.id));
+    const again = await attachLeadIdentity(
+      db,
+      claims({ org: "org-nouvelle", org_name: "Nouvelle" }),
+    );
+    expect(await resumeOrganization(db, again.user, again.organization.id)).toBe(
+      again.organization.id,
     );
   });
 });

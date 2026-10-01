@@ -164,4 +164,5 @@ su postgres -c "/usr/lib/postgresql/16/bin/pg_ctl -D /var/lib/postgresql/il-data
 - Ne jamais lancer `pkill -f` sur une chaîne présente dans sa propre commande : cela tue le shell. Utiliser `fuser -k <port>/tcp`.
 - `after()` de `next/server` hors requête : dans Vitest, le simuler avec `vi.mock`.
 - Le proxy d'InvoiceLead ne doit pas rediriger tout droit vers le Compte Lead : un préchargement lancerait une connexion. Les liens publics sont des `<a>` simples vers `/auth/lead/start`.
+- Migrations d'InvoiceLead : la branche des formules (`claude/plans-grises`) a sa `0038_plan_usage`, celle-ci sa `0039_login_return` (rejouable). Le migrateur de Drizzle n'applique que les migrations datées (`when` du journal) après la dernière appliquée : la 0039 est datée avant la 0038 des formules, pour que la 0038 passe encore si les formules sont fusionnées après. Fusionnées avant, il faudrait redater la 0039 après la 0038.
 - Le réseau de la session bloque crmlead.io, porkbun.com et api.resend.com. Pour vérifier la production de CRMlead, passer par l'agent Replit.

@@ -257,7 +257,11 @@ export async function listUserOrganizations(database: Db, userId: string) {
     .orderBy(sql`${memberships.role} = 'fiduciary'`, asc(organizations.name));
 }
 
-/** Passe la session sur une autre entreprise, si la personne en est membre. */
+/**
+ * Passe la session sur une autre entreprise, si la personne en est membre. Le choix est gardé
+ * (users.last_organization_id) : à la reconnexion, une fiduciaire revient chez le client où elle
+ * travaillait (resumeOrganization), et non dans sa propre entreprise où la page demandée n'existe pas.
+ */
 export async function switchOrganization(
   database: Db,
   sessionId: string,
@@ -270,5 +274,34 @@ export async function switchOrganization(
     .update(sessions)
     .set({ organizationId })
     .where(and(eq(sessions.id, sessionId), eq(sessions.userId, userId)));
+  await database
+    .update(users)
+    .set({ lastOrganizationId: organizationId })
+    .where(eq(users.id, userId));
   return true;
+}
+
+/**
+ * Entreprise où ouvrir la session d'une connexion : la dernière choisie par la personne si elle y
+ * travaille comme fiduciaire avec un accès à InvoiceLead, sinon celle de son Compte Lead. Le choix ne
+ * vient que de la ligne de la personne, jamais de la requête, et l'appartenance est relue à chaque
+ * connexion : une fiduciaire retirée (ou sans accès) revient dans sa propre entreprise, et son choix
+ * est oublié. Une entreprise qui n'est pas une fiduciaire n'est jamais reprise : celle-là, c'est le
+ * Compte Lead qui la donne.
+ */
+export async function resumeOrganization(
+  database: Db,
+  user: { id: string; lastOrganizationId: string | null },
+  leadOrganizationId: string,
+): Promise<string> {
+  const last = user.lastOrganizationId;
+  if (!last || last === leadOrganizationId) return leadOrganizationId;
+  const member = await membershipOf(database, last, user.id);
+  if (member && isFiduciary(member) && hasAppAccess(member)) return last;
+  if (!member || !hasAppAccess(member))
+    await database
+      .update(users)
+      .set({ lastOrganizationId: null })
+      .where(and(eq(users.id, user.id), eq(users.lastOrganizationId, last)));
+  return leadOrganizationId;
 }
