@@ -712,6 +712,9 @@ await step(
       await waitAt(origin, `${CRM}/login?next=`, "écran d'origine");
       await origin.getByRole("link", { name: /Mot de passe oublié/ }).click();
       await waitAt(origin, `${CRM}/mot-de-passe?next=`, "mot de passe oublié");
+      // L'adresse change avant l'écran (transition du routeur) : sans cette attente, l'email allait parfois
+      // dans le champ de la connexion qui s'en va, et le formulaire partait vide.
+      await origin.getByRole("heading", { name: /Mot de passe oublié/ }).waitFor();
       await origin.fill("#auth-email", email);
       await origin.locator("form button").last().click();
       await origin.getByText(/Si un compte existe/).waitFor();
@@ -1001,6 +1004,10 @@ else {
       const { url } = await ilAuthorize(ctx, "locale=fr&next=%2Ffr%2Fapp%2Finvoices", CRM_G);
       await v.goto(url);
       await waitAt(v, `${CRM_G}/login?next=`, "écran Compte Lead");
+      // L'écran affiché, sa demande gardée dans l'onglet (posée au premier rendu, après /api/auth/me) : un
+      // retour arrivé avant, à quelques millisecondes du chargement, n'est pas celui d'une personne.
+      await v.waitForSelector("#auth-password");
+      await v.waitForFunction(() => sessionStorage.getItem("crmlead.leadid.next"));
       await v.goto(await forged());
       // Écran neutre « demande expirée », toujours celui d'InvoiceLead.
       await waitAt(v, `${CRM_G}/login?sso=expired`, "retour fabriqué");
@@ -1275,7 +1282,8 @@ else {
       crmq(
         `update sso_states set expires_at = now() - interval '1 minute' where state_hash = '${sha(state)}'`,
       );
-      // Le départ (`__Host-` en production) et la dernière demande vivent trois heures, comme l'état.
+      // La dernière demande vit trois heures, le départ (`__Host-` en production) vingt-quatre : tous deux
+      // effacés ici (cookies effacés, ou retour au-delà d'un jour), c'est l'onglet qui retrouve la demande.
       await dropCookies(ctx, (n) => /^(__Host-)?crmlead_sso_(depart_|next)/.test(n));
       await p.click("#ok");
       await settled(p);
@@ -1291,6 +1299,119 @@ else {
         `retour tardif : écran « ${h.title} » ${h.links} (${screen}), après connexion ${p.url()}`,
       );
       neutralSince(from, "g3h");
+      await ctx.close();
+    },
+  );
+
+  // Le départ vit vingt-quatre heures, l'état trois : entre les deux, c'est le serveur qui retrouve la demande.
+  /** Le départ de ce navigateur pour `state`, et ses heures de vie restantes. */
+  async function departure(ctx, state) {
+    const c = (await ctx.cookies()).find((k) => k.name.endsWith(`_${state.slice(0, 16)}`));
+    return { name: c?.name, hours: c ? (c.expires - Date.now() / 1000) / 3600 : 0 };
+  }
+  const expireState = (state) =>
+    crmq(
+      `update sso_states set expires_at = now() - interval '1 minute' where state_hash = '${sha(state)}'`,
+    );
+
+  await step(
+    "CRM-GOOGLE-LOGIN-CSRF (24 h) : départ d'InvoiceLead gardé, état échu, retour dans un onglet neuf",
+    async () => {
+      const email = await directAccount("g-24h");
+      const ctx = await newCtx(browser, "de-CH", "g24h");
+      const from = events.length;
+      const p = await ctx.newPage();
+      const { url } = await ilAuthorize(ctx, "locale=de&next=%2Fde%2Fapp%2Fexpenses", CRM_G);
+      await p.goto(url);
+      await waitAt(p, `${CRM_G}/login?next=`, "écran Lead-Konto");
+      await p.waitForSelector("#auth-password");
+      await google(p, mail("g-24h-g"));
+      const back = await p.locator("#ok").getAttribute("href");
+      const state = new URL(back).searchParams.get("state");
+      const dep = await departure(ctx, state);
+      expect(dep.hours > 23 && dep.hours <= 24.1, `départ ${dep.name} : ${dep.hours.toFixed(1)} h`);
+      expireState(state);
+      // Plus de trois heures : la dernière demande (trois heures) est partie, le départ reste. Onglet neuf, sans
+      // rien en sessionStorage : seul le serveur peut retrouver la demande.
+      await dropCookies(ctx, (n) => /^(__Host-)?crmlead_sso_next/.test(n));
+      await p.close();
+      const q = await ctx.newPage();
+      const res = await q.goto(back);
+      const first = new URL(res.url());
+      expect(
+        first.pathname === "/login" &&
+          first.searchParams.get("sso") === "expired" &&
+          first.searchParams.get("next")?.startsWith("/oauth/authorize?") &&
+          !first.searchParams.has("retour"),
+        `réponse du retour : ${res.url()}`,
+      );
+      await settled(q);
+      const h = await tabHead(q);
+      expect(
+        neutralHead(h) && h.title === "Lead-Konto" && h.lang === "de",
+        `écran : ${h.title} ${h.lang} ${h.links}`,
+      );
+      expect(
+        /Diese Anmeldeanfrage ist abgelaufen/.test(h.text),
+        `message : ${h.text.slice(0, 160)}`,
+      );
+      expect(!(await session(ctx)), `session ouverte : ${await session(ctx)}`);
+      await passwordLogin(q, email);
+      await waitAt(q, `${IL}/de/app/expenses`, "arrivée après connexion");
+      neutralSince(from, "g24h");
+      await ctx.close();
+    },
+  );
+
+  await step(
+    "CRM-GOOGLE-LOGIN-CSRF (24 h, CRMlead direct) : un retour tardif d'un départ direct reste CRMlead",
+    async () => {
+      const email = await directAccount("g-24h-direct");
+      const ctx = await browser.newContext({ locale: "fr-CH" });
+      const p = await ctx.newPage();
+      // Départ direct gardé, état échu : CRMlead, sans demande.
+      await p.goto(`${CRM_G}/login`);
+      await google(p, mail("g-24h-direct-g"));
+      let back = await p.locator("#ok").getAttribute("href");
+      let state = new URL(back).searchParams.get("state");
+      expireState(state);
+      await dropCookies(ctx, (n) => /^(__Host-)?crmlead_sso_next/.test(n));
+      const res = await p.goto(back);
+      expect(res.url() === `${CRM_G}/login?sso=expired`, `départ gardé : ${res.url()}`);
+      await settled(p);
+      let h = await tabHead(p);
+      expect(
+        crmHead(h) && !new URL(p.url()).searchParams.has("next"),
+        `départ gardé : ${h.title} ${h.links} ${p.url()}`,
+      );
+      // Même onglet : un départ d'InvoiceLead abandonné chez Google, puis un départ direct de CRMlead dont le
+      // retour arrive sans aucun cookie. La demande garée d'InvoiceLead ne le détourne pas.
+      const { url } = await ilAuthorize(ctx, "locale=fr&next=%2Ffr%2Fapp%2Fexpenses", CRM_G);
+      await p.goto(url);
+      await waitAt(p, `${CRM_G}/login?next=`, "écran Compte Lead");
+      await p.waitForSelector("#auth-password");
+      await google(p, mail("g-24h-direct-il"));
+      await p.goto(`${CRM_G}/login`);
+      await google(p, mail("g-24h-direct-g2"));
+      back = await p.locator("#ok").getAttribute("href");
+      state = new URL(back).searchParams.get("state");
+      expireState(state);
+      await dropCookies(ctx, (n) => /^(__Host-)?crmlead_sso_(depart_|next)/.test(n));
+      await p.click("#ok");
+      await settled(p);
+      h = await tabHead(p);
+      expect(
+        crmHead(h) && !new URL(p.url()).searchParams.has("next"),
+        `sans cookie : ${h.title} ${h.links} ${p.url()}`,
+      );
+      await passwordLogin(p, email);
+      await p.waitForURL((u) => u.href.startsWith(CRM_G) && !/\/login/.test(u.pathname), {
+        timeout: 20000,
+      });
+      await sleep(1500);
+      expect(p.url().startsWith(CRM_G), `arrivée : ${p.url()}`);
+      expect((await session(ctx)) === email, `session ${await session(ctx)}`);
+      expect(/CRMlead/.test(await p.title()), `arrivée : titre ${await p.title()}`);
       await ctx.close();
     },
   );
