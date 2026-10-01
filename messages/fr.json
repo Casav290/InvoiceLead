@@ -79,7 +79,8 @@
       "invoices": "Factures",
       "quotes": "Devis",
       "accounting": "Comptabilité",
-      "time": "Temps"
+      "time": "Temps",
+      "expenses": "Frais"
     },
     "switcher": {
       "open": "Changer d'application",
@@ -1588,7 +1589,8 @@
         "none": "Aucune facture approuvée avec un IBAN à payer.",
         "noIban": "Saisissez d'abord l'IBAN de l'entreprise dans les réglages.",
         "plan": "L'import des e-factures fait partie de la formule Pro."
-      }
+      },
+      "claim": "Note de frais"
     },
     "time": {
       "title": "Temps",
@@ -1694,6 +1696,52 @@
         "off": "L'assistant IA n'est pas encore configuré.",
         "empty": "Posez une question.",
         "failed": "L'assistant n'a pas pu répondre. Réessayez dans un instant."
+      }
+    },
+    "expenses": {
+      "title": "Notes de frais",
+      "subtitle": "Dépenses payées de votre poche et trajets avec votre véhicule. Une fois approuvées par la comptabilité, elles sont remboursées avec les factures fournisseurs.",
+      "expense": "Dépense",
+      "mileage": "Kilomètres",
+      "mine": "Mes notes de frais",
+      "empty": "Aucune note de frais pour l'instant.",
+      "submit": "Envoyer à la comptabilité",
+      "added": "Note de frais envoyée à la comptabilité.",
+      "delete": "Retirer",
+      "fields": {
+        "date": "Date",
+        "description": "Objet",
+        "amount": "Montant payé ({currency})",
+        "vat": "TVA comprise",
+        "account": "Catégorie",
+        "receipt": "Justificatif (photo ou PDF)",
+        "claimant": "À rembourser à",
+        "iban": "IBAN pour le remboursement",
+        "trip": "Trajet (de, à, motif)",
+        "km": "Kilomètres",
+        "rate": "Taux par km ({currency})"
+      },
+      "hints": {
+        "iban": "Facultatif : sans IBAN, le remboursement se fait à part.",
+        "rate": {
+          "CH": "Taux usuel en Suisse : 70 centimes par kilomètre.",
+          "DE": "Forfait allemand : 30 centimes par kilomètre (§ 9 EStG).",
+          "FR": "Barème kilométrique de l'administration fiscale, selon la puissance du véhicule.",
+          "GB": "HMRC : 45 pence par mile pour les 10 000 premiers miles ; saisissez des miles.",
+          "US": "Taux standard de l'IRS ; saisissez des miles."
+        }
+      },
+      "errors": {
+        "date": "Date invalide.",
+        "required": "Remplissez les champs obligatoires.",
+        "iban": "IBAN invalide.",
+        "amount": "Montant invalide.",
+        "km": "Distance invalide.",
+        "type": "Format de justificatif non pris en charge (PDF, JPEG, PNG ou WebP).",
+        "size": "Justificatif trop volumineux (10 Mo au plus).",
+        "duplicate": "Ce justificatif a déjà été envoyé.",
+        "role": "Votre rôle ne permet pas de saisir des notes de frais.",
+        "invalid": "Saisie invalide."
       }
     }
   },

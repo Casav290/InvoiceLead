@@ -160,6 +160,11 @@ export default async function BillsPage({ params, searchParams }: Props) {
                       {b.supplierName}
                       {b.number ? ` · ${b.number}` : ""}
                     </Link>
+                    {b.source === "expense" || b.source === "mileage" ? (
+                      <span className="border border-line-strong px-1.5 text-[11px] text-ink-2">
+                        {t("claim")}
+                      </span>
+                    ) : null}
                     <span
                       className={`tabular-nums ${g !== "paid" && b.dueDate < today ? "font-semibold text-hot-fg" : "text-ink-2"}`}
                     >

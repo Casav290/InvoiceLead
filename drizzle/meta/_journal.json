@@ -239,6 +239,13 @@
       "when": 1790817976402,
       "tag": "0033_invoice_deposit",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1790818255450,
+      "tag": "0034_expense_claims",
+      "breakpoints": true
     }
   ]
 }

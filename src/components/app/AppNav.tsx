@@ -9,6 +9,7 @@ const ITEMS = [
   { href: "/app/quotes", key: "quotes", exact: false, match: "/app/quotes" },
   { href: "/app/invoices", key: "invoices", exact: false, match: "/app/invoices" },
   { href: "/app/time", key: "time", exact: false, match: "/app/time" },
+  { href: "/app/expenses", key: "expenses", exact: false, match: "/app/expenses" },
   { href: "/app/contacts", key: "contacts", exact: false, match: "/app/contacts" },
   { href: "/app/products", key: "products", exact: false, match: "/app/products" },
   { href: "/app/accounting", key: "accounting", exact: false, match: "/app/accounting" },

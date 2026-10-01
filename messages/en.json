@@ -79,7 +79,8 @@
       "invoices": "Invoices",
       "quotes": "Quotes",
       "accounting": "Accounting",
-      "time": "Time"
+      "time": "Time",
+      "expenses": "Expenses"
     },
     "switcher": {
       "open": "Switch app",
@@ -1588,7 +1589,8 @@
         "none": "No approved bill with an IBAN to pay.",
         "noIban": "Enter the company's IBAN in the settings first.",
         "plan": "Importing e-invoices is part of the Pro plan."
-      }
+      },
+      "claim": "Expense claim"
     },
     "time": {
       "title": "Time",
@@ -1694,6 +1696,52 @@
         "off": "The AI assistant is not configured yet.",
         "empty": "Ask a question.",
         "failed": "The assistant could not answer. Try again in a moment."
+      }
+    },
+    "expenses": {
+      "title": "Expense claims",
+      "subtitle": "Expenses paid out of your own pocket and trips with your own vehicle. Once approved by accounting, they are reimbursed with the supplier bills.",
+      "expense": "Expense",
+      "mileage": "Mileage",
+      "mine": "My expense claims",
+      "empty": "No expense claims yet.",
+      "submit": "Send to accounting",
+      "added": "Expense claim sent to accounting.",
+      "delete": "Remove",
+      "fields": {
+        "date": "Date",
+        "description": "Purpose",
+        "amount": "Amount paid ({currency})",
+        "vat": "Tax included",
+        "account": "Category",
+        "receipt": "Receipt (photo or PDF)",
+        "claimant": "Reimburse to",
+        "iban": "IBAN for the reimbursement",
+        "trip": "Trip (from, to, purpose)",
+        "km": "Distance",
+        "rate": "Rate per unit ({currency})"
+      },
+      "hints": {
+        "iban": "Optional: without an IBAN, the reimbursement is made separately.",
+        "rate": {
+          "CH": "Usual rate in Switzerland: 70 centimes per kilometre.",
+          "DE": "German flat rate: 30 cents per kilometre (§ 9 EStG).",
+          "FR": "French tax administration mileage scale, depending on the vehicle's power.",
+          "GB": "HMRC: 45 pence per mile for the first 10,000 miles; enter miles.",
+          "US": "IRS standard mileage rate; enter miles."
+        }
+      },
+      "errors": {
+        "date": "Invalid date.",
+        "required": "Please fill in the required fields.",
+        "iban": "Invalid IBAN.",
+        "amount": "Invalid amount.",
+        "km": "Invalid distance.",
+        "type": "Receipt format not supported (PDF, JPEG, PNG or WebP).",
+        "size": "Receipt too large (10 MB at most).",
+        "duplicate": "This receipt was already sent.",
+        "role": "Your role does not allow expense claims.",
+        "invalid": "Invalid input."
       }
     }
   },

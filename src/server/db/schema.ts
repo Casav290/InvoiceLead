@@ -929,7 +929,13 @@ export const supplierBills = pgTable(
     description: text("description"),
     /** draft | approved | scheduled (fichier de paiement produit) | paid */
     status: text("status").notNull().default("draft"),
-    source: text("source").notNull().default("manual"), // manual | receipt | einvoice
+    // manual | receipt | einvoice | expense (note de frais) | mileage (indemnité kilométrique)
+    source: text("source").notNull().default("manual"),
+    /** Note de frais : la personne de l'équipe à rembourser. */
+    claimantId: uuid("claimant_id").references(() => users.id, { onDelete: "set null" }),
+    /** Indemnité kilométrique : distance (en mètres) et taux par kilomètre (en centimes). */
+    distanceMeters: integer("distance_meters"),
+    ratePerKmCents: integer("rate_per_km_cents"),
     receiptId: uuid("receipt_id"),
     /** Cours figé à l'approbation pour une facture en devise. */
     fxRate: doublePrecision("fx_rate"),

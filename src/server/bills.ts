@@ -533,12 +533,14 @@ export async function approveBill(
       return row;
     });
     if (!approved) return "notFound";
-    await learnRule(database, who, {
-      counterparty: bill.supplierName,
-      amountCents: -bill.totalCents,
-      accountId: bill.accountId,
-      vatCode: bill.vatCode,
-    });
+    // Une note de frais ne dit rien des paiements futurs à la même personne (salaire…).
+    if (bill.source !== "expense" && bill.source !== "mileage")
+      await learnRule(database, who, {
+        counterparty: bill.supplierName,
+        amountCents: -bill.totalCents,
+        accountId: bill.accountId,
+        vatCode: bill.vatCode,
+      });
     return approved;
   } catch (e) {
     if (e instanceof LedgerError) {
