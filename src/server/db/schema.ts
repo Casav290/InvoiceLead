@@ -59,6 +59,8 @@ export const organizations = pgTable("organizations", {
 
   // Données de l'entreprise (réglages), reprises sur les devis, factures et QR-factures.
   legalName: text("legal_name"),
+  /** Logo de l'entreprise (PNG ou JPEG), repris sur les devis, factures et avoirs. */
+  logoKey: text("logo_key"),
   legalForm: text("legal_form"), // sole_proprietorship | gmbh | ag | partnership | association | other
   street: text("street"),
   buildingNumber: text("building_number"),

@@ -268,6 +268,21 @@
         "FR": "Frankreich",
         "GB": "Vereinigtes Königreich",
         "US": "Vereinigte Staaten"
+      },
+      "logo": {
+        "title": "Logo",
+        "current": "Aktuelles Logo",
+        "none": "Noch kein Logo.",
+        "file": "Logodatei",
+        "upload": "Logo hochladen",
+        "remove": "Logo entfernen",
+        "hint": "PNG oder JPEG, höchstens 1 MB, am besten mit transparentem Hintergrund. Es erscheint oben rechts auf Offerten, Rechnungen und Gutschriften sowie auf deren Online-Ansicht.",
+        "results": {
+          "saved": "Logo gespeichert.",
+          "removed": "Logo entfernt.",
+          "type": "Format nicht unterstützt: nur PNG oder JPEG.",
+          "size": "Datei leer oder zu gross (höchstens 1 MB)."
+        }
       }
     },
     "contacts": {

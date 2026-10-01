@@ -9,6 +9,7 @@ import { formatAmount } from "@/lib/money";
 import { db } from "./db";
 import { type Invoice, type InvoiceLine, organizations } from "./db/schema";
 import { renderInvoicePdf } from "./invoice-pdf";
+import { organizationLogo } from "./logo";
 import { LIMITS, tierOf } from "./plans";
 
 export const kindNamespace = (kind: string) =>
@@ -136,6 +137,7 @@ export async function buildDocumentPdf(
       fxLine,
     },
     einvoice,
+    (await organizationLogo(db(), invoice.organizationId))?.bytes,
   );
   const safe = (invoice.number ?? "").replace(/[^0-9A-Za-z-]/g, "");
   return { pdf, filename: `${title}-${safe}.pdf` };

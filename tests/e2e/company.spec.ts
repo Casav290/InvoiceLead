@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { login } from "./helpers";
+import { login, setupBilling } from "./helpers";
 
 test("réglages entreprise : erreurs signalées, saisie gardée, puis enregistrement", async ({
   page,
@@ -56,4 +56,50 @@ test("réglages entreprise : un simple utilisateur ne peut que lire", async ({ p
   await expect(page.getByText("Nur Administratoren und Verantwortliche")).toBeVisible();
   await expect(page.getByTestId("company-save")).toHaveCount(0);
   await expect(page.getByTestId("company-form").getByLabel("Strasse")).toBeDisabled();
+});
+
+test("logo : déposé dans les réglages, repris sur la facture et son PDF", async ({ page }) => {
+  const run = Date.now();
+  await login(page, "fr", {
+    sub: `sub-logo-${run}`,
+    email: `logo-${run}@atelier.test`,
+    org: `org-logo-${run}`,
+    org_name: "Logo Sàrl",
+  });
+  await setupBilling(page);
+  await page.goto("/fr/app/settings/company");
+  const logo = page.getByTestId("company-logo");
+  await expect(logo).toContainText("Aucun logo pour l'instant.");
+  await logo.getByLabel("Fichier du logo").setInputFiles({
+    name: "logo.txt",
+    mimeType: "image/png",
+    buffer: Buffer.from("pas une image"),
+  });
+  await page.getByTestId("logo-upload").click();
+  await expect(logo).toContainText("PNG ou JPEG seulement");
+  await logo.getByLabel("Fichier du logo").setInputFiles({
+    name: "logo.png",
+    mimeType: "image/png",
+    buffer: Buffer.from(
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==",
+      "base64",
+    ),
+  });
+  await page.getByTestId("logo-upload").click();
+  await expect(logo).toContainText("Logo enregistré.");
+  const src = (await logo.getByRole("img").getAttribute("src")) ?? "";
+  const image = await page.request.get(src);
+  expect(image.headers()["content-type"]).toBe("image/png");
+
+  await page.goto("/fr/app/invoices/new");
+  const form = page.getByTestId("invoice-form");
+  await form.getByLabel("Client", { exact: true }).selectOption({ label: "Client SA" });
+  await page.getByTestId("invoice-line-0").getByLabel("Article").selectOption({ label: "Conseil" });
+  await page.getByTestId("invoice-save").click();
+  await page.getByTestId("document-issue").click();
+  await expect(page.getByTestId("document-logo")).toBeVisible();
+  const pdf = await page.request.get(
+    (await page.getByTestId("document-pdf").getAttribute("href")) ?? "",
+  );
+  expect(pdf.headers()["content-type"]).toBe("application/pdf");
 });

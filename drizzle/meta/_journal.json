@@ -253,6 +253,13 @@
       "when": 1790820273424,
       "tag": "0035_de_reduced_revenue",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1790840612266,
+      "tag": "0036_organization_logo",
+      "breakpoints": true
     }
   ]
 }

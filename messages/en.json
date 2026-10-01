@@ -268,6 +268,21 @@
         "FR": "France",
         "GB": "United Kingdom",
         "US": "United States"
+      },
+      "logo": {
+        "title": "Logo",
+        "current": "Current logo",
+        "none": "No logo yet.",
+        "file": "Logo file",
+        "upload": "Upload logo",
+        "remove": "Remove logo",
+        "hint": "PNG or JPEG, 1 MB at most, ideally on a transparent background. It appears at the top right of quotes, invoices and credit notes, and on their online page.",
+        "results": {
+          "saved": "Logo saved.",
+          "removed": "Logo removed.",
+          "type": "Unsupported format: PNG or JPEG only.",
+          "size": "File empty or too large (1 MB at most)."
+        }
       }
     },
     "contacts": {
