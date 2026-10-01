@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
     return response;
   };
 
-  // Demande de connexion introuvable (plus de 30 minutes, autre onglet, cookie effacé) : on la
+  // Demande de connexion introuvable (plus de trois heures, cookie effacé) : on la
   // relance une fois, sans écran. Le Compte Lead est maintenant ouvert : l'aller-retour est invisible
   // et la personne arrive dans l'application. Un second échec d'affilée montre l'écran d'erreur.
   const retried = store.get(RETRY_COOKIE)?.value === "1";
