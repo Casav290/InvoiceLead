@@ -18,7 +18,14 @@ import {
 } from "@/server/auth/login-cookie";
 import { loadPage } from "@/server/auth/login-pages";
 import { openState } from "@/server/auth/login-state";
-import { cookieOptions, createSession, destroySession, SESSION_HOURS } from "@/server/auth/session";
+import {
+  checkOtherSessionsSoon,
+  cookieOptions,
+  createSession,
+  destroySession,
+  dropSessionsBefore,
+  SESSION_HOURS,
+} from "@/server/auth/session";
 import { db } from "@/server/db";
 import { env } from "@/server/env";
 import { finishLogin } from "@/server/lead-id/leadId";
@@ -158,8 +165,19 @@ export async function GET(request: NextRequest) {
       userId: user.id,
       organizationId,
       idToken: tokens.id_token,
+      refreshToken: tokens.refresh_token ?? null,
     });
     if (previous) await destroySession(db(), previous).catch(() => null);
+    // Ses sessions d'autres navigateurs revérifient leur accès au Compte Lead dès leur page suivante :
+    // un mot de passe réinitialisé (compte ouvert d'avance repris par la vraie personne) y a révoqué
+    // les jetons de l'auteur, dont la session tombe aussitôt. Avec la date du dernier changement
+    // d'identifiants (`cred_at`), celles ouvertes avant tombent tout de suite.
+    await checkOtherSessionsSoon(db(), user.id, session.id);
+    // `cred_at` est arrondi à la seconde (parfois vers le haut) : une seconde de marge, pour qu'une
+    // session ouverte dans la même seconde que le nouveau mot de passe ne tombe pas.
+    const credAt = (claims as { cred_at?: unknown }).cred_at;
+    if (typeof credAt === "number" && Number.isFinite(credAt) && credAt > 0)
+      await dropSessionsBefore(db(), user.id, new Date((credAt - 1) * 1000), session.id);
     // Retour sur la page demandée avant la connexion, sinon le tableau de bord.
     const landing = wanted ?? `/${locale}/app`;
     const response = done(`${APP_URL}${landing}`);

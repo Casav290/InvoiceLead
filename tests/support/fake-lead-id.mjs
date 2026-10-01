@@ -9,6 +9,9 @@
  *   POST /api/lead-id/v1/members/invite  invitation dans l'organisation ; GET /test/member-invites les relit
  *     (comme le Compte Lead : jeton d'identité de l'administrateur dans X-Lead-Id-Token, sinon 403)
  *   POST /ai/chat/completions  faux assistant comptable : chaque sortie d'argent va en frais bancaires
+ *   POST /oauth/token (refresh_token)  le jeton de rafraîchissement tourne, comme au Compte Lead (un jeton
+ *     déjà tourné ou révoqué : invalid_grant) ; POST /test/revoke-refresh {sub} révoque tous ceux d'une
+ *     personne (mot de passe réinitialisé, déconnexion de partout), GET /test/refreshes compte les échanges
  */
 import {
   createHash,
@@ -41,6 +44,9 @@ const defaultUser = {
 };
 let nextUser = { ...defaultUser };
 const codes = new Map();
+/** Jetons de rafraîchissement valables : jeton → personne (claims de sa connexion). */
+const refreshTokens = new Map();
+let refreshes = 0;
 const logouts = [];
 const memberInvites = [];
 const memberResends = [];
@@ -57,6 +63,66 @@ function jwt(claims) {
     .sign(privateKey)
     .toString("base64url");
   return `${head}.${body}.${sig}`;
+}
+
+function idTokenFor(u, nonce) {
+  const now = Math.floor(Date.now() / 1000);
+  return jwt({
+    iss: ISSUER,
+    aud: CLIENT_ID,
+    sub: u.sub,
+    iat: now,
+    exp: now + 600,
+    auth_time: now,
+    ...(nonce ? { nonce } : {}),
+    email: u.email,
+    email_verified: true,
+    name: u.name,
+    locale: "fr",
+    zoneinfo: "Europe/Zurich",
+    org: u.org,
+    org_name: u.org_name,
+    org_role: u.org_role,
+    lead: {
+      plan:
+        u.plan === "proplus"
+          ? { code: "pro_plus", name: "Pro+", rank: 2, seats: 5 }
+          : u.plan === "pro"
+            ? { code: "pro", name: "Pro", rank: 1, seats: 2 }
+            : { code: "free", name: "Gratuit", rank: 0, seats: 1 },
+      apps: {
+        scanlead: {
+          access: true,
+          name: "Scanlead",
+          url: "https://scanlead.io",
+          status: "live",
+          upgrade_url: "https://scanlead.io/billing",
+        },
+        crmlead: {
+          access: true,
+          name: "CRMlead",
+          url: "https://crmlead.io",
+          status: "live",
+          upgrade_url: "https://scanlead.io/billing",
+        },
+        projectlead: {
+          access: true,
+          name: "ProjectLead",
+          url: null,
+          status: "soon",
+          upgrade_url: null,
+        },
+        invoicelead: {
+          access: u.access,
+          name: "InvoiceLead",
+          url: "http://localhost:3100",
+          status: u.status ?? "live",
+          upgrade_url: "https://scanlead.io/billing",
+        },
+      },
+      subscriptions: [],
+    },
+  });
 }
 
 /**
@@ -149,6 +215,23 @@ createServer(async (req, res) => {
         scope: "members",
       });
     }
+    if (form.get("grant_type") === "refresh_token") {
+      const token = form.get("refresh_token") ?? "";
+      const u = refreshTokens.get(token);
+      refreshTokens.delete(token);
+      refreshes += 1;
+      if (!u) return send(res, 400, { error: "invalid_grant" });
+      const next = randomBytes(16).toString("hex");
+      refreshTokens.set(next, u);
+      return send(res, 200, {
+        access_token: randomBytes(16).toString("hex"),
+        id_token: idTokenFor(u, null),
+        refresh_token: next,
+        expires_in: 600,
+        scope: "openid email profile lead offline_access",
+        token_type: "Bearer",
+      });
+    }
     const entry = codes.get(form.get("code"));
     codes.delete(form.get("code"));
     if (!entry || Date.now() - entry.at > 120_000)
@@ -160,68 +243,13 @@ createServer(async (req, res) => {
       .digest("base64url");
     if (challenge !== entry.challenge) return send(res, 400, { error: "invalid_grant" });
 
-    const u = entry.user;
-    const now = Math.floor(Date.now() / 1000);
-    const idToken = jwt({
-      iss: ISSUER,
-      aud: CLIENT_ID,
-      sub: u.sub,
-      iat: now,
-      exp: now + 600,
-      auth_time: now,
-      nonce: entry.nonce,
-      email: u.email,
-      email_verified: true,
-      name: u.name,
-      locale: "fr",
-      zoneinfo: "Europe/Zurich",
-      org: u.org,
-      org_name: u.org_name,
-      org_role: u.org_role,
-      lead: {
-        plan:
-          u.plan === "proplus"
-            ? { code: "pro_plus", name: "Pro+", rank: 2, seats: 5 }
-            : u.plan === "pro"
-              ? { code: "pro", name: "Pro", rank: 1, seats: 2 }
-              : { code: "free", name: "Gratuit", rank: 0, seats: 1 },
-        apps: {
-          scanlead: {
-            access: true,
-            name: "Scanlead",
-            url: "https://scanlead.io",
-            status: "live",
-            upgrade_url: "https://scanlead.io/billing",
-          },
-          crmlead: {
-            access: true,
-            name: "CRMlead",
-            url: "https://crmlead.io",
-            status: "live",
-            upgrade_url: "https://scanlead.io/billing",
-          },
-          projectlead: {
-            access: true,
-            name: "ProjectLead",
-            url: null,
-            status: "soon",
-            upgrade_url: null,
-          },
-          invoicelead: {
-            access: u.access,
-            name: "InvoiceLead",
-            url: "http://localhost:3100",
-            status: u.status ?? "live",
-            upgrade_url: "https://scanlead.io/billing",
-          },
-        },
-        subscriptions: [],
-      },
-    });
+    const idToken = idTokenFor(entry.user, entry.nonce);
+    const refreshToken = randomBytes(16).toString("hex");
+    refreshTokens.set(refreshToken, entry.user);
     return send(res, 200, {
       access_token: randomBytes(16).toString("hex"),
       id_token: idToken,
-      refresh_token: randomBytes(16).toString("hex"),
+      refresh_token: refreshToken,
       expires_in: 600,
       scope: "openid email profile lead offline_access",
       token_type: "Bearer",
@@ -267,6 +295,13 @@ createServer(async (req, res) => {
   }
   if (url.pathname === "/test/member-invites")
     return send(res, 200, { invites: memberInvites, resends: memberResends });
+
+  if (url.pathname === "/test/revoke-refresh" && req.method === "POST") {
+    const { sub } = JSON.parse((await readBody(req)) || "{}");
+    for (const [token, u] of refreshTokens) if (u.sub === sub) refreshTokens.delete(token);
+    return send(res, 200, { ok: true });
+  }
+  if (url.pathname === "/test/refreshes") return send(res, 200, { refreshes });
 
   if (url.pathname === "/test/next-user" && req.method === "POST") {
     nextUser = { ...defaultUser, ...JSON.parse((await readBody(req)) || "{}") };

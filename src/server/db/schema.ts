@@ -147,8 +147,15 @@ export const sessions = pgTable(
       .notNull()
       .references(() => organizations.id, { onDelete: "cascade" }),
     idToken: text("id_token"),
+    /**
+     * Jeton de rafraîchissement du Compte Lead de cette connexion, chiffré (session.ts). Il prouve,
+     * relu toutes les quelques minutes, que l'accès tient encore : un mot de passe réinitialisé, une
+     * déconnexion de partout ou un compte fermé au Compte Lead le révoquent, et la session tombe.
+     */
+    refreshTokenEnc: text("refresh_token_enc"),
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
     createdAt: createdAt(),
+    /** Dernière vérification auprès du Compte Lead (revalidateSession). */
     lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index("sessions_user_idx").on(t.userId), index("sessions_expires_idx").on(t.expiresAt)],
