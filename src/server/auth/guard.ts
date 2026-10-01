@@ -9,20 +9,29 @@ import { db } from "../db";
 import { env } from "../env";
 import { can, hasAppAccess, type Permission } from "../roles";
 import { hasSeat } from "../team";
-import { pickLocale, safeNext } from "./login-cookie";
+import { pickLocale, safeInvite, safeNext } from "./login-cookie";
 import { type CurrentSession, getSession } from "./session";
+
+/**
+ * Où revenir après une reconnexion quand ce n'est pas la page en cours : `next` pour une route qui
+ * n'existe qu'en POST (la page de son formulaire), `invite` pour une invitation à accepter.
+ */
+export type ReturnTo = { next?: string; invite?: string };
 
 /**
  * Session valide, accès InvoiceLead non exigé (écran « formule sans accès »). Sans session, retour par
  * le Compte Lead, sans écran si la personne y est encore connectée.
  */
-export async function requireSession(locale: string): Promise<CurrentSession> {
+export async function requireSession(locale: string, back?: ReturnTo): Promise<CurrentSession> {
   const session = await getSession();
   if (!session) {
     // Cookie de session expiré : la page demandée est redonnée au Compte Lead, on y revient ensuite.
-    const next = safeNext((await headers()).get(REQUESTED_PATH_HEADER));
+    const invite = safeInvite(back?.invite);
+    const next = invite
+      ? undefined
+      : safeNext(back?.next ?? (await headers()).get(REQUESTED_PATH_HEADER));
     redirect(
-      `/auth/lead/start?${new URLSearchParams({ locale: pickLocale(locale), ...(next ? { next } : {}) })}`,
+      `/auth/lead/start?${new URLSearchParams({ locale: pickLocale(locale), ...(invite ? { invite } : next ? { next } : {}) })}`,
     );
   }
   return session;
@@ -45,8 +54,8 @@ export const accessProblem = cache(
  * page, action serveur et lecture de données de l'application : la mise en page ne protège pas les
  * pages, que Next rend en parallèle d'elle.
  */
-export async function requireAppSession(locale: string): Promise<CurrentSession> {
-  const session = await requireSession(locale);
+export async function requireAppSession(locale: string, back?: ReturnTo): Promise<CurrentSession> {
+  const session = await requireSession(locale, back);
   const problem = await accessProblem(session);
   if (problem) {
     const reason = problem === "plan" ? "" : `?reason=${problem}`;
@@ -59,8 +68,9 @@ export async function requireAppSession(locale: string): Promise<CurrentSession>
 export async function requirePermission(
   locale: string,
   permission: Permission,
+  back?: ReturnTo,
 ): Promise<CurrentSession> {
-  const session = await requireAppSession(locale);
+  const session = await requireAppSession(locale, back);
   if (!can(session.membership, permission)) redirect(`/${pickLocale(locale)}/app?forbidden=1`);
   // Pays sans comptabilité dans son pack : aucune action comptable, l'écran l'explique.
   const accountingOnly = permission === "accounting" || permission === "setup";

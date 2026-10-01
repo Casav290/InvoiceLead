@@ -4,7 +4,7 @@ import { getTranslations } from "next-intl/server";
 import { LeadLoginPanel } from "@/components/public/LeadLoginPanel";
 import { PublicFooter } from "@/components/public/PublicFooter";
 import { PublicHeader } from "@/components/public/PublicHeader";
-import { safeNext } from "@/server/auth/login-cookie";
+import { invitePath, safeInvite, safeNext } from "@/server/auth/login-cookie";
 import { getSession } from "@/server/auth/session";
 
 export async function generateMetadata({
@@ -22,26 +22,29 @@ export default async function Page({
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ erreur?: string; next?: string }>;
+  searchParams: Promise<{ erreur?: string; next?: string; invite?: string }>;
 }) {
   const { locale } = await params;
-  const { erreur, next } = await searchParams;
+  const q = await searchParams;
+  // Une invitation de fiduciaire à accepter passe avant la page demandée.
+  const invite = safeInvite(q.invite);
+  const next = invite ? undefined : safeNext(q.next);
   // Déjà connecté : directement dans l'application, sur la page demandée s'il y en a une.
-  if (await getSession()) nextRedirect(safeNext(next) ?? `/${locale}/app`);
-  const error = erreur === "lead" || erreur === "session" ? erreur : undefined;
+  if (await getSession())
+    nextRedirect(invite ? invitePath(locale, invite) : (next ?? `/${locale}/app`));
+  const error = q.erreur === "lead" || q.erreur === "session" ? q.erreur : undefined;
   // Pas d'écran intermédiaire : tout droit vers la connexion commune du Compte Lead. L'écran
   // ne reste que pour dire une erreur et proposer de réessayer.
   if (!error) {
-    const back = safeNext(next);
     nextRedirect(
-      `/auth/lead/start?${new URLSearchParams({ locale, ...(back ? { next: back } : {}) })}`,
+      `/auth/lead/start?${new URLSearchParams({ locale, ...(invite ? { invite } : next ? { next } : {}) })}`,
     );
   }
   return (
     <div className="flex min-h-screen flex-col">
       <PublicHeader />
       <main className="flex flex-1 items-start px-4 py-14 sm:py-20">
-        <LeadLoginPanel mode="login" locale={locale} error={error} next={safeNext(next)} />
+        <LeadLoginPanel mode="login" locale={locale} error={error} next={next} invite={invite} />
       </main>
       <PublicFooter />
     </div>

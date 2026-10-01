@@ -8,7 +8,9 @@ Quand un lead passe à « gagné » dans CRMlead, un bouton « Créer le devis �
 https://invoicelead.io/{locale}/app/import/crmlead?d={données}
 ```
 
-`locale` vaut `de` ou `fr`. `d` est le JSON ci-dessous, encodé en base64url (sans remplissage), 60 000 caractères au plus.
+`locale` vaut `de`, `fr` ou `en`. `d` est le JSON ci-dessous, encodé en base64url (sans remplissage).
+
+Longueur : le chemin complet `/{locale}/app/import/crmlead?d=…` reste à 2 400 caractères au plus. C'est la plus longue page qu'InvoiceLead sait rouvrir après une reconnexion par le Compte Lead (session de 12 h échue) : au-delà, la personne arriverait sur le tableau de bord et le lead serait perdu. CRMlead le garantit en raccourcissant, si besoin, les textes les plus longs (description de la ligne, titre du lead, noms). InvoiceLead lit encore un `d` plus long quand la session est ouverte (60 000 caractères au plus), mais un tel lien ne survit pas à une reconnexion.
 
 ```json
 {

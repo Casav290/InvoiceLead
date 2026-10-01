@@ -7,14 +7,18 @@ export function LeadLoginPanel({
   locale,
   error,
   next,
+  invite,
 }: {
   mode: "login" | "signup";
   locale: string;
   error?: "lead" | "session";
   /** Page demandée avant la connexion : « Réessayer » y ramène. */
   next?: string;
+  /** Invitation de fiduciaire en cours : « Réessayer » y ramène, avant toute autre page. */
+  invite?: string;
 }) {
   const t = useTranslations("auth");
+  const back: Record<string, string> = invite ? { invite } : next ? { next } : {};
   return (
     <div className="mx-auto w-full max-w-[440px] border border-line-strong bg-panel">
       <div className="border-b border-line px-6 py-5">
@@ -41,7 +45,7 @@ export function LeadLoginPanel({
           className="h-auto min-h-12 w-full px-4 py-3 text-center whitespace-normal sm:px-6"
         >
           <a
-            href={`/auth/lead/start?${new URLSearchParams({ locale, ...(mode === "signup" ? { signup: "1" } : {}), ...(next ? { next } : {}) })}`}
+            href={`/auth/lead/start?${new URLSearchParams({ locale, ...(mode === "signup" ? { signup: "1" } : {}), ...back })}`}
             data-testid="lead-login"
           >
             {t("leadButton")}
