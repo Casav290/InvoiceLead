@@ -12,11 +12,19 @@ import {
   contacts,
   invoiceReminders,
   invoices,
+  memberships,
   organizations,
   recurringInvoices,
   webhookDeliveries,
 } from "@/server/db/schema";
-import { createCreditNote, createInvoice, issueInvoice, parseInvoiceForm } from "@/server/invoices";
+import {
+  convertQuoteToInvoice,
+  createCreditNote,
+  createDepositInvoice,
+  createInvoice,
+  issueInvoice,
+  parseInvoiceForm,
+} from "@/server/invoices";
 import { handleMcp } from "@/server/mcp";
 import { forgetRefreshAttempts, refreshPlan, refreshStalePlans } from "@/server/plan-refresh";
 import { consumeQuota, featureAccess, quotaAccess, tierOf } from "@/server/plans";
@@ -113,6 +121,7 @@ async function invoiceFor(
   name: string,
   email?: string,
   currency?: string,
+  kind: "invoice" | "quote" = "invoice",
 ) {
   const c = parseContactForm(
     form({
@@ -143,7 +152,7 @@ async function invoiceFor(
     { vatRegistered: false },
   );
   if (!r.ok) throw new Error(`facture ${JSON.stringify(r.errors)}`);
-  const draft = await createInvoice(db, who, r.data);
+  const draft = await createInvoice(db, who, r.data, kind);
   if (typeof draft !== "object" || !draft) throw new Error("brouillon");
   return draft;
 }
@@ -153,9 +162,13 @@ async function invoiceFor(
  * se chevauchent vraiment : sans verrou, la seconde compte avant que la première ne valide.
  */
 async function slowWrites(on: string, run: () => Promise<void>, when?: string) {
+  // La base sert aussi aux tests de bout en bout : si vitest s'arrête net avant le nettoyage, le
+  // déclencheur laissé derrière ne ralentit plus rien passé 30 secondes.
+  const until = new Date(Date.now() + 30_000).toISOString();
+  await db.execute(sql.raw("drop function if exists il_test_slow() cascade"));
   await db.execute(
     sql.raw(
-      "create or replace function il_test_slow() returns trigger language plpgsql as $$ begin perform pg_sleep(0.4); return new; end $$",
+      `create or replace function il_test_slow() returns trigger language plpgsql as $$ begin if clock_timestamp() < '${until}'::timestamptz then perform pg_sleep(0.4); end if; return new; end $$`,
     ),
   );
   await db.execute(
@@ -166,8 +179,8 @@ async function slowWrites(on: string, run: () => Promise<void>, when?: string) {
   try {
     await run();
   } finally {
-    const table = on.split(" on ")[1] ?? "";
-    await db.execute(sql.raw(`drop trigger if exists il_test_slow on ${table}`));
+    // La fonction et son déclencheur partent ensemble.
+    await db.execute(sql.raw("drop function if exists il_test_slow() cascade"));
   }
 }
 
@@ -401,6 +414,49 @@ describe("factures récurrentes", () => {
     expect(held).toMatchObject({ active: true, nextDate: today() });
   });
 
+  it("des centaines de récurrences retenues ne bouchent pas la tâche quotidienne des autres entreprises", async () => {
+    // Entreprise revenue en formule gratuite avec 600 récurrences échues depuis longtemps.
+    const former = await company(1, "former");
+    const model = await invoiceFor(former.who, "Abo A");
+    const input = { intervalMonths: 1, nextDate: today(), autoSend: false };
+    const first = await createRecurring(db, former.who, model.id, input);
+    if (typeof first !== "object") throw new Error(first);
+    await db.insert(recurringInvoices).values(
+      Array.from({ length: 600 }, () => ({
+        organizationId: former.org.id,
+        sourceInvoiceId: model.id,
+        intervalMonths: 1,
+        nextDate: "2025-01-01",
+        createdBy: former.who.userId,
+      })),
+    );
+    await setRank(former.org.id, 0);
+    // Une entreprise Pro, avec une récurrence du jour.
+    const pro = await company(1, "pro");
+    const proModel = await invoiceFor(pro.who, "Abo Pro");
+    const proRecurring = await createRecurring(db, pro.who, proModel.id, input);
+    if (typeof proRecurring !== "object") throw new Error(proRecurring);
+
+    // Les 600 retenues sont les plus anciennes ; elles ne prennent pas la fenêtre de 500.
+    expect(await runRecurring(db, today())).toMatchObject({ created: 2, held: 600, failed: 0 });
+    const next = async (id: string) =>
+      (await db.select().from(recurringInvoices).where(eq(recurringInvoices.id, id)))[0]?.nextDate;
+    expect(await next(proRecurring.id)).not.toBe(today());
+    expect(await next(first.id)).not.toBe(today());
+    const [{ untouched } = { untouched: -1 }] = await db
+      .select({ untouched: sql<number>`count(*)::int` })
+      .from(recurringInvoices)
+      .where(
+        and(
+          eq(recurringInvoices.organizationId, former.org.id),
+          eq(recurringInvoices.nextDate, "2025-01-01"),
+        ),
+      );
+    expect(untouched).toBe(600);
+    // Passage suivant : les deux ont avancé d'un mois, les retenues sont seulement comptées.
+    expect(await runRecurring(db, today())).toMatchObject({ created: 0, held: 600 });
+  });
+
   it("laisse en brouillon la facture du jour quand les 10 factures du mois sont émises", async () => {
     const { who } = await company(0);
     for (let i = 0; i < 10; i++) {
@@ -498,6 +554,8 @@ describe("fonctions réservées", () => {
     });
     if (typeof endpoint === "string") throw new Error(endpoint);
     expect(await emitEvent(db, org.id, "invoice.issued", { id: "x" })).toBe(1);
+    const [before] = await db.select().from(webhookDeliveries);
+    expect(before).toMatchObject({ status: "pending", attempts: 0 });
     await setRank(org.id, 1);
     const fetcher = vi.fn(async () => new Response("ok", { status: 200 }));
     const now = new Date("2026-10-05T08:00:00Z");
@@ -505,17 +563,68 @@ describe("fonctions réservées", () => {
       delivered: 0,
       failed: 0,
     });
+    expect(await deliverPending(db, { now, fetcher })).toEqual({ delivered: 0, failed: 0 });
     expect(fetcher).not.toHaveBeenCalled();
+    // Rien n'est modifié pendant l'attente : ni tentative comptée, ni date repoussée.
     const [held] = await db.select().from(webhookDeliveries);
-    expect(held).toMatchObject({ status: "pending", attempts: 0 });
-    expect(held?.nextAttemptAt.getTime()).toBe(now.getTime() + 86_400_000);
+    expect(held).toEqual(before);
     // Retour à Pro+ : la livraison part au passage suivant.
     await setRank(org.id, 2);
-    const later = new Date(now.getTime() + 86_400_000);
-    expect(await deliverPending(db, { organizationId: org.id, now: later, fetcher })).toMatchObject(
-      { delivered: 1 },
-    );
+    expect(await deliverPending(db, { organizationId: org.id, now, fetcher })).toMatchObject({
+      delivered: 1,
+    });
     expect(fetcher).toHaveBeenCalledOnce();
+  });
+
+  it("des centaines de livraisons retenues ne bouchent pas la file des entreprises encore en Pro+", async () => {
+    // Entreprise sortie de Pro+ avec 600 livraisons anciennes en attente (adresse en panne).
+    const former = await company(2, "former");
+    const old = await createEndpoint(db, former.who, {
+      url: "https://hooks.example.test/old",
+      events: ["invoice.issued"],
+    });
+    if (typeof old === "string") throw new Error(old);
+    const since = new Date("2026-01-01T00:00:00Z");
+    await db.insert(webhookDeliveries).values(
+      Array.from({ length: 600 }, (_, i) => ({
+        organizationId: former.org.id,
+        endpointId: old.id,
+        event: "invoice.issued",
+        payload: { type: "invoice.issued", data: { n: i } },
+        attempts: 2,
+        createdAt: since,
+        nextAttemptAt: since,
+      })),
+    );
+    await setRank(former.org.id, 1);
+    // Une entreprise encore en Pro+, avec une livraison plus récente.
+    const current = await company(2, "current");
+    const hook = await createEndpoint(db, current.who, {
+      url: "https://hooks.example.test/live",
+      events: ["invoice.issued"],
+    });
+    if (typeof hook === "string") throw new Error(hook);
+    expect(await emitEvent(db, current.org.id, "invoice.issued", { id: "x" })).toBe(1);
+    const fetcher = vi.fn(async () => new Response("ok", { status: 200 }));
+    const now = new Date(Date.now() + 60_000);
+    // La tâche quotidienne prend 500 livraisons par passage : celle de Pro+ en fait partie.
+    expect(await deliverPending(db, { now, limit: 500, fetcher })).toEqual({
+      delivered: 1,
+      failed: 0,
+    });
+    expect(fetcher).toHaveBeenCalledOnce();
+    const [{ waiting } = { waiting: -1 }] = await db
+      .select({ waiting: sql<number>`count(*)::int` })
+      .from(webhookDeliveries)
+      .where(
+        and(
+          eq(webhookDeliveries.organizationId, former.org.id),
+          eq(webhookDeliveries.status, "pending"),
+          eq(webhookDeliveries.attempts, 2),
+          eq(webhookDeliveries.nextAttemptAt, since),
+        ),
+      );
+    expect(waiting).toBe(600);
   });
 });
 
@@ -767,6 +876,17 @@ describe("import des relevés : un relevé, c'est un compte et un mois", () => {
       entry("Y3", "2026-12-05"),
     ]);
     expect(await importStatement(db, who, year, "2026-10-02")).toBe("scope");
+    // Plusieurs relevés dont les suivants ne disent pas leur compte : rien ne prouve qu'il s'agit
+    // du même. Refusé, sans compter.
+    const unnamed = (() => {
+      const a = camt053("CH9300762011623852957", [entry("U1", "2026-09-02")]);
+      const b = camt053("CH5604835012345678009", [entry("U2", "2026-09-03")]);
+      const second = b
+        .slice(b.indexOf("<Stmt>"), b.indexOf("</Stmt>") + "</Stmt>".length)
+        .replace(/<Acct>.*?<\/Acct>/s, "");
+      return a.replace("</Stmt>", `</Stmt>${second}`);
+    })();
+    expect(await importStatement(db, who, unnamed, "2026-10-02")).toBe("scope");
     expect((await quotaAccess(db, org, "bankImports", "2026-10-02")).used).toBe(0);
     // Un relevé mensuel ordinaire (31 jours au plus) passe.
     const month = camt053("CH9300762011623852957", [
@@ -781,9 +901,65 @@ describe("import des relevés : un relevé, c'est un compte et un mois", () => {
       imported: 2,
     });
   });
+
+  it("formule gratuite : des relevés journaliers du même compte, dans le même mois, passent", async () => {
+    const { who } = await company(0);
+    const a = camt053("CH9300762011623852957", [entry("J1", "2026-09-01")]);
+    const b = camt053("CH93 0076 2011 6238 5295 7", [entry("J2", "2026-09-02")]);
+    const second = b.slice(b.indexOf("<Stmt>"), b.indexOf("</Stmt>") + "</Stmt>".length);
+    const daily = a.replace("</Stmt>", `</Stmt>${second}`);
+    expect(await importStatement(db, who, daily, "2026-10-02")).toMatchObject({ imported: 2 });
+  });
 });
 
 describe("multidevise par d'autres chemins", () => {
+  it("formule gratuite : un brouillon ou un devis en EUR d'avant ne s'émet ni ne se facture ; un avoir reste permis", async () => {
+    const { org, who } = await company(1);
+    // En Pro : une facture en EUR émise, un brouillon en EUR, un devis en EUR émis.
+    const sold = await issueInvoice(
+      db,
+      who,
+      (await invoiceFor(who, "Kunde GmbH", undefined, "EUR")).id,
+    );
+    if (typeof sold !== "object") throw new Error(sold);
+    const draft = await invoiceFor(who, "Kunde AG", undefined, "EUR");
+    const quote = await issueInvoice(
+      db,
+      who,
+      (await invoiceFor(who, "Kunde SA", undefined, "EUR", "quote")).id,
+    );
+    if (typeof quote !== "object") throw new Error(quote);
+    await setRank(org.id, 0);
+    const fx = vi.fn(async () => Response.json({ rates: { CHF: 0.95 } }));
+    expect(await issueInvoice(db, who, draft.id, fx)).toBe("plan");
+    expect(fx).not.toHaveBeenCalled();
+    expect(await convertQuoteToInvoice(db, who, quote.id, "2026-03-10")).toBe("plan");
+    expect(await createDepositInvoice(db, who, quote.id, 30, "2026-03-10")).toBe("plan");
+    // Rien n'est créé ni émis, le devis reste ouvert.
+    const docs = await db.select().from(invoices).where(eq(invoices.organizationId, org.id));
+    expect(docs.map((d) => [d.id, d.status]).sort()).toEqual(
+      [
+        [sold.id, "issued"],
+        [draft.id, "draft"],
+        [quote.id, "issued"],
+      ].sort(),
+    );
+    // Un avoir corrige la facture déjà émise, dans sa devise : il reste permis.
+    const credit = await createCreditNote(db, who, sold.id, "2026-03-15");
+    if (typeof credit !== "object") throw new Error(String(credit));
+    expect(await issueInvoice(db, who, credit.id)).toMatchObject({
+      status: "issued",
+      currency: "EUR",
+    });
+    // En Pro, le même brouillon s'émet et le devis se facture.
+    await setRank(org.id, 1);
+    expect(await issueInvoice(db, who, draft.id, fx)).toMatchObject({ status: "issued" });
+    expect(await convertQuoteToInvoice(db, who, quote.id, "2026-03-10")).toMatchObject({
+      kind: "invoice",
+      currency: "EUR",
+    });
+  });
+
   it("formule gratuite : une facture fournisseur en EUR (justificatif, e-facture) ne s'approuve pas", async () => {
     const { org, who } = await company(0);
     const bill = await createBill(
@@ -939,6 +1115,31 @@ describe("formule relue au Compte Lead", () => {
     // Témoin : la même entreprise, revenue à Pro, reçoit sa relance par e-mail.
     await setRank(org.id, 1);
     expect(await runAutoReminders(db, "2026-04-10")).toEqual({ sent: 1 });
+  });
+
+  it("une invitation de fiduciaire ne s'accepte pas quand la formule Pro a plus de 72 h", async () => {
+    const client = await company(1, "client");
+    const fid = await attachLeadIdentity(
+      db,
+      claims({ sub: "sub-fid", email: "compta@fidu.test", org: "org-fidu", org_name: "Fidu SA" }),
+    );
+    const inv = await inviteFiduciary(db, client.who, "compta@fidu.test");
+    if (typeof inv === "string") throw new Error(inv);
+    // Résiliée sans nouvelle connexion : la formule enregistrée dit encore Pro, mais elle est trop vieille.
+    await aged(client.org.id, 73);
+    expect((await acceptInvitation(db, fid.user, inv.token)).status).toBe("plan");
+    const fiduciaryMembers = () =>
+      db
+        .select()
+        .from(memberships)
+        .where(
+          and(eq(memberships.organizationId, client.org.id), eq(memberships.userId, fid.user.id)),
+        );
+    expect(await fiduciaryMembers()).toHaveLength(0);
+    // Relue récemment, toujours en Pro : l'invitation s'accepte.
+    await aged(client.org.id, 1);
+    expect((await acceptInvitation(db, fid.user, inv.token)).status).toBe("accepted");
+    expect(await fiduciaryMembers()).toHaveLength(1);
   });
 
   it("une formule récente n'est pas relue", async () => {

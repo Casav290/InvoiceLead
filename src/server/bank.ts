@@ -50,9 +50,15 @@ export async function importEntries(database: Db, who: Who, entries: BankEntry[]
 /** Formule gratuite : un relevé, c'est un compte et au plus un mois de dates de comptabilisation. */
 export const FREE_STATEMENT_DAYS = 31;
 
-/** Le fichier tient-il dans un seul relevé mensuel (un compte, 31 jours au plus) ? */
-export function singleStatement(statement: Pick<BankStatement, "accounts" | "entries">): boolean {
-  if (statement.accounts.length > 1) return false;
+/**
+ * Le fichier tient-il dans un seul relevé mensuel (un compte, 31 jours au plus) ? Un relevé qui ne
+ * dit pas son compte compte pour un compte de plus : sinon, un fichier dont seul le premier relevé
+ * porte un IBAN regrouperait plusieurs comptes.
+ */
+export function singleStatement(
+  statement: Pick<BankStatement, "accounts" | "unnamed" | "entries">,
+): boolean {
+  if (statement.accounts.length + statement.unnamed > 1) return false;
   const days = statement.entries.map((e) => Date.parse(`${e.bookingDate}T00:00:00Z`));
   if (days.some((d) => Number.isNaN(d))) return false;
   if (days.length === 0) return true;

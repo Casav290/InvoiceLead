@@ -208,6 +208,14 @@ export function featureAccess(org: OrgPlan, feature: Feature): Access {
   };
 }
 
+/**
+ * Pièce dans une autre devise que celle de l'entreprise, sans la multidevise (formule Pro) : une
+ * nouvelle facture, un nouveau devis ou une nouvelle récurrence dans cette devise est refusé.
+ */
+export function foreignWithoutPro(org: OrgPlan & { currency: string }, currency: string): boolean {
+  return currency !== org.currency && !featureAccess(org, "multiCurrency").allowed;
+}
+
 function quotaResult(tier: Tier, quota: Quota, used: number): Access {
   const limit = PLANS[tier].quotas[quota];
   return {
@@ -381,6 +389,16 @@ export async function organizationPlan(
     .from(organizations)
     .where(eq(organizations.id, organizationId));
   return row ?? null;
+}
+
+/** La même règle pour une entreprise dont on n'a que l'identifiant. */
+export async function foreignWithoutProFor(
+  database: Db,
+  organizationId: string,
+  currency: string,
+): Promise<boolean> {
+  const plan = await organizationPlan(database, organizationId);
+  return !!plan && foreignWithoutPro(plan, currency);
 }
 
 /**

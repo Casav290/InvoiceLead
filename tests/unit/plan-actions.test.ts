@@ -1,7 +1,12 @@
 import { and, eq } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { reviewVatAction, validateVatAction } from "@/app/[locale]/app/accounting/actions";
+import {
+  reviewVatAction,
+  uploadReceiptsAction,
+  validateVatAction,
+} from "@/app/[locale]/app/accounting/actions";
 import { saveBillAction } from "@/app/[locale]/app/accounting/bills/actions";
+import { scanTicketAction } from "@/app/[locale]/app/expenses/actions";
 import { saveReminderSettingsAction } from "@/app/[locale]/app/invoices/reminders/actions";
 import { createApiKeyAction, createWebhookAction } from "@/app/[locale]/app/settings/api/actions";
 import { inviteFiduciaryAction } from "@/app/[locale]/app/settings/team/actions";
@@ -13,6 +18,8 @@ import {
   apiKeys,
   fiduciaryInvitations,
   organizations,
+  planUsage,
+  receipts,
   supplierBills,
   vatReturns,
   webhookEndpoints,
@@ -90,7 +97,14 @@ vi.mock("@/server/auth/guard", async () => {
 
 const t = testDb();
 const db = t.database;
-beforeAll(() => setTestEnv({ WEBHOOK_ALLOW_LOCAL: "1", CRON_SECRET: "cron-secret-unit" }));
+beforeAll(() =>
+  setTestEnv({
+    WEBHOOK_ALLOW_LOCAL: "1",
+    CRON_SECRET: "cron-secret-unit",
+    AI_API_KEY: "test",
+    AI_BASE_URL: "https://ai.test/v4",
+  }),
+);
 beforeEach(async () => {
   await t.reset();
   ctx.database = db;
@@ -178,6 +192,55 @@ describe("décompte TVA (Pro)", () => {
       expect(ai).not.toHaveBeenCalled();
       await setRank(who.organizationId, 1);
       expect(await reviewVatAction({ round: 1 }, vat)).not.toHaveProperty("plan");
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+});
+
+describe("lectures de pièces par l'IA (20 par mois en formule gratuite)", () => {
+  async function readsUsed(organizationId: string, used: number) {
+    await db.insert(planUsage).values({
+      organizationId,
+      period: new Date().toISOString().slice(0, 7),
+      key: "aiReads",
+      used,
+    });
+  }
+  const ticket = () =>
+    new File([Buffer.from("ticket de caisse, jamais lu")], "ticket.png", { type: "image/png" });
+  const stored = (organizationId: string) =>
+    db.select().from(receipts).where(eq(receipts.organizationId, organizationId));
+
+  it("au-delà des 20 lectures, un dépôt forgé est refusé avant d'enregistrer la pièce", async () => {
+    const who = await signedIn(0);
+    await readsUsed(who.organizationId, 20);
+    const ai = vi.fn(async () => new Response("inattendu", { status: 500 }));
+    vi.stubGlobal("fetch", ai);
+    try {
+      const upload = form({ locale: "fr" });
+      upload.append("files", ticket());
+      expect(await redirected(uploadReceiptsAction(upload))).toBe(
+        "/fr/app/accounting/receipts?added=0&rejected=0&refused=1&quota=1",
+      );
+      expect(await stored(who.organizationId)).toHaveLength(0);
+      expect(ai).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("« Scanner un ticket » au-delà des 20 lectures : la photo forgée n'est pas enregistrée", async () => {
+    const who = await signedIn(0);
+    await readsUsed(who.organizationId, 20);
+    const ai = vi.fn(async () => new Response("inattendu", { status: 500 }));
+    vi.stubGlobal("fetch", ai);
+    try {
+      const scan = form({ locale: "fr" });
+      scan.append("ticket", ticket());
+      expect(await redirected(scanTicketAction(scan))).toBe("/fr/app/expenses?error=quota");
+      expect(await stored(who.organizationId)).toHaveLength(0);
+      expect(ai).not.toHaveBeenCalled();
     } finally {
       vi.unstubAllGlobals();
     }

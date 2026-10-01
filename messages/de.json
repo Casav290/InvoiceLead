@@ -88,7 +88,7 @@
       "current": "Hier",
       "openLink": "Öffnen",
       "soon": "Demnächst",
-      "upgrade": "Upgrade"
+      "upgrade": "Abo wechseln"
     },
     "user": {
       "logout": "Abmelden",
@@ -145,7 +145,7 @@
     "noAccess": {
       "title": "Ihr Abo enthält InvoiceLead nicht",
       "body": "Ihre Organisation {org} hat noch keinen Zugang zu InvoiceLead. Wechseln Sie zu einem Abo, das InvoiceLead enthält.",
-      "upgrade": "Upgrade",
+      "upgrade": "Abo wechseln",
       "logout": "Abmelden",
       "blockedTitle": "Zugang zu InvoiceLead entzogen",
       "blockedBody": "Eine verantwortliche Person von {org} hat Ihren Zugang zu InvoiceLead entzogen. Bitten Sie sie, ihn in den Team-Einstellungen wiederherzustellen.",
@@ -686,7 +686,8 @@
         "fxRate": "Der Tageskurs konnte nicht abgerufen werden. Bitte den Kurs im Entwurf erfassen und erneut ausstellen.",
         "depositDraft": "Eine Anzahlungsrechnung zu dieser Offerte ist noch ein Entwurf: Stellen Sie sie aus oder löschen Sie sie, bevor Sie die Schlussrechnung erstellen.",
         "recurringLimit": "Das Gratis-Abo umfasst {limit, plural, one {eine aktive wiederkehrende Rechnung} other {# aktive wiederkehrende Rechnungen}}. Pausieren Sie eine oder wechseln Sie auf Pro, um weitere hinzuzufügen.",
-        "recurringCurrency": "Eine Rechnung in Fremdwährung wird nur mit Pro wiederkehrend, das Fremdwährungen umfasst."
+        "recurringCurrency": "Eine Rechnung in Fremdwährung wird nur mit Pro wiederkehrend, das Fremdwährungen umfasst.",
+        "plan": "Dokument in {currency}: Ausstellen und Verrechnen in Fremdwährung sind Teil des Pro-Abos."
       },
       "addLine": "Position hinzufügen",
       "removeLine": "Entfernen",
@@ -901,7 +902,9 @@
         "next": "Nächste Rechnung am",
         "autoSend": "Automatisch ausstellen und senden (sonst: Entwurf zur Prüfung)",
         "create": "Wiederholung speichern",
-        "currencyPlan": "Rechnung in {currency}: Sie wiederkehrend zu machen gehört zu den Fremdwährungen im Pro-Abo."
+        "currencyPlan": "Rechnung in {currency}: Wiederkehrende Rechnungen in Fremdwährung sind Teil des Pro-Abos.",
+        "already": "Diese Rechnung wiederholt sich bereits. Nächste Rechnung am {date}.",
+        "manage": "Wiederkehrende Rechnungen ansehen"
       },
       "einvoice": {
         "download": "XRechnung (XML)",
@@ -928,6 +931,8 @@
         "export": "Nicht steuerbar (ausserhalb des Bundesstaats)"
       },
       "totalWithVatUs": "Total inklusive Steuer",
+      "issueCurrencyPlan": "Dieses Dokument lautet auf {currency}. Das Ausstellen in Fremdwährung ist Teil des Pro-Abos. Stellen Sie es auf {home} um, um es jetzt auszustellen.",
+      "quoteCurrencyPlan": "Diese Offerte lautet auf {currency}. Die Verrechnung in Fremdwährung ist Teil des Pro-Abos.",
       "currencyPlan": "Weitere Währungen sind Teil des Pro-Abos."
     },
     "quotes": {
@@ -1095,10 +1100,10 @@
       "added": "{count, plural, =0 {Kein Beleg hinzugefügt} one {# Beleg hinzugefügt} other {# Belege hinzugefügt}}.{rejected, plural, =0 {} one { # abgelehnt: Duplikat, Format oder Grösse.} other { # abgelehnt: Duplikate, Format oder Grösse.}}{quota, plural, =0 {} one { # nicht hochgeladen: Das Kontingent dieses Monats ist aufgebraucht.} other { # nicht hochgeladen: Das Kontingent dieses Monats ist aufgebraucht.}}",
       "errors": {
         "unreadable": "Dieses PDF ist ein gescanntes Bild: Laden Sie stattdessen ein scharfes Foto des Dokuments hoch.",
-        "failed": "Der Assistent konnte diesen Beleg nicht lesen. Versuchen Sie es später erneut.",
+        "failed": "Die KI konnte diesen Beleg nicht lesen. Versuchen Sie es später erneut.",
         "notFound": "Beleg nicht gefunden."
       },
-      "aiOff": "Der Assistent ist noch nicht aktiviert: Die Belege werden aufbewahrt und gelesen, sobald er eingerichtet ist.",
+      "aiOff": "Das Lesen durch die KI ist noch nicht aktiviert: Die Belege werden aufbewahrt und gelesen, sobald es eingerichtet ist.",
       "files": "Rechnungen oder Quittungen",
       "filesHint": "PDF, JPEG, PNG oder WebP, höchstens 10 MB pro Datei, 20 Dateien auf einmal.",
       "upload": "Hochladen",
@@ -1707,7 +1712,7 @@
       },
       "claim": "Spesen",
       "currencyPlan": "Weitere Währungen sind Teil des Pro-Abos.",
-      "approveCurrencyPlan": "Rechnung in {currency}: Freigabe und Verbuchung zum Tageskurs gehören zu den Fremdwährungen im Pro-Abo."
+      "approveCurrencyPlan": "Rechnung in {currency}: Freigabe und Verbuchung zum Tageskurs sind Teil des Pro-Abos (Fremdwährungen)."
     },
     "time": {
       "title": "Zeit",
@@ -1868,7 +1873,8 @@
         "read": "Beleg von der KI gelesen. Prüfen Sie die Felder unten und senden Sie ab.",
         "unread": "Der Beleg ist angehängt, die KI konnte ihn aber nicht lesen. Ergänzen Sie die Felder unten.",
         "currency": "Beleg in {currency}: Geben Sie den in {home} bezahlten Betrag an.",
-        "preview": "Gescannter Beleg"
+        "preview": "Gescannter Beleg",
+        "manual": "Sie können die Ausgabe unten von Hand erfassen."
       }
     },
     "cashflow": {
@@ -1940,11 +1946,11 @@
           "50 Kontakte",
           "QR-Rechnung, Dokumente auf DE, FR, IT, EN",
           "Buchhaltung direkt aus Ihren Rechnungen",
-          "20 von der KI gelesene Belege pro Monat (Quittungen, Belege), E-Rechnungen ohne Limite",
+          "20 von der KI gelesene Belege pro Monat (Quittungen, Lieferantenrechnungen), E-Rechnungen ohne Limite",
           "Assistent: 10 Fragen pro Monat",
           "Erste Mahnung von Hand, 5 pro Monat",
           "1 aktive wiederkehrende Rechnung",
-          "1 Kontoauszug pro Monat, Autopilot inbegriffen",
+          "1 Kontoauszug pro Monat (ein Konto, höchstens ein Monat), Autopilot inbegriffen",
           "Hinweis «Erstellt mit InvoiceLead»"
         ]
       },
@@ -1956,8 +1962,8 @@
           "2 Benutzer und kostenloser Treuhandzugang",
           "50 von der KI gelesene Belege pro Monat",
           "Assistent ohne Limite",
-          "Automatische Mahnungen in 3 Stufen, Gebühren und Zinsen",
-          "Steuerabrechnung: Schweizer MWST (effektiv und Saldosteuersatz), UStVA, CA3, MTD und Sales Tax",
+          "Automatische Mahnungen in 3 Stufen, Gebühren, Zinsen und intelligente Mahnungen",
+          "Steuerabrechnungen: Schweizer MWST (effektiv und Saldosteuersatz), UStVA, CA3, MTD und US Sales Tax",
           "Bankimport camt ohne Limite, Autopilot-Übersicht am Montag",
           "Wiederkehrende Rechnungen ohne Limite, Fremdwährungen"
         ]
@@ -1988,11 +1994,11 @@
       },
       {
         "q": "Kann ich meine ganze Buchhaltung in InvoiceLead führen?",
-        "a": "Das ist das Ziel: doppelte Buchhaltung nach KMU-Kontenrahmen, Buchungen direkt aus Rechnungen und Zahlungen, Bilanz, Erfolgsrechnung und MWST-Abrechnung. Diese Funktionen werden schrittweise freigeschaltet."
+        "a": "Ja. Doppelte Buchhaltung nach KMU-Kontenrahmen, Buchungen direkt aus Rechnungen und Zahlungen, Bilanz und Erfolgsrechnung, schon im Gratis-Abo. Die MWST-Abrechnung kommt mit dem Pro-Abo dazu."
       },
       {
-        "q": "Welche MWST-Methoden sind vorgesehen?",
-        "a": "Die effektive Methode und die Saldosteuersatzmethode, nach vereinbarten oder vereinnahmten Entgelten. Die Abrechnung wird als XML nach eCH-0217 exportiert, wie es das ESTV-Portal annimmt."
+        "q": "Welche Steuerabrechnungen werden unterstützt?",
+        "a": "In der Schweiz: die effektive Methode und die Saldosteuersatzmethode, nach vereinbarten oder vereinnahmten Entgelten. Die Abrechnung wird als XML nach eCH-0217 exportiert, wie es das ESTV-Portal annimmt. Für andere Länder: UStVA in Deutschland, CA3 in Frankreich, MTD in Grossbritannien und Sales Tax in den USA. Die Steuerabrechnungen sind Teil des Pro-Abos."
       },
       {
         "q": "Was ist das Lead-Konto?",
@@ -2012,7 +2018,7 @@
       },
       {
         "q": "Was umfasst das Gratis-Abo?",
-        "a": "Jeden Monat: 10 Rechnungen, 20 von der KI gelesene Belege, 10 Fragen an den Assistenten, 5 Mahnungen der ersten Stufe und 1 Kontoauszug mit Autopilot. Dazu kommen 50 Kontakte und 1 aktive wiederkehrende Rechnung, und E-Rechnungen empfangen Sie ohne Limite. Die Funktionen von Pro und Pro+ bleiben in der App sichtbar, grau und mit dem Hinweis Pro oder Pro+, damit Sie wissen, dass es sie gibt."
+        "a": "Jeden Monat: 10 Rechnungen, 20 von der KI gelesene Belege, 10 Fragen an den Assistenten, 5 Mahnungen der ersten Stufe und 1 Kontoauszug (ein Konto, höchstens ein Monat) mit Autopilot. Dazu kommen 50 Kontakte und 1 aktive wiederkehrende Rechnung, und E-Rechnungen empfangen Sie ohne Limite. Ein Benutzer, und Ihre Dokumente tragen den Hinweis «Erstellt mit InvoiceLead». Die Funktionen von Pro und Pro+ bleiben in der App sichtbar, grau und mit dem Hinweis Pro oder Pro+, damit Sie wissen, dass es sie gibt."
       },
       {
         "q": "Brauche ich für den Start eine Kreditkarte?",

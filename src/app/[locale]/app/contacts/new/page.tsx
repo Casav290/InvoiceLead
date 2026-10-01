@@ -20,7 +20,8 @@ export default async function NewContactPage({ params }: Props) {
   const { organization } = await requireAppSession(locale);
   const t = await getTranslations({ locale, namespace: "app.contacts" });
   // Formule gratuite, 50 contacts atteints : le formulaire reste visible, grisé, avec la raison et
-  // le lien de mise à niveau (adresse directe, favori, retour arrière).
+  // le lien de mise à niveau (adresse directe, favori, retour arrière). La raison vient en tête :
+  // la fin du formulaire est loin du premier écran.
   const live = await quotaAccess(db(), organization, "contacts");
   const lock = await lockFor(locale, organization, live, t("planLimit", { limit: live.limit }));
   const form = (
@@ -39,7 +40,7 @@ export default async function NewContactPage({ params }: Props) {
     <div className="mx-auto max-w-3xl px-4 py-10 sm:px-8">
       <h1 className="text-[28px] leading-tight">{t("new")}</h1>
       {lock ? (
-        <ProLock lock={lock} testId="contact-new-lock" className="mt-8">
+        <ProLock lock={lock} testId="contact-new-lock" className="mt-8" noteFirst>
           <div className="px-5 pb-6">{form}</div>
         </ProLock>
       ) : (

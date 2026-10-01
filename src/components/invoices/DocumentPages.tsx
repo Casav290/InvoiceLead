@@ -13,7 +13,7 @@ import {
 import { createRecurringAction } from "@/app/[locale]/app/invoices/recurring/actions";
 import { waiveChargesAction } from "@/app/[locale]/app/invoices/reminders/actions";
 import { switchOrgAction } from "@/app/[locale]/app/org-actions";
-import { type Lock, ProLock } from "@/components/app/ProLock";
+import { type Lock, ProBadge, ProLock } from "@/components/app/ProLock";
 import { fieldClass } from "@/components/forms/fields";
 import { InvoiceDocument } from "@/components/invoices/InvoiceDocument";
 import { InvoiceForm } from "@/components/invoices/InvoiceForm";
@@ -34,7 +34,7 @@ import { type DocumentKind, depositInvoices, getInvoice, listInvoices } from "@/
 import { invoiceBalance, listPayments, paymentState } from "@/server/payments";
 import { lockFor } from "@/server/plan-lock";
 import { featureAccess, type OrgPlan, PLANS, quotaAccess, tierOf } from "@/server/plans";
-import { addMonths } from "@/server/recurring";
+import { addMonths, runningRecurringOfInvoice } from "@/server/recurring";
 import { listReminders } from "@/server/reminders";
 import { documentOrganization } from "@/server/team";
 
@@ -63,6 +63,7 @@ const ERRORS = [
   "percent",
   "tooHigh",
   "depositDraft",
+  "plan",
 ];
 
 /** Pièce d'une autre entreprise où la personne travaille : le passage vers elle, rien d'autre. */
@@ -374,18 +375,43 @@ export async function DocumentDetailPage({
     </>
   );
   const tp = await getTranslations({ locale, namespace: "app.plan" });
+  // Brouillon en devise étrangère sans la multidevise (créé en Pro) : « Émettre » est grisé, le
+  // brouillon reste modifiable et s'émet une fois repassé dans la monnaie de l'entreprise.
+  const foreign = invoice.currency !== organization.currency && kind !== "credit_note";
+  const issueCurrencyLock =
+    draft && foreign
+      ? await lockFor(
+          locale,
+          organization,
+          featureAccess(organization, "multiCurrency"),
+          t("issueCurrencyPlan", { currency: invoice.currency, home: organization.currency }),
+        )
+      : null;
   // Formule gratuite : 10 factures émises par mois ; au-delà, « Émettre » est grisé (le brouillon
   // reste modifiable).
   const issued =
     draft && kind === "invoice" ? await quotaAccess(db(), organization, "invoices") : null;
-  const issueLock = issued
-    ? await lockFor(
-        locale,
-        organization,
-        issued,
-        tp("used.invoices", { limit: issued.limit, plan: issued.tier }),
-      )
-    : null;
+  const issueLock =
+    issueCurrencyLock ??
+    (issued
+      ? await lockFor(
+          locale,
+          organization,
+          issued,
+          tp("used.invoices", { limit: issued.limit, plan: issued.tier }),
+        )
+      : null);
+  // Devis en devise étrangère sans la multidevise : le facturer ou en tirer un acompte créerait
+  // une nouvelle facture en devise. Les deux commandes restent visibles, grisées.
+  const quoteLock =
+    kind === "quote" && foreign && ["issued", "accepted"].includes(invoice.status)
+      ? await lockFor(
+          locale,
+          organization,
+          featureAccess(organization, "multiCurrency"),
+          t("quoteCurrencyPlan", { currency: invoice.currency }),
+        )
+      : null;
   const issueBox = (
     <div className="flex flex-wrap items-center gap-3 border border-line-strong bg-panel px-5 py-4">
       <form action={issueInvoiceAction}>
@@ -410,16 +436,21 @@ export async function DocumentDetailPage({
           t("recurring.currencyPlan", { currency: invoice.currency }),
         )
       : null;
-  const recurringLock =
-    recurringCurrency ??
-    (recurringSlots
-      ? await lockFor(
-          locale,
-          organization,
-          recurringSlots,
-          tp("used.recurring", { limit: recurringSlots.limit, plan: recurringSlots.tier }),
-        )
-      : null);
+  // Cette facture est déjà le modèle d'une récurrence qui tourne : le panneau le dit, sans verrou.
+  const model = recurringSlots
+    ? await runningRecurringOfInvoice(db(), organization, invoice.id)
+    : null;
+  const recurringLock = model
+    ? null
+    : (recurringCurrency ??
+      (recurringSlots
+        ? await lockFor(
+            locale,
+            organization,
+            recurringSlots,
+            tp("used.recurring", { limit: recurringSlots.limit, plan: recurringSlots.tier }),
+          )
+        : null));
   const recurringForm = (
     <form action={createRecurringAction} className="mt-3 grid gap-3 sm:grid-cols-3">
       {hidden}
@@ -452,6 +483,25 @@ export async function DocumentDetailPage({
           {t("recurring.create")}
         </Button>
       </div>
+    </form>
+  );
+  const depositForm = (
+    <form action={depositInvoiceAction} className="flex flex-wrap items-end gap-3 p-5">
+      {hidden}
+      <label className="block">
+        <span className="mb-1 block text-[13px] font-semibold">{t("deposit.percent")}</span>
+        <input
+          name="percent"
+          defaultValue="30"
+          inputMode="decimal"
+          required
+          className="h-10 w-24 border border-line-strong bg-panel px-3 text-[14px]"
+        />
+      </label>
+      <Button type="submit" variant="secondary" data-testid="deposit-create">
+        {t("deposit.create")}
+      </Button>
+      <p className="w-full text-[12px] text-ink-muted">{t("deposit.hint")}</p>
     </form>
   );
   const tc = await getTranslations({ locale, namespace: "app.crmImport" });
@@ -505,6 +555,7 @@ export async function DocumentDetailPage({
               PLANS[tierOf(organization)].quotas[
                 query.error === "recurringLimit" ? "recurring" : "invoices"
               ],
+            currency: invoice.currency,
           })}
           {query.error === "companyIncomplete" ? (
             <>
@@ -630,12 +681,27 @@ export async function DocumentDetailPage({
               </form>
             ) : null}
             {kind === "quote" && ["issued", "accepted"].includes(invoice.status) ? (
-              <form action={convertQuoteAction}>
-                {hidden}
-                <Button type="submit" data-testid="quote-convert">
-                  {tk("convert")}
-                </Button>
-              </form>
+              quoteLock ? (
+                <span className="inline-flex items-center gap-2">
+                  <Button
+                    type="button"
+                    disabled
+                    aria-disabled
+                    aria-describedby="quote-currency-lock-reason"
+                    data-testid="quote-convert"
+                  >
+                    {tk("convert")}
+                  </Button>
+                  {quoteLock.tier ? <ProBadge tier={quoteLock.tier} /> : null}
+                </span>
+              ) : (
+                <form action={convertQuoteAction}>
+                  {hidden}
+                  <Button type="submit" data-testid="quote-convert">
+                    {tk("convert")}
+                  </Button>
+                </form>
+              )
             ) : null}
             {kind === "quote" && ["issued", "declined"].includes(invoice.status) ? (
               <form action={quoteOutcomeAction}>
@@ -679,26 +745,16 @@ export async function DocumentDetailPage({
                   ))}
                 </ul>
               ) : null}
-              {["issued", "accepted"].includes(invoice.status) ? (
-                <form action={depositInvoiceAction} className="flex flex-wrap items-end gap-3 p-5">
-                  {hidden}
-                  <label className="block">
-                    <span className="mb-1 block text-[13px] font-semibold">
-                      {t("deposit.percent")}
-                    </span>
-                    <input
-                      name="percent"
-                      defaultValue="30"
-                      inputMode="decimal"
-                      required
-                      className="h-10 w-24 border border-line-strong bg-panel px-3 text-[14px]"
-                    />
-                  </label>
-                  <Button type="submit" variant="secondary" data-testid="deposit-create">
-                    {t("deposit.create")}
-                  </Button>
-                  <p className="w-full text-[12px] text-ink-muted">{t("deposit.hint")}</p>
-                </form>
+              {quoteLock ? (
+                <ProLock
+                  lock={quoteLock}
+                  testId="quote-currency-lock"
+                  className="border-x-0 border-b-0"
+                >
+                  {depositForm}
+                </ProLock>
+              ) : ["issued", "accepted"].includes(invoice.status) ? (
+                depositForm
               ) : null}
             </section>
           ) : null}
@@ -822,16 +878,30 @@ export async function DocumentDetailPage({
             <details
               className="mb-6 border border-line-strong bg-panel px-5 py-3"
               data-testid="recurring-panel"
-              open={recurringLock ? true : undefined}
             >
+              {/* Fermé d'office : grisé ou non, le panneau ne repousse pas l'aperçu de la pièce. */}
               <summary className="cursor-pointer text-[13px] font-semibold text-accent-dark">
                 {t("recurring.title")}
+                {recurringLock?.tier ? (
+                  <ProBadge tier={recurringLock.tier} className="ml-2 align-middle" />
+                ) : null}
               </summary>
+              {model ? (
+                <p className="mt-3 text-[13px] text-ink-2" data-testid="recurring-model">
+                  {t("recurring.already", { date: formatDate(model.nextDate) })}{" "}
+                  <Link
+                    href="/app/invoices/recurring"
+                    className="font-semibold text-accent-dark underline"
+                  >
+                    {t("recurring.manage")}
+                  </Link>
+                </p>
+              ) : null}
               {recurringLock ? (
                 <ProLock lock={recurringLock} testId="recurring-panel-lock" className="mt-3">
                   <div className="px-3 pb-3">{recurringForm}</div>
                 </ProLock>
-              ) : (
+              ) : model && recurringSlots && Number.isFinite(recurringSlots.limit) ? null : (
                 recurringForm
               )}
               {recurringSlots && Number.isFinite(recurringSlots.limit) ? (
