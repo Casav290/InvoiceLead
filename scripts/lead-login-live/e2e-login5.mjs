@@ -24,9 +24,14 @@
  *   « envoi après expiration ».
  *
  * Comptes : eve+e2e5-<étape>-<horodatage>@example.test.
+ *
+ * Lot 7 : IL-RESET-SHARED-DEVICE, IL-CALLBACK-REPLAY, IL-RETRY-PER-REQUEST, IL-LOGIN-PAGES-BOUNDS, et dans
+ * CRM-TEAM-INVITE-EMAIL la preuve de l'administrateur (X-Lead-Id-Token). Les liens d'import longs d'une même
+ * machine comptent pour un seul réseau (20 pages gardées par heure, login-pages.ts) : entre deux rejeux
+ * rapprochés, vider login_pages (`delete from login_pages where client is not null`).
  */
 import { execFileSync } from "node:child_process";
-import { createHash, randomBytes, randomUUID } from "node:crypto";
+import { createHash, createHmac, hkdfSync, randomBytes, randomUUID } from "node:crypto";
 import { readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import http from "node:http";
 
@@ -232,6 +237,40 @@ async function ilAuthorize(ctx, query, base = CRM) {
   const s = await ctx.request.get(`${IL}/auth/lead/start?${query}`, { maxRedirects: 0 });
   const u = new URL(s.headers().location);
   return { url: `${base}${u.pathname}${u.search}`, next: u.pathname + u.search };
+}
+/**
+ * Jeton d'identité que le Compte Lead (`base`) remet à InvoiceLead pour la personne connectée dans ce
+ * contexte : la preuve que l'administrateur agit lui-même (`X-Lead-Id-Token` de l'API members).
+ */
+async function idTokenOf(ctx, base = CRM) {
+  const verifier = randomBytes(32).toString("base64url");
+  const redirect = `${IL}/auth/lead/callback`;
+  const q = new URLSearchParams({
+    response_type: "code",
+    client_id: "invoicelead",
+    redirect_uri: redirect,
+    scope: "openid email profile lead",
+    state: randomBytes(12).toString("base64url"),
+    nonce: randomBytes(12).toString("base64url"),
+    code_challenge: createHash("sha256").update(verifier).digest("base64url"),
+    code_challenge_method: "S256",
+  });
+  const a = await ctx.request.get(`${base}/oauth/authorize?${q}`, { maxRedirects: 0 });
+  const code = new URL(a.headers().location ?? "/", base).searchParams.get("code");
+  if (!code) throw new Error(`jeton d'identité : ${a.status()} ${a.headers().location}`);
+  const t = await ctx.request.post(`${base}/oauth/token`, {
+    form: {
+      grant_type: "authorization_code",
+      code,
+      redirect_uri: redirect,
+      code_verifier: verifier,
+      client_id: "invoicelead",
+      client_secret: process.env.LEAD_ID_CLIENT_SECRET ?? "lid_test_e2e_secret",
+    },
+  });
+  const out = await t.json().catch(() => ({}));
+  if (!out.id_token) throw new Error(`jeton d'identité : ${t.status()}`);
+  return out.id_token;
 }
 function resetLink(email, next) {
   const token = randomBytes(32).toString("base64url");
@@ -873,16 +912,39 @@ await step(
     await p.locator('[data-testid="invite-accept"]').click();
     await waitAt(p, `${IL}/fr/app`, "S1 second clic");
     expect(accepted(t1) === "t", "S1 : pas acceptée après le clic");
-    // S2 : retour du Compte Lead en erreur pendant la connexion d'une invitation.
+    // S2 : retour du Compte Lead en erreur pendant la connexion d'une invitation. Un code refusé (déjà
+    // échangé, échu) est relancé une fois sans écran : la personne arrive sur l'invitation.
     const t2 = fiduciaryInvite(OWNER, email);
-    await dropCookies(ctx, (n) => n === "il_session");
-    const { url } = await ilAuthorize(ctx, `locale=fr&invite=${t2}`);
-    const back = await ctx.request.get(url, { maxRedirects: 0 });
-    const cb = new URL(back.headers().location);
-    expect(cb.href.startsWith(`${IL}/auth/lead/callback?`), `S2 retour : ${cb.href}`);
-    cb.searchParams.set("code", "falsifie");
+    const callbackFor = async (token) => {
+      await dropCookies(ctx, (n) => n === "il_session");
+      const { url } = await ilAuthorize(ctx, `locale=fr&invite=${token}`);
+      const back = await ctx.request.get(url, { maxRedirects: 0 });
+      const cb = new URL(back.headers().location);
+      expect(cb.href.startsWith(`${IL}/auth/lead/callback?`), `S2 retour : ${cb.href}`);
+      return cb;
+    };
+    const refused = await callbackFor(t2);
+    refused.searchParams.set("code", "falsifie");
+    await p.goto(refused.href);
+    await waitAt(p, `${IL}/fr/invite?token=${t2}`, "S2 code refusé : relance sans écran");
+    // Connexion refusée au Compte Lead : l'écran d'erreur, qui garde l'invitation pour « Réessayer ».
+    const cb = await callbackFor(t2);
+    cb.searchParams.delete("code");
+    cb.searchParams.set("error", "access_denied");
     await p.goto(cb.href);
     await waitAt(p, `${IL}/fr/login?erreur=lead&invite=${t2}`, "S2 écran d'erreur");
+    // En-tête et pied de page de l'écran gardent aussi l'invitation, la langue aussi.
+    for (const zone of ["header", "footer"]) {
+      const hrefs = await p
+        .locator(`${zone} a[href^="/auth/lead/start"]`)
+        .evaluateAll((as) => as.map((a) => a.getAttribute("href")));
+      expect(
+        hrefs.length === 2 && hrefs.every((h) => h.includes(`invite=${t2}`)),
+        `S2 ${zone} : ${hrefs.join(" ")}`,
+      );
+    }
+    const de = await p.locator('header a[hreflang="de"]').getAttribute("href");
+    expect(de === `/de/login?erreur=lead&invite=${t2}`, `S2 langue : ${de}`);
     const retry = p.locator(`a[href*="/auth/lead/start"][href*="invite=${t2}"]`).first();
     await retry.click();
     await waitAt(p, `${IL}/fr/invite?token=${t2}`, "S2 Réessayer");
@@ -1025,6 +1087,46 @@ await step(
     await p.reload();
     await p.getByText(colleague).first().waitFor({ timeout: 10000 });
     await cctx.close();
+    // Le secret d'InvoiceLead seul ne fait plus entrer personne : il faut la preuve de l'administrateur.
+    const cc = await ctx.request.post(`${CRM}/oauth/token`, {
+      form: {
+        grant_type: "client_credentials",
+        client_id: "invoicelead",
+        client_secret: process.env.LEAD_ID_CLIENT_SECRET ?? "lid_test_e2e_secret",
+        scope: "members",
+      },
+    });
+    const bearer = { authorization: `Bearer ${(await cc.json()).access_token}` };
+    const [org, inviter] = crmq(
+      `select account_id || '|' || id from users where email = '${manager}'`,
+    ).split("|");
+    const intruder = mail("intrus");
+    const tries = [
+      ["sans preuve", {}],
+      ["jeton d'une autre personne", { "x-lead-id-token": await idTokenOf(ownCtx) }],
+      ["jeton falsifié", { "x-lead-id-token": "a.b.c" }],
+    ];
+    for (const [label, proof] of tries) {
+      const r = await ctx.request.post(`${CRM}/api/lead-id/v1/members/invite`, {
+        headers: { ...bearer, ...proof },
+        data: { org, inviter, email: intruder, name: "Intrus" },
+      });
+      const body = await r.json().catch(() => ({}));
+      expect(
+        r.status() === 403 && body.error === "inviter_proof",
+        `${label} : ${r.status()} ${body.error}`,
+      );
+    }
+    expect(crmq(`select count(*) from users where email = '${intruder}'`) === "0", "intrus invité");
+    // La portée members n'est donnée qu'à InvoiceLead, ni à Scanlead, ni à ProjectLead, ni par défaut.
+    const holders = crmq(
+      `select string_agg(client_id, ',' order by client_id) from lead_id_clients where 'members' = any(scopes)`,
+    );
+    expect(holders === "invoicelead", `portée members : ${holders}`);
+    const byDefault = crmq(
+      `select coalesce(column_default, '') from information_schema.columns where table_name = 'lead_id_clients' and column_name = 'scopes'`,
+    );
+    expect(!byDefault.includes("members"), `valeur par défaut : ${byDefault}`);
     // Contrôle : une invitation faite dans CRMlead reste celle de CRMlead.
     const direct = mail("coll-crm");
     const r = await ctx.request.post(`${CRM}/api/users`, {
@@ -1109,7 +1211,11 @@ else
           scope: "members",
         },
       });
-      const bearer = { authorization: `Bearer ${(await tok.json()).access_token}` };
+      // La preuve de l'administrateur (son jeton d'identité, comme InvoiceLead l'envoie) : sans elle, 403.
+      const bearer = {
+        authorization: `Bearer ${(await tok.json()).access_token}`,
+        "x-lead-id-token": await idTokenOf(ctx, MAILCAP),
+      };
       // Invitation d'un collègue par InvoiceLead (Réglages → Équipe appelle cette route), dans trois langues.
       const labels = {
         fr: "Choisir mon mot de passe",
@@ -1802,6 +1908,274 @@ await step(
     const plain = await ctx3.request.get(`${IL}/auth/lead/start?locale=fr`, { maxRedirects: 0 });
     expect(plain.headers().location === `${IL}/fr/app`, `sans fresh : ${plain.headers().location}`);
     await Promise.all([ctx.close(), ctx2.close(), ctx3.close()]);
+  },
+);
+
+// ---------- lot 7 (InvoiceLead) : poste partagé, retour rejoué, relance par demande, pages bornées ----------
+/** Personne connectée au Compte Lead dans ce navigateur (son email), ou "". */
+async function leadWho(ctx) {
+  const r = await ctx.request.get(`${CRM}/api/auth/me`);
+  return r.ok() ? ((await r.json().catch(() => null))?.user?.email ?? "") : "";
+}
+/** « personne InvoiceLead / personne Compte Lead » de ce navigateur. */
+const ilAndLead = async (ctx) => `${(await ilWho(ctx)).split("|")[0]} / ${await leadWho(ctx)}`;
+const ilToken = async (ctx) =>
+  (await ctx.cookies()).find((c) => c.name === "il_session")?.value ?? "";
+const sessionGone = (token) =>
+  ilq(`select count(*) from sessions where id = '${sha(decodeURIComponent(token))}'`) === "0";
+const ownOrgOf = (email) =>
+  ilq(
+    `select o.name from organizations o join memberships m on m.organization_id = o.id
+       join users u on u.id = m.user_id where u.email = '${email}' and m.role <> 'fiduciary' limit 1`,
+  );
+/** Connexion au Compte Lead seul, comme l'écran de connexion de CRMlead le fait (onglet à part). */
+const leadLogin = (ctx, email) =>
+  ctx.request.post(`${CRM}/api/auth/login`, {
+    data: { email, password: PASS },
+    headers: { origin: CRM },
+  });
+
+await step(
+  "IL-RESET-SHARED-DEVICE : poste partagé, la session InvoiceLead suit la personne que le Compte Lead vient d'authentifier",
+  async () => {
+    const target = `${IL}/de/app/invoices?status=open`;
+    const startQ = "locale=de&next=%2Fde%2Fapp%2Finvoices%3Fstatus%3Dopen";
+    const tmp = await newCtx(browser, "de-CH", "rsd-a");
+    const A = await signupFromIl(await tmp.newPage(), "de", "rsd-a");
+    await tmp.close();
+    const shared = await newCtx(browser, "de-CH", "rsd");
+    const sp = await shared.newPage();
+    const B = await signupFromIl(sp, "de", "rsd-b");
+    const from = events.length;
+
+    // S1 : A a commencé ailleurs, puis ouvre ici le lien « mot de passe oublié », où B est connectée.
+    const away = await newCtx(browser, "de-CH", "rsd-away");
+    const { next } = await ilAuthorize(away, startQ);
+    await away.close();
+    const tokenB = await ilToken(shared);
+    expect((await ilAndLead(shared)) === `${B} / ${B}`, `S1 avant : ${await ilAndLead(shared)}`);
+    await sp.goto(resetLink(A, next));
+    await sp.fill("#auth-password", PASS);
+    await sp.locator("form button").last().click();
+    await waitAt(sp, target, "S1 arrivée");
+    expect(sp.url() === target, `S1 : ${sp.url()}`);
+    expect((await ilAndLead(shared)) === `${A} / ${A}`, `S1 : ${await ilAndLead(shared)}`);
+    expect(
+      (await ilWho(shared)) === `${A}|${ownOrgOf(A)}`,
+      `S1 : entreprise ${await ilWho(shared)}`,
+    );
+    expect(sessionGone(tokenB), "S1 : la session de B vaut encore");
+
+    // S2 : l'écran de connexion de A est resté ouvert plus de trois heures (cookie de la demande
+    // échu) ; B se connecte entre-temps à InvoiceLead dans un autre onglet ; puis A se connecte.
+    await shared.clearCookies();
+    const screen = await shared.newPage();
+    await screen.goto(target);
+    await waitAt(screen, `${CRM}/login?next=`, "S2 écran de A");
+    const authS = new URL(screen.url()).searchParams.get("next") ?? "";
+    await dropCookies(shared, (n) => n.startsWith("il_lead_login_"));
+    const tabB = await shared.newPage();
+    await tabB.goto(`${IL}/auth/lead/start?locale=de`);
+    await waitAt(tabB, `${CRM}/login?next=`, "S2 écran de B");
+    await passwordLogin(tabB, B);
+    await waitAt(tabB, `${IL}/de/app`, "S2 B connectée");
+    const tokenB2 = await ilToken(shared);
+    // A tape son mot de passe sur son vieil écran : le Compte Lead passe à A et reprend la demande.
+    const lg = await leadLogin(shared, A);
+    expect(lg.ok(), `S2 connexion de A : ${lg.status()}`);
+    await screen.goto(`${CRM}${authS}`);
+    await waitAt(screen, target, "S2 arrivée");
+    expect(screen.url() === target, `S2 : ${screen.url()}`);
+    expect((await ilAndLead(shared)) === `${A} / ${A}`, `S2 : ${await ilAndLead(shared)}`);
+    expect(sessionGone(tokenB2), "S2 : la session de B vaut encore");
+    await tabB.close();
+
+    // V : A a mené sa demande à bout ici (trace « _ok ») ; B se connecte ensuite au Compte Lead
+    // (CRMlead ouvert directement) ; le vieil écran de A reprend la même demande.
+    await shared.clearCookies();
+    const origin = await shared.newPage();
+    const { url: authV } = await ilAuthorize(shared, startQ);
+    await origin.goto(authV);
+    await passwordLogin(origin, A);
+    await waitAt(origin, target, "V : A connectée");
+    expect(
+      (await shared.cookies()).some((c) => c.name.endsWith("_ok")),
+      "V : pas de trace de la demande aboutie",
+    );
+    const lgB = await leadLogin(shared, B);
+    expect(lgB.ok(), `V connexion de B : ${lgB.status()}`);
+    const tokenA = await ilToken(shared);
+    await origin.goto(authV);
+    await waitAt(origin, target, "V : retour de la demande reprise");
+    expect(origin.url() === target, `V : ${origin.url()}`);
+    expect((await ilAndLead(shared)) === `${B} / ${B}`, `V : ${await ilAndLead(shared)}`);
+    expect(sessionGone(tokenA), "V : la session de A vaut encore");
+    neutralSince(from, "rsd");
+    await shared.close();
+  },
+);
+
+await step(
+  "IL-CALLBACK-REPLAY : retour rejoué après une réponse perdue, relance silencieuse sur la page",
+  async () => {
+    const ctx = await newCtx(browser, "fr-CH", "rpl");
+    const p = await ctx.newPage();
+    const email = await signupFromIl(p, "fr", "rpl");
+    const target = `${IL}/fr/app/invoices?status=open`;
+    /**
+     * Retour du Compte Lead (ouvert) dont le serveur a traité la réponse, perdue en route. `keep` : la
+     * session InvoiceLead restée dans le navigateur (le serveur l'a remplacée, le navigateur l'ignore).
+     */
+    const lostReturn = async (query, keep = "") => {
+      await dropCookies(ctx, (n) => n === "il_session");
+      const { url } = await ilAuthorize(ctx, query);
+      if (keep) await ctx.addCookies([{ name: "il_session", value: keep, url: IL }]);
+      const answer = await ctx.request.get(url, { maxRedirects: 0 });
+      const callback = answer.headers().location ?? "";
+      expect(callback.startsWith(`${IL}/auth/lead/callback?code=`), `retour : ${callback}`);
+      const cookie = (await ctx.cookies(callback)).map((c) => `${c.name}=${c.value}`).join("; ");
+      const lost = await fetch(callback, { headers: { cookie }, redirect: "manual" });
+      expect(
+        lost.status === 303,
+        `premier retour : ${lost.status} ${lost.headers.get("location")}`,
+      );
+      expect(
+        (await ctx.cookies()).some(
+          (c) => c.name.startsWith("il_lead_login_") && !c.name.endsWith("_ok"),
+        ),
+        "le cookie de la demande a disparu",
+      );
+      return callback;
+    };
+    for (const withSession of [false, true]) {
+      const keep = withSession ? await ilToken(ctx) : "";
+      const from = events.length;
+      const callback = await lostReturn(
+        "locale=fr&next=%2Ffr%2Fapp%2Finvoices%3Fstatus%3Dopen",
+        keep,
+      );
+      const authorizes = [];
+      const seen = (r) => {
+        if (r.url().startsWith(`${CRM}/oauth/authorize`)) authorizes.push(r.url());
+      };
+      p.on("request", seen);
+      // La personne recharge la page d'erreur du navigateur : le même retour.
+      await p.goto(callback);
+      await waitAt(p, target, `rechargement${withSession ? " (session restée)" : ""}`);
+      p.off("request", seen);
+      expect(p.url() === target, `rechargement : ${p.url()}`);
+      expect(authorizes.length === 1, `${authorizes.length} passages par le Compte Lead`);
+      expect((await ilAndLead(ctx)) === `${email} / ${email}`, `${await ilAndLead(ctx)}`);
+      neutralSince(from, "rpl");
+    }
+    // Une relance déjà faite (state marqué) qui revient rejouée : l'écran d'erreur, sans boucle.
+    const again = await lostReturn("locale=fr&next=%2Ffr%2Fapp%2Fquotes&retry=1");
+    await p.goto(again);
+    await p.waitForURL(at(`${IL}/fr/login?erreur=`), { timeout: 15000 }).catch(() => {});
+    expect(
+      p.url() === `${IL}/fr/login?erreur=lead&next=%2Ffr%2Fapp%2Fquotes`,
+      `relance rejouée : ${p.url()}`,
+    );
+    await ctx.close();
+  },
+);
+
+await step(
+  "IL-RETRY-PER-REQUEST : deux vieux écrans repris à la fois, chacun arrive sur sa page",
+  async () => {
+    const ctx = await newCtx(browser, "fr-CH", "r2t");
+    const setup = await ctx.newPage();
+    await signupFromIl(setup, "fr", "r2t");
+    await setup.close();
+    const from = events.length;
+    /** Deux vieux écrans repris (`keep` : session InvoiceLead restée dans le navigateur). */
+    const pair = async (label, delay, keep = "") => {
+      await dropCookies(ctx, (n) => n === "il_session");
+      const a = await ilAuthorize(ctx, "locale=fr&next=%2Ffr%2Fapp%2Fquotes");
+      const b = await ilAuthorize(ctx, "locale=fr&next=%2Ffr%2Fapp%2Finvoices");
+      await dropCookies(ctx, (n) => n.startsWith("il_lead_login_"));
+      if (keep) await ctx.addCookies([{ name: "il_session", value: keep, url: IL }]);
+      const one = await ctx.newPage();
+      const two = await ctx.newPage();
+      const go = one.goto(a.url).catch(() => {});
+      await sleep(delay);
+      await two.goto(b.url).catch(() => {});
+      await go;
+      await waitAt(one, `${IL}/fr/app/quotes`, `${label} : onglet 1`);
+      await waitAt(two, `${IL}/fr/app/invoices`, `${label} : onglet 2`);
+      expect(!one.url().includes("erreur=") && !two.url().includes("erreur="), label);
+      await one.close();
+      await two.close();
+    };
+    // Plusieurs tours d'affilée, sans rien effacer entre eux (l'ancienne marque durait 120 s).
+    for (const delay of [0, 20, 40, 60, 100, 300]) await pair(`${delay} ms`, delay);
+    // Une relance pendant qu'une session existe, puis une autre sans session, dans les 120 s.
+    await pair("avec session", 0, await ilToken(ctx));
+    await pair("juste après, sans session", 0);
+    neutralSince(from, "r2t");
+    await ctx.close();
+  },
+);
+
+await step(
+  "IL-LOGIN-PAGES-BOUNDS : pages longues sans session, seulement les liens d'import, par réseau",
+  async () => {
+    const SECRET = process.env.IL_SESSION_SECRET ?? "e2e-secret-e2e-secret-e2e-secret-e2e";
+    const keyOf = (ip) =>
+      createHmac("sha256", Buffer.from(hkdfSync("sha256", SECRET, "", "il-lead-login-client", 32)))
+        .update(ip)
+        .digest("base64url")
+        .slice(0, 22);
+    const ipA = `198.51.100.${(stamp % 200) + 20}`;
+    const ipB = `203.0.113.${(stamp % 200) + 20}`;
+    const rowsOf = (ip) =>
+      Number(ilq(`select count(*) from login_pages where client = '${keyOf(ip)}'`));
+    const anon = (next, ip) =>
+      fetch(`${IL}/auth/lead/start?locale=fr&next=${encodeURIComponent(next)}`, {
+        headers: { "x-real-ip": ip },
+        redirect: "manual",
+      });
+    const enc = (o) => Buffer.from(JSON.stringify(o)).toString("base64url");
+    const forged = (i) =>
+      `/fr/app/import/crmlead?d=${enc({
+        v: 1,
+        kind: "quote",
+        lead: { id: `forge-${stamp}-${i}` },
+        contact: { name: "Prospect forgé SA" },
+        lines: [{ description: "y".repeat(400), quantity: 1, unitPriceCents: 100 }],
+      })}`;
+    try {
+      // Recherche longue, `d` quelconque : rien n'est écrit, la demande part quand même.
+      for (const next of [
+        `/fr/app/invoices?q=${randomBytes(1600).toString("base64url")}`,
+        `/fr/app/import/crmlead?d=${randomBytes(1600).toString("base64url")}`,
+      ]) {
+        const r = await anon(next, ipA);
+        expect(r.status === 303, `départ ${r.status}`);
+      }
+      expect(rowsOf(ipA) === 0, `pages quelconques gardées : ${rowsOf(ipA)}`);
+      // Liens d'import valides depuis un même réseau : vingt au plus dans l'heure.
+      for (let i = 0; i < 21; i++) await anon(forged(i), ipA);
+      expect(rowsOf(ipA) === 20, `réseau A : ${rowsOf(ipA)} pages`);
+      // Un autre réseau n'en souffre pas.
+      await anon(forged(100), ipB);
+      expect(rowsOf(ipB) === 1, `réseau B : ${rowsOf(ipB)} pages`);
+      // Le réseau plafonné : son lien n'a plus de référence, mais le cookie de la demande garde la page.
+      const ctx = await newCtx(browser, "fr-CH", "lpb");
+      await ctx.setExtraHTTPHeaders({ "x-real-ip": ipA });
+      const p = await ctx.newPage();
+      await signupFromIl(p, "fr", "lpb");
+      await dropCookies(ctx, (n) => n === "il_session");
+      const link = forged(200);
+      await p.goto(`${IL}${link}`);
+      await p.waitForURL(at(`${IL}/fr/app/import/crmlead?d=`), { timeout: 25000 }).catch(() => {});
+      expect(p.url() === `${IL}${link}`, `réseau plafonné : ${p.url().slice(0, 90)}`);
+      await p.locator('[data-testid="crm-import"]').waitFor({ timeout: 10000 });
+      expect(rowsOf(ipA) === 20, `réseau plafonné : ${rowsOf(ipA)} pages`);
+      await ctx.close();
+    } finally {
+      ilq(`delete from login_pages where client in ('${keyOf(ipA)}', '${keyOf(ipB)}')`);
+    }
   },
 );
 
