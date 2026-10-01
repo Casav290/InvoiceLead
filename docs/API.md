@@ -4,13 +4,13 @@ L'API REST relie InvoiceLead à une boutique en ligne, un outil de gestion ou un
 
 ## Clés
 
-Une clé se crée dans Réglages, API, par un administrateur ou un responsable de l'entreprise. Elle commence par `il_live_` et n'est affichée qu'une fois ; seule son empreinte SHA-256 est gardée. Elle agit au nom de la personne qui l'a créée, tant que cette personne peut facturer dans l'entreprise et que l'entreprise est en Pro+. Dix clés actives au plus, révocables à tout moment.
+Une clé se crée dans Réglages, API, par un administrateur ou un responsable de l'entreprise. Elle commence par `il_live_` et n'est affichée qu'une fois ; seule son empreinte SHA-256 est gardée. Elle agit au nom de la personne qui l'a créée, tant que cette personne peut facturer dans l'entreprise et que l'entreprise est en Pro+. Dix clés actives au plus, révocables à tout moment. Sous Pro+, la page reste visible : les formulaires sont grisés avec la marque Pro+, les clés et adresses existantes restent listées et révocables, et les webhooks en attente patientent jusqu'au retour à Pro+.
 
 ```
 Authorization: Bearer il_live_…
 ```
 
-Réponses d'erreur : `401 {"error":"unauthorized"}` (clé absente, inconnue ou révoquée), `403 {"error":"forbidden"}` (formule ou droits), `404 {"error":"not_found"}`, `422 {"error":"invalid","fields":{"lines":"noLines"}}` avec les mêmes codes que les formulaires, `409` pour un état qui ne permet pas l'action (`notDraft`, `companyIncomplete`, `fxRate`, `too_high`…).
+Réponses d'erreur : `401 {"error":"unauthorized"}` (clé absente, inconnue ou révoquée), `403 {"error":"forbidden"}` (formule ou droits), `403 {"error":"plan_limit"}` (limite de la formule, les mêmes que dans l'application), `404 {"error":"not_found"}`, `422 {"error":"invalid","fields":{"lines":"noLines"}}` avec les mêmes codes que les formulaires, `409` pour un état qui ne permet pas l'action (`notDraft`, `companyIncomplete`, `fxRate`, `too_high`…).
 
 Les montants saisis sont en unités (`"150.00"`), les montants rendus en centimes (`totalCents`), les dates au format `AAAA-MM-JJ`.
 
