@@ -48,7 +48,7 @@ Règles permanentes :
 
 Tests :
 - local : `biome ci`, `tsc`, 161 tests unitaires et 141 e2e passent ;
-- CI : verte sur 9e5cc01 ; à revérifier sur la tête 084635d.
+- CI : verte sur 9e5cc01. Rouge sur b5446d2 : un seul échec sur 141, `tests/e2e/uk.spec.ts:65` (après « post-pending », le journal ne contient pas « 1100 »). Non investigué. Piste : la date du jour (1er octobre, début de trimestre et exercice créé par « fiscal-year-first »), plutôt que la connexion. À regarder en premier, puis vérifier la CI de la tête.
 
 **CRMlead PR #4** (https://github.com/Casav290/crmlead/pull/4, brouillon). Même branche, tête c835719. Pas de CI dans ce dépôt.
 
