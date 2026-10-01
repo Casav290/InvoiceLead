@@ -303,11 +303,32 @@ export async function switchOrganization(
 }
 
 /**
+ * L'accès fiduciaire est-il ouvert dans cette entreprise ? Il fait partie de la formule Pro : tant que
+ * l'entreprise est en formule gratuite, il est suspendu (accessProblem, guard.ts) et la page n'affiche
+ * que l'écran « accès suspendu ». Formule enregistrée, celle que lit la connexion ; une page la relit
+ * au Compte Lead quand elle a plus de 12 h (requireAppSession).
+ */
+async function fiduciaryOpen(database: Db, organizationId: string): Promise<boolean> {
+  const [org] = await database
+    .select({
+      leadPlan: organizations.leadPlan,
+      entitlements: organizations.entitlements,
+      entitlementsAt: organizations.entitlementsAt,
+    })
+    .from(organizations)
+    .where(eq(organizations.id, organizationId))
+    .limit(1);
+  return org !== undefined && featureAccess(org, "fiduciary").allowed;
+}
+
+/**
  * Entreprise où ouvrir la session d'une connexion : la dernière choisie par la personne si elle y
  * travaille comme fiduciaire avec un accès à InvoiceLead, sinon celle de son Compte Lead. Le choix ne
  * vient que de la ligne de la personne, jamais de la requête, et l'appartenance est relue à chaque
  * connexion : une fiduciaire retirée (ou sans accès) revient dans sa propre entreprise, et son choix
- * est oublié. Une entreprise qui n'est pas une fiduciaire n'est jamais reprise : celle-là, c'est le
+ * est oublié. Chez un client revenu en formule gratuite (accès fiduciaire suspendu), elle revient aussi
+ * dans sa propre entreprise, jamais sur l'écran « accès suspendu » ; son choix reste, il resservira au
+ * retour de Pro. Une entreprise qui n'est pas une fiduciaire n'est jamais reprise : celle-là, c'est le
  * Compte Lead qui la donne.
  */
 export async function resumeOrganization(
@@ -318,12 +339,14 @@ export async function resumeOrganization(
   const last = user.lastOrganizationId;
   if (!last || last === leadOrganizationId) return leadOrganizationId;
   const member = await membershipOf(database, last, user.id);
-  if (member && isFiduciary(member) && hasAppAccess(member)) return last;
-  if (!member || !hasAppAccess(member))
+  if (!member || !hasAppAccess(member)) {
     await database
       .update(users)
       .set({ lastOrganizationId: null })
       .where(and(eq(users.id, user.id), eq(users.lastOrganizationId, last)));
+    return leadOrganizationId;
+  }
+  if (isFiduciary(member) && (await fiduciaryOpen(database, last))) return last;
   return leadOrganizationId;
 }
 
@@ -335,18 +358,28 @@ const DOCUMENT_PAGE =
 
 /**
  * Entreprise qui possède cette pièce, si la personne y est membre avec un accès à InvoiceLead (celles
- * entre lesquelles elle peut passer, switchOrganization), et si elle y est fiduciaire. Undefined pour
- * une pièce inconnue ou d'une entreprise où elle n'a rien à voir : rien n'est révélé, rien n'est accordé.
+ * entre lesquelles elle peut passer, switchOrganization), si elle y est fiduciaire, et si cet accès
+ * fiduciaire est suspendu (client revenu en formule gratuite : y passer ne mènerait qu'à l'écran
+ * « accès suspendu »). Undefined pour une pièce inconnue ou d'une entreprise où elle n'a rien à voir :
+ * rien n'est révélé, rien n'est accordé.
  */
 export async function documentOrganization(
   database: Db,
   userId: string,
   documentId: string,
-): Promise<{ id: string; name: string; fiduciary: boolean } | undefined> {
+): Promise<{ id: string; name: string; fiduciary: boolean; suspended: boolean } | undefined> {
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(documentId))
     return undefined;
   const [row] = await database
-    .select({ id: organizations.id, name: organizations.name })
+    .select({
+      id: organizations.id,
+      name: organizations.name,
+      plan: {
+        leadPlan: organizations.leadPlan,
+        entitlements: organizations.entitlements,
+        entitlementsAt: organizations.entitlementsAt,
+      },
+    })
     .from(invoices)
     .innerJoin(organizations, eq(invoices.organizationId, organizations.id))
     .where(eq(invoices.id, documentId))
@@ -354,7 +387,13 @@ export async function documentOrganization(
   if (!row) return undefined;
   const member = await membershipOf(database, row.id, userId);
   if (!member || !hasAppAccess(member)) return undefined;
-  return { ...row, fiduciary: isFiduciary(member) };
+  const fiduciary = isFiduciary(member);
+  return {
+    id: row.id,
+    name: row.name,
+    fiduciary,
+    suspended: fiduciary && !featureAccess(row.plan, "fiduciary").allowed,
+  };
 }
 
 /**
@@ -363,7 +402,8 @@ export async function documentOrganization(
  *   pour une fiduciaire qui travaillait chez un client ;
  * - la fiche d'une pièce : l'entreprise qui la possède, si c'est celle du Compte Lead ou un client où
  *   la personne travaille comme fiduciaire avec un accès (documentOrganization) ; un lien « ouvrir dans
- *   InvoiceLead » de CRMlead arrive ainsi sur la pièce, pas sur une page introuvable ;
+ *   InvoiceLead » de CRMlead arrive ainsi sur la pièce, pas sur une page introuvable. Un client revenu
+ *   en formule gratuite (accès fiduciaire suspendu) n'est ni ouvert ni gardé : la pièce dit pourquoi ;
  * - sinon resumeOrganization (la fiduciaire revient chez le client où elle travaillait).
  * L'entreprise choisie par la page est gardée comme la dernière choisie, comme un changement à la main.
  */
@@ -386,7 +426,8 @@ export async function organizationForPage(
   const document = wanted ? DOCUMENT_PAGE.exec(wanted)?.[1] : undefined;
   if (document) {
     const owner = await documentOrganization(database, user.id, document);
-    if (owner && (owner.id === leadOrganizationId || owner.fiduciary)) return remember(owner.id);
+    if (owner && !owner.suspended && (owner.id === leadOrganizationId || owner.fiduciary))
+      return remember(owner.id);
   }
   return resumeOrganization(database, user, leadOrganizationId);
 }

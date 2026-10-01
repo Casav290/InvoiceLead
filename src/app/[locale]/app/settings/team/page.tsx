@@ -58,6 +58,11 @@ export default async function TeamPage({ params, searchParams }: Props) {
           }),
         )
       : null;
+  // Ajout d'une personne (administrateur seulement) : toutes les places prises, la commande reste
+  // visible, grisée, avec la marque et le lien de la formule qui en donne davantage ; le serveur
+  // refuse de même (inviteMemberAction, seatLimit).
+  const inviter = editable && membership.role === "admin";
+  const inviteLock = inviter && withSeat.size >= seats ? seatsLock : null;
   const notice = q.saved ? t("saved") : q.removed ? t("removed") : null;
 
   return (
@@ -127,14 +132,18 @@ export default async function TeamPage({ params, searchParams }: Props) {
             );
           })}
         </ul>
-        {editable && membership.role === "admin" ? (
+        {inviteLock ? (
+          <ProLock lock={inviteLock} testId="seats-lock" className="border-x-0 border-b-0">
+            <MemberInvite locale={locale} />
+          </ProLock>
+        ) : inviter ? (
           <MemberInvite locale={locale} />
         ) : (
           <p className="border-t border-line px-5 py-3 text-[13px] text-ink-muted">
             {t("addHint")}
           </p>
         )}
-        {seatsLock ? (
+        {seatsLock && !inviteLock ? (
           <LockNote
             lock={seatsLock}
             testId="seats-lock"

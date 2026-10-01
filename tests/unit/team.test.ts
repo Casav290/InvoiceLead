@@ -219,6 +219,14 @@ describe("fiduciaire", () => {
     // Session échue, nouvelle connexion : chez le client.
     expect(await resume()).toBe(client.organization.id);
 
+    // Client revenu en formule gratuite : accès suspendu. La connexion s'ouvre chez elle, jamais sur
+    // l'écran « accès suspendu » ; son choix reste et resservira au retour de Pro.
+    await attachLeadIdentity(db, claims());
+    expect(await resume()).toBe(own);
+    expect(await lastOf()).toBe(client.organization.id);
+    await attachLeadIdentity(db, claims({ lead: pro }));
+    expect(await resume()).toBe(client.organization.id);
+
     // Revenue d'elle-même dans sa propre entreprise : elle y reste.
     await switchOrganization(db, session.session.id, fid.user.id, own);
     expect(await resume()).toBe(own);
@@ -323,13 +331,42 @@ describe("fiduciaire", () => {
     expect(await documentOrganization(db, fid.user.id, clientQuote)).toMatchObject({
       id: client.organization.id,
       fiduciary: true,
+      suspended: false,
     });
     expect(await documentOrganization(db, fid.user.id, ownQuote)).toMatchObject({
       id: own,
       fiduciary: false,
+      suspended: false,
     });
     expect(await documentOrganization(db, fid.user.id, strangerQuote)).toBeUndefined();
     expect(await documentOrganization(db, fid.user.id, "pas-un-uuid")).toBeUndefined();
+
+    // Client revenu en formule gratuite (accès fiduciaire suspendu) : sa pièce n'ouvre plus la session
+    // chez lui, ni ne la garde comme la dernière choisie ; sa propre pièce s'ouvre toujours chez elle.
+    const lastOf = async () =>
+      (
+        await db
+          .select({ last: users.lastOrganizationId })
+          .from(users)
+          .where(eq(users.id, fid.user.id))
+      )[0]?.last ?? null;
+    await attachLeadIdentity(db, claims());
+    expect(await documentOrganization(db, fid.user.id, clientQuote)).toMatchObject({
+      id: client.organization.id,
+      fiduciary: true,
+      suspended: true,
+    });
+    expect(await page(`/fr/app/quotes/${ownQuote}`)).toBe(own);
+    expect(await page(`/fr/app/quotes/${clientQuote}`)).toBe(own);
+    expect(await lastOf()).toBe(own);
+    // Revenue chez le client avant sa résiliation : ni la pièce ni la reprise ne l'y ramènent.
+    await toClient();
+    expect(await page(`/fr/app/quotes/${clientQuote}`)).toBe(own);
+    expect(await page()).toBe(own);
+    expect(await lastOf()).toBe(client.organization.id);
+    // Revenu à Pro : la pièce rouvre la session chez le client.
+    await attachLeadIdentity(db, claims({ lead: pro }));
+    expect(await page(`/fr/app/quotes/${clientQuote}`)).toBe(client.organization.id);
   });
 
   it("reconnexion : une entreprise qui n'est pas celle d'une fiduciaire n'est jamais reprise", async () => {

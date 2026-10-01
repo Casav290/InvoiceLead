@@ -30,6 +30,11 @@ test("équipe : rôle d'un utilisateur, invitation et accès d'une fiduciaire", 
 
   await page.goto("/fr/app/settings/team");
   await expect(page.getByTestId("seats")).toHaveText("2 sur 2 places utilisées");
+  // Toutes les places prises : l'ajout d'une personne reste visible, grisé, marqué Pro+.
+  const seatsLock = page.getByTestId("seats-lock");
+  await expect(seatsLock).toHaveAttribute("data-locked", "proplus");
+  await expect(seatsLock).toContainText("Pro+ compte 5 places.");
+  await expect(seatsLock.getByTestId("member-invite-submit")).toBeDisabled();
   const bobRow = page.getByTestId("team-member").filter({ hasText: "Bob Muster" });
   await bobRow.getByLabel("Dans InvoiceLead").selectOption({ label: "Factures seulement" });
   await bobRow.getByRole("button", { name: "Enregistrer" }).click();

@@ -23,7 +23,8 @@
  * - ONLY=<motif> : seulement les étapes dont le nom correspond ; DEBUG_NAV=1 : navigations de l'étape
  *   « envoi après expiration ».
  *
- * Comptes : eve+e2e5-<étape>-<horodatage>@example.test.
+ * Comptes : eve+e2e5-<étape>-<horodatage>@example.test. Le propriétaire (owner), qui invite les fiduciaires,
+ * passe en Pro+ dès son inscription : l'accès fiduciaire fait partie de la formule Pro.
  *
  * Lot 7 : IL-RESET-SHARED-DEVICE, IL-CALLBACK-REPLAY, IL-RETRY-PER-REQUEST, IL-LOGIN-PAGES-BOUNDS, et dans
  * CRM-TEAM-INVITE-EMAIL la preuve de l'administrateur (X-Lead-Id-Token). Les liens d'import longs d'une même
@@ -356,6 +357,24 @@ const browser = await chromium.launch();
 const ownCtx = await newCtx(browser, "fr-CH", "own");
 const ownPage = await ownCtx.newPage();
 const OWNER = await signupFromIl(ownPage, "fr", "owner");
+// L'accès fiduciaire fait partie de la formule Pro : en formule gratuite (113), l'acceptation d'une
+// invitation s'arrête sur « plan » et l'accès d'une fiduciaire est suspendu. Le propriétaire passe en
+// Pro+, relue par InvoiceLead à une reconnexion silencieuse.
+crmq(
+  `insert into lead_subscriptions (account_id, source_app, external_id, app_plan, plan_code, status)
+   select account_id, 'scanlead', 'e2e5-owner-${stamp}', 'pro_plus', 'pro_plus', 'active' from users
+    where email = '${OWNER}' on conflict do nothing`,
+);
+await dropCookies(ownCtx, (n) => n === "il_session");
+await ownPage.goto(`${IL}/fr/app`);
+await waitAt(ownPage, `${IL}/fr/app`, "propriétaire relu en Pro+");
+const ownerRank = ilq(
+  `select coalesce(o.entitlements #>> '{plan,rank}', case when o.lead_plan = 'free' then '0' else '1' end)
+     from organizations o join memberships m on m.organization_id = o.id join users u on u.id = m.user_id
+    where u.email = '${OWNER}' and m.role <> 'fiduciary' limit 1`,
+);
+if (!(Number(ownerRank) >= 1))
+  throw new Error(`propriétaire : formule de rang ${ownerRank} dans InvoiceLead, Pro attendu`);
 
 await step("SW-OAUTH : hors connexion, l'écran neutre et jamais l'accueil de CRMlead", async () => {
   const ctx = await newCtx(browser, "de-CH", "sw");

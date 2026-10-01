@@ -1,4 +1,5 @@
 import { type BrowserContext, expect, test } from "@playwright/test";
+import { closeDb, setPlanRank } from "./db";
 import { APP, LEAD, login } from "./helpers";
 
 /**
@@ -8,6 +9,8 @@ import { APP, LEAD, login } from "./helpers";
  */
 
 const INVITE = "I".repeat(43);
+
+test.afterAll(() => closeDb());
 
 async function dropCookies(context: BrowserContext, drop: (name: string) => boolean) {
   const keep = (await context.cookies()).filter((c) => !drop(c.name));
@@ -629,6 +632,24 @@ test("fiduciaire : la reconnexion revient chez le client, sur la même fiche", a
   await fidu.goto("/fr/app/contacts");
   await expect(fidu.getByRole("link", { name: "Client du client SA" }).first()).toBeVisible();
 
+  // Client revenu en formule gratuite : l'accès fiduciaire est suspendu. La reconnexion l'ouvre dans
+  // sa propre entreprise, sur la page demandée, jamais sur l'écran « accès suspendu » ; au retour de
+  // Pro, elle revient chez le client.
+  const relogin = async () => {
+    await dropCookies(ctx, (name) => name === "il_session");
+    await nextIsFidu();
+    await fidu.goto("/fr/app/contacts");
+    await expect(fidu).toHaveURL(`${APP}/fr/app/contacts`);
+  };
+  await setPlanRank(`org-cli-${run}`, 0);
+  await relogin();
+  await expect(fidu.getByTestId("org-name")).toHaveText("Fidu Reprise SA");
+  await expect(fidu.getByRole("link", { name: "Client du client SA" })).toHaveCount(0);
+  await setPlanRank(`org-cli-${run}`, 1);
+  await relogin();
+  await expect(fidu.getByTestId("org-name")).toHaveText("Client Reprise Sàrl");
+  await expect(fidu.getByRole("link", { name: "Client du client SA" }).first()).toBeVisible();
+
   // Le client retire la fiduciaire : la reconnexion la ramène chez elle, sans accès au client.
   await page.goto("/fr/app/settings/team");
   await page.getByTestId("fiduciary-remove").click();
@@ -925,5 +946,33 @@ test("fiduciaire : un lien de son propre CRMlead et ses pièces s'ouvrent dans s
   // Une pièce du client ouverte par le client : pas de passage proposé chez qui n'y a pas accès.
   await page.goto(quote);
   await expect(page.getByTestId("document-elsewhere")).toHaveCount(0);
+
+  // Pièce du client, client revenu en formule gratuite (accès fiduciaire suspendu) : le lien ouvre la
+  // session dans son entreprise, jamais sur l'écran « accès suspendu », et la pièce dit pourquoi elle
+  // ne s'ouvre pas, sans proposer d'y passer.
+  const clientLink = `/fr/app/import/crmlead?d=${Buffer.from(
+    JSON.stringify({
+      v: 1,
+      kind: "quote",
+      lead: { id: `lead-cli-${run}`, title: "Révision" },
+      contact: { name: "Prospect du client SA" },
+      lines: [{ description: "Révision", quantity: 1, unitPriceCents: 50000 }],
+    }),
+  ).toString("base64url")}`;
+  await page.goto(clientLink);
+  await page.getByTestId("crm-import-confirm").click();
+  await page.waitForURL(/\/fr\/app\/quotes\/[0-9a-f-]{36}\?from=crmlead$/);
+  const clientQuote = new URL(page.url()).pathname;
+  await toClient();
+  await setPlanRank(`org-cl2-${run}`, 0);
+  await expire();
+  await fidu.goto(clientQuote);
+  await expect(fidu).toHaveURL(`${APP}${clientQuote}`);
+  await expect(fidu.getByTestId("org-name")).toHaveText("Fidu Lien SA");
+  const suspended = fidu.getByTestId("document-elsewhere");
+  await expect(suspended).toHaveAttribute("data-suspended", "true");
+  await expect(suspended).toContainText("Client Lien Sàrl est en formule gratuite.");
+  await expect(fidu.getByTestId("document-elsewhere-switch")).toHaveCount(0);
+  await expect(fidu.getByTestId("document-status")).toHaveCount(0);
   await ctx.close();
 });

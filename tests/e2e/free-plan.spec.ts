@@ -254,14 +254,13 @@ test("formule gratuite : chaque fonction Pro reste visible, grisée, avec sa mar
   await page.goto("/fr/app/settings/team");
   await expectLocked(page.getByTestId("fiduciary-lock"), "Pro", "formules Pro et Pro+");
   await expect(page.getByTestId("fiduciary-invite")).toBeDisabled();
-  // Places : 1 en formule gratuite ; la marque Pro et le lien disent qu'il y en a davantage.
+  // Places : 1 en formule gratuite, prise par l'administrateur. L'ajout d'une personne reste visible,
+  // grisé, avec la marque Pro et le lien qui disent qu'il y en a davantage.
   const seats = page.getByTestId("seats-lock");
-  await expect(seats.getByTestId("pro-badge")).toHaveText("Pro");
-  await expect(seats).toContainText("Pro compte 2 places et Pro+ en compte 5.");
-  await expect(seats.getByRole("link", { name: "Passer à Pro" })).toHaveAttribute(
-    "href",
-    /^https:\/\//,
-  );
+  await expectLocked(seats, "Pro", "Pro compte 2 places et Pro+ en compte 5.");
+  await expect(seats.getByTestId("member-invite")).toBeVisible();
+  await expect(page.getByTestId("member-invite-submit")).toBeDisabled();
+  await expect(seats.getByLabel("Adresse e-mail")).toBeDisabled();
   expect(await traitNetIssues(page)).toEqual([]);
 });
 

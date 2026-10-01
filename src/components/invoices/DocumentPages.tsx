@@ -66,16 +66,35 @@ const ERRORS = [
   "plan",
 ];
 
-/** Pièce d'une autre entreprise où la personne travaille : le passage vers elle, rien d'autre. */
+/**
+ * Pièce d'une autre entreprise où la personne travaille : le passage vers elle, rien d'autre. Chez un
+ * client revenu en formule gratuite, l'accès fiduciaire est suspendu : pas de passage, qui ne mènerait
+ * qu'à l'écran « accès suspendu », mais sa raison, écrite ici.
+ */
 async function DocumentElsewhere({
   locale,
   organization,
   next,
 }: {
   locale: string;
-  organization: { id: string; name: string };
+  organization: { id: string; name: string; suspended: boolean };
   next: string;
 }) {
+  if (organization.suspended) {
+    const tn = await getTranslations({ locale, namespace: "app.noAccess" });
+    return (
+      <div
+        className="mx-auto max-w-3xl px-4 py-10 sm:px-8"
+        data-testid="document-elsewhere"
+        data-suspended="true"
+      >
+        <h1 className="text-[22px] leading-tight">{tn("fiduciaryTitle")}</h1>
+        <p className="mt-2 text-[15px] text-ink-2">
+          {tn("fiduciaryBody", { org: organization.name })}
+        </p>
+      </div>
+    );
+  }
   const t = await getTranslations({ locale, namespace: "app.orgSwitch" });
   return (
     <div className="mx-auto max-w-3xl px-4 py-10 sm:px-8" data-testid="document-elsewhere">
