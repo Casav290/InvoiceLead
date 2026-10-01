@@ -4,6 +4,7 @@ import { getTranslations } from "next-intl/server";
 import { LeadLoginPanel } from "@/components/public/LeadLoginPanel";
 import { PublicFooter } from "@/components/public/PublicFooter";
 import { PublicHeader } from "@/components/public/PublicHeader";
+import { routing } from "@/i18n/routing";
 import { invitePath, safeInvite, safeNext } from "@/server/auth/login-cookie";
 import { getSession } from "@/server/auth/session";
 
@@ -40,13 +41,23 @@ export default async function Page({
       `/auth/lead/start?${new URLSearchParams({ locale, ...(invite ? { invite } : next ? { next } : {}) })}`,
     );
   }
+  // Tous les liens de l'écran ramènent à la page demandée (ou à l'invitation), pas seulement le bouton :
+  // « Connexion » et « Créer un compte » de l'en-tête et du pied de page, et le choix de la langue, qui
+  // garde l'écran d'erreur et la même page dans l'autre langue.
+  const back: Record<string, string> = invite ? { invite } : next ? { next } : {};
+  const langQuery = Object.fromEntries(
+    routing.locales.map((l) => {
+      const moved = next ? safeNext(next.replace(/^\/(de|fr|en)\//, `/${l}/`)) : undefined;
+      return [l, { erreur: error, ...(invite ? { invite } : moved ? { next: moved } : {}) }];
+    }),
+  );
   return (
     <div className="flex min-h-screen flex-col">
-      <PublicHeader />
+      <PublicHeader back={back} langQuery={langQuery} />
       <main className="flex flex-1 items-start px-4 py-14 sm:py-20">
         <LeadLoginPanel mode="login" locale={locale} error={error} next={next} invite={invite} />
       </main>
-      <PublicFooter />
+      <PublicFooter back={back} />
     </div>
   );
 }

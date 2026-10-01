@@ -1,6 +1,11 @@
 import { cookies } from "next/headers";
 import { type NextRequest, NextResponse } from "next/server";
-import { AFTER_LOGOUT_COOKIE, SESSION_COOKIE } from "@/lib/cookies";
+import {
+  AFTER_LOGOUT_COOKIE,
+  LOGIN_COOKIE,
+  LOGIN_COOKIE_PATH,
+  SESSION_COOKIE,
+} from "@/lib/cookies";
 import { invitePath, pickLocale, safeInvite } from "@/server/auth/login-cookie";
 import { cookieOptions, destroySession } from "@/server/auth/session";
 import { db } from "@/server/db";
@@ -35,5 +40,11 @@ export async function POST(request: NextRequest) {
     response.cookies.set(AFTER_LOGOUT_COOKIE, invitePath(locale, invite), cookieOptions(600));
   else if (request.cookies.has(AFTER_LOGOUT_COOKIE))
     response.cookies.set(AFTER_LOGOUT_COOKIE, "", cookieOptions(0));
+  // Traces des demandes abouties (« _ok ») : elles ne servaient qu'à la session qui part. Sur un poste
+  // partagé, la personne suivante n'hérite d'aucune.
+  const trace = new RegExp(`^${LOGIN_COOKIE}_[A-Za-z0-9_-]{16}_ok$`);
+  for (const c of request.cookies.getAll())
+    if (trace.test(c.name))
+      response.cookies.set(c.name, "", { ...cookieOptions(0), path: LOGIN_COOKIE_PATH });
   return response;
 }

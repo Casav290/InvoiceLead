@@ -2595,6 +2595,12 @@
           "primaryKey": false,
           "notNull": true
         },
+        "client": {
+          "name": "client",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp with time zone",
@@ -2604,6 +2610,27 @@
         }
       },
       "indexes": {
+        "login_pages_client_idx": {
+          "name": "login_pages_client_idx",
+          "columns": [
+            {
+              "expression": "client",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
         "login_pages_created_idx": {
           "name": "login_pages_created_idx",
           "columns": [

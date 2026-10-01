@@ -4,6 +4,7 @@ import type { Db } from "./db";
 import {
   auditLog,
   fiduciaryInvitations,
+  invoices,
   memberships,
   organizations,
   sessions,
@@ -248,7 +249,12 @@ export async function cancelInvitation(
 /** Entreprises où la personne peut travailler : la sienne et celles de ses clients (fiduciaire). */
 export async function listUserOrganizations(database: Db, userId: string) {
   return database
-    .select({ id: organizations.id, name: organizations.name, role: memberships.role })
+    .select({
+      id: organizations.id,
+      name: organizations.name,
+      role: memberships.role,
+      appRole: memberships.appRole,
+    })
     .from(memberships)
     .innerJoin(organizations, eq(memberships.organizationId, organizations.id))
     .where(
@@ -304,4 +310,68 @@ export async function resumeOrganization(
       .set({ lastOrganizationId: null })
       .where(and(eq(users.id, user.id), eq(users.lastOrganizationId, last)));
   return leadOrganizationId;
+}
+
+/** Lien d'import de CRMlead : il vient toujours du CRMlead de la personne, donc de son entreprise. */
+const IMPORT_PAGE = /^\/(?:de|fr|en)\/app\/import\/crmlead(?:[/?]|$)/;
+/** Fiche d'une pièce (devis, facture, note de crédit) : « /fr/app/quotes/<uuid>… ». */
+const DOCUMENT_PAGE =
+  /^\/(?:de|fr|en)\/app\/(?:quotes|invoices|credit-notes)\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})(?:[/?]|$)/i;
+
+/**
+ * Entreprise qui possède cette pièce, si la personne y est membre avec un accès à InvoiceLead (celles
+ * entre lesquelles elle peut passer, switchOrganization), et si elle y est fiduciaire. Undefined pour
+ * une pièce inconnue ou d'une entreprise où elle n'a rien à voir : rien n'est révélé, rien n'est accordé.
+ */
+export async function documentOrganization(
+  database: Db,
+  userId: string,
+  documentId: string,
+): Promise<{ id: string; name: string; fiduciary: boolean } | undefined> {
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(documentId))
+    return undefined;
+  const [row] = await database
+    .select({ id: organizations.id, name: organizations.name })
+    .from(invoices)
+    .innerJoin(organizations, eq(invoices.organizationId, organizations.id))
+    .where(eq(invoices.id, documentId))
+    .limit(1);
+  if (!row) return undefined;
+  const member = await membershipOf(database, row.id, userId);
+  if (!member || !hasAppAccess(member)) return undefined;
+  return { ...row, fiduciary: isFiduciary(member) };
+}
+
+/**
+ * Entreprise où ouvrir la session d'une connexion, d'après la page demandée :
+ * - un lien d'import de CRMlead : l'entreprise du Compte Lead (le lead vient de son CRMlead), même
+ *   pour une fiduciaire qui travaillait chez un client ;
+ * - la fiche d'une pièce : l'entreprise qui la possède, si c'est celle du Compte Lead ou un client où
+ *   la personne travaille comme fiduciaire avec un accès (documentOrganization) ; un lien « ouvrir dans
+ *   InvoiceLead » de CRMlead arrive ainsi sur la pièce, pas sur une page introuvable ;
+ * - sinon resumeOrganization (la fiduciaire revient chez le client où elle travaillait).
+ * L'entreprise choisie par la page est gardée comme la dernière choisie, comme un changement à la main.
+ */
+export async function organizationForPage(
+  database: Db,
+  user: { id: string; lastOrganizationId: string | null },
+  leadOrganizationId: string,
+  wanted?: string,
+): Promise<string> {
+  const remember = async (organizationId: string) => {
+    if (user.lastOrganizationId === organizationId) return organizationId;
+    if (organizationId === leadOrganizationId && !user.lastOrganizationId) return organizationId;
+    await database
+      .update(users)
+      .set({ lastOrganizationId: organizationId })
+      .where(eq(users.id, user.id));
+    return organizationId;
+  };
+  if (wanted && IMPORT_PAGE.test(wanted)) return remember(leadOrganizationId);
+  const document = wanted ? DOCUMENT_PAGE.exec(wanted)?.[1] : undefined;
+  if (document) {
+    const owner = await documentOrganization(database, user.id, document);
+    if (owner && (owner.id === leadOrganizationId || owner.fiduciary)) return remember(owner.id);
+  }
+  return resumeOrganization(database, user, leadOrganizationId);
 }

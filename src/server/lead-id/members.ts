@@ -10,6 +10,11 @@ import { env } from "../env";
  * par l'administrateur qui la lance (`inviter`, son identifiant Lead) : le Compte Lead vérifie qu'il
  * est bien administrateur de l'organisation, et que la formule a une place libre.
  *
+ * Le secret de l'application ne suffit pas : l'administrateur prouve qu'il agit. Son jeton d'identité,
+ * émis par le Compte Lead pour InvoiceLead à sa connexion (gardé dans sa session), part dans l'en-tête
+ * `X-Lead-Id-Token` ; le Compte Lead en vérifie la signature, l'application, la date, et que son `sub`
+ * et son `org` sont bien `inviter` et `org` (docs/LEAD-ID.md de CRMlead, étape 10).
+ *
  * Jeton d'application à part (portée `members`) : la copie du kit leadId.ts ne se modifie pas ici.
  */
 
@@ -18,6 +23,8 @@ export type MemberInvite = {
   org: string;
   /** Identifiant Lead (claims.sub) de l'administrateur qui invite. */
   inviter: string;
+  /** Jeton d'identité de l'administrateur (sa session) : la preuve qu'il agit lui-même. */
+  idToken: string;
   email: string;
   name: string;
   locale: "de" | "fr" | "en";
@@ -70,12 +77,16 @@ async function membersToken(): Promise<string | null> {
 
 type Answer = { status: number; body: Record<string, unknown> };
 
-async function post(path: string, body: unknown): Promise<Answer | null> {
+async function post(path: string, body: unknown, idToken: string): Promise<Answer | null> {
   const token = await membersToken();
   if (!token) return null;
   const r = await fetch(`${issuer()}${path}`, {
     method: "POST",
-    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+      "X-Lead-Id-Token": idToken,
+    },
     body: JSON.stringify(body),
     signal: AbortSignal.timeout(TIMEOUT_MS),
   });
@@ -90,6 +101,8 @@ function refused(answer: Answer): InviteOutcome {
   if (status === 402)
     return { status: "seatLimit", max: Number.isInteger(body.max) ? Number(body.max) : null };
   if (status === 409) return { status: "alreadyMember" };
+  // `forbidden` (pas administrateur) ou `inviter_proof` (jeton d'identité refusé, session d'avant le
+  // changement de rôle) : seul l'administrateur, connecté, invite.
   if (status === 403) return { status: "adminOnly" };
   if (status === 429) return { status: "tooMany" };
   console.error("[lead-id] members", status, typeof body.error === "string" ? body.error : "");
@@ -97,19 +110,21 @@ function refused(answer: Answer): InviteOutcome {
 }
 
 export async function inviteMember(invite: MemberInvite): Promise<InviteOutcome> {
+  const { idToken, ...body } = invite;
+  if (!idToken) return { status: "failed" };
   try {
-    const answer = await post("/api/lead-id/v1/members/invite", invite);
+    const answer = await post("/api/lead-id/v1/members/invite", body, idToken);
     if (!answer) return { status: "failed" };
     if (answer.status >= 200 && answer.status < 300)
       return answer.body.emailSent === false ? { status: "notSent" } : { status: "invited" };
     // Déjà invitée mais jamais arrivée (email perdu, lien échu) : on renvoie l'invitation.
     const { id, active } = answer.body;
     if (answer.status === 409 && active === false && typeof id === "string" && id) {
-      const again = await post(`/api/lead-id/v1/members/${encodeURIComponent(id)}/invite`, {
-        org: invite.org,
-        inviter: invite.inviter,
-        locale: invite.locale,
-      });
+      const again = await post(
+        `/api/lead-id/v1/members/${encodeURIComponent(id)}/invite`,
+        { org: invite.org, inviter: invite.inviter, locale: invite.locale },
+        idToken,
+      );
       if (!again) return { status: "failed" };
       if (again.status >= 200 && again.status < 300) return { status: "resent" };
       if (again.status === 502) return { status: "notSent" };

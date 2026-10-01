@@ -1357,7 +1357,9 @@
     "orgSwitch": {
       "label": "Company",
       "switch": "Switch company",
-      "client": "client"
+      "client": "client",
+      "goTo": "Switch to {org}",
+      "documentElsewhere": "This document belongs to the company {org}. Switch to it to open the document."
     },
     "team": {
       "title": "Team",
@@ -1450,7 +1452,9 @@
       "forbidden": "Your role does not allow you to create invoices.",
       "createQuote": "Create quote",
       "createInvoice": "Create invoice",
-      "fromCrm": "Draft created from CRMlead. Check it, then issue it."
+      "fromCrm": "Draft created from CRMlead. Check it, then issue it.",
+      "switchHint": "This lead comes from your CRMlead: create the document in a company where you bill. You will then come back to this page.",
+      "switchTo": "Switch to {org}"
     },
     "feedback": {
       "title": "Give feedback",

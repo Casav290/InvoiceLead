@@ -121,7 +121,10 @@ export async function inviteMemberAction(
   const parsed = memberInput.safeParse(typed);
   if (!parsed.success) return { ...typed, error: "invalid" };
   const { email, name } = parsed.data;
-  if (!organization.leadOrg || !user.leadSub) return { ...typed, error: "failed" };
+  // Le Compte Lead exige la preuve que l'administrateur agit : son jeton d'identité, gardé à la
+  // connexion. Une session sans lui ne peut pas inviter.
+  const idToken = session.session.idToken;
+  if (!organization.leadOrg || !user.leadSub || !idToken) return { ...typed, error: "failed" };
   const { members } = await listTeam(db(), organization.id);
   if (members.some((m) => m.email.toLowerCase() === email))
     return { ...typed, error: "alreadyMember" };
@@ -132,6 +135,7 @@ export async function inviteMemberAction(
   const outcome = await inviteMember({
     org: organization.leadOrg,
     inviter: user.leadSub,
+    idToken,
     email,
     name,
     locale,

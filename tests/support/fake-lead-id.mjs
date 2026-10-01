@@ -7,9 +7,16 @@
  *   POST /test/next-user  {sub,email,name,org,org_name,org_role,access,plan,status}  choisit la prochaine personne
  *   POST /resend/emails   imite l'API d'envoi de Resend (clé « re_test ») ; GET /test/emails les relit
  *   POST /api/lead-id/v1/members/invite  invitation dans l'organisation ; GET /test/member-invites les relit
+ *     (comme le Compte Lead : jeton d'identité de l'administrateur dans X-Lead-Id-Token, sinon 403)
  *   POST /ai/chat/completions  faux assistant comptable : chaque sortie d'argent va en frais bancaires
  */
-import { createHash, createSign, generateKeyPairSync, randomBytes } from "node:crypto";
+import {
+  createHash,
+  createSign,
+  createVerify,
+  generateKeyPairSync,
+  randomBytes,
+} from "node:crypto";
 import { createServer } from "node:http";
 
 const PORT = Number(process.env.FAKE_LEAD_ID_PORT ?? 4010);
@@ -50,6 +57,32 @@ function jwt(claims) {
     .sign(privateKey)
     .toString("base64url");
   return `${head}.${body}.${sig}`;
+}
+
+/**
+ * Preuve que l'administrateur agit (membres) : son jeton d'identité, signé ici, émis pour cette
+ * application, de moins de douze heures, au nom de `inviter` dans `org`. Même règle que le Compte Lead.
+ */
+function inviterProven(req, body) {
+  const token = req.headers["x-lead-id-token"];
+  if (typeof token !== "string") return false;
+  const [head, payload, sig] = token.split(".");
+  if (!head || !payload || !sig) return false;
+  const signed = createVerify("RSA-SHA256")
+    .update(`${head}.${payload}`)
+    .verify(publicKey, Buffer.from(sig, "base64url"));
+  if (!signed) return false;
+  const c = JSON.parse(Buffer.from(payload, "base64url").toString("utf8"));
+  const aud = Array.isArray(c.aud) ? c.aud : [c.aud];
+  const age = Math.floor(Date.now() / 1000) - Number(c.iat);
+  return (
+    c.iss === ISSUER &&
+    aud.includes(CLIENT_ID) &&
+    age >= -60 &&
+    age <= 12 * 3600 &&
+    c.sub === body.inviter &&
+    c.org === body.org
+  );
 }
 
 function send(res, status, body, headers = {}) {
@@ -208,6 +241,7 @@ createServer(async (req, res) => {
     if (req.headers.authorization !== `Bearer ${MEMBERS_TOKEN}`)
       return send(res, 401, { error: "invalid_token" });
     const body = JSON.parse((await readBody(req)) || "{}");
+    if (!inviterProven(req, body)) return send(res, 403, { error: "inviter_proof" });
     if (String(body.email).startsWith("plein"))
       return send(res, 402, { error: "seat_limit", max: 5 });
     if (String(body.email).startsWith("actif"))
@@ -227,6 +261,7 @@ createServer(async (req, res) => {
     if (req.headers.authorization !== `Bearer ${MEMBERS_TOKEN}`)
       return send(res, 401, { error: "invalid_token" });
     const body = JSON.parse((await readBody(req)) || "{}");
+    if (!inviterProven(req, body)) return send(res, 403, { error: "inviter_proof" });
     memberResends.push({ id: decodeURIComponent(resend[1]), ...body });
     return send(res, 200, { ok: true });
   }

@@ -10,6 +10,7 @@ import {
   openLogin,
   PENDING_BYTES,
   readDone,
+  restartable,
   returnParams,
   safeFinished,
   safeNext,
@@ -121,6 +122,33 @@ describe("demande de connexion dans le state", () => {
     expect(openState(sealState({ locale: "fr" }, SECRET), SECRET)?.fresh).toBeUndefined();
   });
 
+  it("garde la marque de relance de cette demande, et seulement elle", () => {
+    const again = openState(
+      sealState({ locale: "de", next: "/de/app/invoices", fresh: true, retry: true }, SECRET),
+      SECRET,
+    );
+    expect(again).toMatchObject({
+      locale: "de",
+      next: "/de/app/invoices",
+      fresh: true,
+      retry: true,
+    });
+    expect(openState(sealState({ locale: "de" }, SECRET), SECRET)?.retry).toBeUndefined();
+  });
+
+  it("seuls un state d'une autre demande et un code déjà échangé relancent", () => {
+    expect(restartable("lead_id:state_mismatch")).toBe(true);
+    expect(restartable("lead_id:invalid_grant")).toBe(true);
+    for (const why of [
+      "lead_id:access_denied",
+      "lead_id:invalid_id_token",
+      "lead_id:auth_too_old",
+      "lead_id:invalid_grant_x",
+      "Error 23505",
+    ])
+      expect(restartable(why)).toBe(false);
+  });
+
   it("donne à chaque demande un nom de cookie à elle", () => {
     const names = new Set(
       Array.from({ length: 2000 }, () => loginCookieName(sealState({ locale: "fr" }, SECRET))),
@@ -137,8 +165,9 @@ describe("demande de connexion dans le state", () => {
         next: importLink(NEXT_MAX),
         ref: "R".repeat(22),
         fresh: true as const,
+        retry: true as const,
       },
-      { locale: "fr" as const, invite: LONG_INVITE, fresh: true as const },
+      { locale: "fr" as const, invite: LONG_INVITE, fresh: true as const, retry: true as const },
     ];
     for (const request of worst) {
       expect(safeNext(request.next ?? "/fr/app")).toBeDefined();

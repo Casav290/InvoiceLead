@@ -1357,7 +1357,9 @@
     "orgSwitch": {
       "label": "Unternehmen",
       "switch": "Unternehmen wechseln",
-      "client": "Kunde"
+      "client": "Kunde",
+      "goTo": "Zu {org} wechseln",
+      "documentElsewhere": "Dieser Beleg gehört zum Unternehmen {org}. Wechseln Sie dorthin, um ihn zu öffnen."
     },
     "team": {
       "title": "Team",
@@ -1450,7 +1452,9 @@
       "forbidden": "Ihre Rolle erlaubt keine Rechnungen.",
       "createQuote": "Offerte erstellen",
       "createInvoice": "Rechnung erstellen",
-      "fromCrm": "Entwurf aus CRMlead erstellt. Prüfen und dann ausstellen."
+      "fromCrm": "Entwurf aus CRMlead erstellt. Prüfen und dann ausstellen.",
+      "switchHint": "Dieser Lead kommt aus Ihrem CRMlead: Erstellen Sie den Beleg in einem Unternehmen, in dem Sie fakturieren. Danach kommen Sie auf diese Seite zurück.",
+      "switchTo": "Zu {org} wechseln"
     },
     "feedback": {
       "title": "Feedback geben",

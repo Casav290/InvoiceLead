@@ -185,25 +185,132 @@ test("un retour sans demande, juste après une relance, montre l'écran d'erreur
   page,
   context,
 }) => {
-  await context.addCookies([
-    { name: "il_login_retry", value: "1", url: "http://localhost:3100/auth/lead/callback" },
-  ]);
-  await page.goto("/auth/lead/callback?code=x&state=y");
+  // Demande née d'une relance (son `state` le porte), revenue elle aussi sans son cookie.
+  const start = await page.request.get("/auth/lead/start?locale=de&retry=1", { maxRedirects: 0 });
+  const state = new URL(start.headers().location ?? "").searchParams.get("state") ?? "";
+  await context.clearCookies();
+  await page.goto(`/auth/lead/callback?code=x&state=${state}`);
   await expect(page).toHaveURL(/\/de\/login\?erreur=session$/);
   await expect(page.getByText("Die Anmeldeanfrage ist abgelaufen")).toBeVisible();
 });
 
 test("un état falsifié au retour est refusé", async ({ page, context }) => {
-  await context.addCookies([
-    { name: "il_login_retry", value: "1", url: "http://localhost:3100/auth/lead/callback" },
-  ]);
   await page.goto("/de/login?erreur=session");
-  // Départ réel (cookie posé), mais retour avec un autre `state`.
+  // Départ réel (cookie posé), mais retour avec un autre `state` : une relance, aucune session.
   const start = await page.request.get("/auth/lead/start?locale=de", { maxRedirects: 0 });
   expect(start.status()).toBe(303);
-  await page.goto("/auth/lead/callback?code=abc&state=faux");
-  // Aucune demande ne porte ce `state` : refusé, sans session ouverte.
-  await expect(page).toHaveURL(/\/de\/login\?erreur=(lead|session)$/);
+  const back = await page.request.get("/auth/lead/callback?code=abc&state=faux", {
+    maxRedirects: 0,
+  });
+  expect(back.status()).toBe(303);
+  expect(back.headers().location).toBe("http://localhost:3100/auth/lead/start?locale=de&retry=1");
+  expect(back.headers()["set-cookie"] ?? "").not.toContain("il_session=");
+  expect((await context.cookies()).some((c) => c.name === "il_session")).toBe(false);
+  // La relance revient elle aussi sans sa demande : l'écran d'erreur, plus de relance.
+  const again = await page.request.get("/auth/lead/start?locale=de&retry=1", { maxRedirects: 0 });
+  const state = new URL(again.headers().location ?? "").searchParams.get("state") ?? "";
+  await context.clearCookies();
+  await page.goto(`/auth/lead/callback?code=abc&state=${state}`);
+  await expect(page).toHaveURL(/\/de\/login\?erreur=session$/);
+  expect((await context.cookies()).some((c) => c.name === "il_session")).toBe(false);
+});
+
+test("deux retours sans leur demande, à la suite : chacun a sa relance, aucun écran d'erreur", async ({
+  browser,
+}) => {
+  const context = await browser.newContext({ locale: "fr-CH" });
+  const states: string[] = [];
+  for (const next of ["/fr/app/quotes", "/fr/app/invoices"]) {
+    const s = await context.request.get(
+      `/auth/lead/start?locale=fr&next=${encodeURIComponent(next)}`,
+      { maxRedirects: 0 },
+    );
+    states.push(new URL(s.headers().location ?? "").searchParams.get("state") ?? "");
+  }
+  // Deux vieux écrans du Compte Lead repris à la fois : leurs cookies de demande ont disparu.
+  await context.clearCookies();
+  for (const [i, next] of ["%2Ffr%2Fapp%2Fquotes", "%2Ffr%2Fapp%2Finvoices"].entries()) {
+    const back = await context.request.get(`/auth/lead/callback?code=x&state=${states[i]}`, {
+      maxRedirects: 0,
+    });
+    expect(back.headers().location).toBe(
+      `http://localhost:3100/auth/lead/start?locale=fr&next=${next}&retry=1`,
+    );
+  }
+  const one = await context.newPage();
+  const two = await context.newPage();
+  await Promise.all([
+    one.goto(`/auth/lead/callback?code=x&state=${states[0]}`),
+    two.goto(`/auth/lead/callback?code=x&state=${states[1]}`),
+  ]);
+  await expect(one).toHaveURL(/\/fr\/app\/quotes$/);
+  await expect(two).toHaveURL(/\/fr\/app\/invoices$/);
+  // L'ancienne marque commune, restée d'une version précédente, n'est plus lue.
+  await context.clearCookies();
+  await context.addCookies([
+    { name: "il_login_retry", value: "1", domain: "localhost", path: "/auth/lead" },
+  ]);
+  await one.goto(`/auth/lead/callback?code=x&state=${states[0]}`);
+  await expect(one).toHaveURL(/\/fr\/app\/quotes$/);
+  expect((await context.cookies()).some((c) => c.name === "il_login_retry")).toBe(false);
+  await context.close();
+});
+
+test("écran d'erreur : en-tête, pied de page et langue gardent la page demandée", async ({
+  page,
+}) => {
+  const next = "/fr/app/quotes?status=draft&q=Dupont";
+  const enc = encodeURIComponent(next);
+  const deNext = encodeURIComponent("/de/app/quotes?status=draft&q=Dupont");
+  await page.goto(`/fr/login?erreur=lead&next=${enc}`);
+  const header = page.locator("header");
+  const footer = page.locator("footer");
+  for (const zone of [header, footer]) {
+    await expect(zone.locator(`a[href="/auth/lead/start?locale=fr&next=${enc}"]`)).toHaveCount(1);
+    await expect(
+      zone.locator(`a[href="/auth/lead/start?locale=fr&signup=1&next=${enc}"]`),
+    ).toHaveCount(1);
+  }
+  const de = header.getByRole("link", { name: "de", exact: true });
+  await expect(de).toHaveAttribute("href", `/de/login?erreur=lead&next=${deNext}`);
+  await de.click();
+  await expect(page).toHaveURL(`http://localhost:3100/de/login?erreur=lead&next=${deNext}`);
+  await expect(page.getByTestId("lead-login")).toHaveAttribute(
+    "href",
+    `/auth/lead/start?locale=de&next=${deNext}`,
+  );
+  await page.locator("header").getByRole("link", { name: "Anmelden", exact: true }).click();
+  await expect(page).toHaveURL(/\/de\/app\/quotes\?status=draft&q=Dupont$/);
+
+  // Invitation : tous les liens la gardent, la langue aussi.
+  const invite = "J".repeat(43);
+  await page.context().clearCookies();
+  await page.goto(`/fr/login?erreur=lead&invite=${invite}`);
+  for (const zone of [page.locator("header"), page.locator("footer")]) {
+    await expect(zone.locator(`a[href="/auth/lead/start?locale=fr&invite=${invite}"]`)).toHaveCount(
+      1,
+    );
+    await expect(
+      zone.locator(`a[href="/auth/lead/start?locale=fr&signup=1&invite=${invite}"]`),
+    ).toHaveCount(1);
+  }
+  await expect(
+    page.locator("header").getByRole("link", { name: "en", exact: true }),
+  ).toHaveAttribute("href", `/en/login?erreur=lead&invite=${invite}`);
+
+  // Ailleurs, rien ne change : liens simples, langue sans recherche.
+  await page.goto("/fr/pricing");
+  await expect(
+    page.locator("header").getByRole("link", { name: "de", exact: true }),
+  ).toHaveAttribute("href", "/de/pricing");
+  await expect(page.locator('header a[href="/auth/lead/start?locale=fr"]')).toHaveCount(1);
+  const plain = await page.request.get("/de/login", { maxRedirects: 0 });
+  expect(plain.headers().location ?? "").toContain("/auth/lead/start?locale=de");
+  // Écran d'erreur de l'inscription : la langue garde l'erreur.
+  await page.goto("/fr/signup?erreur=lead");
+  await expect(
+    page.locator("header").getByRole("link", { name: "de", exact: true }),
+  ).toHaveAttribute("href", "/de/signup?erreur=lead");
 });
 
 test("un chemin encodé ne contourne pas le filtre du proxy", async ({ page }) => {
@@ -213,8 +320,11 @@ test("un chemin encodé ne contourne pas le filtre du proxy", async ({ page }) =
   expect(res.headers().location ?? "").toContain("/de/login");
 });
 
-test("déconnexion au clavier depuis le menu", async ({ page }) => {
+test("déconnexion au clavier depuis le menu", async ({ page, context }) => {
   await login(page, "de");
+  const traces = async () =>
+    (await context.cookies()).filter((c) => /^il_lead_login_.{16}_ok$/.test(c.name)).length;
+  expect(await traces()).toBe(1);
   await page.getByTestId("user-menu").focus();
   await page.keyboard.press("Enter");
   await expect(page.getByTestId("logout")).toBeVisible();
@@ -222,6 +332,8 @@ test("déconnexion au clavier depuis le menu", async ({ page }) => {
   await expect(page.getByTestId("logout")).toBeFocused();
   await page.keyboard.press("Enter");
   await expect(page).toHaveURL(/\/de$/);
+  // La personne suivante sur ce poste n'hérite d'aucune trace de demande aboutie.
+  expect(await traces()).toBe(0);
 });
 
 test("une adresse inconnue donne une page 404 traduite", async ({ page }) => {

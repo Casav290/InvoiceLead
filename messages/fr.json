@@ -1357,7 +1357,9 @@
     "orgSwitch": {
       "label": "Entreprise",
       "switch": "Changer d'entreprise",
-      "client": "client"
+      "client": "client",
+      "goTo": "Passer dans {org}",
+      "documentElsewhere": "Cette pièce appartient à l'entreprise {org}. Passez-y pour l'ouvrir."
     },
     "team": {
       "title": "Équipe",
@@ -1450,7 +1452,9 @@
       "forbidden": "Votre rôle ne permet pas de créer des factures.",
       "createQuote": "Créer le devis",
       "createInvoice": "Créer la facture",
-      "fromCrm": "Brouillon créé depuis CRMlead. Vérifiez-le, puis émettez-le."
+      "fromCrm": "Brouillon créé depuis CRMlead. Vérifiez-le, puis émettez-le.",
+      "switchHint": "Ce lead vient de votre CRMlead : créez la pièce dans une entreprise où vous facturez. Vous revenez ensuite sur cette page.",
+      "switchTo": "Passer dans {org}"
     },
     "feedback": {
       "title": "Donner mon avis",

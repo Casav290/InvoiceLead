@@ -42,7 +42,7 @@ test("demande sans son cookie : la reconnexion garde la page et la langue", asyn
   });
   expect(back.status()).toBe(303);
   expect(back.headers().location).toBe(
-    `${APP}/auth/lead/start?locale=fr&next=%2Ffr%2Fapp%2Fquotes%3Fstatus%3Ddraft`,
+    `${APP}/auth/lead/start?locale=fr&next=%2Ffr%2Fapp%2Fquotes%3Fstatus%3Ddraft&retry=1`,
   );
   // Jusqu'au bout : la relance passe par le Compte Lead ouvert et arrive sur la page.
   await context.clearCookies();
@@ -56,7 +56,7 @@ test("demande sans son cookie : l'invitation est reprise", async ({ context }) =
   const back = await context.request.get(`/auth/lead/callback?code=x&state=${state}`, {
     maxRedirects: 0,
   });
-  expect(back.headers().location).toBe(`${APP}/auth/lead/start?locale=fr&invite=${INVITE}`);
+  expect(back.headers().location).toBe(`${APP}/auth/lead/start?locale=fr&invite=${INVITE}&retry=1`);
 });
 
 test("demande ouverte dans un navigateur d'une autre langue : la langue demandée reste", async ({
@@ -70,7 +70,7 @@ test("demande ouverte dans un navigateur d'une autre langue : la langue demandé
       maxRedirects: 0,
     });
     expect(back.headers().location).toBe(
-      `${APP}/auth/lead/start?locale=de&next=%2Fde%2Fapp%2Finvoices`,
+      `${APP}/auth/lead/start?locale=de&next=%2Fde%2Fapp%2Finvoices&retry=1`,
     );
     const page = await other.newPage();
     await other.clearCookies();
@@ -85,8 +85,8 @@ test("échec au retour pendant une invitation : « Réessayer » reprend l'invit
   context,
 }) => {
   const { state } = await startState(context, `locale=fr&invite=${INVITE}`);
-  // Code refusé par le Compte Lead (échange impossible) : écran d'erreur.
-  await page.goto(`/auth/lead/callback?code=falsifie&state=${state}`);
+  // Connexion refusée au Compte Lead : écran d'erreur.
+  await page.goto(`/auth/lead/callback?error=access_denied&state=${state}`);
   await expect(page).toHaveURL(new RegExp(`/fr/login\\?erreur=lead&invite=${INVITE}$`));
   await expect(page.getByTestId("lead-login")).toHaveAttribute(
     "href",
@@ -365,7 +365,7 @@ test("lien d'import long, retour sans le cookie de la demande : la page entière
     maxRedirects: 0,
   });
   expect(back.headers().location).toBe(
-    `${APP}/auth/lead/start?${new URLSearchParams({ locale: "fr", next: link })}`,
+    `${APP}/auth/lead/start?${new URLSearchParams({ locale: "fr", next: link, retry: "1" })}`,
   );
   await context.clearCookies();
   await page.goto(`/auth/lead/callback?code=x&state=${state}`);
@@ -480,7 +480,8 @@ test("entrée fraîche du Compte Lead : jamais la session InvoiceLead d'une autr
   const { authorize } = await startState(context, "locale=fr&fresh=1");
   const answer = await context.request.get(authorize.toString(), { maxRedirects: 0 });
   const callback = new URL(answer.headers().location ?? "");
-  callback.searchParams.set("code", "falsifie");
+  callback.searchParams.delete("code");
+  callback.searchParams.set("error", "access_denied");
   await page.goto(callback.toString());
   await expect(page).toHaveURL(/\/fr\/login\?erreur=lead/);
   await expect(page.getByTestId("lead-login")).toBeVisible();
@@ -639,5 +640,205 @@ test("fiduciaire : la reconnexion revient chez le client, sur la même fiche", a
   await expect(fidu).toHaveURL(`${APP}/fr/app/contacts`);
   await expect(fidu.getByTestId("org-name")).toHaveText("Fidu Reprise SA");
   await expect(fidu.getByRole("link", { name: "Client du client SA" })).toHaveCount(0);
+  await ctx.close();
+});
+
+test("poste partagé : un retour sans sa demande ne reprend jamais la session d'une autre personne", async ({
+  browser,
+  page,
+  context,
+}) => {
+  const run = Date.now();
+  // B est connectée à InvoiceLead (et au Compte Lead) sur le poste partagé.
+  await login(page, "de", {
+    sub: `sub-shb-${run}`,
+    email: `shb-${run}@atelier.test`,
+    name: "Personne B",
+    org: `org-shb-${run}`,
+    org_name: "Poste B GmbH",
+  });
+  const sessionB = (await context.cookies()).find((c) => c.name === "il_session")?.value ?? "";
+  // A a commencé sa connexion ailleurs : son cookie de demande n'est pas sur ce poste.
+  const elsewhere = await browser.newContext();
+  const { state } = await startState(
+    elsewhere,
+    "locale=de&next=%2Fde%2Fapp%2Finvoices%3Fstatus%3Dopen",
+  );
+  await elsewhere.close();
+  // A ouvre ici son lien « mot de passe oublié » : le Compte Lead l'authentifie, elle, et rend un code.
+  await page.request.post(`${LEAD}/test/next-user`, {
+    data: {
+      sub: `sub-sha-${run}`,
+      email: `sha-${run}@atelier.test`,
+      name: "Personne A",
+      org: `org-sha-${run}`,
+      org_name: "Poste A GmbH",
+    },
+  });
+  const back = await context.request.get(`/auth/lead/callback?code=x&state=${state}`, {
+    maxRedirects: 0,
+  });
+  expect(back.headers().location).toBe(
+    `${APP}/auth/lead/start?locale=de&next=%2Fde%2Fapp%2Finvoices%3Fstatus%3Dopen&fresh=1&retry=1`,
+  );
+  await page.goto(`/auth/lead/callback?code=x&state=${state}`);
+  await expect(page).toHaveURL(`${APP}/de/app/invoices?status=open`);
+  await expect(page.getByTestId("user-menu")).toHaveAttribute("aria-label", "Personne A");
+  // La session de B ne vaut plus rien.
+  const probe = await browser.newContext();
+  await probe.addCookies([{ name: "il_session", value: sessionB, url: `${APP}/` }]);
+  const old = await probe.request.get("/de/app", { maxRedirects: 0 });
+  expect(old.headers().location).toContain("/auth/lead/start");
+  await probe.close();
+
+  // Même personne, sa session à elle : la relance la ramène sur sa page, comme elle-même.
+  await page.request.post(`${LEAD}/test/next-user`, {
+    data: {
+      sub: `sub-sha-${run}`,
+      email: `sha-${run}@atelier.test`,
+      name: "Personne A",
+      org: `org-sha-${run}`,
+      org_name: "Poste A GmbH",
+    },
+  });
+  const mine = await browser.newContext();
+  const second = await startState(mine, "locale=de&next=%2Fde%2Fapp%2Fquotes");
+  await mine.close();
+  await page.goto(`/auth/lead/callback?code=x&state=${second.state}`);
+  await expect(page).toHaveURL(`${APP}/de/app/quotes`);
+  await expect(page.getByTestId("user-menu")).toHaveAttribute("aria-label", "Personne A");
+});
+
+test("retour rejoué après une réponse perdue : relance silencieuse, jamais l'écran d'erreur", async ({
+  page,
+  context,
+}) => {
+  const run = Date.now();
+  await page.request.post(`${LEAD}/test/next-user`, {
+    data: { sub: `sub-rep-${run}`, email: `rep-${run}@atelier.test`, name: "Rejoué" },
+  });
+  const cookieHeader = async (url: string) =>
+    (await context.cookies(url)).map((c) => `${c.name}=${c.value}`).join("; ");
+  const replay = async (query: string) => {
+    const { authorize } = await startState(context, query);
+    const answer = await context.request.get(authorize.toString(), { maxRedirects: 0 });
+    const callback = answer.headers().location ?? "";
+    // Le serveur reçoit le retour et échange le code, mais sa réponse n'arrive jamais au navigateur.
+    const lost = await fetch(callback, {
+      headers: { cookie: await cookieHeader(callback) },
+      redirect: "manual",
+    });
+    expect(lost.status).toBe(303);
+    // La personne recharge la page d'erreur du navigateur : le même retour, son cookie toujours là.
+    return callback;
+  };
+  await page.goto(await replay("locale=fr&next=%2Ffr%2Fapp%2Finvoices%3Fstatus%3Dopen"));
+  await expect(page).toHaveURL(`${APP}/fr/app/invoices?status=open`);
+  // Une relance déjà faite qui échoue encore : l'écran d'erreur, sans boucle.
+  await context.clearCookies();
+  await page.goto(await replay("locale=fr&next=%2Ffr%2Fapp%2Fquotes&retry=1"));
+  await expect(page).toHaveURL(`${APP}/fr/login?erreur=lead&next=%2Ffr%2Fapp%2Fquotes`);
+});
+
+test("fiduciaire : un lien de son propre CRMlead et ses pièces s'ouvrent dans son entreprise", async ({
+  browser,
+  page,
+}) => {
+  const run = Date.now();
+  await login(page, "fr", {
+    sub: `sub-cl2-${run}`,
+    email: `cl2-${run}@atelier.test`,
+    org: `org-cl2-${run}`,
+    org_name: "Client Lien Sàrl",
+    plan: "pro",
+  });
+  await page.goto("/fr/app/settings/team");
+  const fiduEmail = `fidu-lien-${run}@fidu.test`;
+  await page.getByLabel("Adresse e-mail de la fiduciaire").fill(fiduEmail);
+  await page.getByTestId("fiduciary-invite").click();
+  const link = new URL(await page.getByTestId("invite-link").inputValue());
+
+  const ctx = await browser.newContext();
+  const fidu = await ctx.newPage();
+  const asFidu = {
+    sub: `sub-fidu-lien-${run}`,
+    email: fiduEmail,
+    org: `org-fidu-lien-${run}`,
+    org_name: "Fidu Lien SA",
+  };
+  const nextIsFidu = () => fidu.request.post(`${LEAD}/test/next-user`, { data: asFidu });
+  const toClient = async () => {
+    await fidu.goto("/fr/app");
+    await fidu.getByTestId("org-switcher").locator("summary").click();
+    await fidu.getByRole("button", { name: "Client Lien Sàrl" }).click();
+    await expect(fidu.getByTestId("org-name")).toHaveText("Client Lien Sàrl");
+  };
+  const expire = async () => {
+    const keep = (await ctx.cookies()).filter((c) => c.name !== "il_session");
+    await ctx.clearCookies();
+    await ctx.addCookies(keep);
+    await nextIsFidu();
+  };
+  await nextIsFidu();
+  await fidu.goto(`${link.pathname}${link.search}`);
+  await fidu.getByRole("link", { name: "Se connecter avec mon Compte Lead" }).click();
+  await fidu.waitForURL(/\/fr\/invite\?token=/);
+  await fidu.getByTestId("invite-accept").click();
+  await fidu.waitForURL(/\/fr\/app\/accounting\?welcome=fiduciary/);
+  await expect(fidu.getByTestId("org-name")).toHaveText("Client Lien Sàrl");
+
+  const d = Buffer.from(
+    JSON.stringify({
+      v: 1,
+      kind: "quote",
+      lead: { id: `lead-fid-${run}`, title: "Audit annuel" },
+      contact: { name: "Prospect de la fiduciaire SA" },
+      lines: [{ description: "Audit annuel", quantity: 1, unitPriceCents: 90000 }],
+    }),
+  ).toString("base64url");
+  const importLink = `/fr/app/import/crmlead?d=${d}`;
+
+  // Session ouverte chez le client : le lien propose de passer dans son entreprise, et y revient.
+  await fidu.goto(importLink);
+  await expect(fidu.getByTestId("crm-import-confirm")).toBeDisabled();
+  await fidu
+    .getByTestId("crm-import-switch")
+    .getByRole("button", { name: "Passer dans Fidu Lien SA" })
+    .click();
+  await fidu.waitForURL(`${APP}${importLink}`);
+  await expect(fidu.getByTestId("org-name")).toHaveText("Fidu Lien SA");
+  await expect(fidu.getByTestId("crm-import-confirm")).toBeEnabled();
+
+  // Session échue alors qu'elle travaillait chez le client : le lien s'ouvre dans son entreprise.
+  await toClient();
+  await expire();
+  await fidu.goto(importLink);
+  await expect(fidu).toHaveURL(`${APP}${importLink}`);
+  await expect(fidu.getByTestId("org-name")).toHaveText("Fidu Lien SA");
+  await fidu.getByTestId("crm-import-confirm").click();
+  await fidu.waitForURL(/\/fr\/app\/quotes\/[0-9a-f-]{36}\?from=crmlead$/);
+  const quote = new URL(fidu.url()).pathname;
+
+  // Sa propre pièce (lien « ouvrir dans InvoiceLead » de CRMlead), session échue chez le client.
+  await toClient();
+  await expire();
+  await fidu.goto(quote);
+  await expect(fidu).toHaveURL(`${APP}${quote}`);
+  await expect(fidu.getByTestId("org-name")).toHaveText("Fidu Lien SA");
+  await expect(fidu.getByTestId("document-status")).toBeVisible();
+
+  // Session ouverte chez le client : la pièce propose de passer dans son entreprise, sans rien montrer.
+  await toClient();
+  await fidu.goto(quote);
+  await expect(fidu.getByTestId("document-elsewhere")).toContainText("Fidu Lien SA");
+  await expect(fidu.getByTestId("document-status")).toHaveCount(0);
+  await fidu.getByTestId("document-elsewhere-switch").click();
+  await fidu.waitForURL(`${APP}${quote}`);
+  await expect(fidu.getByTestId("org-name")).toHaveText("Fidu Lien SA");
+  await expect(fidu.getByTestId("document-status")).toBeVisible();
+
+  // Une pièce du client ouverte par le client : pas de passage proposé chez qui n'y a pas accès.
+  await page.goto(quote);
+  await expect(page.getByTestId("document-elsewhere")).toHaveCount(0);
   await ctx.close();
 });

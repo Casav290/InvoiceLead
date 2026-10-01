@@ -12,7 +12,7 @@ import {
   sealLogin,
   stalePending,
 } from "@/server/auth/login-cookie";
-import { savePage } from "@/server/auth/login-pages";
+import { clientKey, savePage } from "@/server/auth/login-pages";
 import { nextForState, sealState } from "@/server/auth/login-state";
 import { cookieOptions, findSession } from "@/server/auth/session";
 import { db } from "@/server/db";
@@ -42,6 +42,10 @@ export async function GET(request: NextRequest) {
   // écran puisqu'il est ouvert : la session locale suit alors son identité (callback). Rien n'est
   // effacé ici : n'importe quel site peut ouvrir cette adresse.
   const fresh = request.nextUrl.searchParams.get("fresh") === "1";
+  // Relance automatique d'un retour sans sa demande (callback) : la nouvelle demande le porte, pour
+  // qu'un second retour sans demande montre l'écran d'erreur au lieu de relancer encore. Posé par un
+  // autre site, il ne fait que retirer cette relance-là ; il ne donne jamais de session.
+  const retry = request.nextUrl.searchParams.get("retry") === "1";
 
   const current = (await cookies()).get(SESSION_COOKIE)?.value;
   if (!fresh && current && (await findSession(db(), current))) {
@@ -52,8 +56,11 @@ export async function GET(request: NextRequest) {
   const login = startLogin({ locale, ...(signup ? { prompt: "create" as const } : {}) });
   // Page trop longue pour le `state` (lien d'import de CRMlead) : gardée côté serveur, le `state`
   // en porte la référence (login-pages.ts). Elle revient entière même sans le cookie de la demande.
+  // Écriture sans session : plafonnée par réseau (clientKey) et au total.
   const long = next !== undefined && nextForState(next) !== next;
-  const ref = long ? await savePage(db(), next, SESSION_SECRET) : undefined;
+  const ref = long
+    ? await savePage(db(), next, SESSION_SECRET, clientKey(request.headers, SESSION_SECRET))
+    : undefined;
   // La demande (langue, page, invitation) part dans le `state`, chiffrée : elle revient même sans
   // ce cookie (login-state.ts). Le cookie garde ce qui prouve que le retour est le sien.
   const state = sealState(
@@ -63,6 +70,7 @@ export async function GET(request: NextRequest) {
       ...(next ? { next } : {}),
       ...(fresh ? { fresh: true as const } : {}),
       ...(ref ? { ref } : {}),
+      ...(retry ? { retry: true as const } : {}),
     },
     SESSION_SECRET,
   );

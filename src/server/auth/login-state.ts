@@ -34,6 +34,12 @@ export type LoginRequest = {
   fresh?: true;
   /** Référence de la page entière quand elle est trop longue pour le `state` (login-pages.ts). */
   ref?: string;
+  /**
+   * Demande née d'une relance automatique (callback) : pas de seconde relance, le retour suivant sans
+   * sa demande montre l'écran d'erreur. Propre à la demande, et non au navigateur : deux onglets qui
+   * reprennent chacun une vieille demande ont chacun leur relance.
+   */
+  retry?: true;
 };
 
 /** Référence d'une page gardée côté serveur : 22 caractères base64url (132 bits). */
@@ -61,6 +67,7 @@ const payload = z.object({
   i: z.string().regex(INVITE_TOKEN).optional(),
   f: z.literal(1).optional(),
   r: z.string().regex(PAGE_REF).optional(),
+  x: z.literal(1).optional(),
 });
 
 function key(secret: string): Buffer {
@@ -87,6 +94,7 @@ export function sealState(request: LoginRequest, secret: string, now = Date.now(
     ...(request.fresh ? { f: 1 } : {}),
     // La référence ne sert que si la page n'a pas tenu entière dans le `state`.
     ...(cut && request.ref && PAGE_REF.test(request.ref) ? { r: request.ref } : {}),
+    ...(request.retry ? { x: 1 } : {}),
   };
   const salt = randomBytes(SALT);
   const iv = randomBytes(IV);
@@ -137,5 +145,6 @@ export function openState(
     ...(next ? { next } : {}),
     ...(parsed.f ? { fresh: true as const } : {}),
     ...(parsed.r ? { ref: parsed.r } : {}),
+    ...(parsed.x ? { retry: true as const } : {}),
   };
 }

@@ -14,3 +14,7 @@ DO $$ BEGIN
 	ALTER TABLE "users" ADD CONSTRAINT "users_last_organization_id_organizations_id_fk" FOREIGN KEY ("last_organization_id") REFERENCES "public"."organizations"("id") ON DELETE set null ON UPDATE no action;
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
+--> statement-breakpoint
+-- Plafond horaire des pages par client (login-pages.ts) : le réseau qui a demandé la page, en HMAC.
+ALTER TABLE "login_pages" ADD COLUMN IF NOT EXISTS "client" text;--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "login_pages_client_idx" ON "login_pages" USING btree ("client","created_at");

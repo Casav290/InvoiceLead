@@ -4,8 +4,19 @@ import { Link } from "@/i18n/navigation";
 import { leadLoginHref } from "@/lib/lead-login";
 import { LanguageSwitcher } from "./LanguageSwitcher";
 
-/** En-tête public en cellules, commun aux pages publiques (même dessin que Scanlead). */
-export function PublicHeader() {
+/**
+ * En-tête public en cellules, commun aux pages publiques (même dessin que Scanlead). Sur l'écran
+ * d'erreur de la connexion : `back` (page demandée ou invitation) suit « Connexion » et « Créer un
+ * compte », et `langQuery` garde l'écran, sa page et son invitation dans l'autre langue. Sans eux,
+ * des liens simples, comme sur toutes les autres pages.
+ */
+export function PublicHeader({
+  back = {},
+  langQuery,
+}: {
+  back?: Record<string, string>;
+  langQuery?: Partial<Record<string, Record<string, string>>>;
+} = {}) {
   const t = useTranslations("nav");
   const locale = useLocale();
   const links = [
@@ -37,15 +48,18 @@ export function PublicHeader() {
           ))}
         </nav>
         <div className="flex w-full flex-wrap items-center justify-between gap-y-2 py-2 sm:ml-auto sm:w-auto sm:flex-nowrap sm:justify-start sm:py-0">
-          <LanguageSwitcher className="border-r border-line-strong pr-1 sm:self-stretch sm:px-2" />
+          <LanguageSwitcher
+            className="border-r border-line-strong pr-1 sm:self-stretch sm:px-2"
+            query={langQuery}
+          />
           <a
-            href={leadLoginHref(locale)}
+            href={leadLoginHref(locale, false, back)}
             className="border-r border-line-strong px-3 text-center text-[12px] font-semibold text-ink-muted hover:text-ink sm:px-4 sm:py-2 sm:text-[13px]"
           >
             {t("login")}
           </a>
           <a
-            href={leadLoginHref(locale, true)}
+            href={leadLoginHref(locale, true, back)}
             className="ml-2 bg-accent px-3 py-2 text-center text-[12px] font-bold text-white hover:bg-accent-dark sm:ml-3 sm:px-4 sm:text-[13px] sm:whitespace-nowrap"
           >
             {t("cta")}

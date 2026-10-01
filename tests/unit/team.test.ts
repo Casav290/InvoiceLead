@@ -3,14 +3,17 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { attachLeadIdentity } from "@/server/auth/attach";
 import { createSession, findSession } from "@/server/auth/session";
 import { canEditSettings, canSetUpAccounting } from "@/server/company";
+import { importHandoff } from "@/server/crmlead";
 import { memberships, organizations, users } from "@/server/db/schema";
 import { can } from "@/server/roles";
 import {
   acceptInvitation,
+  documentOrganization,
   hasSeat,
   inviteFiduciary,
   listTeam,
   listUserOrganizations,
+  organizationForPage,
   removeFiduciary,
   resumeOrganization,
   seated,
@@ -231,6 +234,102 @@ describe("fiduciaire", () => {
     ).toBe("removed");
     expect(await resume()).toBe(own);
     expect(await lastOf()).toBeNull();
+  });
+
+  it("reconnexion : la page demandée choisit l'entreprise (lien de CRMlead, pièce)", async () => {
+    const client = await attachLeadIdentity(db, claims({ lead: pro }));
+    const login = () =>
+      attachLeadIdentity(
+        db,
+        claims({ sub: "sub-fid", email: "compta@fidu.test", org: "org-fidu", org_name: "Fidu SA" }),
+      );
+    const fid = await login();
+    const own = fid.organization.id;
+    const stranger = await attachLeadIdentity(
+      db,
+      claims({ sub: "sub-x", email: "x@autre.test", org: "org-x", org_name: "Autre SA" }),
+    );
+    const inv = await inviteFiduciary(
+      db,
+      { organizationId: client.organization.id, userId: client.user.id },
+      "compta@fidu.test",
+    );
+    if (typeof inv === "string") throw new Error(inv);
+    await acceptInvitation(db, fid.user, inv.token);
+    const { token } = await createSession(db, {
+      userId: fid.user.id,
+      organizationId: own,
+      idToken: null,
+    });
+    const session = await findSession(db, token);
+    if (!session) throw new Error("session absente");
+    const toClient = () =>
+      switchOrganization(db, session.session.id, fid.user.id, client.organization.id);
+    const quote = async (who: { organizationId: string; userId: string }, lead: string) => {
+      const made = await importHandoff(
+        db,
+        who,
+        {
+          v: 1,
+          kind: "quote",
+          currency: "CHF",
+          lead: { id: lead },
+          contact: { kind: "company", name: `Client ${lead}`, country: "CH" },
+          lines: [
+            {
+              description: "Conseil",
+              quantity: 1,
+              unit: "flat",
+              unitPriceCents: 10000,
+              vatCode: "normal",
+            },
+          ],
+        },
+        { language: "fr", today: "2026-09-30", canCreateContact: true },
+      );
+      if (!("id" in made)) throw new Error("devis");
+      return made.id;
+    };
+    const ownQuote = await quote({ organizationId: own, userId: fid.user.id }, "l-own");
+    const clientQuote = await quote(
+      { organizationId: client.organization.id, userId: client.user.id },
+      "l-client",
+    );
+    const strangerQuote = await quote(
+      { organizationId: stranger.organization.id, userId: stranger.user.id },
+      "l-x",
+    );
+    const page = async (wanted?: string) => {
+      const again = await login();
+      return organizationForPage(db, again.user, again.organization.id, wanted);
+    };
+
+    // Chez le client : un lien d'import de son propre CRMlead ramène dans son entreprise, et y reste.
+    await toClient();
+    expect(await page("/fr/app/import/crmlead?d=abc")).toBe(own);
+    expect(await page("/fr/app/invoices")).toBe(own);
+    // Une pièce du client ramène chez le client ; sa propre pièce, chez elle.
+    expect(await page(`/fr/app/quotes/${clientQuote}`)).toBe(client.organization.id);
+    expect(await page("/fr/app/contacts")).toBe(client.organization.id);
+    expect(await page(`/fr/app/quotes/${ownQuote}?saved=1`)).toBe(own);
+    // Pièce d'une entreprise où elle n'est rien, ou inconnue : la règle d'avant, rien d'autre.
+    await toClient();
+    expect(await page(`/fr/app/quotes/${strangerQuote}`)).toBe(client.organization.id);
+    expect(await page("/fr/app/quotes/00000000-0000-4000-8000-000000000000")).toBe(
+      client.organization.id,
+    );
+    expect(await page()).toBe(client.organization.id);
+    // Ce que la personne peut ouvrir d'une pièce, et rien de plus.
+    expect(await documentOrganization(db, fid.user.id, clientQuote)).toMatchObject({
+      id: client.organization.id,
+      fiduciary: true,
+    });
+    expect(await documentOrganization(db, fid.user.id, ownQuote)).toMatchObject({
+      id: own,
+      fiduciary: false,
+    });
+    expect(await documentOrganization(db, fid.user.id, strangerQuote)).toBeUndefined();
+    expect(await documentOrganization(db, fid.user.id, "pas-un-uuid")).toBeUndefined();
   });
 
   it("reconnexion : une entreprise qui n'est pas celle d'une fiduciaire n'est jamais reprise", async () => {

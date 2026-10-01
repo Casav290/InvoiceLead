@@ -1062,14 +1062,19 @@ export const crmleadOutbox = pgTable(
  * Page à rouvrir après une connexion, trop longue pour voyager dans le `state` (lien d'import de
  * CRMlead) : le `state` n'en porte que la référence (login-pages.ts). Elle revient ainsi même sans le
  * cookie de la demande (lien de l'email ouvert sur un autre appareil, écran resté ouvert). La
- * référence dépend du contenu : un même lien ne fait qu'une ligne. Effacée après 30 jours.
+ * référence dépend du contenu : un même lien ne fait qu'une ligne. Effacée après huit jours.
  */
 export const loginPages = pgTable(
   "login_pages",
   {
     id: text("id").primaryKey(),
     next: text("next").notNull(),
+    /** Réseau qui l'a demandée (HMAC, jamais l'adresse IP) : plafond horaire par client. */
+    client: text("client"),
     createdAt: createdAt(),
   },
-  (t) => [index("login_pages_created_idx").on(t.createdAt)],
+  (t) => [
+    index("login_pages_created_idx").on(t.createdAt),
+    index("login_pages_client_idx").on(t.client, t.createdAt),
+  ],
 );

@@ -237,3 +237,12 @@ export function describeLoginError(error: unknown): string {
     .filter(Boolean)
     .join(" ");
 }
+
+/**
+ * Échec d'un retour du Compte Lead qu'une relance silencieuse (une seule) répare : `state` d'une autre
+ * demande (deux onglets), ou code déjà échangé ou échu (même retour rejoué après une réponse perdue).
+ * Un refus de la personne, un compte désactivé ou un jeton invalide montrent l'écran d'erreur.
+ */
+export function restartable(why: string): boolean {
+  return /^lead_id:(state_mismatch|invalid_grant)$/.test(why);
+}

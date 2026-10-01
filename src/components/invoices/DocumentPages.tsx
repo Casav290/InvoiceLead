@@ -12,6 +12,7 @@ import {
 } from "@/app/[locale]/app/invoices/actions";
 import { createRecurringAction } from "@/app/[locale]/app/invoices/recurring/actions";
 import { waiveChargesAction } from "@/app/[locale]/app/invoices/reminders/actions";
+import { switchOrgAction } from "@/app/[locale]/app/org-actions";
 import { fieldClass } from "@/components/forms/fields";
 import { InvoiceDocument } from "@/components/invoices/InvoiceDocument";
 import { InvoiceForm } from "@/components/invoices/InvoiceForm";
@@ -33,6 +34,7 @@ import { invoiceBalance, listPayments, paymentState } from "@/server/payments";
 import { hasFeature } from "@/server/plans";
 import { addMonths } from "@/server/recurring";
 import { listReminders } from "@/server/reminders";
+import { documentOrganization } from "@/server/team";
 
 /**
  * Pages partagées des factures et des devis : même liste, même formulaire, même aperçu. Seuls les
@@ -58,6 +60,32 @@ const ERRORS = [
   "tooHigh",
   "depositDraft",
 ];
+
+/** Pièce d'une autre entreprise où la personne travaille : le passage vers elle, rien d'autre. */
+async function DocumentElsewhere({
+  locale,
+  organization,
+  next,
+}: {
+  locale: string;
+  organization: { id: string; name: string };
+  next: string;
+}) {
+  const t = await getTranslations({ locale, namespace: "app.orgSwitch" });
+  return (
+    <div className="mx-auto max-w-3xl px-4 py-10 sm:px-8" data-testid="document-elsewhere">
+      <p className="text-[15px] text-ink-2">{t("documentElsewhere", { org: organization.name })}</p>
+      <form action={switchOrgAction} className="mt-5">
+        <input type="hidden" name="locale" value={locale} />
+        <input type="hidden" name="organizationId" value={organization.id} />
+        <input type="hidden" name="next" value={next} />
+        <Button type="submit" data-testid="document-elsewhere-switch">
+          {t("goTo", { org: organization.name })}
+        </Button>
+      </form>
+    </div>
+  );
+}
 
 /** Objet et message proposés, dans la langue de la pièce. */
 async function emailDefaults(
@@ -284,8 +312,22 @@ export async function DocumentDetailPage({
     from?: string;
   };
 }) {
-  const { organization } = await requireAppSession(locale);
+  const { organization, user } = await requireAppSession(locale);
   const found = await getInvoice(db(), organization.id, id);
+  if (!found) {
+    // Pièce d'une autre entreprise de la personne (lien de CRMlead ouvert pendant qu'elle travaille
+    // chez un client, ou l'inverse) : on propose d'y passer, et la même page revient ensuite. Rien de
+    // la pièce n'est montré avant le changement.
+    const owner = await documentOrganization(db(), user.id, id);
+    if (owner && owner.id !== organization.id)
+      return (
+        <DocumentElsewhere
+          locale={locale}
+          organization={owner}
+          next={`/${locale}/app/${sectionOf(kind)}/${id}`}
+        />
+      );
+  }
   if (found?.invoice.kind !== kind) notFound();
   const { invoice, lines, related } = found;
   const t = await getTranslations({ locale, namespace: "app.invoices" });
