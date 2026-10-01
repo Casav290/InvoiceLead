@@ -82,6 +82,7 @@ describe("états vers CRMlead", () => {
     expect(await db.select().from(crmleadOutbox)).toEqual([]);
 
     await issueInvoice(db, who, quoteId);
+    await deliverCrmlead(db);
     expect(received.at(-1)).toMatchObject({
       type: "document",
       org: "org-atelier",
@@ -93,14 +94,17 @@ describe("états vers CRMlead", () => {
     );
 
     await setQuoteOutcome(db, who, quoteId, "accepted");
+    await deliverCrmlead(db);
     expect(received.at(-1)).toMatchObject({ data: { kind: "quote", status: "accepted" } });
 
     const invoice = await convertQuoteToInvoice(db, who, quoteId, "2026-10-01");
     if (typeof invoice !== "object") throw new Error(invoice);
+    await deliverCrmlead(db);
     expect(received.at(-1)).toMatchObject({ data: { kind: "quote", status: "invoiced" } });
 
     const issued = await issueInvoice(db, who, invoice.id);
     if (typeof issued !== "object") throw new Error(issued);
+    await deliverCrmlead(db);
     expect(received.at(-1)).toMatchObject({
       source: { id: invoice.id },
       data: { kind: "invoice", status: "issued", lead_id: LEAD },
@@ -111,6 +115,7 @@ describe("états vers CRMlead", () => {
       method: "bank",
       note: null,
     });
+    await deliverCrmlead(db);
     expect(received.at(-1)).toMatchObject({ data: { kind: "invoice", status: "paid" } });
     const rows = await db.select().from(crmleadOutbox);
     expect(rows.every((r) => r.status === "delivered")).toBe(true);
@@ -123,6 +128,7 @@ describe("états vers CRMlead", () => {
     );
     const { who, quoteId } = await setup();
     await issueInvoice(db, who, quoteId);
+    await deliverCrmlead(db);
     const [waiting] = await db.select().from(crmleadOutbox);
     expect(waiting).toMatchObject({ status: "pending", attempts: 1 });
 
