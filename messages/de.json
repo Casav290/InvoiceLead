@@ -1793,7 +1793,19 @@
         "size": "Beleg zu gross (höchstens 10 MB).",
         "duplicate": "Dieser Beleg wurde bereits gesendet.",
         "role": "Ihre Rolle erlaubt keine Spesenerfassung.",
-        "invalid": "Ungültige Eingabe."
+        "invalid": "Ungültige Eingabe.",
+        "quota": "Sie haben die 5 Belegerkennungen dieses Monats im Gratis-Plan verbraucht. Mit Pro sind es 50 pro Monat – oder erfassen Sie die Ausgabe von Hand."
+      },
+      "scan": {
+        "title": "Beleg scannen",
+        "subtitle": "Fotografieren Sie den Beleg: Die KI füllt die Spesenabrechnung aus (Datum, Zweck, Betrag, MWST, Kategorie). Sie prüfen und senden.",
+        "button": "Beleg scannen",
+        "reading": "Beleg wird gelesen…",
+        "hint": "Foto oder PDF. Auf dem Handy öffnet sich direkt die Kamera.",
+        "read": "Beleg von der KI gelesen. Prüfen Sie die Felder unten und senden Sie ab.",
+        "unread": "Der Beleg ist angehängt, die KI konnte ihn aber nicht lesen. Ergänzen Sie die Felder unten.",
+        "currency": "Beleg in {currency}: Geben Sie den in {home} bezahlten Betrag an.",
+        "preview": "Gescannter Beleg"
       }
     },
     "cashflow": {

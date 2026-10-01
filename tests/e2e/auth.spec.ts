@@ -33,6 +33,18 @@ test("« Créer un compte » ouvre directement l'inscription du Compte Lead", as
   expect(authorize.searchParams.get("prompt")).toBe("create");
 });
 
+test("« Connexion » et « Créer un compte » mènent tout droit au Compte Lead", async ({ page }) => {
+  await page.goto("/fr");
+  const header = page.locator("header");
+  await expect(header.getByRole("link", { name: "Connexion" })).toHaveAttribute(
+    "href",
+    "/auth/lead/start?locale=fr",
+  );
+  await expect(header.locator('a[href="/auth/lead/start?locale=fr&signup=1"]')).toHaveCount(1);
+  await header.getByRole("link", { name: "Connexion" }).click();
+  await page.waitForURL("**/fr/app");
+});
+
 test("la racine choisit une langue", async ({ page }) => {
   await page.goto("/");
   await expect(page).toHaveURL(/\/(de|fr)$/);
