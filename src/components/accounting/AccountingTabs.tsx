@@ -18,7 +18,7 @@ const ITEMS = [
 
 export type TabMarks = Partial<Record<(typeof ITEMS)[number]["key"], "pro" | "proplus">>;
 
-/** Onglets de la comptabilité ; un onglet marqué reste un lien, en gris, avec sa marque. */
+/** Onglets de la comptabilité ; un onglet marqué reste un lien, grisé, avec sa marque. */
 export function AccountingTabs({ marks }: { marks: TabMarks }) {
   const t = useTranslations("app.accountingHome.tabs");
   const pathname = usePathname();
@@ -40,8 +40,9 @@ export function AccountingTabs({ marks }: { marks: TabMarks }) {
               active
                 ? "border-b-accent text-accent-dark"
                 : mark
-                  ? "border-b-transparent text-ink-muted"
-                  : "border-b-transparent text-ink-muted hover:text-ink",
+                  ? // Onglet d'une fonction réservée : grisé (fond gris), sans effet au survol.
+                    "border-b-transparent bg-muted text-ink-muted"
+                  : "border-b-transparent text-ink-2 hover:text-ink",
             )}
           >
             {t(item.key)}

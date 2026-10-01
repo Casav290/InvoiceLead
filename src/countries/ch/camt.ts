@@ -17,7 +17,13 @@ export type BankEntry = {
   text: string | null;
 };
 
-export type BankStatement = { iban: string | null; currency: string | null; entries: BankEntry[] };
+export type BankStatement = {
+  iban: string | null;
+  currency: string | null;
+  /** Comptes trouvés dans le fichier (IBAN, ou autre identifiant), sans doublon. */
+  accounts: string[];
+  entries: BankEntry[];
+};
 
 type Node = Record<string, unknown>;
 const list = <T>(v: T | T[] | undefined): T[] =>
@@ -53,8 +59,12 @@ export function parseCamt(xml: string): BankStatement {
   if (statements.length === 0) throw new Error("pas un relevé camt.053 ou camt.054");
   let iban: string | null = null;
   let currency: string | null = null;
+  const accounts = new Set<string>();
   const entries: BankEntry[] = [];
   for (const stmt of statements) {
+    const account =
+      str(path(stmt, "Acct", "Id", "IBAN")) ?? str(path(stmt, "Acct", "Id", "Othr", "Id"));
+    if (account) accounts.add(account.replace(/\s/g, "").toUpperCase());
     iban ??= str(path(stmt, "Acct", "Id", "IBAN"));
     currency ??= str(path(stmt, "Acct", "Ccy"));
     for (const ntry of list(obj(stmt).Ntry)) {
@@ -108,5 +118,5 @@ export function parseCamt(xml: string): BankStatement {
       });
     }
   }
-  return { iban, currency, entries };
+  return { iban, currency, accounts: [...accounts], entries };
 }

@@ -150,11 +150,13 @@ export async function uploadReceiptsAction(form: FormData) {
   const ai = aiConfigured();
   let added = 0;
   let rejected = 0;
+  // Pièces pas déposées faute de lectures ce mois-ci : comptées à part, avec leur propre raison.
+  let refused = 0;
   let quota = false;
   let last = "";
   for (const file of files.slice(0, 20)) {
     if (ai && !(await quotaAccess(db(), session.organization, "aiReads")).allowed) {
-      rejected += 1;
+      refused += 1;
       quota = true;
       continue;
     }
@@ -173,6 +175,7 @@ export async function uploadReceiptsAction(form: FormData) {
   }
   revalidatePath(`/${locale}/app/accounting`, "layout");
   const q = new URLSearchParams({ added: String(added), rejected: String(rejected) });
+  if (refused > 0) q.set("refused", String(refused));
   if (quota) q.set("quota", "1");
   // Depuis l'écran de capture du téléphone : on y revient, avec ce qui vient d'être lu.
   if (form.get("from") === "capture") {

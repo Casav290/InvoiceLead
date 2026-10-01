@@ -23,6 +23,7 @@ import {
 } from "./db/schema";
 import { fetchFxRate } from "./fx";
 import { appendEntry, LedgerError, type Posting, roleAccounts } from "./ledger";
+import { featureAccess } from "./plans";
 import { uploadReceipt } from "./receipts";
 
 type Who = { organizationId: string; userId: string };
@@ -447,7 +448,8 @@ export type ApproveResult =
   | "fxRate"
   | "noChart"
   | "noFiscalYear"
-  | "vatPeriodClosed";
+  | "vatPeriodClosed"
+  | "plan";
 
 /**
  * Approuve une facture fournisseur. Avec la double validation, il faut deux personnes différentes ;
@@ -464,11 +466,21 @@ export async function approveBill(
   // Personne ne valide sa propre note de frais.
   if ((bill.source === "expense" || bill.source === "mileage") && bill.claimantId === who.userId)
     return "sameApprover";
-  if (!bill.accountId) return "noAccount";
   const [org] = await database
-    .select({ dualApproval: organizations.dualApproval, currency: organizations.currency })
+    .select({
+      dualApproval: organizations.dualApproval,
+      currency: organizations.currency,
+      leadPlan: organizations.leadPlan,
+      entitlements: organizations.entitlements,
+      entitlementsAt: organizations.entitlementsAt,
+    })
     .from(organizations)
     .where(eq(organizations.id, who.organizationId));
+  // Une facture en devise étrangère (saisie, lue d'un justificatif ou d'une e-facture) se
+  // comptabilise au cours du jour : c'est la multidevise, formule Pro.
+  if (org && bill.currency !== org.currency && !featureAccess(org, "multiCurrency").allowed)
+    return "plan";
+  if (!bill.accountId) return "noAccount";
   if (org?.dualApproval && !bill.firstApprovedBy) {
     const [first] = await database
       .update(supplierBills)

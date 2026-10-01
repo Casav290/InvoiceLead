@@ -28,7 +28,7 @@ export default async function ContactsPage({ params, searchParams }: Props) {
   const rows = await listContacts(db(), organization.id, q.slice(0, 100));
   // Formule gratuite : 50 contacts ; ensuite « Nouveau contact » est grisé (les fiches restent).
   const live = await quotaAccess(db(), organization, "contacts");
-  const lock = await lockFor(locale, organization, live, t("planLimit"));
+  const lock = await lockFor(locale, organization, live, t("planLimit", { limit: live.limit }));
   return (
     <div className="mx-auto max-w-5xl px-4 py-10 sm:px-8">
       <div className="flex flex-wrap items-end justify-between gap-4">

@@ -136,6 +136,7 @@ export async function extractReceipt(
   who: Who,
   id: string,
   language: "de" | "fr" | "en",
+  today = new Date().toISOString().slice(0, 10),
 ): Promise<ReceiptExtraction | ReadFailure> {
   if (!UUID.test(id)) return "notFound";
   const [row] = await database
@@ -152,6 +153,7 @@ export async function extractReceipt(
       country: organizations.country,
       leadPlan: organizations.leadPlan,
       entitlements: organizations.entitlements,
+      entitlementsAt: organizations.entitlementsAt,
     })
     .from(organizations)
     .where(eq(organizations.id, who.organizationId));
@@ -223,14 +225,15 @@ export async function extractReceipt(
       },
     ];
   }
-  // Lecture comptée avant l'appel ; refusée au-delà de l'allocation du mois.
-  if (!(await consumeQuota(database, org, "aiReads")).allowed) return "quota";
+  // Lecture comptée avant l'appel ; refusée au-delà de l'allocation du mois. Réservation et
+  // remboursement tombent sur le même mois, même si l'IA répond après minuit.
+  if (!(await consumeQuota(database, org, "aiReads", today)).allowed) return "quota";
   let raw: unknown;
   try {
     raw = await chatJson(messages, vision ? { vision: true } : undefined);
   } catch (e) {
     console.error("[receipt] lecture impossible", e instanceof Error ? e.message : "inconnu");
-    await refundQuota(database, org.id, "aiReads");
+    await refundQuota(database, org.id, "aiReads", today);
     await database.update(receipts).set({ status: "error" }).where(eq(receipts.id, id));
     return "failed";
   }

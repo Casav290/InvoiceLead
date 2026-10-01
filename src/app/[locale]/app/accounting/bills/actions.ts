@@ -48,7 +48,8 @@ export async function saveBillAction(prev: BillFormState, form: FormData): Promi
   if (!parsed.ok) return { status: "invalid", errors: parsed.errors, values, round };
   const id = String(form.get("id") ?? "");
   // Saisir une facture fournisseur en devise étrangère fait partie de la formule Pro ; une facture
-  // déjà dans sa devise (lue d'un justificatif ou d'une e-facture) la garde.
+  // déjà dans sa devise (lue d'un justificatif ou d'une e-facture) la garde, mais ne se
+  // comptabilise qu'avec Pro (approveBill refuse « plan »).
   if (
     parsed.data.currency !== session.organization.currency &&
     !featureAccess(session.organization, "multiCurrency").allowed

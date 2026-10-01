@@ -3,6 +3,7 @@ import { sendAutopilotDigests } from "@/server/autopilot-digest";
 import { deliverCrmlead } from "@/server/crmlead-sync";
 import { db } from "@/server/db";
 import { env } from "@/server/env";
+import { refreshStalePlans } from "@/server/plan-refresh";
 import { runRecurring } from "@/server/recurring";
 import { runAutoReminders } from "@/server/reminders";
 import { sendWithDefaults } from "@/server/send";
@@ -19,10 +20,16 @@ function authorized(request: Request): boolean {
   return given.length === expected.length && timingSafeEqual(given, expected);
 }
 
-/** Tâche quotidienne (Vercel Cron) : factures récurrentes échues, puis relances automatiques. */
+/**
+ * Tâche quotidienne (Vercel Cron) : formules relues, factures récurrentes échues, puis relances
+ * automatiques.
+ */
 export async function GET(request: Request) {
   if (!authorized(request)) return new Response("unauthorized", { status: 401 });
   const today = new Date().toISOString().slice(0, 10);
+  // Formules payantes relues au Compte Lead d'abord : une formule résiliée sans nouvelle connexion
+  // ne fait plus tourner relances, récurrences, webhooks ni récapitulatif.
+  const plans = await refreshStalePlans(db());
   const recurring = await runRecurring(db(), today, async (who, id) => {
     return (await sendWithDefaults(db(), who, id)) === "sent";
   });
@@ -34,5 +41,5 @@ export async function GET(request: Request) {
   // Le lundi : récapitulatif du pilote automatique aux administrateurs.
   const digests =
     new Date(`${today}T00:00:00Z`).getUTCDay() === 1 ? await sendAutopilotDigests(db(), today) : 0;
-  return Response.json({ today, recurring, reminders, webhooks, crmlead, digests });
+  return Response.json({ today, plans, recurring, reminders, webhooks, crmlead, digests });
 }

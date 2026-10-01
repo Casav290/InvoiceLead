@@ -225,7 +225,11 @@ export async function deliverPending(
     .select({
       delivery: webhookDeliveries,
       endpoint: webhookEndpoints,
-      plan: { leadPlan: organizations.leadPlan, entitlements: organizations.entitlements },
+      plan: {
+        leadPlan: organizations.leadPlan,
+        entitlements: organizations.entitlements,
+        entitlementsAt: organizations.entitlementsAt,
+      },
     })
     .from(webhookDeliveries)
     .innerJoin(webhookEndpoints, eq(webhookEndpoints.id, webhookDeliveries.endpointId))

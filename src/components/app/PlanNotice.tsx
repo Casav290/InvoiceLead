@@ -25,7 +25,8 @@ export async function PlanNotice({
       data-testid="plan-notice"
     >
       <ProBadge tier={tier} />
-      <p className="min-w-0 flex-1 text-[14px] text-ink">{message}</p>
+      {/* 16rem au moins pour le texte : sur téléphone, le bouton passe à la ligne. */}
+      <p className="min-w-[min(100%,16rem)] flex-1 text-[14px] text-ink">{message}</p>
       <Button asChild size="sm">
         <a href={href} rel="noopener">
           {t(tier === "proplus" ? "upgradePlus" : "upgrade")}

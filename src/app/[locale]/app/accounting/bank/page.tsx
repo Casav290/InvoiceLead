@@ -55,6 +55,7 @@ const ERRORS = [
   "notFound",
   "vatPeriodClosed",
   "quota",
+  "scope",
 ];
 
 export default async function BankPage({ params, searchParams }: Props) {

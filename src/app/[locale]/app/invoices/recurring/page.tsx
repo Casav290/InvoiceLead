@@ -9,7 +9,7 @@ import { formatAmount } from "@/lib/money";
 import { requireAppSession } from "@/server/auth/guard";
 import { db } from "@/server/db";
 import { lockFor } from "@/server/plan-lock";
-import { quotaAccess } from "@/server/plans";
+import { featureAccess, quotaAccess, upgradeUrl } from "@/server/plans";
 import { listRecurring, runningRecurring } from "@/server/recurring";
 import { updateRecurringAction } from "./actions";
 
@@ -36,6 +36,9 @@ export default async function RecurringPage({ params, searchParams }: Props) {
   const running = await runningRecurring(db(), organization);
   const usedUp = tp("used.recurring", { limit: slots.limit, plan: slots.tier });
   const lock = await lockFor(locale, organization, slots, usedUp);
+  // Sans la multidevise, une récurrence sur une facture en devise étrangère attend.
+  const multiCurrency = featureAccess(organization, "multiCurrency").allowed;
+  const foreign = (currency: string) => !multiCurrency && currency !== organization.currency;
   return (
     <div className="mx-auto max-w-5xl px-4 py-10 sm:px-8">
       <p className="text-[13px]">
@@ -53,12 +56,12 @@ export default async function RecurringPage({ params, searchParams }: Props) {
           {t("created")}
         </p>
       ) : null}
-      {error === "recurringLimit" ? (
+      {error === "recurringLimit" || error === "recurringCurrency" ? (
         <p
           role="alert"
           className="mt-6 border border-hot-fg bg-hot-bg px-4 py-3 text-[13px] text-hot-fg"
         >
-          {usedUp}
+          {error === "recurringLimit" ? usedUp : t("currencyPlan")}
         </p>
       ) : null}
       {Number.isFinite(slots.limit) ? (
@@ -80,7 +83,7 @@ export default async function RecurringPage({ params, searchParams }: Props) {
         </p>
       ) : (
         <ul className="mt-6 space-y-3" data-testid="recurring-list">
-          {rows.map(({ recurring: r, number, customer, total }) => (
+          {rows.map(({ recurring: r, number, customer, total, currency }) => (
             <li
               key={r.id}
               className="border border-line-strong bg-panel px-4 py-3"
@@ -91,7 +94,7 @@ export default async function RecurringPage({ params, searchParams }: Props) {
                   {customer}
                 </span>
                 <span className="font-extrabold tabular-nums">
-                  {formatAmount(total, countryPack(organization.country).amounts)}
+                  {currency} {formatAmount(total, countryPack(organization.country).amounts)}
                 </span>
               </div>
               <p className="mt-1 text-[12px] text-ink-2">
@@ -103,13 +106,25 @@ export default async function RecurringPage({ params, searchParams }: Props) {
                 {r.autoSend ? ` · ${t("autoSend")}` : ` · ${t("draftOnly")}`}
                 {r.active ? "" : ` · ${t("paused")}`}
               </p>
-              {r.active && running && !running.has(r.id) ? (
+              {(r.active && running && !running.has(r.id)) || (!r.active && foreign(currency)) ? (
                 <p
+                  id={`recurring-held-${r.id}`}
                   className="mt-1 flex flex-wrap items-center gap-2 text-[12px] text-ink-2"
                   data-testid="recurring-held"
                 >
                   <ProBadge tier="pro" />
-                  {t("held")}
+                  <span className="min-w-0">
+                    {foreign(currency)
+                      ? t("heldCurrency", { currency })
+                      : t("held", { limit: slots.limit })}
+                  </span>
+                  <a
+                    href={upgradeUrl(organization)}
+                    rel="noopener"
+                    className="font-semibold text-accent-dark underline"
+                  >
+                    {tp("upgrade")}
+                  </a>
                 </p>
               ) : null}
               <div className="mt-2 flex flex-wrap gap-2">
@@ -127,14 +142,24 @@ export default async function RecurringPage({ params, searchParams }: Props) {
                     type="submit"
                     variant="ghost"
                     size="sm"
-                    disabled={!r.active && !!lock}
-                    aria-disabled={!r.active && lock ? true : undefined}
-                    aria-describedby={!r.active && lock ? "recurring-lock-reason" : undefined}
+                    disabled={!r.active && (!!lock || foreign(currency))}
+                    aria-disabled={!r.active && (lock || foreign(currency)) ? true : undefined}
+                    aria-describedby={
+                      r.active
+                        ? undefined
+                        : foreign(currency)
+                          ? `recurring-held-${r.id}`
+                          : lock
+                            ? "recurring-lock-reason"
+                            : undefined
+                    }
                     data-testid={r.active ? "recurring-pause" : "recurring-resume"}
                   >
                     {r.active ? t("pause") : t("resume")}
                   </Button>
-                  {!r.active && lock?.tier ? <ProBadge tier={lock.tier} /> : null}
+                  {!r.active && (foreign(currency) || lock?.tier) ? (
+                    <ProBadge tier={lock?.tier ?? "pro"} />
+                  ) : null}
                 </form>
                 <form action={updateRecurringAction}>
                   <input type="hidden" name="locale" value={locale} />

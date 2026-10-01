@@ -116,6 +116,7 @@ Limites acceptées, à ne pas « corriger » :
 ## 6. Reste à faire
 
 - Les icônes PNG de l'application (PWA) sont encore bleues : les refaire en prune.
+- **Formule à jour** : elle est écrite à la connexion web. Quand elle a plus de 12 h, elle est relue au Compte Lead (`src/server/plan-refresh.ts`, `GET /api/lead-id/v1/entitlements?org=…` avec un jeton d'application de portée `exchange`, sinon `billing`) : tâche quotidienne d'abord, API et MCP, pages (fiduciaire d'une entreprise dont personne ne se connecte). Sans réponse pendant 72 h, l'entreprise est traitée en formule gratuite. À vérifier en production : que le client `invoicelead` obtient ce jeton (le retour de la tâche quotidienne dit `plans: { refreshed, stale }`) ; sinon une entreprise Pro+ qui n'utilise que l'API retombe en gratuit au bout de 72 h, jusqu'à sa prochaine connexion.
 - Ève demandait où sont les fonctions du lot 9. Elles sont en ligne : justificatifs, pilote automatique, factures fournisseurs, relances, assistant, temps. Certaines restent réservées à Pro, et sa propre organisation est en formule gratuite. Elle trouve évident que tout soit fait par l'IA ; vérifier chaque écran avec ce regard (comme le scan de ticket, ajouté après sa remarque).
 - La session ProjectLead (`session_0163GdSWCc4xq32BHpUh7X3J`) demandait comment invoicelead.io a été branché sur Porkbun et Resend. Réponse : par Ève, avec Claude Desktop sur son ordinateur. DNS chez Porkbun, clé Resend dans Vercel ; étapes dans `docs/RESEND.md`. Cette session n'avait pas d'outil pour répondre.
 - Côté Ève :

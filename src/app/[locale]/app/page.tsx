@@ -44,6 +44,8 @@ export default async function DashboardPage({
   const used = { invoices: quotas?.invoices.used ?? 0, contacts: quotas?.contacts.used ?? 0 };
   const shownQuotas = SHOWN_QUOTAS.filter((q) => quotas && Number.isFinite(quotas[q].limit));
   const assistantMark = markOf(quotas?.assistant);
+  // Factures du mois ou contacts épuisés : la ligne de la formule porte la marque, comme les autres.
+  const usageMark = markOf(quotas?.invoices) ?? markOf(quotas?.contacts);
   const f = await dashboardFigures(db(), organization.id, today);
   const pack = countryPack(organization.country);
   // Les cartes montrent des montants ronds ; les listes gardent les centimes.
@@ -100,7 +102,10 @@ export default async function DashboardPage({
           {t("forbidden")}
         </p>
       ) : null}
-      <p className="mt-3 text-[13px] text-ink-2" data-testid="plan-usage">
+      <p
+        className={`mt-3 text-[13px] text-ink-2 ${usageMark ? "border border-line-strong bg-muted px-2 py-1" : ""}`}
+        data-testid="plan-usage"
+      >
         {tp("usage", {
           tier,
           invoices: used.invoices,
@@ -108,6 +113,7 @@ export default async function DashboardPage({
           contacts: used.contacts,
           contactLimit: quotas?.contacts.limit ?? 0,
         })}{" "}
+        {usageMark ? <ProBadge tier={usageMark} className="mr-1 align-[1px]" /> : null}
         {tier !== "proplus" ? (
           <a
             href={upgradeUrl(organization)}

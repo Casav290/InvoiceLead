@@ -1,5 +1,7 @@
 import { expect, type Locator, type Page, test } from "@playwright/test";
 import { camt053 } from "../support/camt";
+import { samplePdf } from "../support/pdf";
+import { addContacts, closeDb, useQuota } from "./db";
 import { login, setupBilling, traitNetIssues } from "./helpers";
 
 /**
@@ -8,7 +10,8 @@ import { login, setupBilling, traitNetIssues } from "./helpers";
  * deviennent grisées une fois utilisées ; le serveur refuse ce que l'écran ne permet plus.
  */
 
-async function freeCompany(page: Page, tag: string) {
+/** Entreprise en formule gratuite ; rend son identifiant d'organisation du Compte Lead. */
+async function freeCompany(page: Page, tag: string): Promise<string> {
   const run = `${tag}-${Date.now()}`;
   await login(page, "fr", {
     sub: `sub-${run}`,
@@ -16,7 +19,10 @@ async function freeCompany(page: Page, tag: string) {
     org: `org-${run}`,
     org_name: "Gratuit Sàrl",
   });
+  return `org-${run}`;
 }
+
+test.afterAll(() => closeDb());
 
 async function chartAndYear(page: Page) {
   await page.goto("/fr/app/settings/accounts");
@@ -32,6 +38,37 @@ function unlock(fieldset: Element) {
   fieldset.removeAttribute("aria-disabled");
 }
 
+/**
+ * Le lien s'atteint à la touche Tab : on part de l'élément atteignable au clavier qui le précède
+ * dans la page, et une seule tabulation doit tomber sur lui (un tabindex="-1" le ferait sauter).
+ */
+async function expectTabReachable(page: Page, link: Locator) {
+  const from = await link.evaluate((target) => {
+    for (const el of document.querySelectorAll("[data-tab-from]"))
+      el.removeAttribute("data-tab-from");
+    const candidates = Array.from(
+      document.querySelectorAll<HTMLElement>(
+        "a[href], button, input, select, textarea, summary, [tabindex]",
+      ),
+    ).filter(
+      (el) =>
+        el !== target &&
+        !el.matches(":disabled") &&
+        el.tabIndex >= 0 &&
+        el.getClientRects().length > 0 &&
+        getComputedStyle(el).visibility !== "hidden" &&
+        Boolean(el.compareDocumentPosition(target) & Node.DOCUMENT_POSITION_FOLLOWING),
+    );
+    const before = candidates.at(-1);
+    before?.setAttribute("data-tab-from", "1");
+    return before ? "element" : "start";
+  });
+  if (from === "element") await page.locator("[data-tab-from]").focus();
+  else await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+  await page.keyboard.press("Tab");
+  await expect(link).toBeFocused();
+}
+
 /** Bloc grisé : commandes désactivées, marque, raison, lien atteignable au clavier. */
 async function expectLocked(lock: Locator, tier: "Pro" | "Pro+", reason: string | RegExp) {
   await expect(lock).toBeVisible();
@@ -40,8 +77,7 @@ async function expectLocked(lock: Locator, tier: "Pro" | "Pro+", reason: string 
   await expect(lock.getByTestId("lock-note")).toContainText(reason);
   const link = lock.getByRole("link", { name: tier === "Pro" ? "Passer à Pro" : "Passer à Pro+" });
   await expect(link).toHaveAttribute("href", /^https:\/\//);
-  await link.focus();
-  await expect(link).toBeFocused();
+  await expectTabReachable(lock.page(), link);
 }
 
 test("formule gratuite : chaque fonction Pro reste visible, grisée, avec sa marque", async ({
@@ -262,7 +298,7 @@ test("formule gratuite : dix questions à l'assistant, puis la boîte grisée et
     );
   }
   const lock = page.getByTestId("assistant-lock");
-  await expectLocked(lock, "Pro", "Vos 10 questions gratuites de ce mois sont posées.");
+  await expectLocked(lock, "Pro", "Vous avez posé vos 10 questions gratuites de ce mois.");
   await expect(page.getByTestId("assistant-ask")).toBeDisabled();
   expect(await traitNetIssues(page)).toEqual([]);
 
@@ -270,13 +306,160 @@ test("formule gratuite : dix questions à l'assistant, puis la boîte grisée et
   await lock.locator("fieldset").evaluate(unlock);
   await page.getByLabel("Votre question").fill("Et une onzième ?");
   await page.getByTestId("assistant-ask").click();
-  await expect(
-    page.getByRole("alert").filter({ hasText: "Les questions gratuites de ce mois sont posées." }),
-  ).toBeVisible();
+  await expect(page.getByRole("alert").filter({ hasText: "Question non envoyée." })).toBeVisible();
   await page.reload();
   await expect(page.getByTestId("assistant-quota")).toContainText(/10 sur 10 ce mois-ci/);
   await page.goto("/fr/app");
   await expect(page.getByTestId("dashboard-assistant").getByTestId("pro-badge")).toHaveText("Pro");
+});
+
+test("formule gratuite : allocations du mois utilisées, chaque commande grisée avec sa marque et sa phrase", async ({
+  page,
+}) => {
+  const org = await freeCompany(page, "epuise");
+  await setupBilling(page);
+  // Une facture échue depuis 15 jours : sa première relance est due.
+  const issued = new Date(Date.now() - 45 * 86_400_000).toISOString().slice(0, 10);
+  await page.goto("/fr/app/invoices/new");
+  const invoice = page.getByTestId("invoice-form");
+  await invoice.getByLabel("Client", { exact: true }).selectOption({ label: "Client SA" });
+  await invoice.getByLabel("Date de facture").fill(issued);
+  await invoice.getByLabel("Date de la prestation").fill(issued);
+  await page.getByTestId("invoice-line-0").getByLabel("Article").selectOption({ label: "Conseil" });
+  await page.getByTestId("invoice-save").click();
+  await page.getByTestId("document-issue").click();
+  await expect(page.getByText(/Facture émise/)).toBeVisible();
+  // Un justificatif au long nom de fournisseur, lu pendant qu'il reste des lectures.
+  await page.goto("/fr/app/accounting/receipts");
+  await page.getByLabel("Factures ou tickets").setInputFiles({
+    name: "papeterie.pdf",
+    mimeType: "application/pdf",
+    buffer: await samplePdf(["Papeterie Muster und Partner", "Date 2026-09-02", "Total CHF 24.90"]),
+  });
+  await page.getByTestId("receipts-upload").click();
+  await expect(page.getByText("1 justificatif ajouté.")).toBeVisible();
+
+  // Le reste du mois est utilisé : 20 lectures, 5 relances, 50 contacts.
+  await useQuota(org, "aiReads", 20);
+  await useQuota(org, "reminders", 5);
+  await addContacts(org, 49);
+  const aiReads = "Vos 20 lectures gratuites de ce mois sont utilisées.";
+
+  await page.goto("/fr/app/expenses");
+  await expectLocked(page.getByTestId("scan-ticket-lock"), "Pro", aiReads);
+  await expect(page.getByTestId("scan-quota")).toContainText(/20 sur 20/);
+
+  await page.goto("/fr/app/accounting/receipts");
+  await expectLocked(page.getByTestId("receipts-lock"), "Pro", aiReads);
+  await expect(page.getByTestId("receipts-upload")).toBeDisabled();
+  await expect(page.getByTestId("receipt-read")).toBeDisabled();
+  // Onglet des justificatifs : grisé (fond gris) avec la marque ; un onglet ouvert ne l'est pas.
+  const billsTab = page.getByTestId("accounting-tab-bills");
+  await expect(page.getByTestId("accounting-tab-receipts").getByTestId("pro-badge")).toHaveText(
+    "Pro",
+  );
+  await expect(page.getByTestId("accounting-tab-vat")).toHaveCSS(
+    "background-color",
+    "rgb(242, 240, 238)",
+  );
+  await expect(billsTab).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
+  expect(await traitNetIssues(page)).toEqual([]);
+
+  await page.goto("/fr/app/accounting/receipts/capture");
+  await expectLocked(page.getByTestId("capture-lock"), "Pro", aiReads);
+
+  // Relances : la phrase du mois, la marque, le lien ; la relance due reste visible, grisée.
+  await page.goto("/fr/app/invoices/reminders");
+  const reminders = page.getByTestId("reminders-lock");
+  await expect(reminders).toContainText("Vos 5 relances gratuites de ce mois sont envoyées.");
+  await expect(reminders.getByTestId("pro-badge")).toHaveText("Pro");
+  const upgrade = reminders.getByRole("link", { name: "Passer à Pro" });
+  await expect(upgrade).toHaveAttribute("href", /^https:\/\//);
+  await expectTabReachable(page, upgrade);
+  const mailed = page
+    .getByTestId("reminder-row")
+    .getByRole("button", { name: "Noter comme envoyée (courrier)" });
+  await expect(mailed).toBeDisabled();
+  await expect(mailed).toHaveAttribute("aria-describedby", "reminders-lock-reason");
+  // Grisé lisible : gris sur gris, sans transparence.
+  await expect(mailed).toHaveCSS("color", "rgb(103, 98, 92)");
+  await expect(mailed).toHaveCSS("opacity", "1");
+
+  // Contacts : 50 sur 50. La liste grise « Nouveau contact », l'adresse directe aussi.
+  await page.goto("/fr/app/contacts");
+  const newContact = page.getByRole("button", { name: "Nouveau contact" });
+  await expect(newContact).toBeDisabled();
+  await expect(newContact).toHaveCSS("background-color", "rgb(242, 240, 238)");
+  await page.goto("/fr/app/contacts/new");
+  await expectLocked(
+    page.getByTestId("contact-new-lock"),
+    "Pro",
+    "La formule gratuite compte 50 contacts au plus.",
+  );
+  await expect(page.getByTestId("contact-save")).toBeDisabled();
+
+  // Tableau de bord : chaque allocation utilisée porte la marque, la ligne des contacts aussi.
+  await page.goto("/fr/app");
+  await expect(page.getByTestId("plan-usage")).toContainText("50 contacts sur 50");
+  await expect(page.getByTestId("plan-usage").getByTestId("pro-badge")).toHaveText("Pro");
+  for (const id of ["quota-aiReads", "quota-reminders"])
+    await expect(page.getByTestId(id).getByTestId("pro-badge")).toHaveText("Pro");
+  expect(await traitNetIssues(page)).toEqual([]);
+
+  // Téléphone (390 px), en allemand : le nom du fournisseur garde sa largeur, l'encart TVA aussi.
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/de/app/accounting/receipts");
+  const supplier = page.getByTestId("receipt-supplier");
+  await expect(supplier).toHaveText("Papeterie Muster und Partner");
+  expect((await supplier.boundingBox())?.width ?? 0).toBeGreaterThan(150);
+  expect(await traitNetIssues(page)).toEqual([]);
+  await page.goto("/de/app/accounting/vat");
+  const notice = page.getByTestId("plan-notice").locator("p");
+  expect((await notice.boundingBox())?.width ?? 0).toBeGreaterThan(200);
+  expect(await traitNetIssues(page)).toEqual([]);
+});
+
+test("formule gratuite : une e-facture en EUR s'importe, son approbation reste grisée et le serveur la refuse", async ({
+  page,
+}) => {
+  await freeCompany(page, "devise");
+  const today = new Date().toISOString().slice(0, 10);
+  const ubl = `<?xml version="1.0" encoding="UTF-8"?>
+<Invoice xmlns="urn:oasis:names:specification:ubl:schema:xsd:Invoice-2" xmlns:cac="urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2" xmlns:cbc="urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2">
+  <cbc:ID>R-77</cbc:ID>
+  <cbc:IssueDate>${today}</cbc:IssueDate>
+  <cbc:DocumentCurrencyCode>EUR</cbc:DocumentCurrencyCode>
+  <cac:AccountingSupplierParty><cac:Party>
+    <cac:PostalAddress><cbc:StreetName>Hauptstrasse 1</cbc:StreetName><cbc:CityName>Berlin</cbc:CityName><cbc:PostalZone>10115</cbc:PostalZone><cac:Country><cbc:IdentificationCode>DE</cbc:IdentificationCode></cac:Country></cac:PostalAddress>
+    <cac:PartyLegalEntity><cbc:RegistrationName>Lieferant Berlin GmbH</cbc:RegistrationName></cac:PartyLegalEntity>
+  </cac:Party></cac:AccountingSupplierParty>
+  <cac:LegalMonetaryTotal><cbc:PayableAmount currencyID="EUR">119.00</cbc:PayableAmount></cac:LegalMonetaryTotal>
+  <cac:InvoiceLine><cbc:ID>1</cbc:ID><cac:Item><cbc:Name>Papier</cbc:Name></cac:Item></cac:InvoiceLine>
+</Invoice>`;
+  await page.goto("/fr/app/accounting/bills");
+  await page.getByLabel(/E-factures reçues/).setInputFiles({
+    name: "rechnung.xml",
+    mimeType: "application/xml",
+    buffer: Buffer.from(ubl),
+  });
+  await page.getByTestId("einvoice-import").click();
+  await expect(page.getByText("1 facture importée.")).toBeVisible();
+  await page
+    .getByTestId("bills-draft")
+    .getByRole("link", { name: /Lieferant Berlin GmbH/ })
+    .click();
+  const lock = page.getByTestId("bill-approve-lock");
+  await expectLocked(lock, "Pro", "Facture en EUR");
+  await expect(page.getByTestId("bill-approve")).toBeDisabled();
+  expect(await traitNetIssues(page)).toEqual([]);
+
+  // Demande forgée : le bouton réactivé envoie quand même ; le serveur refuse, rien n'est approuvé.
+  await lock.locator("fieldset").evaluate(unlock);
+  await page.getByTestId("bill-approve").click();
+  await page.waitForURL(/error=plan/);
+  await expect(page.getByRole("alert").filter({ hasText: "Facture en EUR" })).toBeVisible();
+  await expect(page.getByTestId("bill-status")).toContainText("EUR 119.00");
+  await expect(page.getByTestId("bill-approve-lock")).toBeVisible();
 });
 
 test("tarifs et FAQ : les allocations gratuites décidées sont annoncées", async ({ page }) => {

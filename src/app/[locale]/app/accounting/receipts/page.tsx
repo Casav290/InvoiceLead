@@ -18,7 +18,13 @@ import { billFromReceiptAction } from "../bills/actions";
 
 type Props = {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ added?: string; rejected?: string; error?: string; quota?: string }>;
+  searchParams: Promise<{
+    added?: string;
+    rejected?: string;
+    refused?: string;
+    error?: string;
+    quota?: string;
+  }>;
 };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -96,7 +102,11 @@ export default async function ReceiptsPage({ params, searchParams }: Props) {
           role="status"
           className="mt-6 border border-ok-fg bg-ok-bg px-4 py-3 text-[13px] text-ok-fg"
         >
-          {t("added", { count: Number(q.added) || 0, rejected: Number(q.rejected) || 0 })}
+          {t("added", {
+            count: Number(q.added) || 0,
+            rejected: Number(q.rejected) || 0,
+            quota: Number(q.refused) || 0,
+          })}
         </p>
       ) : null}
       {q.error && ERRORS.includes(q.error) ? (
@@ -144,7 +154,12 @@ export default async function ReceiptsPage({ params, searchParams }: Props) {
                 data-testid="receipt-row"
               >
                 <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
-                  <span className="min-w-0 flex-1 font-semibold [overflow-wrap:anywhere]">
+                  {/* Au moins 10rem pour le nom : sur téléphone, montant et état passent dessous
+                      au lieu d'écraser le nom à une lettre par ligne. */}
+                  <span
+                    className="min-w-[min(100%,10rem)] flex-1 font-semibold [overflow-wrap:anywhere]"
+                    data-testid="receipt-supplier"
+                  >
                     {x?.supplier ?? r.filename}
                   </span>
                   {x?.totalCents ? (
