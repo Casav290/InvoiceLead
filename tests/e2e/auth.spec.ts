@@ -64,6 +64,26 @@ test("l'écran d'erreur garde la page demandée pour « Réessayer »", async ({
   );
 });
 
+test("deux onglets qui se connectent en même temps arrivent chacun sur leur page", async ({
+  browser,
+}) => {
+  const context = await browser.newContext();
+  const one = await context.newPage();
+  const two = await context.newPage();
+  // Les deux demandes partent avant que l'une revienne : chacune garde la sienne.
+  const a = await one.request.get("/auth/lead/start?locale=fr&next=%2Ffr%2Fapp%2Finvoices", {
+    maxRedirects: 0,
+  });
+  const b = await two.request.get("/auth/lead/start?locale=fr&next=%2Ffr%2Fapp%2Fquotes", {
+    maxRedirects: 0,
+  });
+  await one.goto(a.headers().location ?? "");
+  await expect(one).toHaveURL(/\/fr\/app\/invoices$/);
+  await two.goto(b.headers().location ?? "");
+  await expect(two).toHaveURL(/\/fr\/app\/quotes$/);
+  await context.close();
+});
+
 test("la racine choisit une langue", async ({ page }) => {
   await page.goto("/");
   await expect(page).toHaveURL(/\/(de|fr)$/);
@@ -182,7 +202,8 @@ test("un état falsifié au retour est refusé", async ({ page, context }) => {
   const start = await page.request.get("/auth/lead/start?locale=de", { maxRedirects: 0 });
   expect(start.status()).toBe(303);
   await page.goto("/auth/lead/callback?code=abc&state=faux");
-  await expect(page).toHaveURL(/\/de\/login\?erreur=lead$/);
+  // Aucune demande ne porte ce `state` : refusé, sans session ouverte.
+  await expect(page).toHaveURL(/\/de\/login\?erreur=(lead|session)$/);
 });
 
 test("un chemin encodé ne contourne pas le filtre du proxy", async ({ page }) => {

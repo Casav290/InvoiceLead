@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { type NextRequest, NextResponse } from "next/server";
-import { LOGIN_COOKIE, LOGIN_COOKIE_PATH, SESSION_COOKIE } from "@/lib/cookies";
+import { LOGIN_COOKIE, LOGIN_COOKIE_PATH, loginCookieName, SESSION_COOKIE } from "@/lib/cookies";
 import { attachLeadIdentity } from "@/server/auth/attach";
 import { describeLoginError, localeFromRequest, openLogin } from "@/server/auth/login-cookie";
 import { cookieOptions, createSession, SESSION_HOURS } from "@/server/auth/session";
@@ -17,14 +17,18 @@ const RETRY_COOKIE = "il_login_retry";
 export async function GET(request: NextRequest) {
   const { APP_URL, SESSION_SECRET } = env();
   const store = await cookies();
-  const saved = openLogin(store.get(LOGIN_COOKIE)?.value, SESSION_SECRET);
+  // La demande de cet onglet (cookie nommé d'après son `state`) ; l'ancien cookie commun en secours.
+  const cookieName = loginCookieName(request.nextUrl.searchParams.get("state") ?? "");
+  const saved =
+    openLogin(store.get(cookieName)?.value, SESSION_SECRET) ??
+    openLogin(store.get(LOGIN_COOKIE)?.value, SESSION_SECRET);
   const locale =
     saved?.locale ??
     localeFromRequest(store.get("NEXT_LOCALE")?.value, request.headers.get("accept-language"));
 
   const done = (url: string) => {
     const response = NextResponse.redirect(url, 303);
-    response.cookies.set(LOGIN_COOKIE, "", { ...cookieOptions(0), path: LOGIN_COOKIE_PATH });
+    response.cookies.set(cookieName, "", { ...cookieOptions(0), path: LOGIN_COOKIE_PATH });
     return response;
   };
 

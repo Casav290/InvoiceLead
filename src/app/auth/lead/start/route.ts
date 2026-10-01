@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { type NextRequest, NextResponse } from "next/server";
-import { LOGIN_COOKIE, LOGIN_COOKIE_PATH, SESSION_COOKIE } from "@/lib/cookies";
+import { LOGIN_COOKIE_PATH, loginCookieName, SESSION_COOKIE } from "@/lib/cookies";
 import { INVITE_TOKEN, pickLocale, safeNext, sealLogin } from "@/server/auth/login-cookie";
 import { cookieOptions, findSession } from "@/server/auth/session";
 import { db } from "@/server/db";
@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
   const login = startLogin({ locale, ...(signup ? { prompt: "create" as const } : {}) });
   const response = NextResponse.redirect(login.url, 303);
   response.cookies.set(
-    LOGIN_COOKIE,
+    loginCookieName(login.state),
     sealLogin(
       { state: login.state, nonce: login.nonce, verifier: login.verifier, locale, invite, next },
       SESSION_SECRET,
