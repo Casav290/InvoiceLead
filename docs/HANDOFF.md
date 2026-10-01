@@ -27,7 +27,7 @@ Règles permanentes :
 - couleur prune #7a2e67 ;
 - logo de l'entreprise ;
 - synchronisation des devis et factures vers CRMlead ;
-- scan des tickets de notes de frais par l'IA, 5 par mois en formule gratuite.
+- scan des tickets de notes de frais par l'IA (en formule gratuite, compris dans les 20 lectures de pièces du mois depuis le 1er octobre, voir docs/PLAN.md section 9).
 
 **CRMlead.** `main` = 31e1259 (PR #3), publié sur Replit le 1er octobre à 10 h 08 UTC. L'agent Replit a vérifié en production : titre « Compte Lead », bundle avec `sso-parked`. Contenu :
 
@@ -111,7 +111,7 @@ Limites acceptées, à ne pas « corriger » :
 
 - **Tableau de bord** : chiffres du mois et de l'année, encaissé, à encaisser, retards, offres en cours et acceptées, fournisseurs, graphique sur 12 mois (`src/server/dashboard.ts`).
 - **Couleur** : prune #7a2e67 pour InvoiceLead, à côté du bleu Scanlead #2563eb et du vert CRMlead #0f6e70.
-- **Scan des tickets** : « Scanner un ticket » en tête des notes de frais. La photo est lue par l'IA, qui remplit la note ; la personne vérifie et envoie (`scanTicketAction`, `extractReceipt` sans rapprochement bancaire). La formule gratuite lit 5 tickets par mois.
+- **Scan des tickets** : « Scanner un ticket » en tête des notes de frais. La photo est lue par l'IA, qui remplit la note ; la personne vérifie et envoie (`scanTicketAction`, `extractReceipt` sans rapprochement bancaire). La formule gratuite lit 20 pièces par mois (tickets, justificatifs, e-factures, un seul compteur) ; les fonctions Pro restent visibles, grisées avec leur marque (docs/PLAN.md, section 9).
 
 ## 6. Reste à faire
 
