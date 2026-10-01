@@ -686,7 +686,8 @@
         "fxRate": "The day's exchange rate could not be retrieved. Enter the rate in the draft, then issue again.",
         "depositDraft": "A deposit invoice for this quote is still a draft: issue or delete it before creating the final invoice.",
         "recurringLimit": "The Free plan includes {limit, plural, one {one active recurring invoice} other {# active recurring invoices}}. Pause one, or upgrade to Pro to add more.",
-        "recurringCurrency": "An invoice in a foreign currency can only recur with Pro, which includes multi-currency."
+        "recurringCurrency": "An invoice in a foreign currency can only recur with Pro, which includes multi-currency.",
+        "plan": "Document in {currency}: issuing or invoicing it is part of multi-currency, in the Pro plan."
       },
       "addLine": "Add line",
       "removeLine": "Remove",
@@ -901,7 +902,9 @@
         "next": "Next invoice on",
         "autoSend": "Issue and send automatically (otherwise: draft to review)",
         "create": "Save recurrence",
-        "currencyPlan": "Invoice in {currency}: making it recurring is part of multi-currency, in the Pro plan."
+        "currencyPlan": "Invoice in {currency}: making it recurring is part of multi-currency, in the Pro plan.",
+        "already": "This invoice already recurs. Next invoice on {date}.",
+        "manage": "See recurring invoices"
       },
       "einvoice": {
         "download": "XRechnung (XML)",
@@ -928,6 +931,8 @@
         "export": "Not taxable (out of state)"
       },
       "totalWithVatUs": "Total incl. tax",
+      "issueCurrencyPlan": "This document is in {currency}. Issuing in another currency is part of the Pro plan. Switch it back to {home} to issue it now.",
+      "quoteCurrencyPlan": "This quote is in {currency}. Invoicing in another currency is part of the Pro plan.",
       "currencyPlan": "Other currencies are part of the Pro plan."
     },
     "quotes": {
@@ -1095,10 +1100,10 @@
       "added": "{count, plural, =0 {No receipts added} one {# receipt added} other {# receipts added}}.{rejected, plural, =0 {} one { # rejected: duplicate, format or size.} other { # rejected: duplicates, format or size.}}{quota, plural, =0 {} one { # not uploaded: this month's AI reads are used up.} other { # not uploaded: this month's AI reads are used up.}}",
       "errors": {
         "unreadable": "This PDF is a scanned image: upload a clear photo of the document instead.",
-        "failed": "The assistant could not read this receipt. Try again later.",
+        "failed": "AI could not read this receipt. Try again later.",
         "notFound": "Receipt not found."
       },
-      "aiOff": "The assistant is not enabled yet: receipts are kept and will be read once the assistant is set up.",
+      "aiOff": "AI reading is not enabled yet: receipts are kept and will be read once it is set up.",
       "files": "Invoices or till receipts",
       "filesHint": "PDF, JPEG, PNG or WebP, 10 MB at most per file, 20 files at a time.",
       "upload": "Upload",
@@ -1845,7 +1850,8 @@
         "read": "Receipt read by AI. Check the fields below, then submit.",
         "unread": "The receipt is attached, but AI could not read it. Fill in the fields below.",
         "currency": "Receipt in {currency}: enter the amount paid in {home}.",
-        "preview": "Scanned receipt"
+        "preview": "Scanned receipt",
+        "manual": "You can still enter the expense by hand below."
       }
     },
     "cashflow": {
@@ -1921,7 +1927,7 @@
           "Assistant: 10 questions per month",
           "First reminder sent by hand, 5 per month",
           "1 active recurring invoice",
-          "1 bank statement per month, autopilot included",
+          "1 bank statement per month (one account, one month at most), autopilot included",
           "“Created with InvoiceLead” notice"
         ]
       },
@@ -1933,7 +1939,7 @@
           "2 users and free fiduciary access",
           "50 documents read by AI each month",
           "Unlimited assistant questions",
-          "Automatic reminders on 3 levels, fees and interest",
+          "Automatic reminders on 3 levels, fees, interest and smart reminders",
           "Tax returns: Swiss VAT (effective and net tax rate), UStVA, CA3, MTD and US sales tax",
           "Unlimited camt bank import, Monday autopilot summary",
           "Unlimited recurring invoices, multi-currency"
@@ -1965,11 +1971,11 @@
       },
       {
         "q": "Can I keep all my accounts in InvoiceLead?",
-        "a": "That is the goal: double-entry accounting on the SME chart of accounts, entries created from your invoices and payments, balance sheet, income statement and VAT return. These features are being rolled out gradually."
+        "a": "Yes. Double-entry accounting on the SME chart of accounts, entries created from your invoices and payments, balance sheet and income statement, already on the Free plan. The VAT return comes with the Pro plan."
       },
       {
-        "q": "Which VAT methods are planned?",
-        "a": "The effective method and the net tax rate method, on agreed or received consideration. The VAT return will be exported in the eCH-0217 XML format, accepted by the SFTA portal."
+        "q": "Which tax returns are supported?",
+        "a": "In Switzerland: the effective method and the net tax rate method, on agreed or received consideration. The return is exported in the eCH-0217 XML format, accepted by the SFTA portal. Elsewhere: UStVA in Germany, CA3 in France, MTD in the United Kingdom and US sales tax. Tax returns are part of the Pro plan."
       },
       {
         "q": "What is the Lead account?",
@@ -1989,7 +1995,7 @@
       },
       {
         "q": "What does the Free plan include?",
-        "a": "Each month: 10 invoices, 20 documents read by AI, 10 questions to the assistant, 5 first-level reminders and 1 bank statement with the autopilot. It also includes 50 contacts and 1 active recurring invoice, and receives e-invoices without limit. Pro and Pro+ features stay visible in the app, greyed out and labelled Pro or Pro+, so you know they exist."
+        "a": "Each month: 10 invoices, 20 documents read by AI, 10 questions to the assistant, 5 first-level reminders and 1 bank statement (one account, one month at most) with the autopilot. It also includes 50 contacts and 1 active recurring invoice, and you receive e-invoices without limit. One user, and your documents carry the “Created with InvoiceLead” notice. Pro and Pro+ features stay visible in the app, greyed out and labelled Pro or Pro+, so you know they exist."
       },
       {
         "q": "Do I need a payment card to start?",

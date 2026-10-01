@@ -1,5 +1,6 @@
-import { and, asc, eq, inArray, lte } from "drizzle-orm";
+import { and, asc, eq, lte, not, sql } from "drizzle-orm";
 import type { Db } from "./db";
+import { anyUuid } from "./db/any";
 import {
   auditLog,
   contacts,
@@ -18,6 +19,7 @@ import {
 import { postPending } from "./ledger";
 import {
   featureAccess,
+  foreignWithoutProFor,
   lockQuota,
   type OrgPlan,
   organizationPlan,
@@ -60,16 +62,6 @@ async function withActiveSlot<T>(
   });
 }
 
-/**
- * Facture en devise étrangère et entreprise sans la multidevise (formule Pro) : la répéter
- * produirait de nouvelles factures en devise, donc une nouvelle récurrence (ou une reprise) est
- * refusée, et celles d'avant attendent (runningRecurring).
- */
-async function foreignWithoutPro(database: Db, organizationId: string, currency: string) {
-  const plan = await organizationPlan(database, organizationId);
-  return !!plan && currency !== plan.currency && !featureAccess(plan, "multiCurrency").allowed;
-}
-
 export async function createRecurring(
   database: Db,
   who: Who,
@@ -81,7 +73,11 @@ export async function createRecurring(
   if (!/^\d{4}-\d{2}-\d{2}$/.test(input.nextDate)) return "invalid";
   const found = await getInvoice(database, who.organizationId, invoiceId);
   if (found?.invoice.kind !== "invoice") return "notFound";
-  if (await foreignWithoutPro(database, who.organizationId, found.invoice.currency)) return "plan";
+  // Facture en devise sans la multidevise : la répéter produirait de nouvelles factures en devise,
+  // donc une nouvelle récurrence (ou une reprise) est refusée ; celles d'avant attendent
+  // (runningRecurring).
+  if (await foreignWithoutProFor(database, who.organizationId, found.invoice.currency))
+    return "plan";
   const created = await withActiveSlot(database, who.organizationId, async (tx) => {
     const [inserted] = await tx
       .insert(recurringInvoices)
@@ -124,6 +120,31 @@ export async function listRecurring(database: Db, organizationId: string) {
     .orderBy(asc(recurringInvoices.nextDate));
 }
 
+/**
+ * Récurrence de cette facture qui tourne (la plus proche échéance), ou null : aucune, ou seulement
+ * des récurrences retenues par la formule.
+ */
+export async function runningRecurringOfInvoice(
+  database: Db,
+  organization: OrgPlan & { id: string },
+  invoiceId: string,
+) {
+  const rows = await database
+    .select({ id: recurringInvoices.id, nextDate: recurringInvoices.nextDate })
+    .from(recurringInvoices)
+    .where(
+      and(
+        eq(recurringInvoices.organizationId, organization.id),
+        eq(recurringInvoices.sourceInvoiceId, invoiceId),
+        eq(recurringInvoices.active, true),
+      ),
+    )
+    .orderBy(asc(recurringInvoices.nextDate));
+  if (rows.length === 0) return null;
+  const running = await runningRecurring(database, organization);
+  return rows.find((r) => running === null || running.has(r.id)) ?? null;
+}
+
 /** Met en pause ou reprend ; reprendre compte dans les récurrences actives de la formule. */
 export async function setRecurringActive(
   database: Db,
@@ -151,7 +172,7 @@ export async function setRecurringActive(
     );
   if (!row) return false;
   if (row.active) return true;
-  if (await foreignWithoutPro(database, who.organizationId, row.currency)) return "plan";
+  if (await foreignWithoutProFor(database, who.organizationId, row.currency)) return "plan";
   return withActiveSlot(database, who.organizationId, set);
 }
 
@@ -162,25 +183,63 @@ export async function setRecurringActive(
  */
 export async function runningRecurring(
   database: Db,
-  organization: OrgPlan & { id: string; currency: string },
+  organization: OrgPlan & { id: string },
 ): Promise<Set<string> | null> {
-  const limit = PLANS[tierOf(organization)].quotas.recurring;
-  const homeOnly = !featureAccess(organization, "multiCurrency").allowed;
-  if (!Number.isFinite(limit) && !homeOnly) return null;
-  const query = database
-    .select({ id: recurringInvoices.id })
-    .from(recurringInvoices)
-    .innerJoin(invoices, eq(invoices.id, recurringInvoices.sourceInvoiceId))
-    .where(
-      and(
-        eq(recurringInvoices.organizationId, organization.id),
-        eq(recurringInvoices.active, true),
-        ...(homeOnly ? [eq(invoices.currency, organization.currency)] : []),
-      ),
-    )
-    .orderBy(asc(recurringInvoices.createdAt), asc(recurringInvoices.id));
-  const rows = Number.isFinite(limit) ? await query.limit(limit) : await query;
-  return new Set(rows.map((r) => r.id));
+  return (await runningRecurringOf(database, [organization])).get(organization.id) ?? null;
+}
+
+/**
+ * La même chose pour plusieurs entreprises à la fois (tâche quotidienne) : une requête par règle de
+ * formule, pas une par entreprise. null : toutes ses récurrences actives tournent.
+ */
+async function runningRecurringOf(
+  database: Db,
+  orgs: (OrgPlan & { id: string })[],
+): Promise<Map<string, Set<string> | null>> {
+  const running = new Map<string, Set<string> | null>();
+  const rules = new Map<string, { limit: number; homeOnly: boolean; ids: string[] }>();
+  for (const org of orgs) {
+    const limit = PLANS[tierOf(org)].quotas.recurring;
+    const homeOnly = !featureAccess(org, "multiCurrency").allowed;
+    if (!Number.isFinite(limit) && !homeOnly) {
+      running.set(org.id, null);
+      continue;
+    }
+    running.set(org.id, new Set());
+    const key = `${limit}:${homeOnly}`;
+    const rule = rules.get(key) ?? { limit, homeOnly, ids: [] };
+    rule.ids.push(org.id);
+    rules.set(key, rule);
+  }
+  for (const { limit, homeOnly, ids } of rules.values()) {
+    // Rang de chaque récurrence active dans son entreprise, de la plus ancienne à la plus récente.
+    const ranked = database
+      .select({
+        id: recurringInvoices.id,
+        organizationId: recurringInvoices.organizationId,
+        position:
+          sql<number>`row_number() over (partition by ${recurringInvoices.organizationId} order by ${recurringInvoices.createdAt}, ${recurringInvoices.id})`.as(
+            "position",
+          ),
+      })
+      .from(recurringInvoices)
+      .innerJoin(invoices, eq(invoices.id, recurringInvoices.sourceInvoiceId))
+      .innerJoin(organizations, eq(organizations.id, recurringInvoices.organizationId))
+      .where(
+        and(
+          anyUuid(recurringInvoices.organizationId, ids),
+          eq(recurringInvoices.active, true),
+          homeOnly ? eq(invoices.currency, organizations.currency) : undefined,
+        ),
+      )
+      .as("ranked");
+    const rows = await database
+      .select({ id: ranked.id, organizationId: ranked.organizationId })
+      .from(ranked)
+      .where(Number.isFinite(limit) ? lte(ranked.position, limit) : undefined);
+    for (const r of rows) running.get(r.organizationId)?.add(r.id);
+  }
+  return running;
 }
 
 export async function deleteRecurring(database: Db, who: Who, id: string) {
@@ -209,47 +268,57 @@ export type RecurringRun = {
  * `send` est injecté pour que la tâche planifiée utilise l'envoi réel (e-mail, PDF, lien).
  *
  * Formule gratuite : une seule récurrence tourne (la plus ancienne active), et la facture créée
- * reste en brouillon quand les 10 factures du mois sont déjà émises.
+ * reste en brouillon quand les 10 factures du mois sont déjà émises. Les récurrences retenues sont
+ * seulement comptées : elles n'entrent pas dans les 500 traitées par passage.
  */
 export async function runRecurring(
   database: Db,
   today: string,
   send?: (who: Who, invoiceId: string) => Promise<boolean>,
 ): Promise<RecurringRun> {
-  const due = await database
+  const run: RecurringRun = { created: 0, issued: 0, sent: 0, failed: 0, held: 0 };
+  const due = and(eq(recurringInvoices.active, true), lte(recurringInvoices.nextDate, today));
+  // Ce que la formule de chaque entreprise concernée laisse tourner. Les récurrences retenues ne
+  // bougent pas (leur échéance reste dans le passé) : elles sont écartées de la requête elle-même,
+  // sinon les plus anciennes occuperaient toute la fenêtre de 500 chaque jour et plus aucune
+  // facture récurrente ne partirait, chez personne.
+  const orgIds = (
+    await database
+      .selectDistinct({ id: recurringInvoices.organizationId })
+      .from(recurringInvoices)
+      .where(due)
+  ).map((r) => r.id);
+  if (orgIds.length === 0) return run;
+  const plans = await database
+    .select({
+      id: organizations.id,
+      leadPlan: organizations.leadPlan,
+      entitlements: organizations.entitlements,
+      entitlementsAt: organizations.entitlementsAt,
+    })
+    .from(organizations)
+    .where(anyUuid(organizations.id, orgIds));
+  const running = await runningRecurringOf(database, plans);
+  const everything: string[] = [];
+  const chosen: string[] = [];
+  for (const [orgId, allowed] of running) {
+    if (allowed === null) everything.push(orgId);
+    else chosen.push(...allowed);
+  }
+  const runs = sql`(${anyUuid(recurringInvoices.organizationId, everything)} or ${anyUuid(recurringInvoices.id, chosen)})`;
+  const [held] = await database
+    .select({ n: sql<number>`count(*)::int` })
+    .from(recurringInvoices)
+    .where(and(due, not(runs)));
+  run.held += held?.n ?? 0;
+  const rows = await database
     .select()
     .from(recurringInvoices)
-    .where(and(eq(recurringInvoices.active, true), lte(recurringInvoices.nextDate, today)))
-    .orderBy(asc(recurringInvoices.nextDate))
+    .where(and(due, runs))
+    .orderBy(asc(recurringInvoices.nextDate), asc(recurringInvoices.id))
     .limit(500);
-  const run: RecurringRun = { created: 0, issued: 0, sent: 0, failed: 0, held: 0 };
-  const orgIds = [...new Set(due.map((r) => r.organizationId))];
-  const orgs = new Map(
-    orgIds.length === 0
-      ? []
-      : (
-          await database
-            .select({
-              id: organizations.id,
-              leadPlan: organizations.leadPlan,
-              entitlements: organizations.entitlements,
-              entitlementsAt: organizations.entitlementsAt,
-              currency: organizations.currency,
-            })
-            .from(organizations)
-            .where(inArray(organizations.id, orgIds))
-        ).map((o) => [o.id, o]),
-  );
-  const running = new Map<string, Set<string> | null>();
-  for (const org of orgs.values()) running.set(org.id, await runningRecurring(database, org));
-  for (const r of due) {
+  for (const r of rows) {
     const who = { organizationId: r.organizationId, userId: r.createdBy ?? "" };
-    const org = orgs.get(r.organizationId);
-    const allowed = running.get(r.organizationId);
-    if (!org || (allowed && !allowed.has(r.id))) {
-      run.held += 1;
-      continue;
-    }
     try {
       const found = await getInvoice(database, r.organizationId, r.sourceInvoiceId);
       if (!found || !r.createdBy) throw new Error("source_missing");
@@ -285,7 +354,7 @@ export async function runRecurring(
       if (r.autoSend) {
         // Formule gratuite : au-delà des 10 factures du mois, issueInvoice la laisse en brouillon.
         const issued = await issueInvoice(database, who, created.id);
-        if (issued === "planLimit") run.held += 1;
+        if (issued === "planLimit" || issued === "plan") run.held += 1;
         else if (typeof issued === "object") {
           run.issued += 1;
           await postPending(database, who);

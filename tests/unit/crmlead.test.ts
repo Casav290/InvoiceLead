@@ -98,4 +98,20 @@ describe("passage CRMlead", () => {
       status: "contactLimit",
     });
   });
+
+  it("refuse le nouveau client quand la dernière place est prise entre le contrôle et la création", async () => {
+    const { user, organization } = await attachLeadIdentity(db, claims());
+    const who = { organizationId: organization.id, userId: user.id };
+    // Formule gratuite déjà à 50 contacts, alors que le contrôle de l'action disait « place libre ».
+    await db
+      .insert(contacts)
+      .values(
+        Array.from({ length: 50 }, (_, i) => ({ organizationId: organization.id, name: `C ${i}` })),
+      );
+    const handoff = decodeHandoff(encodeHandoff(HANDOFF));
+    if (!handoff) throw new Error("handoff");
+    expect(await importHandoff(db, who, handoff, opts)).toEqual({ status: "contactLimit" });
+    expect(await db.select().from(contacts)).toHaveLength(50);
+    expect(await db.select().from(invoices)).toHaveLength(0);
+  });
 });

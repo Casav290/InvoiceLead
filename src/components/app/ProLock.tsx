@@ -69,35 +69,49 @@ export function LockNote({
  * Fonction grisée : les champs et boutons restent visibles à leur place mais sont désactivés
  * (fieldset disabled, aria-disabled), en gris lisible ; la raison et le lien de mise à niveau
  * suivent, hors du bloc désactivé, donc atteignables au clavier. Le cadre est celui du verrou : le
- * bloc enveloppé perd sa propre bordure, pour un seul trait (Trait net).
+ * bloc enveloppé perd sa propre bordure, pour un seul trait (Trait net), et ses panneaux blancs
+ * prennent le fond gris du cadre, pour un bloc gris de bout en bout.
+ *
+ * `noteFirst` : la raison vient avant le bloc, pour un long formulaire dont la fin est loin du
+ * premier écran.
  */
 export function ProLock({
   lock,
   children,
   testId,
   className,
+  noteFirst = false,
 }: {
   lock: Lock;
   children: React.ReactNode;
   testId?: string;
   className?: string;
+  noteFirst?: boolean;
 }) {
   const noteId = testId ? `${testId}-reason` : undefined;
+  const note = (
+    <LockNote
+      lock={lock}
+      id={noteId}
+      className={cn("border-line-strong px-5 py-3", noteFirst ? "border-b" : "border-t")}
+    />
+  );
   return (
     <div
       className={cn("border border-line-strong bg-muted", className)}
       data-testid={testId}
       data-locked={lock.tier ?? "limit"}
     >
+      {noteFirst ? note : null}
       <fieldset
         disabled
         aria-disabled="true"
         aria-describedby={noteId}
-        className="m-0 min-w-0 border-0 p-0 text-ink-muted grayscale [&>*]:border-0"
+        className="m-0 min-w-0 border-0 p-0 text-ink-muted grayscale [&_.bg-panel]:bg-transparent [&>*]:border-0"
       >
         {children}
       </fieldset>
-      <LockNote lock={lock} id={noteId} className="border-t border-line-strong px-5 py-3" />
+      {noteFirst ? null : note}
     </div>
   );
 }

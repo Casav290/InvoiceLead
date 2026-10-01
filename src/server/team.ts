@@ -175,7 +175,12 @@ export async function acceptInvitation(
       .select({
         invitation: fiduciaryInvitations,
         orgName: organizations.name,
-        plan: { leadPlan: organizations.leadPlan, entitlements: organizations.entitlements },
+        // Avec sa date de lecture : une formule Pro vieille de plus de 72 h vaut la formule gratuite.
+        plan: {
+          leadPlan: organizations.leadPlan,
+          entitlements: organizations.entitlements,
+          entitlementsAt: organizations.entitlementsAt,
+        },
       })
       .from(fiduciaryInvitations)
       .innerJoin(organizations, eq(fiduciaryInvitations.organizationId, organizations.id))

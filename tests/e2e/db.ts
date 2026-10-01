@@ -3,7 +3,8 @@ import { Pool } from "pg";
 /**
  * Base de l'application lancée pour les tests de bout en bout (adresse posée par la configuration
  * Playwright). Sert seulement à préparer un état long à obtenir par l'écran : une allocation du
- * mois déjà utilisée, 50 contacts. Tout le reste passe par l'application.
+ * mois déjà utilisée, 50 contacts, un retour à la formule gratuite. Tout le reste passe par
+ * l'application.
  */
 let pool: Pool | null = null;
 function base(): Pool {
@@ -32,6 +33,20 @@ export async function addContacts(leadOrg: string, count: number) {
     [leadOrg, count],
   );
   if (rowCount !== count) throw new Error(`organisation ${leadOrg} introuvable`);
+}
+
+/**
+ * Formule de l'organisation du Compte Lead ramenée à un rang (0 Gratuit, 1 Pro, 2 Pro+), comme le
+ * ferait une résiliation lue par l'application ; la date de lecture reste celle de la connexion.
+ */
+export async function setPlanRank(leadOrg: string, rank: number) {
+  const { rowCount } = await base().query(
+    `update organizations
+     set entitlements = jsonb_set(coalesce(entitlements, '{}'::jsonb), '{plan,rank}', to_jsonb($2::int))
+     where lead_org = $1`,
+    [leadOrg, rank],
+  );
+  if (rowCount !== 1) throw new Error(`organisation ${leadOrg} introuvable`);
 }
 
 export async function closeDb() {

@@ -98,7 +98,7 @@ export default async function ExpensesPage({ params, searchParams }: Props) {
           className="mt-6 border border-hot-fg bg-hot-bg px-4 py-3 text-[13px] text-hot-fg"
         >
           {q.error === "quota"
-            ? usedUp
+            ? `${usedUp} ${t("scan.manual")}`
             : t(`errors.${ERRORS.includes(q.error) ? q.error : "invalid"}`)}
         </p>
       ) : null}
@@ -118,12 +118,12 @@ export default async function ExpensesPage({ params, searchParams }: Props) {
         <h2 className="text-[18px]">{t("scan.title")}</h2>
         <p className="mt-1 mb-4 text-[14px] text-ink-2">{t("scan.subtitle")}</p>
         {scanLock ? (
-          <ProLock lock={scanLock} testId="scan-ticket-lock" className="bg-panel">
+          <ProLock lock={scanLock} testId="scan-ticket-lock">
             <div className="px-5 py-4">
               <ScanTicket
                 label={t("scan.button")}
                 reading={t("scan.reading")}
-                hint={t("scan.hint")}
+                hint={t("scan.manual")}
                 disabled
               />
             </div>

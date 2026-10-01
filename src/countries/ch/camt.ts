@@ -22,6 +22,8 @@ export type BankStatement = {
   currency: string | null;
   /** Comptes trouvés dans le fichier (IBAN, ou autre identifiant), sans doublon. */
   accounts: string[];
+  /** Relevés (Stmt) ou avis (Ntfctn) du fichier qui ne disent pas leur compte. */
+  unnamed: number;
   entries: BankEntry[];
 };
 
@@ -60,11 +62,13 @@ export function parseCamt(xml: string): BankStatement {
   let iban: string | null = null;
   let currency: string | null = null;
   const accounts = new Set<string>();
+  let unnamed = 0;
   const entries: BankEntry[] = [];
   for (const stmt of statements) {
     const account =
       str(path(stmt, "Acct", "Id", "IBAN")) ?? str(path(stmt, "Acct", "Id", "Othr", "Id"));
     if (account) accounts.add(account.replace(/\s/g, "").toUpperCase());
+    else unnamed += 1;
     iban ??= str(path(stmt, "Acct", "Id", "IBAN"));
     currency ??= str(path(stmt, "Acct", "Ccy"));
     for (const ntry of list(obj(stmt).Ntry)) {
@@ -118,5 +122,5 @@ export function parseCamt(xml: string): BankStatement {
       });
     }
   }
-  return { iban, currency, accounts: [...accounts], entries };
+  return { iban, currency, accounts: [...accounts], unnamed, entries };
 }

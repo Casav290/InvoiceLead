@@ -1,7 +1,7 @@
 import { expect, type Locator, type Page, test } from "@playwright/test";
 import { camt053 } from "../support/camt";
 import { samplePdf } from "../support/pdf";
-import { addContacts, closeDb, useQuota } from "./db";
+import { addContacts, closeDb, setPlanRank, useQuota } from "./db";
 import { login, setupBilling, traitNetIssues } from "./helpers";
 
 /**
@@ -132,6 +132,14 @@ test("formule gratuite : chaque fonction Pro reste visible, grisée, avec sa mar
   await expect(page.getByTestId("vat-validate")).toBeDisabled();
   await expectLocked(page.getByTestId("vat-review-lock"), "Pro", "Fonction Pro.");
   await expect(page.getByTestId("vat-review-run")).toBeDisabled();
+  // Gris de bout en bout : le panneau enveloppé prend le fond du cadre, sans blanc dedans.
+  for (const id of ["vat-review-lock", "vat-validate-lock"]) {
+    await expect(page.getByTestId(id)).toHaveCSS("background-color", "rgb(242, 240, 238)");
+    await expect(page.getByTestId(id).locator("fieldset > *").first()).toHaveCSS(
+      "background-color",
+      "rgba(0, 0, 0, 0)",
+    );
+  }
   expect(await traitNetIssues(page)).toEqual([]);
 
   // Banque, justificatifs, capture, tickets, assistant : ouverts, avec leur compteur.
@@ -207,8 +215,27 @@ test("formule gratuite : chaque fonction Pro reste visible, grisée, avec sa mar
   await panel.getByTestId("recurring-create").click();
   await page.waitForURL("**/fr/app/invoices/recurring?created=1");
   await expect(page.getByTestId("recurring-quota")).toContainText(/1 sur 1/);
-  // L'allocation est utilisée : sur la même facture, le panneau est maintenant grisé.
+  // Sur la facture modèle, le panneau dit qu'elle se répète déjà, sans verrou.
   await page.getByTestId("recurring-row").getByRole("link").first().click();
+  await expect(panel).not.toHaveAttribute("open");
+  await panel.locator("summary").click();
+  await expect(panel.getByTestId("recurring-model")).toContainText("Cette facture se répète déjà.");
+  await expect(panel.getByTestId("recurring-panel-lock")).toHaveCount(0);
+  await expect(panel.getByTestId("recurring-create")).toHaveCount(0);
+  // Sur une autre facture émise, l'allocation utilisée grise le panneau. Il reste fermé, avec la
+  // marque Pro sur son titre, et ne repousse pas l'aperçu de la pièce.
+  await page.goto("/fr/app/invoices/new");
+  await page
+    .getByTestId("invoice-form")
+    .getByLabel("Client", { exact: true })
+    .selectOption({ label: "Client SA" });
+  await page.getByTestId("invoice-line-0").getByLabel("Article").selectOption({ label: "Conseil" });
+  await page.getByTestId("invoice-save").click();
+  await page.getByTestId("document-issue").click();
+  await expect(page.getByText(/Facture émise/)).toBeVisible();
+  await expect(panel).not.toHaveAttribute("open");
+  await expect(panel.locator("summary").getByTestId("pro-badge")).toHaveText("Pro");
+  await panel.locator("summary").click();
   await expectLocked(
     page.getByTestId("recurring-panel-lock"),
     "Pro",
@@ -348,6 +375,19 @@ test("formule gratuite : allocations du mois utilisées, chaque commande grisée
   await page.goto("/fr/app/expenses");
   await expectLocked(page.getByTestId("scan-ticket-lock"), "Pro", aiReads);
   await expect(page.getByTestId("scan-quota")).toContainText(/20 sur 20/);
+  // Grisé comme les autres verrous, avec la saisie à la main en solution de repli.
+  await expect(page.getByTestId("scan-ticket-lock")).toHaveCSS(
+    "background-color",
+    "rgb(242, 240, 238)",
+  );
+  await expect(page.getByTestId("scan-ticket-disabled")).toHaveCSS(
+    "background-color",
+    "rgb(242, 240, 238)",
+  );
+  await expect(page.getByTestId("scan-ticket-lock")).toContainText(
+    "Vous pouvez saisir la dépense à la main ci-dessous.",
+  );
+  await expect(page.getByTestId("scan-ticket-lock")).not.toContainText("appareil photo");
 
   await page.goto("/fr/app/accounting/receipts");
   await expectLocked(page.getByTestId("receipts-lock"), "Pro", aiReads);
@@ -397,6 +437,17 @@ test("formule gratuite : allocations du mois utilisées, chaque commande grisée
     "La formule gratuite compte 50 contacts au plus.",
   );
   await expect(page.getByTestId("contact-save")).toBeDisabled();
+  // La raison vient en tête, au premier écran, avant le long formulaire grisé.
+  const reason = await page.getByTestId("contact-new-lock").getByTestId("lock-note").boundingBox();
+  const fields = await page
+    .getByTestId("contact-new-lock")
+    .locator("fieldset")
+    .first()
+    .boundingBox();
+  expect(reason && fields && reason.y < fields.y).toBe(true);
+  expect((reason?.y ?? Number.POSITIVE_INFINITY) + (reason?.height ?? 0)).toBeLessThan(
+    page.viewportSize()?.height ?? 0,
+  );
 
   // Tableau de bord : chaque allocation utilisée porte la marque, la ligne des contacts aussi.
   await page.goto("/fr/app");
@@ -462,6 +513,44 @@ test("formule gratuite : une e-facture en EUR s'importe, son approbation reste g
   await expect(page.getByTestId("bill-approve-lock")).toBeVisible();
 });
 
+test("retour à la formule gratuite : un brouillon en EUR reste modifiable, son émission est grisée et le serveur la refuse", async ({
+  page,
+}) => {
+  const run = `fxdraft-${Date.now()}`;
+  await login(page, "fr", {
+    sub: `sub-${run}`,
+    email: `${run}@atelier.test`,
+    org: `org-${run}`,
+    org_name: "Devises Sàrl",
+    plan: "pro",
+  });
+  await setupBilling(page);
+  // En Pro : un brouillon de facture en EUR.
+  await page.goto("/fr/app/invoices/new");
+  const form = page.getByTestId("invoice-form");
+  await form.getByLabel("Client", { exact: true }).selectOption({ label: "Client SA" });
+  await form.getByLabel("Devise").selectOption("EUR");
+  await page.getByTestId("invoice-line-0").getByLabel("Article").selectOption({ label: "Conseil" });
+  await page.getByTestId("invoice-save").click();
+  await expect(page).toHaveURL(/\/fr\/app\/invoices\/[0-9a-f-]+\?saved=1$/);
+
+  // Formule résiliée : le brouillon reste là, « Émettre » est grisé avec la marque Pro.
+  await setPlanRank(`org-${run}`, 0);
+  await page.reload();
+  const lock = page.getByTestId("issue-lock");
+  await expectLocked(lock, "Pro", "Ce document est en EUR.");
+  await expect(lock).toContainText("Repassez-le en CHF pour l'émettre maintenant.");
+  await expect(page.getByTestId("document-issue")).toBeDisabled();
+  expect(await traitNetIssues(page)).toEqual([]);
+
+  // Demande forgée : le bouton réactivé dans la page envoie quand même ; le serveur refuse.
+  await lock.locator("fieldset").evaluate(unlock);
+  await page.getByTestId("document-issue").click();
+  await page.waitForURL(/error=plan/);
+  await expect(page.getByRole("alert").filter({ hasText: "Document en EUR" })).toBeVisible();
+  await expect(page.getByTestId("document-status")).toHaveText("Brouillon");
+});
+
 test("tarifs et FAQ : les allocations gratuites décidées sont annoncées", async ({ page }) => {
   await page.goto("/fr/pricing");
   const free = page.getByTestId("plan-free");
@@ -471,7 +560,9 @@ test("tarifs et FAQ : les allocations gratuites décidées sont annoncées", asy
   await expect(free).toContainText("10 questions par mois");
   await expect(free).toContainText("Première relance à la main, 5 par mois");
   await expect(free).toContainText("1 facture récurrente active");
-  await expect(free).toContainText("1 relevé bancaire par mois, pilote automatique compris");
+  await expect(free).toContainText(
+    "1 relevé bancaire par mois (un compte, un mois au plus), pilote automatique compris",
+  );
   await expect(free).not.toContainText("Bientôt");
   await expect(page.getByTestId("plan-pro")).toContainText("50 pièces lues par l'IA chaque mois");
   await expect(page.getByTestId("plan-proPlus")).toContainText(
@@ -485,7 +576,7 @@ test("tarifs et FAQ : les allocations gratuites décidées sont annoncées", asy
   await page.getByText("Que comprend la formule gratuite\u202f?").click();
   await expect(
     page.getByText(
-      "Chaque mois\u202f: 10 factures, 20 pièces lues par l'IA, 10 questions à l'assistant, 5 relances de premier niveau et 1 relevé bancaire avec le pilote automatique.",
+      "Chaque mois\u202f: 10 factures, 20 pièces lues par l'IA, 10 questions à l'assistant, 5 relances de premier niveau et 1 relevé bancaire (un compte, un mois au plus) avec le pilote automatique.",
       { exact: false },
     ),
   ).toBeVisible();
@@ -496,7 +587,7 @@ test("tarifs et FAQ : les allocations gratuites décidées sont annoncées", asy
   await page.getByText("Was umfasst das Gratis-Abo?").click();
   await expect(
     page.getByText(
-      "Jeden Monat: 10 Rechnungen, 20 von der KI gelesene Belege, 10 Fragen an den Assistenten, 5 Mahnungen der ersten Stufe und 1 Kontoauszug mit Autopilot.",
+      "Jeden Monat: 10 Rechnungen, 20 von der KI gelesene Belege, 10 Fragen an den Assistenten, 5 Mahnungen der ersten Stufe und 1 Kontoauszug (ein Konto, höchstens ein Monat) mit Autopilot.",
       { exact: false },
     ),
   ).toBeVisible();

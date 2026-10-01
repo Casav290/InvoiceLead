@@ -15,7 +15,10 @@ export function ScanTicket({
   label: string;
   reading: string;
   hint: string;
-  /** Lectures du mois utilisées : le bouton reste visible, grisé, sans choix de fichier. */
+  /**
+   * Lectures du mois utilisées : le bouton reste visible, grisé, sans choix de fichier ; `hint` dit
+   * alors comment saisir la dépense sans lecture.
+   */
   disabled?: boolean;
 }) {
   const input = useRef<HTMLInputElement>(null);
@@ -24,7 +27,7 @@ export function ScanTicket({
     return (
       <div>
         <span
-          className="inline-flex min-h-12 items-center justify-center border border-line-strong bg-panel px-6 text-[15px] font-bold text-ink-muted"
+          className="inline-flex min-h-12 items-center justify-center border border-line-strong bg-muted px-6 text-[15px] font-bold text-ink-muted"
           aria-disabled="true"
           data-testid="scan-ticket-disabled"
         >
