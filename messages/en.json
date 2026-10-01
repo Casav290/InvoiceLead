@@ -970,7 +970,8 @@
         "reports": "Reports",
         "vat": "VAT",
         "review": "To review",
-        "bills": "Suppliers"
+        "bills": "Suppliers",
+        "cashflow": "Cash flow"
       },
       "welcomeFiduciary": "Welcome. You are now working in your client's accounts; switch company from the header.",
       "unavailableTitle": "Accounting coming soon for this country",
@@ -1743,6 +1744,20 @@
         "role": "Your role does not allow expense claims.",
         "invalid": "Invalid input."
       }
+    },
+    "cashflow": {
+      "title": "Cash flow",
+      "subtitle": "Forecast for the next thirteen weeks, recalculated on every visit.",
+      "opening": "Cash today (bank and cash)",
+      "verdictLabel": "Forecast",
+      "shortfall": "Shortfall expected in the week of {date}: {amount}.",
+      "noShortfall": "No shortfall expected. Cash in thirteen weeks: {amount}.",
+      "week": "Week of",
+      "in": "Receipts",
+      "out": "Payments",
+      "closing": "Cash",
+      "later": "Beyond: receipts {in}, payments {out}.",
+      "method": "Receipts: open invoices at the date each customer usually pays. Payments: supplier bills and expense claims at their due date. Anything already due counts in the current week."
     }
   },
   "footer": {

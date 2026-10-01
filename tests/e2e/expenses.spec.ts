@@ -39,3 +39,26 @@ test("notes de frais : kilomètres et dépense, visibles par la comptabilité", 
   await expect(page.getByTestId("bill-row")).toContainText("Note de frais");
   await expect(page.getByTestId("bill-row")).toContainText("Eva Muster");
 });
+
+test("trésorerie : la note de frais à rembourser creuse les liquidités", async ({ page }) => {
+  const run = Date.now();
+  await login(page, "fr", {
+    sub: `sub-cash-${run}`,
+    email: `cash-${run}@atelier.test`,
+    org: `org-cash-${run}`,
+    org_name: "Caisse Sàrl",
+  });
+  await setupBilling(page);
+  await page.goto("/fr/app/expenses");
+  const trip = page.getByTestId("claim-mileage");
+  await trip.getByLabel("Trajet (de, à, motif)").fill("Sion – Brig");
+  await trip.getByLabel("Kilomètres").fill("100");
+  await trip.getByLabel("À rembourser à").fill("Eva Muster");
+  await page.getByTestId("claim-mileage-save").click();
+  await expect(page.getByText("Note de frais envoyée à la comptabilité.")).toBeVisible();
+
+  await page.goto("/fr/app/accounting/cashflow");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Trésorerie");
+  await expect(page.getByTestId("cash-weeks")).toContainText("70.00");
+  await expect(page.getByTestId("cash-verdict")).toContainText("Découvert prévu");
+});

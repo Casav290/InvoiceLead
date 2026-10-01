@@ -970,7 +970,8 @@
         "reports": "Rapports",
         "vat": "TVA",
         "review": "À vérifier",
-        "bills": "Fournisseurs"
+        "bills": "Fournisseurs",
+        "cashflow": "Trésorerie"
       },
       "welcomeFiduciary": "Bienvenue. Vous travaillez maintenant dans la comptabilité de votre client ; changez d'entreprise depuis l'en-tête.",
       "unavailableTitle": "Comptabilité bientôt disponible pour ce pays",
@@ -1743,6 +1744,20 @@
         "role": "Votre rôle ne permet pas de saisir des notes de frais.",
         "invalid": "Saisie invalide."
       }
+    },
+    "cashflow": {
+      "title": "Trésorerie",
+      "subtitle": "Prévision des treize prochaines semaines, recalculée à chaque visite.",
+      "opening": "Liquidités aujourd'hui (banque et caisse)",
+      "verdictLabel": "Prévision",
+      "shortfall": "Découvert prévu la semaine du {date} : {amount}.",
+      "noShortfall": "Pas de découvert prévu. Liquidités dans treize semaines : {amount}.",
+      "week": "Semaine du",
+      "in": "Encaissements",
+      "out": "Paiements",
+      "closing": "Liquidités",
+      "later": "Au-delà : encaissements {in}, paiements {out}.",
+      "method": "Encaissements : factures ouvertes à la date où chaque client paie d'habitude. Paiements : factures fournisseurs et notes de frais à leur échéance. Ce qui est déjà échu compte dans la semaine en cours."
     }
   },
   "footer": {

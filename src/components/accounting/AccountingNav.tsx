@@ -11,6 +11,7 @@ const ITEMS = [
   { href: "/app/accounting/bills", key: "bills" },
   { href: "/app/accounting", key: "journal" },
   { href: "/app/accounting/reports", key: "reports" },
+  { href: "/app/accounting/cashflow", key: "cashflow" },
   { href: "/app/accounting/vat", key: "vat" },
 ] as const;
 

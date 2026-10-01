@@ -970,7 +970,8 @@
         "reports": "Auswertungen",
         "vat": "MWST",
         "review": "Zu prüfen",
-        "bills": "Kreditoren"
+        "bills": "Kreditoren",
+        "cashflow": "Liquidität"
       },
       "welcomeFiduciary": "Willkommen. Sie arbeiten jetzt in der Buchhaltung Ihres Kunden; das Unternehmen wechseln Sie in der Kopfzeile.",
       "unavailableTitle": "Buchhaltung für dieses Land folgt bald",
@@ -1743,6 +1744,20 @@
         "role": "Ihre Rolle erlaubt keine Spesenerfassung.",
         "invalid": "Ungültige Eingabe."
       }
+    },
+    "cashflow": {
+      "title": "Liquidität",
+      "subtitle": "Planung der nächsten dreizehn Wochen, bei jedem Aufruf neu berechnet.",
+      "opening": "Flüssige Mittel heute (Bank und Kasse)",
+      "verdictLabel": "Planung",
+      "shortfall": "Unterdeckung erwartet in der Woche vom {date}: {amount}.",
+      "noShortfall": "Keine Unterdeckung erwartet. Flüssige Mittel in dreizehn Wochen: {amount}.",
+      "week": "Woche vom",
+      "in": "Eingänge",
+      "out": "Zahlungen",
+      "closing": "Flüssige Mittel",
+      "later": "Danach: Eingänge {in}, Zahlungen {out}.",
+      "method": "Eingänge: offene Rechnungen zum Datum, an dem der Kunde üblicherweise zahlt. Zahlungen: Lieferantenrechnungen und Spesen bei Fälligkeit. Bereits Fälliges zählt in der laufenden Woche."
     }
   },
   "footer": {
