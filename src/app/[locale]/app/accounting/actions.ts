@@ -150,6 +150,7 @@ export async function uploadReceiptsAction(form: FormData) {
     redirect(`/${locale}/app/accounting/receipts?error=plan`);
   let added = 0;
   let rejected = 0;
+  let last = "";
   for (const file of files.slice(0, 20)) {
     if (await limitReached(db(), session.organization, "receipt")) {
       rejected += 1;
@@ -165,9 +166,15 @@ export async function uploadReceiptsAction(form: FormData) {
       continue;
     }
     added += 1;
+    last = result.id;
     if (aiConfigured()) await readReceipt(db(), who, result.id, language);
   }
   revalidatePath(`/${locale}/app/accounting`, "layout");
+  // Depuis l'écran de capture du téléphone : on y revient, avec ce qui vient d'être lu.
+  if (form.get("from") === "capture")
+    redirect(
+      `/${locale}/app/accounting/receipts/capture?added=${added}&rejected=${rejected}${last ? `&last=${last}` : ""}`,
+    );
   redirect(`/${locale}/app/accounting/receipts?added=${added}&rejected=${rejected}`);
 }
 

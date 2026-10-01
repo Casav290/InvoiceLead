@@ -4,6 +4,7 @@ import { AccountingNav } from "@/components/accounting/AccountingNav";
 import { PlanNotice } from "@/components/app/PlanNotice";
 import { Button } from "@/components/ui/button";
 import { countryPack } from "@/countries";
+import { Link } from "@/i18n/navigation";
 import { formatDate } from "@/lib/fiscal-year";
 import { formatAmount } from "@/lib/money";
 import { aiConfigured } from "@/server/ai";
@@ -39,7 +40,16 @@ export default async function ReceiptsPage({ params, searchParams }: Props) {
   return (
     <div className="mx-auto max-w-5xl px-4 py-10 sm:px-8">
       <AccountingNav />
-      <h1 className="text-[28px] leading-tight">{t("title")}</h1>
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <h1 className="text-[28px] leading-tight">{t("title")}</h1>
+        <Link
+          href="/app/accounting/receipts/capture"
+          className="text-[13px] font-semibold text-accent-dark hover:underline"
+          data-testid="receipts-capture-link"
+        >
+          {t("captureLink")}
+        </Link>
+      </div>
       <p className="mt-2 text-[15px] text-ink-muted">{t("subtitle")}</p>
 
       {q.added !== undefined ? (

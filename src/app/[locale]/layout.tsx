@@ -1,6 +1,6 @@
 import "@fontsource-variable/archivo";
 import "../globals.css";
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { notFound } from "next/navigation";
 import { hasLocale, NextIntlClientProvider } from "next-intl";
 import { getLocale, getTranslations } from "next-intl/server";
@@ -25,8 +25,16 @@ export async function generateMetadata({
     title: { default: t("title"), template: "%s · InvoiceLead" },
     description: t("description"),
     metadataBase: new URL(process.env.APP_URL ?? "http://localhost:3000"),
+    manifest: "/manifest.webmanifest",
+    icons: {
+      icon: [{ url: "/icons/favicon-32.png", sizes: "32x32", type: "image/png" }],
+      apple: [{ url: "/icons/apple-touch-icon.png", sizes: "180x180" }],
+    },
+    appleWebApp: { capable: true, title: "InvoiceLead", statusBarStyle: "default" },
   };
 }
+
+export const viewport: Viewport = { themeColor: "#2563eb" };
 
 export default async function LocaleLayout({ children }: { children: React.ReactNode }) {
   const locale = await getLocale();

@@ -1050,7 +1050,8 @@
         "billed": "Facture fournisseur"
       },
       "planOnly": "La lecture automatique des justificatifs est comprise dans la formule Pro (50 par mois) et Pro+ (300 par mois).",
-      "toBill": "Créer la facture à payer"
+      "toBill": "Créer la facture à payer",
+      "captureLink": "Photographier avec le téléphone"
     },
     "reports": {
       "title": "Rapports",
@@ -1619,6 +1620,18 @@
         "nothing": "Aucune heure facturable à facturer.",
         "invalid": "Saisie invalide."
       }
+    },
+    "capture": {
+      "title": "Photographier un justificatif",
+      "subtitle": "Un ticket, une facture : la photo est lue par l'IA et rattachée au paiement dès qu'il arrive dans le relevé.",
+      "take": "Photographier",
+      "sending": "Envoi et lecture…",
+      "read": "Justificatif lu",
+      "saved": "Justificatif enregistré.",
+      "rejected": "La photo n'a pas pu être enregistrée (format, taille ou limite de la formule).",
+      "recent": "Derniers justificatifs",
+      "all": "Tous les justificatifs",
+      "planOnly": "La lecture des justificatifs fait partie de la formule Pro."
     }
   },
   "footer": {

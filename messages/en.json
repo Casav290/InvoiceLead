@@ -1050,7 +1050,8 @@
         "billed": "Supplier invoice"
       },
       "planOnly": "Automatic receipt reading is included in the Pro plan (50 per month) and Pro+ (300 per month).",
-      "toBill": "Create the bill to pay"
+      "toBill": "Create the bill to pay",
+      "captureLink": "Take a photo with your phone"
     },
     "reports": {
       "title": "Reports",
@@ -1619,6 +1620,18 @@
         "nothing": "No billable hours to invoice.",
         "invalid": "Invalid entry."
       }
+    },
+    "capture": {
+      "title": "Photograph a receipt",
+      "subtitle": "A receipt or a bill: AI reads the photo and links it to the payment as soon as it shows up in the statement.",
+      "take": "Take a photo",
+      "sending": "Sending and reading…",
+      "read": "Receipt read",
+      "saved": "Receipt saved.",
+      "rejected": "The photo could not be saved (format, size or plan limit).",
+      "recent": "Latest receipts",
+      "all": "All receipts",
+      "planOnly": "Reading receipts is part of the Pro plan."
     }
   },
   "footer": {

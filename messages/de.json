@@ -1050,7 +1050,8 @@
         "billed": "Lieferantenrechnung"
       },
       "planOnly": "Das automatische Lesen von Belegen ist in Pro (50 pro Monat) und Pro+ (300 pro Monat) enthalten.",
-      "toBill": "Als Kreditorenrechnung erfassen"
+      "toBill": "Als Kreditorenrechnung erfassen",
+      "captureLink": "Mit dem Handy fotografieren"
     },
     "reports": {
       "title": "Auswertungen",
@@ -1619,6 +1620,18 @@
         "nothing": "Keine verrechenbaren Stunden offen.",
         "invalid": "Ungültige Eingabe."
       }
+    },
+    "capture": {
+      "title": "Beleg fotografieren",
+      "subtitle": "Quittung oder Rechnung: Die KI liest das Foto und ordnet es der Zahlung zu, sobald sie im Kontoauszug erscheint.",
+      "take": "Fotografieren",
+      "sending": "Senden und lesen …",
+      "read": "Beleg gelesen",
+      "saved": "Beleg gespeichert.",
+      "rejected": "Das Foto konnte nicht gespeichert werden (Format, Grösse oder Abo-Limite).",
+      "recent": "Letzte Belege",
+      "all": "Alle Belege",
+      "planOnly": "Das Lesen von Belegen ist Teil des Pro-Abos."
     }
   },
   "footer": {
