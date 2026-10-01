@@ -54,3 +54,18 @@ Le client est repris s'il existe déjà : même `contact.id` CRMlead d'abord, pu
 Un même `lead.id` ne donne qu'une pièce par entreprise : rouvrir le lien ramène au brouillon déjà créé.
 
 La pièce créée est un brouillon, modifiable avant émission. La personne doit avoir un rôle qui permet la facturation.
+
+## Retour vers CRMlead
+
+Dès qu'une pièce tirée d'un lead change d'état, InvoiceLead le dépose dans la boîte de réception de CRMlead (échange du Compte Lead, jeton d'application de portée `exchange`). Sont concernés le devis importé, la facture finale et les factures d'acompte tirées de ce devis, ainsi que les avoirs sur ces factures. Les brouillons ne partent pas.
+
+```json
+{ "type": "document", "org": "organisation Lead",
+  "source": { "app": "invoicelead", "id": "id de la pièce", "url": "https://invoicelead.io/fr/app/quotes/…" },
+  "data": { "kind": "quote | invoice | credit_note", "number": "O-2026-0001",
+            "status": "issued | accepted | declined | invoiced | partial | paid | credited",
+            "net_cents": 430000, "total_cents": 464830, "currency": "CHF",
+            "issue_date": "2026-10-01", "lead_id": "uuid du lead CRMlead" } }
+```
+
+CRMlead montre ces pièces sur la fiche du lead ; un devis accepté y fait passer le lead en « gagné », au montant hors taxes du devis. Les envois passent par une file (`crmlead_outbox`) : un nouvel état remplace l'envoi pas encore parti, une panne de CRMlead est reprise après 1 min, 5 min, 30 min, 2 h puis 12 h (et par la tâche quotidienne), un lead introuvable ou à la corbeille n'est pas réessayé.

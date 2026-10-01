@@ -1021,3 +1021,31 @@ export const timeEntries = pgTable(
 );
 
 export type TimeEntry = typeof timeEntries.$inferSelect;
+
+/**
+ * Ce qu'InvoiceLead envoie à CRMlead : l'état d'un devis ou d'une facture tiré d'un lead. Une ligne
+ * par pièce en attente ; un nouvel état remplace l'envoi pas encore parti.
+ */
+export const crmleadOutbox = pgTable(
+  "crmlead_outbox",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    invoiceId: uuid("invoice_id").notNull(),
+    envelope: jsonb("envelope").notNull(),
+    status: text("status").notNull().default("pending"), // pending | delivered | failed
+    attempts: integer("attempts").notNull().default(0),
+    lastError: text("last_error"),
+    nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true }).notNull().defaultNow(),
+    deliveredAt: timestamp("delivered_at", { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    index("crmlead_outbox_pending_idx").on(t.status, t.nextAttemptAt),
+    uniqueIndex("crmlead_outbox_one_pending_idx")
+      .on(t.invoiceId)
+      .where(sql`${t.status} = 'pending'`),
+  ],
+);
