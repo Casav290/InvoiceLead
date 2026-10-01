@@ -59,6 +59,8 @@ export const organizations = pgTable("organizations", {
 
   // Données de l'entreprise (réglages), reprises sur les devis, factures et QR-factures.
   legalName: text("legal_name"),
+  /** Logo de l'entreprise (PNG ou JPEG), repris sur les devis, factures et avoirs. */
+  logoKey: text("logo_key"),
   legalForm: text("legal_form"), // sole_proprietorship | gmbh | ag | partnership | association | other
   street: text("street"),
   buildingNumber: text("building_number"),
@@ -1019,3 +1021,32 @@ export const timeEntries = pgTable(
 );
 
 export type TimeEntry = typeof timeEntries.$inferSelect;
+
+/**
+ * Ce qu'InvoiceLead envoie à CRMlead : l'état d'un devis ou d'une facture tiré d'un lead. Une ligne
+ * par pièce en attente ; un nouvel état remplace l'envoi pas encore parti.
+ */
+export const crmleadOutbox = pgTable(
+  "crmlead_outbox",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    invoiceId: uuid("invoice_id").notNull(),
+    envelope: jsonb("envelope").notNull(),
+    // pending | sending (réservé par un envoi en cours) | delivered | failed | superseded
+    status: text("status").notNull().default("pending"),
+    attempts: integer("attempts").notNull().default(0),
+    lastError: text("last_error"),
+    nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true }).notNull().defaultNow(),
+    deliveredAt: timestamp("delivered_at", { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    index("crmlead_outbox_pending_idx").on(t.status, t.nextAttemptAt),
+    uniqueIndex("crmlead_outbox_one_pending_idx")
+      .on(t.invoiceId)
+      .where(sql`${t.status} = 'pending'`),
+  ],
+);

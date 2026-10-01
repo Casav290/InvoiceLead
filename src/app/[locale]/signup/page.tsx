@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { redirect as nextRedirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { LeadLoginPanel } from "@/components/public/LeadLoginPanel";
 import { PublicFooter } from "@/components/public/PublicFooter";
@@ -28,6 +29,8 @@ export default async function Page({
   if (await getSession()) redirect({ href: "/app", locale });
   const { erreur } = await searchParams;
   const error = erreur === "lead" || erreur === "session" ? erreur : undefined;
+  // Pas d'écran intermédiaire : tout droit vers l'inscription commune du Compte Lead.
+  if (!error) nextRedirect(`/auth/lead/start?${new URLSearchParams({ locale, signup: "1" })}`);
   return (
     <div className="flex min-h-screen flex-col">
       <PublicHeader />

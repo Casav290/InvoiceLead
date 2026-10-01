@@ -37,7 +37,10 @@ export function LeadLoginPanel({
           size="lg"
           className="h-auto min-h-12 w-full px-4 py-3 text-center whitespace-normal sm:px-6"
         >
-          <a href={`/auth/lead/start?locale=${locale}`} data-testid="lead-login">
+          <a
+            href={`/auth/lead/start?locale=${locale}${mode === "signup" ? "&signup=1" : ""}`}
+            data-testid="lead-login"
+          >
             {t("leadButton")}
           </a>
         </Button>

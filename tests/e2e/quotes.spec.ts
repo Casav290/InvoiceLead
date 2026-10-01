@@ -12,7 +12,7 @@ test("devis : émission, acceptation puis transformation en facture", async ({ p
   await setupBilling(page);
 
   await page.goto("/de/app");
-  await page.getByRole("link", { name: "Offerten" }).click();
+  await page.getByRole("link", { name: "Offerten", exact: true }).click();
   await page.getByTestId("quote-new").click();
   const form = page.getByTestId("invoice-form");
   await expect(form.getByLabel("Gültig bis")).toBeVisible();

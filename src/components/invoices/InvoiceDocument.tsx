@@ -1,3 +1,4 @@
+import { eq } from "drizzle-orm";
 import { getTranslations } from "next-intl/server";
 import { countryPack } from "@/countries";
 import { formatRate } from "@/countries/ch/vat";
@@ -7,7 +8,13 @@ import { formatDate } from "@/lib/fiscal-year";
 import { computeTotals, formatQuantity } from "@/lib/invoice-math";
 import { formatAmount } from "@/lib/money";
 import { taxNumberLabel } from "@/lib/swiss-ids";
-import type { Invoice, InvoiceLine, PartySnapshot } from "@/server/db/schema";
+import { db } from "@/server/db";
+import {
+  type Invoice,
+  type InvoiceLine,
+  organizations,
+  type PartySnapshot,
+} from "@/server/db/schema";
 
 function Address({
   party,
@@ -63,12 +70,27 @@ export async function InvoiceDocument({
   const us = sender?.country === "US";
   const recipient = invoice.recipient;
   const totals = computeTotals(lines);
+  const [org] = await db()
+    .select({ logoKey: organizations.logoKey })
+    .from(organizations)
+    .where(eq(organizations.id, invoice.organizationId));
   return (
     <article
       lang={lang}
       data-testid="invoice-document"
       className="border border-line-strong bg-panel px-5 py-6 sm:px-10 sm:py-10"
     >
+      {org?.logoKey ? (
+        <div className="mb-6 flex justify-end">
+          {/* biome-ignore lint/performance/noImgElement: logo servi tel quel, taille inconnue */}
+          <img
+            src={`/api/logo/${invoice.organizationId}?v=${encodeURIComponent(org.logoKey.split("/").pop() ?? "")}`}
+            alt={sender?.name ?? ""}
+            className="max-h-16 max-w-[200px] object-contain"
+            data-testid="document-logo"
+          />
+        </div>
+      ) : null}
       <div className="grid gap-6 sm:grid-cols-2">
         {sender ? (
           <div>

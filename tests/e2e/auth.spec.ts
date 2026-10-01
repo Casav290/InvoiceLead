@@ -1,10 +1,36 @@
 import { expect, test } from "@playwright/test";
 import { LEAD, login } from "./helpers";
 
-test("l'application sans session renvoie vers la connexion", async ({ page }) => {
-  await page.goto("/de/app");
-  await expect(page).toHaveURL(/\/de\/login$/);
+test("sans session, la page demandée passe par le Compte Lead puis se rouvre", async ({ page }) => {
+  const res = await page.request.get("/fr/app/invoices?kind=quote", { maxRedirects: 0 });
+  expect([303, 307, 308]).toContain(res.status());
+  const location = res.headers().location ?? "";
+  expect(location).toContain("/fr/login?next=");
+  expect(decodeURIComponent(location)).toContain("next=/fr/app/invoices?kind=quote");
+  await page.goto("/fr/app/invoices");
+  await expect(page).toHaveURL(/\/fr\/app\/invoices$/);
+});
+
+test("une adresse de retour étrangère est ignorée", async ({ page }) => {
+  await page.goto("/auth/lead/start?locale=de&next=https%3A%2F%2Fevil.example%2F");
+  await expect(page).toHaveURL(/\/de\/app$/);
+});
+
+test("l'écran de connexion ne reste que pour dire une erreur", async ({ page }) => {
+  await page.goto("/de/login?erreur=session");
   await expect(page.getByTestId("lead-login")).toBeVisible();
+});
+
+test("« Créer un compte » ouvre directement l'inscription du Compte Lead", async ({ page }) => {
+  const first = await page.request.get("/fr/signup", { maxRedirects: 0 });
+  expect([303, 307, 308]).toContain(first.status());
+  const start = first.headers().location ?? "";
+  expect(start).toContain("/auth/lead/start?locale=fr&signup=1");
+  const second = await page.request.get(start, { maxRedirects: 0 });
+  expect(second.status()).toBe(303);
+  const authorize = new URL(second.headers().location ?? "");
+  expect(authorize.pathname).toBe("/oauth/authorize");
+  expect(authorize.searchParams.get("prompt")).toBe("create");
 });
 
 test("la racine choisit une langue", async ({ page }) => {
@@ -16,6 +42,10 @@ test("connexion par le Compte Lead, puis retour direct dans l'application", asyn
   await login(page, "fr");
   await expect(page.getByTestId("dashboard-title")).toHaveText("Bonjour Ada");
   await expect(page.getByTestId("org-name")).toHaveText("Atelier Muster GmbH");
+  // Le tableau de bord donne des chiffres (les montants exacts sont vérifiés dans invoices.spec).
+  await expect(page.getByTestId("figure-revenue-month")).toHaveText(/^[A-Z]{3} [\d'.,]+$/);
+  await expect(page.getByTestId("figure-open")).toHaveText(/^[A-Z]{3} [\d'.,]+$/);
+  await expect(page.getByTestId("dashboard-chart")).toBeVisible();
 
   // Déjà connecté : /login et /signup mènent directement à l'application.
   await page.goto("/fr/login");
@@ -50,8 +80,9 @@ test("déconnexion : session locale et Compte Lead fermés", async ({ page }) =>
   }[];
   expect(logouts.at(-1)?.client_id).toBe("invoicelead");
   expect(logouts.at(-1)?.id_token_hint).toBeTruthy();
-  await page.goto("/de/app");
-  await expect(page).toHaveURL(/\/de\/login$/);
+  // Plus de session : l'application renvoie vers le Compte Lead.
+  const again = await page.request.get("/de/app", { maxRedirects: 0 });
+  expect(again.headers().location ?? "").toContain("/de/login?next=");
 });
 
 test("un compte Lead sans InvoiceLead dans sa formule entre en version gratuite", async ({
@@ -98,7 +129,7 @@ test("un retour sans demande en cours est refusé proprement", async ({ page }) 
 });
 
 test("un état falsifié au retour est refusé", async ({ page }) => {
-  await page.goto("/de/login");
+  await page.goto("/de/login?erreur=session");
   // Départ réel (cookie posé), mais retour avec un autre `state`.
   const start = await page.request.get("/auth/lead/start?locale=de", { maxRedirects: 0 });
   expect(start.status()).toBe(303);
@@ -110,8 +141,7 @@ test("un chemin encodé ne contourne pas le filtre du proxy", async ({ page }) =
   const res = await page.request.get("/de/%61pp", { maxRedirects: 0 });
   expect([303, 307, 308]).toContain(res.status());
   expect(await res.text()).not.toContain("dashboard-title");
-  await page.goto("/de/%61pp");
-  await expect(page).toHaveURL(/\/de\/login$/);
+  expect(res.headers().location ?? "").toContain("/de/login");
 });
 
 test("déconnexion au clavier depuis le menu", async ({ page }) => {

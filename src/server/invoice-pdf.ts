@@ -147,6 +147,8 @@ export function renderInvoicePdf(
   labels: InvoicePdfLabels,
   /** XML CII à intégrer : le PDF devient un PDF/A-3 ZUGFeRD (profil EN 16931). */
   einvoice?: { xml: string },
+  /** Logo de l'entreprise (PNG ou JPEG), en haut à droite. */
+  logo?: Buffer,
 ): Promise<Buffer> {
   const pdfa = !!einvoice;
   const pack = countryPack(invoice.sender?.country);
@@ -212,6 +214,15 @@ export function renderInvoicePdf(
     if (sender.vatNumber) doc.text(sender.vatNumber);
     if (sender.taxNumber) doc.text(`${taxNumberLabel(sender.country)} ${sender.taxNumber}`);
     doc.fillColor(INK);
+  }
+
+  // Logo en haut à droite, au-dessus de la fenêtre d'adresse ; une image illisible est ignorée.
+  if (logo) {
+    try {
+      doc.image(logo, RIGHT - mm(55), mm(16), { fit: [mm(55), mm(24)], align: "right" });
+    } catch {
+      // Logo endommagé : la facture part sans lui plutôt que pas du tout.
+    }
   }
 
   // Destinataire, dans la fenêtre à droite

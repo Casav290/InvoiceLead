@@ -2,6 +2,7 @@ import { and, asc, eq, isNull, sql } from "drizzle-orm";
 import { parseAmountToCents } from "@/lib/amount-input";
 import { parseFxRate } from "@/lib/currencies";
 import { isIsoDate } from "@/lib/fiscal-year";
+import { syncCrmlead } from "./crmlead-sync";
 import type { Db } from "./db";
 import {
   auditLog,
@@ -200,6 +201,7 @@ export async function paymentEvents(database: Db, payment: InvoicePayment) {
   });
   if (balance.openCents <= 0)
     await emitEvent(database, payment.organizationId, "invoice.paid", { invoice: summary });
+  await syncCrmlead(database, payment.organizationId, [invoice.id]);
 }
 
 /**
@@ -214,7 +216,8 @@ export async function deletePayment(
 ): Promise<boolean | "closed"> {
   if (!UUID.test(paymentId)) return false;
   try {
-    return await database.transaction(async (tx) => {
+    let invoiceId: string | null = null;
+    const done = await database.transaction(async (tx) => {
       const [row] = await tx
         .delete(invoicePayments)
         .where(
@@ -236,8 +239,11 @@ export async function deletePayment(
         entityId: row.invoiceId,
         data: { paymentId, amountCents: row.amountCents, paidOn: row.paidOn },
       });
+      invoiceId = row.invoiceId;
       return true;
     });
+    if (invoiceId) await syncCrmlead(database, who.organizationId, [invoiceId]);
+    return done;
   } catch (e) {
     if (e instanceof LedgerError) return "closed";
     throw e;

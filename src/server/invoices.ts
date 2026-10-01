@@ -7,6 +7,7 @@ import { type Currency, isCurrency, parseFxRate } from "@/lib/currencies";
 import { isIsoDate } from "@/lib/fiscal-year";
 import { computeTotals, parseQuantityToMilli } from "@/lib/invoice-math";
 import { vatNumberLabel } from "@/lib/swiss-ids";
+import { syncCrmlead } from "./crmlead-sync";
 import type { Db } from "./db";
 import {
   auditLog,
@@ -646,6 +647,13 @@ export async function issueInvoice(
     await emitEvent(database, who.organizationId, "invoice.issued", {
       invoice: invoiceSummary(result),
     });
+  // Pièce tirée d'un lead CRMlead : son état y repart (l'avoir change aussi sa facture).
+  if (typeof result === "object")
+    await syncCrmlead(
+      database,
+      who.organizationId,
+      [result.id, result.relatedInvoiceId].filter((x): x is string => !!x),
+    );
   return result;
 }
 
@@ -677,6 +685,7 @@ export async function setQuoteOutcome(
     entity: "quote",
     entityId: id,
   });
+  await syncCrmlead(database, who.organizationId, [id]);
   return true;
 }
 
@@ -708,7 +717,7 @@ export async function convertQuoteToInvoice(
     )
     .limit(1);
   if (pendingDeposit) return "depositDraft";
-  return database
+  const converted = await database
     .transaction(async (tx) => {
       const [claimed] = await tx
         .update(invoices)
@@ -776,6 +785,9 @@ export async function convertQuoteToInvoice(
       if (e instanceof Error && /rollback/i.test(e.message)) return "contact" as const;
       throw e;
     });
+  // Le devis passe à « facturé » : CRMlead l'apprend.
+  if (typeof converted === "object") await syncCrmlead(database, who.organizationId, [quoteId]);
+  return converted;
 }
 
 const DEPOSIT_TEXT = {

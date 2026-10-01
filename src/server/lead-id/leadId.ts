@@ -85,7 +85,7 @@ export async function verifyLeadJwt(token: string, audience: string): Promise<Re
  * Étape 1 : l'adresse où envoyer la personne. Garder `state`, `nonce` et `verifier` côté
  * serveur (cookie httpOnly signé ou session) jusqu'au retour : ils prouvent que le retour est le sien.
  */
-export function startLogin(opts: { prompt?: 'none' | 'login'; locale?: string; maxAge?: number } = {}): LoginStart {
+export function startLogin(opts: { prompt?: 'none' | 'login' | 'create'; locale?: string; maxAge?: number } = {}): LoginStart {
   const verifier = b64url(randomBytes(48))
   const state = b64url(randomBytes(24))
   const nonce = b64url(randomBytes(24))
@@ -94,6 +94,7 @@ export function startLogin(opts: { prompt?: 'none' | 'login'; locale?: string; m
     scope: 'openid email profile lead offline_access', state, nonce,
     code_challenge: b64url(createHash('sha256').update(verifier).digest()), code_challenge_method: 'S256',
   })
+  // prompt=create : ouvrir l'inscription plutôt que la connexion (OIDC, « Initiating User Registration »).
   // prompt=login : redemander le mot de passe (avant une action sensible). maxAge : exiger une
   // connexion de moins de N secondes ; `finishLogin` le vérifie sur `auth_time`.
   if (opts.prompt) q.set('prompt', opts.prompt)

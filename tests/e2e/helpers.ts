@@ -26,8 +26,8 @@ export async function login(
     const res = await page.request.post(`${LEAD}/test/next-user`, { data: user });
     expect(res.ok()).toBeTruthy();
   }
+  // L'écran de connexion part tout seul vers le Compte Lead, qui revient dans l'application.
   await page.goto(`/${locale}/login`);
-  await page.getByTestId("lead-login").click();
   await page.waitForURL(landing);
 }
 

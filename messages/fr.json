@@ -109,12 +109,38 @@
         "contacts": "Importer vos clients",
         "invoice": "Émettre votre première facture QR"
       },
-      "soon": "Ces écrans arrivent dans les prochaines versions.",
       "complete": "Compléter",
       "done": "Fait",
       "start": "Commencer",
       "forbidden": "Votre rôle ne permet pas cette action. Un responsable peut le changer dans les réglages de l'équipe.",
-      "askBooks": "Posez une question à votre comptabilité"
+      "askBooks": "Posez une question à votre comptabilité",
+      "figures": {
+        "revenueMonth": "CA du mois",
+        "revenueYear": "CA {year}",
+        "net": "Hors taxes, net des avoirs",
+        "collected": "Encaissé ce mois",
+        "open": "À encaisser",
+        "overdue": "En retard",
+        "quotesOpen": "Offres en cours",
+        "quotesAccepted": "Offres acceptées à facturer",
+        "bills": "Fournisseurs à payer",
+        "trend": "{pct} % par rapport au mois dernier",
+        "invoicesMonth": "{n, plural, =0 {Aucune facture émise ce mois} one {# facture émise ce mois} other {# factures émises ce mois}}",
+        "invoices": "{n, plural, =0 {Aucune facture} one {# facture} other {# factures}}",
+        "quotes": "{n, plural, =0 {Aucune offre} one {# offre} other {# offres}}",
+        "acceptance": "Taux d'acceptation sur 12 mois : {pct} %",
+        "billsCount": "{n, plural, =0 {Rien à payer} one {# facture} other {# factures}}",
+        "billsLate": "{n, plural, one {# facture} other {# factures}}, dont {late} échue(s)",
+        "drafts": "{n, plural, one {# brouillon attend} other {# brouillons attendent}} d'être émis."
+      },
+      "chartTitle": "Chiffre d'affaires des 12 derniers mois ({currency}, HT)",
+      "overdueTitle": "Factures en retard",
+      "overdueNone": "Aucune facture en retard.",
+      "quotesTitle": "Offres en cours",
+      "quotesNone": "Aucune offre en attente de réponse.",
+      "daysLate": "{n, plural, one {# jour de retard} other {# jours de retard}}",
+      "validUntil": "valable jusqu'au {date}",
+      "expired": "expirée le {date}"
     },
     "noAccess": {
       "title": "Votre formule n'inclut pas InvoiceLead",
@@ -268,6 +294,21 @@
         "FR": "France",
         "GB": "Royaume-Uni",
         "US": "États-Unis"
+      },
+      "logo": {
+        "title": "Logo",
+        "current": "Logo actuel",
+        "none": "Aucun logo pour l'instant.",
+        "file": "Fichier du logo",
+        "upload": "Déposer le logo",
+        "remove": "Retirer le logo",
+        "hint": "PNG ou JPEG, 1 Mo au plus, de préférence sur fond transparent. Il figure en haut à droite des devis, factures et avoirs, et sur leur page en ligne.",
+        "results": {
+          "saved": "Logo enregistré.",
+          "removed": "Logo retiré.",
+          "type": "Format non pris en charge : PNG ou JPEG seulement.",
+          "size": "Fichier vide ou trop lourd (1 Mo au plus)."
+        }
       }
     },
     "contacts": {
