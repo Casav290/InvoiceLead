@@ -1,5 +1,6 @@
 "use server";
 
+import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { parseCamt } from "@/countries/ch/camt";
@@ -7,6 +8,7 @@ import { VAT_CODES, type VatCode } from "@/countries/ch/vat";
 import { aiConfigured } from "@/server/ai";
 import { requirePermission } from "@/server/auth/guard";
 import { pickLocale } from "@/server/auth/login-cookie";
+import { approveReview, runAutopilot, undoAutoPosting } from "@/server/autopilot";
 import {
   ignoreTransaction,
   importEntries,
@@ -16,6 +18,7 @@ import {
 } from "@/server/bank";
 import { deleteRule } from "@/server/booking-rules";
 import { db } from "@/server/db";
+import { auditLog, organizations } from "@/server/db/schema";
 import { postPending } from "@/server/ledger";
 import { hasFeature, limitReached } from "@/server/plans";
 import { matchReceipts, readReceipt, uploadReceipt } from "@/server/receipts";
@@ -56,11 +59,14 @@ export async function importStatementAction(form: FormData) {
     useAi: aiConfigured(),
   });
   await matchReceipts(db(), who, locale);
+  const auto = await runAutopilot(db(), who);
+  await flushWebhooks(db(), who.organizationId);
   revalidatePath(path);
   const q = new URLSearchParams({
     imported: String(result.imported),
     duplicates: String(result.duplicates),
   });
+  if (auto > 0) q.set("auto", String(auto));
   if (proposed.aiError) q.set("ai", "error");
   redirect(`${path}?${q}`);
 }
@@ -68,13 +74,15 @@ export async function importStatementAction(form: FormData) {
 export async function proposeAction(form: FormData) {
   const locale = pickLocale(form.get("locale"));
   const session = await requirePermission(locale, "accounting");
-  const result = await proposeAll(
-    db(),
-    { organizationId: session.organization.id, userId: session.user.id },
-    { language: locale, useAi: aiConfigured() },
-  );
+  const who = { organizationId: session.organization.id, userId: session.user.id };
+  const result = await proposeAll(db(), who, { language: locale, useAi: aiConfigured() });
+  const auto = await runAutopilot(db(), who);
+  await flushWebhooks(db(), who.organizationId);
   revalidatePath(`/${locale}/app/accounting/bank`);
-  redirect(`/${locale}/app/accounting/bank${result.aiError ? "?ai=error" : ""}`);
+  const q = new URLSearchParams();
+  if (result.aiError) q.set("ai", "error");
+  if (auto > 0) q.set("auto", String(auto));
+  redirect(`/${locale}/app/accounting/bank${q.size > 0 ? `?${q}` : ""}`);
 }
 
 export async function validateBankAction(form: FormData) {
@@ -210,4 +218,57 @@ export async function reviewVatAction(prev: ReviewState, form: FormData): Promis
     console.error("[vat] relecture impossible", e instanceof Error ? e.message : "inconnu");
     return { failed: true, round: prev.round + 1 };
   }
+}
+
+/** Active ou coupe le pilote automatique ; à l'activation, il passe tout de suite ce qui est sûr. */
+export async function autopilotAction(form: FormData) {
+  const locale = pickLocale(form.get("locale"));
+  const session = await requirePermission(locale, "setup");
+  const who = { organizationId: session.organization.id, userId: session.user.id };
+  const path = `/${locale}/app/accounting/review`;
+  if (!hasFeature(session.organization, "bankImport")) redirect(`${path}?error=plan`);
+  const on = form.get("autopilot") === "on";
+  await db()
+    .update(organizations)
+    .set({ autopilot: on })
+    .where(eq(organizations.id, who.organizationId));
+  await db()
+    .insert(auditLog)
+    .values({
+      organizationId: who.organizationId,
+      userId: who.userId,
+      action: on ? "autopilot.enable" : "autopilot.disable",
+      entity: "organization",
+      entityId: who.organizationId,
+    });
+  const auto = on ? await runAutopilot(db(), who) : 0;
+  await flushWebhooks(db(), who.organizationId);
+  revalidatePath(`/${locale}/app/accounting`, "layout");
+  redirect(`${path}?${on ? `enabled=1&auto=${auto}` : "disabled=1"}`);
+}
+
+export async function approveReviewAction(form: FormData) {
+  const locale = pickLocale(form.get("locale"));
+  const session = await requirePermission(locale, "accounting");
+  const count = await approveReview(db(), {
+    organizationId: session.organization.id,
+    userId: session.user.id,
+  });
+  revalidatePath(`/${locale}/app/accounting`, "layout");
+  redirect(`/${locale}/app/accounting/review?approved=${count}`);
+}
+
+export async function undoAutoAction(form: FormData) {
+  const locale = pickLocale(form.get("locale"));
+  const session = await requirePermission(locale, "accounting");
+  const result = await undoAutoPosting(
+    db(),
+    { organizationId: session.organization.id, userId: session.user.id },
+    String(form.get("id") ?? ""),
+  );
+  await flushWebhooks(db(), session.organization.id);
+  revalidatePath(`/${locale}/app/accounting`, "layout");
+  redirect(
+    `/${locale}/app/accounting/review?${result === "undone" ? "undone=1" : `error=${result}`}`,
+  );
 }

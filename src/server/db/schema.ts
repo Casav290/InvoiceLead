@@ -83,6 +83,11 @@ export const organizations = pgTable("organizations", {
   salesTaxRateBp: doublePrecision("sales_tax_rate_bp"),
   /** Compte Stripe connecté (Stripe Connect) qui reçoit les paiements en ligne des clients. */
   stripeAccountId: text("stripe_account_id"),
+  /**
+   * Pilote automatique : les propositions sûres (référence de paiement, règle confirmée, IA très
+   * confiante) sont comptabilisées sans clic ; la personne ne relit que les exceptions.
+   */
+  autopilot: boolean("autopilot").notNull().default(false),
   /** Relances envoyées chaque jour par la tâche quotidienne (formule Pro), sans clic. */
   reminderAuto: boolean("reminder_auto").notNull().default(false),
   /** Frais de rappel dès la deuxième relance, en centimes ; 0 : aucun. */
@@ -562,6 +567,10 @@ export const bankTransactions = pgTable(
     paymentId: uuid("payment_id"),
     validatedBy: uuid("validated_by").references(() => users.id, { onDelete: "set null" }),
     validatedAt: timestamp("validated_at", { withTimezone: true }),
+    /** Comptabilisé par le pilote automatique, sans clic : à revoir dans le récapitulatif. */
+    autoPosted: boolean("auto_posted").notNull().default(false),
+    /** Écriture automatique approuvée par une personne. */
+    reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
     createdAt: createdAt(),
   },
   (t) => [

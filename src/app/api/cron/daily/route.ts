@@ -1,4 +1,5 @@
 import { timingSafeEqual } from "node:crypto";
+import { sendAutopilotDigests } from "@/server/autopilot-digest";
 import { db } from "@/server/db";
 import { env } from "@/server/env";
 import { runRecurring } from "@/server/recurring";
@@ -27,5 +28,8 @@ export async function GET(request: Request) {
   const reminders = await runAutoReminders(db(), today);
   // Événements des factures récurrentes, et reprise des envois de webhooks en échec.
   const webhooks = await deliverPending(db(), { limit: 500 });
-  return Response.json({ today, recurring, reminders, webhooks });
+  // Le lundi : récapitulatif du pilote automatique aux administrateurs.
+  const digests =
+    new Date(`${today}T00:00:00Z`).getUTCDay() === 1 ? await sendAutopilotDigests(db(), today) : 0;
+  return Response.json({ today, recurring, reminders, webhooks, digests });
 }

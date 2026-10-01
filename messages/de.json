@@ -947,7 +947,8 @@
         "journal": "Journal",
         "receipts": "Belege",
         "reports": "Auswertungen",
-        "vat": "MWST"
+        "vat": "MWST",
+        "review": "Zu prüfen"
       },
       "welcomeFiduciary": "Willkommen. Sie arbeiten jetzt in der Buchhaltung Ihres Kunden; das Unternehmen wechseln Sie in der Kopfzeile.",
       "unavailableTitle": "Buchhaltung für dieses Land folgt bald",
@@ -1012,7 +1013,9 @@
         "hits": "{count, plural, one {# Mal bestätigt} other {# Mal bestätigt}}",
         "delete": "Vergessen"
       },
-      "planOnly": "Der Import von Kontoauszügen und die Vorschläge des Assistenten sind im Pro-Abo enthalten."
+      "planOnly": "Der Import von Kontoauszügen und die Vorschläge des Assistenten sind im Pro-Abo enthalten.",
+      "autoPosted": "{count, plural, one {# Bewegung} other {# Bewegungen}} vom Autopiloten verbucht.",
+      "autoReview": "Prüfen"
     },
     "receipts": {
       "title": "Belege",
@@ -1408,6 +1411,42 @@
         "tooMany": "Höchstzahl erreicht.",
         "url": "Ungültige Adresse: https zu einem öffentlichen Server, ohne Zugangsdaten.",
         "events": "Wählen Sie mindestens ein Ereignis."
+      }
+    },
+    "review": {
+      "title": "Zu prüfen",
+      "subtitle": "Der Autopilot verbucht selbstständig, was sicher ist. Hier genehmigen Sie seine Arbeit mit einem Klick, machen eine unpassende Buchung rückgängig und sehen, was einen Blick verdient.",
+      "autopilot": "Autopilot",
+      "autopilotHint": "Verbucht ohne Klick Zahlungen, die an ihrer Referenz erkannt werden, Bewegungen mit einer mindestens dreimal bestätigten Regel und KI-Vorschläge mit 97 % Sicherheit. Mögliche Doppelungen und ungewöhnliche Beträge warten immer auf eine Person.",
+      "save": "Speichern",
+      "planOnly": "Der Autopilot ist zusammen mit dem Bankimport Teil des Pro-Abos.",
+      "enabled": "Autopilot aktiviert: {count, plural, =0 {im Moment nichts zu verbuchen} one {# Bewegung verbucht} other {# Bewegungen verbucht}}.",
+      "disabled": "Autopilot ausgeschaltet. Die Vorschläge warten auf Ihre Bestätigung.",
+      "approved": "{count, plural, =0 {Nichts zu genehmigen.} one {# Buchung genehmigt.} other {# Buchungen genehmigt.}}",
+      "undone": "Buchung storniert. Die Bewegung ist wieder unter Bank zu prüfen, und die Regel, die sie vorgeschlagen hatte, ist vergessen.",
+      "queueTitle": "Selbstständig verbucht, zu genehmigen ({count})",
+      "queueEmpty": "Nichts zu genehmigen.",
+      "bookedTo": "Auf {account}",
+      "bookedInvoice": "Rechnungszahlung",
+      "undo": "Rückgängig",
+      "approve": "Geprüft, alles genehmigen ({count})",
+      "anomaliesTitle": "Auffälligkeiten ({count})",
+      "anomaliesEmpty": "Keine Auffälligkeiten.",
+      "kinds": {
+        "duplicate": "Mögliche Doppelung: gleicher Betrag und gleiche Gegenpartei innert weniger Tage.",
+        "missingReceipt": "Beleg fehlt für diese Ausgabe.",
+        "unusualAmount": "Ungewöhnlicher Betrag für diese Gegenpartei (üblich {usual})."
+      },
+      "addReceipt": "Beleg hochladen",
+      "openBank": "Unter Bank ansehen",
+      "errors": {
+        "closed": "Diese Buchung liegt in einem abgeschlossenen Geschäftsjahr oder einer abgeschlossenen MWST-Periode und kann nicht mehr rückgängig gemacht werden.",
+        "notFound": "Buchung nicht gefunden oder bereits erledigt.",
+        "plan": "Der Autopilot ist Teil des Pro-Abos."
+      },
+      "digest": {
+        "subject": "InvoiceLead: Ihre Buchhaltung der Woche, {company}",
+        "body": "Guten Tag\n\nDiese Woche hat der Autopilot für {company} {auto, plural, =0 {keine Bewegung} one {# Bewegung} other {# Bewegungen}} verbucht.\n\nZu genehmigen: {approve}\nUnter Bank zu prüfen: {review}\nAuffälligkeiten: {anomalies}\n\nAlles ansehen und mit einem Klick genehmigen: {link}\n\nInvoiceLead"
       }
     }
   },

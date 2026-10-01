@@ -5,6 +5,7 @@ import { PlanNotice } from "@/components/app/PlanNotice";
 import { Button } from "@/components/ui/button";
 import { countryPack } from "@/countries";
 import { VAT_CODES } from "@/countries/ch/vat";
+import { Link } from "@/i18n/navigation";
 import { accountName } from "@/lib/account-name";
 import { formatDate } from "@/lib/fiscal-year";
 import { formatAmount } from "@/lib/money";
@@ -33,6 +34,7 @@ type Props = {
     validated?: string;
     error?: string;
     ai?: string;
+    auto?: string;
   }>;
 };
 
@@ -90,6 +92,18 @@ export default async function BankPage({ params, searchParams }: Props) {
           className="mt-6 border border-ok-fg bg-ok-bg px-4 py-3 text-[13px] text-ok-fg"
         >
           {t("imported", { count: Number(q.imported) || 0, duplicates: Number(q.duplicates) || 0 })}
+        </p>
+      ) : null}
+      {q.auto ? (
+        <p
+          role="status"
+          className="mt-6 border border-ok-fg bg-ok-bg px-4 py-3 text-[13px] text-ok-fg"
+          data-testid="autopilot-notice"
+        >
+          {t("autoPosted", { count: Number(q.auto) || 0 })}{" "}
+          <Link href="/app/accounting/review" className="font-semibold underline">
+            {t("autoReview")}
+          </Link>
         </p>
       ) : null}
       {q.validated !== undefined ? (

@@ -408,6 +408,8 @@ export async function validateTransaction(
   who: Who,
   id: string,
   override?: { accountId: string; vatCode: VatCode | null },
+  /** false : comptabilisation par le pilote automatique, qui n'apprend pas de lui-même. */
+  options: { learn?: boolean } = {},
 ): Promise<ValidateResult> {
   if (!UUID.test(id)) return "notFound";
   const [tx] = await database
@@ -495,12 +497,13 @@ export async function validateTransaction(
     }
     throw e;
   }
-  await learnRule(database, who, {
-    counterparty: tx.counterparty,
-    amountCents: tx.amountCents,
-    accountId: proposal.accountId,
-    vatCode: proposal.vatCode,
-  });
+  if (options.learn !== false)
+    await learnRule(database, who, {
+      counterparty: tx.counterparty,
+      amountCents: tx.amountCents,
+      accountId: proposal.accountId,
+      vatCode: proposal.vatCode,
+    });
   return "posted";
 }
 

@@ -947,7 +947,8 @@
         "journal": "Journal",
         "receipts": "Justificatifs",
         "reports": "Rapports",
-        "vat": "TVA"
+        "vat": "TVA",
+        "review": "À vérifier"
       },
       "welcomeFiduciary": "Bienvenue. Vous travaillez maintenant dans la comptabilité de votre client ; changez d'entreprise depuis l'en-tête.",
       "unavailableTitle": "Comptabilité bientôt disponible pour ce pays",
@@ -1012,7 +1013,9 @@
         "hits": "{count, plural, one {validée # fois} other {validée # fois}}",
         "delete": "Oublier"
       },
-      "planOnly": "L'import des relevés bancaires et les propositions de l'assistant sont compris dans la formule Pro."
+      "planOnly": "L'import des relevés bancaires et les propositions de l'assistant sont compris dans la formule Pro.",
+      "autoPosted": "{count, plural, one {# mouvement comptabilisé} other {# mouvements comptabilisés}} par le pilote automatique.",
+      "autoReview": "Les revoir"
     },
     "receipts": {
       "title": "Justificatifs",
@@ -1408,6 +1411,42 @@
         "tooMany": "Nombre maximal atteint.",
         "url": "Adresse invalide : https vers un serveur public, sans identifiants.",
         "events": "Choisissez au moins un événement."
+      }
+    },
+    "review": {
+      "title": "À vérifier",
+      "subtitle": "Le pilote automatique comptabilise seul ce qui est sûr. Ici, vous approuvez son travail d'un clic, annulez une écriture qui ne convient pas, et voyez ce qui mérite un coup d'œil.",
+      "autopilot": "Pilote automatique",
+      "autopilotHint": "Comptabilise sans clic les paiements reconnus par leur référence, les mouvements couverts par une règle confirmée au moins trois fois et les propositions de l'IA sûres à 97 %. Un doublon possible ou un montant inhabituel attend toujours une personne.",
+      "save": "Enregistrer",
+      "planOnly": "Le pilote automatique fait partie de la formule Pro, avec l'import bancaire.",
+      "enabled": "Pilote automatique activé : {count, plural, =0 {rien à comptabiliser pour le moment} one {# mouvement comptabilisé} other {# mouvements comptabilisés}}.",
+      "disabled": "Pilote automatique coupé. Les propositions attendent votre validation.",
+      "approved": "{count, plural, =0 {Rien à approuver.} one {# écriture approuvée.} other {# écritures approuvées.}}",
+      "undone": "Écriture annulée par extourne. Le mouvement est de nouveau à relire dans Banque, et la règle qui l'avait proposée est oubliée.",
+      "queueTitle": "Comptabilisé seul, à approuver ({count})",
+      "queueEmpty": "Rien à approuver.",
+      "bookedTo": "Sur {account}",
+      "bookedInvoice": "Paiement de facture",
+      "undo": "Annuler",
+      "approve": "J'ai vérifié, tout approuver ({count})",
+      "anomaliesTitle": "Points à regarder ({count})",
+      "anomaliesEmpty": "Aucune anomalie relevée.",
+      "kinds": {
+        "duplicate": "Doublon possible : même montant et même contrepartie à quelques jours près.",
+        "missingReceipt": "Justificatif manquant pour cette dépense.",
+        "unusualAmount": "Montant inhabituel pour cette contrepartie (habituellement {usual})."
+      },
+      "addReceipt": "Déposer le justificatif",
+      "openBank": "Voir dans Banque",
+      "errors": {
+        "closed": "Cette écriture est dans un exercice ou une période TVA fermés : elle ne peut plus être annulée.",
+        "notFound": "Écriture introuvable ou déjà traitée.",
+        "plan": "Le pilote automatique fait partie de la formule Pro."
+      },
+      "digest": {
+        "subject": "InvoiceLead : votre comptabilité de la semaine, {company}",
+        "body": "Bonjour,\n\nCette semaine, le pilote automatique a comptabilisé {auto, plural, =0 {aucun mouvement} one {# mouvement} other {# mouvements}} pour {company}.\n\nÀ approuver : {approve}\nÀ relire dans Banque : {review}\nPoints à regarder : {anomalies}\n\nTout voir et approuver en un clic : {link}\n\nInvoiceLead"
       }
     }
   },
