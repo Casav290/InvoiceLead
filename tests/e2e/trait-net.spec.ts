@@ -117,7 +117,7 @@ for (const size of WIDTHS) {
           email: `na${size.width}@libre.test`,
           org: `org-na-${size.width}`,
           org_name: "Libre Sàrl",
-          access: false,
+          status: "retired",
         },
         "**/fr/no-access",
       );

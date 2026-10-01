@@ -11,9 +11,15 @@ function appLocale(locale: string | undefined): string {
   return (LOCALES as readonly string[]).includes(short) ? short : "de";
 }
 
-/** InvoiceLead est-il ouvert pour cette organisation, d'après les droits du Compte Lead ? */
+/**
+ * InvoiceLead est-il ouvert pour cette organisation ? Tout Compte Lead entre, en version gratuite par
+ * défaut (limites de la formule Gratuit), quelle que soit l'application où il a été créé ; la formule
+ * du Compte Lead (Pro, Pro+) ne fait que lever les limites. Seule une application retirée de la
+ * famille ferme la porte.
+ */
 export function hasInvoiceLeadAccess(claims: Pick<LeadClaims, "lead">): boolean {
-  return claims.lead?.apps?.[APP_CODE]?.access === true;
+  const app = claims.lead?.apps?.[APP_CODE] as { status?: unknown } | undefined;
+  return app?.status !== "retired";
 }
 
 /**

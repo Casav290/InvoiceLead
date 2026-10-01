@@ -40,7 +40,8 @@ describe("rattachement au Compte Lead", () => {
     expect(second.user.id).toBe(first.user.id);
     expect(second.user).toMatchObject({ email: "ada@neu.test", name: "Ada Neu", locale: "de" });
     expect(second.organization.id).toBe(first.organization.id);
-    expect(second.organization.hasAccess).toBe(false);
+    // Formule sans InvoiceLead : on entre quand même, en version gratuite.
+    expect(second.organization.hasAccess).toBe(true);
     expect(await db.select().from(users)).toHaveLength(1);
   });
 
@@ -108,14 +109,19 @@ describe("rattachement au Compte Lead", () => {
     await expect(attachLeadIdentity(db, claims({ org: "" }))).rejects.toThrow("incomplete_claims");
   });
 
-  it("lit l'accès à InvoiceLead dans les droits", () => {
+  it("ouvre InvoiceLead à tout Compte Lead, sauf application retirée", () => {
     expect(hasInvoiceLeadAccess(claims())).toBe(true);
-    expect(hasInvoiceLeadAccess(claims({ access: false }))).toBe(false);
+    // Compte créé dans Scanlead ou CRMlead, formule gratuite sans InvoiceLead : version gratuite.
+    expect(hasInvoiceLeadAccess(claims({ access: false }))).toBe(true);
     expect(
       hasInvoiceLeadAccess({
         lead: { plan: { code: "free", name: "", rank: 0, seats: 1 }, apps: {}, subscriptions: [] },
       }),
-    ).toBe(false);
+    ).toBe(true);
+    const retired = claims();
+    const apps = retired.lead.apps as Record<string, Record<string, unknown>>;
+    apps.invoicelead = { ...apps.invoicelead, status: "retired" };
+    expect(hasInvoiceLeadAccess(retired)).toBe(false);
   });
 });
 

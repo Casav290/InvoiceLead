@@ -11,6 +11,8 @@ export type FakeUser = {
   org_role?: string;
   access?: boolean;
   plan?: "free" | "pro" | "proplus";
+  /** Statut d'InvoiceLead dans la famille : « retired » ferme l'application. */
+  status?: "live" | "soon" | "retired";
 };
 
 /** Connexion complète par le faux Compte Lead, depuis l'écran de connexion. */
