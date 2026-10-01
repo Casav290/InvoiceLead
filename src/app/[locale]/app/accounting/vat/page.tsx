@@ -3,7 +3,7 @@ import { getTranslations } from "next-intl/server";
 import { AccountingNav } from "@/components/accounting/AccountingNav";
 import { VatReview } from "@/components/accounting/VatReview";
 import { PlanNotice } from "@/components/app/PlanNotice";
-import { ProLock } from "@/components/app/ProLock";
+import { LockNote, ProLock } from "@/components/app/ProLock";
 import { Button } from "@/components/ui/button";
 import { countryPack } from "@/countries";
 import { FIGURE_ORDER, periodsBetween, TAXED_FIGURES, vatDueDate } from "@/countries/ch/vat-return";
@@ -131,9 +131,12 @@ export default async function VatPage({ params, searchParams }: Props) {
       : null;
   const figures: VatFigures = validated?.figures ?? draft?.figures ?? {};
   const anomalies: VatAnomaly[] = validated?.anomalies ?? draft?.anomalies ?? [];
-  // Décompte TVA : formule Pro. Les chiffres restent visibles ; la relecture par l'IA et la
-  // validation sont grisées avec la marque Pro.
+  // Décompte TVA : formule Pro, principal motif de passage à Pro. En formule gratuite, la page
+  // montre la structure du décompte (chiffres, libellés, contrôles) mais pas les montants calculés,
+  // qui ne quittent pas le serveur ; la relecture par l'IA et la validation sont grisées avec la
+  // marque Pro. Un décompte déjà validé (en Pro) reste lisible en entier.
   const access = featureAccess(organization, "vatReturn");
+  const masked = !access.allowed && !validated;
   const reviewLock = await lockFor(
     locale,
     organization,
@@ -141,6 +144,20 @@ export default async function VatPage({ params, searchParams }: Props) {
     await lockedReason(locale, access.upgradeTo),
   );
   const validateLock = await lockFor(locale, organization, access, t("validatePlan"));
+  const figuresLock = await lockFor(
+    locale,
+    organization,
+    access,
+    t(usa ? "figuresPlanUs" : "figuresPlan"),
+  );
+  // Montant réservé à Pro : un trait gris à sa place, et la raison pour les lecteurs d'écran (le
+  // texte masqué reste dans le tableau qui défile : `relative`, sinon il élargit la page à 320 px).
+  const hiddenAmount = (
+    <span data-testid="vat-amount-hidden" className="relative">
+      <span aria-hidden="true" className="inline-block h-2.5 w-16 bg-line-strong align-middle" />
+      <span className="sr-only">{t("amountHidden")}</span>
+    </span>
+  );
   const blocking = anomalies.some((a) => a.severity === "block");
   const validateForm =
     draft && selected ? (
@@ -243,8 +260,9 @@ export default async function VatPage({ params, searchParams }: Props) {
           ) : null}
 
           <div
-            className="mt-4 overflow-x-auto border border-line-strong bg-panel"
+            className={`relative mt-4 overflow-x-auto border border-line-strong ${masked ? "bg-muted text-ink-muted" : "bg-panel"}`}
             data-testid="vat-figures"
+            data-masked={masked ? "true" : undefined}
           >
             <table className="w-full text-left text-[13px]">
               <thead>
@@ -267,17 +285,26 @@ export default async function VatPage({ params, searchParams }: Props) {
                       {t(`${form.labels}.${code}`)}
                     </td>
                     <td className="px-3 py-2 text-right tabular-nums">
-                      {formatAmount(figures[code] ?? 0, style)}
+                      {masked ? hiddenAmount : formatAmount(figures[code] ?? 0, style)}
                     </td>
                     <td className="px-3 py-2 text-right tabular-nums">
                       {form.taxed.includes(code)
-                        ? formatAmount(figures[`${code}t`] ?? 0, style)
+                        ? masked
+                          ? hiddenAmount
+                          : formatAmount(figures[`${code}t`] ?? 0, style)
                         : ""}
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
+            {masked && figuresLock ? (
+              <LockNote
+                lock={figuresLock}
+                testId="vat-figures-lock"
+                className="border-t border-line-strong px-3 py-2"
+              />
+            ) : null}
           </div>
 
           {validated && organization.country === "CH" ? (
@@ -295,7 +322,7 @@ export default async function VatPage({ params, searchParams }: Props) {
               )}
             </p>
           ) : null}
-          {(figures["500"] ?? 0) > 0 ? (
+          {!masked && (figures["500"] ?? 0) > 0 ? (
             <p className="mt-3 text-[13px] text-ink-2">
               {t("payBy", { date: formatDate(form.due(selected.end)) })}
             </p>

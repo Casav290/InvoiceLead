@@ -10,7 +10,8 @@ export const buttonVariants = cva(
       variant: {
         primary: "bg-accent text-white hover:bg-accent-dark",
         secondary: "border border-line-strong bg-panel text-ink hover:bg-muted",
-        ghost: "text-ink-muted hover:bg-muted hover:text-ink",
+        // Bouton discret désactivé : 75 % plutôt que 50 %, pour rester lisible (contraste ≥ 3:1).
+        ghost: "text-ink-muted hover:bg-muted hover:text-ink disabled:opacity-75",
         lead: "bg-lead text-white hover:bg-lead-dark",
       },
       size: {

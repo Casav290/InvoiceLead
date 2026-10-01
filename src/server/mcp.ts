@@ -2,7 +2,7 @@ import { contactJson, invoiceJson, toForm } from "./api";
 import type { ApiCaller } from "./api-keys";
 import { bookFacts } from "./assistant";
 import { listBills } from "./bills";
-import { createContact, listContacts, parseContactForm } from "./contacts";
+import { createContactWithinPlan, listContacts, parseContactForm } from "./contacts";
 import { db } from "./db";
 import {
   createInvoice,
@@ -15,7 +15,6 @@ import {
   parseInvoiceForm,
 } from "./invoices";
 import { addPayment, invoiceBalance, parsePaymentForm } from "./payments";
-import { quotaAccess } from "./plans";
 import { addEntry, listProjects, parseEntryForm } from "./time";
 
 /**
@@ -120,9 +119,9 @@ const TOOLS: Tool[] = [
         toForm({ kind: "company", isCustomer: true, ...a }, ["isCustomer", "isSupplier"]),
       );
       if (!parsed.ok) throw new ToolError(`invalid: ${JSON.stringify(parsed.errors)}`);
-      if (!(await quotaAccess(db(), c.organization, "contacts")).allowed)
-        throw new ToolError("plan_limit");
-      return contactJson(await createContact(db(), who(c), parsed.data));
+      const contact = await createContactWithinPlan(db(), who(c), parsed.data);
+      if (contact === "planLimit") throw new ToolError("plan_limit");
+      return contactJson(contact);
     },
   },
   {
@@ -179,9 +178,8 @@ const TOOLS: Tool[] = [
     inputSchema: { type: "object", properties: { id: { type: "string" } }, required: ["id"] },
     write: true,
     run: async (c, a) => {
-      if (!(await quotaAccess(db(), c.organization, "invoices")).allowed)
-        throw new ToolError("plan_limit");
       const result = await issueInvoice(db(), who(c), str(a.id));
+      if (result === "planLimit") throw new ToolError("plan_limit");
       if (typeof result === "string") throw new ToolError(result);
       return invoiceJson(result);
     },

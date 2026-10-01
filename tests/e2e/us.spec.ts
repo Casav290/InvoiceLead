@@ -10,6 +10,8 @@ test("entreprise américaine : facture en dollars à 8,875 %, EIN, format Letter
     email: `us-${run}@lonestar.test`,
     org: `org-us-${run}`,
     org_name: "Lone Star Design LLC",
+    // Le décompte de TVA (montants calculés) fait partie de la formule Pro.
+    plan: "pro",
   });
 
   await page.goto("/en/app/settings/company");

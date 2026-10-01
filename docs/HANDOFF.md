@@ -111,7 +111,7 @@ Limites acceptées, à ne pas « corriger » :
 
 - **Tableau de bord** : chiffres du mois et de l'année, encaissé, à encaisser, retards, offres en cours et acceptées, fournisseurs, graphique sur 12 mois (`src/server/dashboard.ts`).
 - **Couleur** : prune #7a2e67 pour InvoiceLead, à côté du bleu Scanlead #2563eb et du vert CRMlead #0f6e70.
-- **Scan des tickets** : « Scanner un ticket » en tête des notes de frais. La photo est lue par l'IA, qui remplit la note ; la personne vérifie et envoie (`scanTicketAction`, `extractReceipt` sans rapprochement bancaire). La formule gratuite lit 20 pièces par mois (tickets, justificatifs, e-factures, un seul compteur) ; les fonctions Pro restent visibles, grisées avec leur marque (docs/PLAN.md, section 9).
+- **Scan des tickets** : « Scanner un ticket » en tête des notes de frais. La photo est lue par l'IA, qui remplit la note ; la personne vérifie et envoie (`scanTicketAction`, `extractReceipt` sans rapprochement bancaire). La formule gratuite lit 20 pièces par mois par l'IA (tickets et justificatifs, un seul compteur ; les e-factures, lues sans IA, n'y comptent pas) ; les fonctions Pro restent visibles, grisées avec leur marque (docs/PLAN.md, section 9).
 
 ## 6. Reste à faire
 

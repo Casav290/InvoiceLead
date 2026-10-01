@@ -102,8 +102,7 @@ export default async function DashboardPage({
       ) : null}
       <p className="mt-3 text-[13px] text-ink-2" data-testid="plan-usage">
         {tp("usage", {
-          plan: tp(tier),
-          hasLimit: tier === "free" ? "yes" : "no",
+          tier,
           invoices: used.invoices,
           invoiceLimit: quotas?.invoices.limit ?? 0,
           contacts: used.contacts,
@@ -248,7 +247,8 @@ export default async function DashboardPage({
         </ol>
       </section>
 
-      <div className="mt-8 grid gap-8 lg:grid-cols-2">
+      {/* grid-cols-1 (minmax(0, 1fr)) : un long nom de client se coupe au lieu d'élargir la page. */}
+      <div className="mt-8 grid grid-cols-1 gap-8 lg:grid-cols-2">
         <section className="border border-line-strong bg-panel" data-testid="dashboard-overdue">
           <h2 className="border-b border-line bg-head px-5 py-3 text-[10.5px] font-extrabold tracking-[0.09em] text-ink-muted uppercase">
             {t("overdueTitle")}

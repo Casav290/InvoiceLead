@@ -91,15 +91,14 @@ export async function markBillPaidAction(form: FormData) {
 }
 
 /**
- * E-factures reçues (XML, ou PDF ZUGFeRD / Factur-X) : chacune devient une facture à payer et
- * compte dans les pièces lues du mois (Gratuit 20, Pro 50, Pro+ 300).
+ * E-factures reçues (XML, ou PDF ZUGFeRD / Factur-X) : chacune devient une facture à payer. Lues
+ * sans IA, elles ne comptent pas dans les pièces lues du mois, quelle que soit la formule.
  */
 export async function importEInvoicesAction(form: FormData) {
   const { locale, who, path } = await guard(form);
   const files = form.getAll("files").filter((f): f is File => f instanceof File && f.size > 0);
   let imported = 0;
   let rejected = 0;
-  let quota = false;
   for (const f of files.slice(0, 20)) {
     const type = f.type || (f.name.toLowerCase().endsWith(".xml") ? "application/xml" : "");
     const result = await importEInvoice(db(), who, {
@@ -109,10 +108,9 @@ export async function importEInvoicesAction(form: FormData) {
     });
     if (typeof result === "object") imported += 1;
     else rejected += 1;
-    if (result === "quota") quota = true;
   }
   revalidatePath(`/${locale}/app/accounting`, "layout");
-  redirect(`${path}?imported=${imported}&rejected=${rejected}${quota ? "&error=quota" : ""}`);
+  redirect(`${path}?imported=${imported}&rejected=${rejected}`);
 }
 
 export async function billFromReceiptAction(form: FormData) {

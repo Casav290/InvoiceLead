@@ -172,31 +172,32 @@ Décidé par Ève le 1er octobre 2026 (sa demande : « il faut les griser pour q
 
 | | Gratuit | Pro | Pro+ |
 |---|---|---|---|
-| Prix | 0 | 19 par mois, 190 par an | 39 par mois, 390 par an |
-| Utilisateurs | 1 | 2, plus accès fiduciaire gratuit | 5, puis supplément par utilisateur |
+| Prix (hors TVA) | 0 | 19 € par mois, 190 € par an | 39 € par mois, 390 € par an |
+| Utilisateurs | 1 ; plus de places visibles avec la marque Pro | 2, plus accès fiduciaire gratuit | 5, puis supplément par utilisateur |
 | Factures | 10 émises par mois ; devis et avoirs illimités | illimitées | illimitées |
 | Contacts | 50 | illimités | illimités |
 | QR-facture, documents DE/FR/IT/EN, logo | oui | oui | oui |
 | Mention « Créé avec InvoiceLead » | oui | non | non |
 | Comptabilité (écritures automatiques, bilan, résultat, clôture) | oui | oui | oui |
-| Lecture des pièces par l'IA (tickets de notes de frais, justificatifs, e-factures importées ; un seul compteur) | 20 par mois | 50 par mois | 300 par mois |
+| Lecture des pièces par l'IA (tickets de notes de frais, justificatifs déposés ou relus ; un seul compteur) | 20 par mois | 50 par mois | 300 par mois |
+| E-factures reçues (XRechnung, ZUGFeRD, Factur-X, UBL), lues sans IA | sans limite | sans limite | sans limite |
 | Assistant (questions sur les livres) | 10 questions par mois | sans limite | sans limite |
-| Relances | 1re relance à la main, 5 par mois ; 2e et 3e visibles, grisées | 3 niveaux, envoi automatique, frais, intérêts, relances intelligentes | idem |
+| Relances | 1re relance à la main, 5 par mois ; 2e et 3e, envoi automatique, frais, intérêts et relances intelligentes visibles, grisés | 3 niveaux, envoi automatique, frais, intérêts, relances intelligentes | idem |
 | Factures récurrentes | 1 active | illimitées | illimitées |
 | Import bancaire camt | 1 relevé par mois, pilote automatique compris | illimité | illimité, plus connexion directe |
 | Récapitulatif du pilote par e-mail (le lundi) | non, grisé | oui | oui |
-| Décompte TVA (TVA, UStVA, CA3, MTD, sales tax) | non : chiffres visibles, relecture et validation grisées | oui (effective et TDFN) | oui |
-| Multidevise | non : devises étrangères grisées dans les listes | oui | oui |
-| Accès fiduciaire | non, grisé | oui | oui |
+| Décompte TVA (TVA, UStVA, CA3, MTD, sales tax) | non : page et onglet visibles, structure et contrôles affichés, montants masqués (ils ne quittent pas le serveur), relecture et validation grisées ; un décompte validé en Pro reste lisible | oui (effective et TDFN) | oui |
+| Multidevise | non : devises étrangères grisées dans les listes ; le pays ne change pas tant qu'un brouillon garderait l'ancienne devise | oui | oui |
+| Accès fiduciaire | non, grisé ; l'accès d'une fiduciaire déjà invitée est suspendu, rendu au retour à Pro | oui | oui |
 | Sociétés | 1 | 1 | jusqu'à 3 |
 | API, serveur MCP, webhooks | non, grisé (marque Pro+) | non, grisé (marque Pro+) | oui |
 | eBill | non | non | oui |
 
 Règle d'affichage : rien n'est caché à une formule. Une fonction d'une formule supérieure reste à sa place (onglet, bouton, option, formulaire, réglage), grisée, avec la marque « Pro » ou « Pro+ », une raison écrite et un lien de mise à niveau atteignable au clavier. Une allocation épuisée grise la commande avec la même marque et une phrase du type « Vos 20 lectures gratuites de ce mois sont utilisées. ».
 
-Mise en œuvre : `src/server/plans.ts` porte la table des formules, `featureAccess` (fonctions réservées) et `quotaAccess`, `consumeQuota`, `refundQuota` (allocations). Les compteurs mensuels (lectures, questions, relances, relevés) sont dans `plan_usage`, par entreprise et par mois civil UTC : une unité est réservée en un seul ordre SQL avant l'action, refusée au-delà de la limite, rendue si l'IA ou l'envoi échoue. Les factures du mois, les contacts et les récurrences actives se comptent sur les données. Chaque action serveur, route d'API et tâche planifiée passe par ces fonctions ; l'écran grisé (`ProLock`, `ProBadge`, `PlanNotice`) n'est qu'un reflet. Les limites ne bloquent jamais les données existantes : une facture en devise reste modifiable, les clés d'API restent révocables, une récurrence au-delà de l'allocation attend sans être modifiée.
+Mise en œuvre : `src/server/plans.ts` porte la table des formules, `featureAccess` (fonctions réservées) et `quotaAccess`, `consumeQuota`, `refundQuota` (allocations). Les compteurs mensuels (lectures, questions, relances, relevés) sont dans `plan_usage`, par entreprise et par mois civil UTC : une unité est réservée en un seul ordre SQL avant l'action, refusée au-delà de la limite, rendue si l'IA ou l'envoi échoue. Les factures du mois, les contacts et les récurrences actives se comptent sur les données, sous un verrou par entreprise (`lockQuota`) dans la transaction qui crée : `issueInvoice` compte d'après le type du brouillon en base (« planLimit »), `createContactWithinPlan` pour le formulaire, l'API, le MCP et l'import CRMlead. Chaque action serveur, route d'API et tâche planifiée passe par ces fonctions ; l'écran grisé (`ProLock`, `ProBadge`, `PlanNotice`) n'est qu'un reflet. Les limites ne bloquent jamais les données existantes : une facture en devise reste modifiable, les clés d'API restent révocables, une récurrence au-delà de l'allocation attend sans être modifiée.
 
-Principes : ne jamais faire payer la QR-facture, les devis ni les documents multilingues (tous les concurrents les donnent) ; faire du décompte TVA le principal déclencheur de passage au payant (l'assujettissement à 100'000 CHF signale une entreprise qui grandit). Prix affichés en CHF, « hors TVA », équivalent mensuel de l'annuel à côté (15.83 et 32.50).
+Principes : ne jamais faire payer la QR-facture, les devis ni les documents multilingues (tous les concurrents les donnent) ; faire du décompte TVA le principal déclencheur de passage au payant (l'assujettissement à 100'000 CHF signale une entreprise qui grandit) ; ne jamais faire payer la réception des e-factures (obligatoire en France depuis le 1er septembre 2026). Prix de la famille Lead, les mêmes que Scanlead, affichés en euros et hors TVA sur la page Tarifs : 19 € et 39 € par mois, 190 € et 390 € par an (deux mois offerts), facturés en euros par Quantum Liquid LLC.
 
 Contexte : bexio coûte 35, 42, 69 et 119 CHF par mois depuis mars 2026 ; KLARA a supprimé son offre gratuite ; Swiss21, CashCtrl et smallinvoice ont des offres gratuites généreuses. Chiffres des concurrents à revérifier sur leurs sites avant toute comparaison publique.
 

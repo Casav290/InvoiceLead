@@ -7,7 +7,7 @@ import { Link } from "@/i18n/navigation";
 import { formatDate } from "@/lib/fiscal-year";
 import { formatAmount } from "@/lib/money";
 import { requireAppSession } from "@/server/auth/guard";
-import { expectedCollections } from "@/server/collections";
+import { COURTESY_DAYS, expectedCollections, reminderSchedule } from "@/server/collections";
 import { db } from "@/server/db";
 import { emailConfigured } from "@/server/email";
 import { lockFor, planLock } from "@/server/plan-lock";
@@ -107,6 +107,20 @@ export default async function RemindersPage({ params, searchParams }: Props) {
           {t(`settings.interestHint.${organization.country}`)}
         </span>
       </label>
+      {/* Relances intelligentes (formule Pro) : toujours actives, sans réglage ; listées ici pour
+          qu'on sache qu'elles existent, grisées en formule gratuite avec le reste des réglages. */}
+      <div className="border-t border-line pt-4 sm:col-span-2" data-testid="reminder-smart">
+        <p className="text-[13px] font-semibold">{t("settings.smartTitle")}</p>
+        <ul className="mt-1 list-disc space-y-0.5 pl-5 text-[12px] text-ink-2">
+          <li>{t("settings.smartCourtesy", { days: COURTESY_DAYS })}</li>
+          <li>
+            {t("settings.smartRhythm", {
+              reliable: reminderSchedule("reliable")[0] ?? 14,
+              late: reminderSchedule("late")[0] ?? 7,
+            })}
+          </li>
+        </ul>
+      </div>
       {canSetup ? (
         <div className="sm:col-span-2">
           <Button type="submit" variant="secondary" data-testid="reminder-settings-save">

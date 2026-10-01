@@ -151,6 +151,8 @@
       "blockedBody": "A manager at {org} has removed your access to InvoiceLead. Ask them to restore it in the team settings.",
       "seatTitle": "All seats are taken",
       "seatBody": "The {org} plan includes {seats, plural, one {# user} other {# users}}, all already taken. A manager can upgrade to a higher plan or free up a seat.",
+      "fiduciaryTitle": "Fiduciary access paused",
+      "fiduciaryBody": "{org} is on the Free plan. Fiduciary access is part of the Pro plan and comes back as soon as {org} moves to Pro again.",
       "otherOrgs": "Work in another company",
       "betaTitle": "InvoiceLead is in private beta",
       "betaBody": "{org} is not on the beta list yet. We are opening access in small groups; write to us at hello@invoicelead.io to be added."
@@ -275,6 +277,7 @@
         "netTaxRate": "Enter the rate granted by the SFTA (between 0.1 and 15%).",
         "ustId": "Invalid USt-IdNr. (DE followed by 9 digits, check digit).",
         "countryLocked": "The country can no longer be changed once a document has been issued.",
+        "countryDrafts": "Some drafts are in a different currency from the new country's. Delete them before changing the country, or upgrade to Pro to invoice in foreign currencies.",
         "taxNumber": "Invalid Steuernummer (10 to 13 digits).",
         "taxIdRequired": "Enter the USt-IdNr. or the Steuernummer: one of the two appears on every invoice.",
         "frVatId": "Invalid VAT number (FR, 2-digit key, SIREN).",
@@ -1218,7 +1221,7 @@
       "validate": "Validate VAT return",
       "semester": "H{q} {year}",
       "tax": "Tax",
-      "planOnly": "The VAT return prepared and validated in InvoiceLead is included in the Pro plan. You can view the figures below.",
+      "planOnly": "The VAT return, calculated and validated in InvoiceLead, is part of the Pro plan. On the Free plan you see its structure and checks; the amounts appear with Pro.",
       "figuresDe": {
         "81": "Kz 81 · Taxable supplies at 19%",
         "86": "Kz 86 · Taxable supplies at 7%",
@@ -1263,7 +1266,10 @@
       "xmlDownload": "Download the return in eCH-0217 format, to file on the SFTA portal",
       "xmlNoUid": "The eCH-0217 file needs the company's UID (settings).",
       "validatePlan": "Pro feature. Upgrade to Pro to validate and file your return.",
-      "planOnlyUs": "The sales tax report prepared and validated in InvoiceLead is included in the Pro plan. You can view the figures below."
+      "planOnlyUs": "The sales tax report, calculated and validated in InvoiceLead, is part of the Pro plan. On the Free plan you see its structure and checks; the amounts appear with Pro.",
+      "figuresPlan": "Pro feature. The amounts of the return appear with Pro.",
+      "figuresPlanUs": "Pro feature. The amounts of the report appear with Pro.",
+      "amountHidden": "Amount shown with Pro"
     },
     "reminders": {
       "title": "Payment reminders",
@@ -1312,7 +1318,10 @@
           "US": "Empty: no interest. The maximum rate depends on the state and the contract."
         },
         "save": "Save settings",
-        "plan": "2nd and 3rd reminders, automatic sending, reminder fees and late payment interest are part of the Pro plan.",
+        "smartTitle": "Smart reminders",
+        "smartCourtesy": "Friendly reminder {days} days before the due date to customers who often pay late.",
+        "smartRhythm": "Pace set by each customer's payment history: first reminder after {reliable} days for good payers, after {late} days for late payers.",
+        "plan": "2nd and 3rd reminders, automatic sending, reminder fees, late payment interest and smart reminders are part of the Pro plan.",
         "results": {
           "saved": "Reminder settings saved.",
           "plan": "These settings are part of the Pro plan.",
@@ -1331,7 +1340,7 @@
       "week": "Week of {date}",
       "later": "Later",
       "forecastEmpty": "No open invoices.",
-      "levelPlan": "Pro feature. The Free plan sends the first reminder, the next ones are part of Pro."
+      "levelPlan": "Pro feature. The Free plan sends the first reminder; later reminders are part of Pro."
     },
     "recurring": {
       "title": "Recurring invoices",
@@ -1355,7 +1364,7 @@
       "free": "Free",
       "pro": "Pro",
       "proplus": "Pro+",
-      "usage": "{plan} plan{hasLimit, select, yes {: {invoices} of {invoiceLimit} invoices this month, {contacts} of {contactLimit} contacts} other {}}.",
+      "usage": "{tier, select, free {Free plan: {invoices} of {invoiceLimit} invoices this month, {contacts} of {contactLimit} contacts.} pro {Pro plan.} other {Pro+ plan.}}",
       "upgradePlus": "Upgrade to Pro+",
       "locked": "Pro feature. Upgrade to Pro to use it.",
       "lockedPlus": "Pro+ feature. Upgrade to Pro+ to use it.",
@@ -1369,10 +1378,10 @@
       "used": {
         "aiReads": "{plan, select, free {Your {limit} free reads for this month are used up.} other {Your {limit} reads for this month are used up.}}",
         "assistant": "{plan, select, free {Your {limit} free questions for this month are used up.} other {Your {limit} questions for this month are used up.}}",
-        "reminders": "{plan, select, free {Your {limit} free reminders for this month are sent.} other {Your {limit} reminders for this month are sent.}}",
-        "bankImports": "{limit, plural, one {Your free bank statement for this month is imported.} other {Your # free bank statements for this month are imported.}}",
+        "reminders": "{plan, select, free {Your {limit} free reminders for this month have been sent.} other {Your {limit} reminders for this month have been sent.}}",
+        "bankImports": "{limit, plural, one {Your free bank statement for this month has been imported.} other {Your # free bank statements for this month have been imported.}}",
         "recurring": "{limit, plural, one {The Free plan includes one active recurring invoice.} other {The Free plan includes # active recurring invoices.}} Pause one, or upgrade to Pro to add more.",
-        "invoices": "Your {limit} free invoices for this month are issued. The draft stays saved."
+        "invoices": "Your {limit} free invoices for this month have been issued. The draft stays saved."
       }
     },
     "orgSwitch": {
@@ -1405,6 +1414,7 @@
       },
       "managerRole": "Everything, including settings",
       "noSeat": "no seat",
+      "moreSeats": "{tier, select, pro {Pro includes {pro} seats and Pro+ {plus}.} other {Pro+ includes {plus} seats.}}",
       "save": "Save",
       "saved": "Role saved.",
       "addHint": "Only the organisation's administrator adds new people. They receive an email and land directly in InvoiceLead.",
@@ -1439,6 +1449,7 @@
       "removed": "Access removed.",
       "noFiduciary": "No fiduciary has access yet.",
       "planOnly": "Fiduciary access is included in the Pro and Pro+ plans.",
+      "suspended": "Access paused: fiduciary access is part of the Pro plan.",
       "managersOnly": "Only company managers can change the team.",
       "errors": {
         "invalid": "Invalid email address.",
@@ -1512,7 +1523,7 @@
     "apiSettings": {
       "title": "API and webhooks",
       "subtitle": "Connect InvoiceLead to your tools: the REST API ({base}) creates contacts, quotes, invoices and payments; webhooks notify your tools when an invoice is issued or paid.",
-      "plan": "The API and webhooks are part of the Pro+ plan.",
+      "plan": "The API, the MCP server and webhooks are part of the Pro+ plan.",
       "keys": {
         "title": "API keys",
         "empty": "No key.",
@@ -1535,6 +1546,7 @@
         "disable": "Delete",
         "disabled": "Webhook deleted.",
         "delivery": "{event}: {status} ({code}), {date}",
+        "noCode": "no response",
         "status": {
           "pending": "pending",
           "delivered": "delivered",
@@ -1542,7 +1554,7 @@
         }
       },
       "errors": {
-        "plan": "The API and webhooks are part of the Pro+ plan.",
+        "plan": "The API, the MCP server and webhooks are part of the Pro+ plan.",
         "invalid": "Name required (60 characters at most).",
         "tooMany": "Maximum reached.",
         "url": "Invalid URL: https to a public server, without credentials.",
@@ -1922,7 +1934,7 @@
           "50 contacts",
           "QR-bill, documents in DE, FR, IT, EN",
           "Accounting fed by your invoices",
-          "20 documents read by AI each month (receipts, supporting documents, e-invoices)",
+          "20 documents read by AI each month (receipts, supporting documents), e-invoices received without limit",
           "Assistant: 10 questions per month",
           "First reminder sent by hand, 5 per month",
           "1 active recurring invoice",
@@ -1937,11 +1949,11 @@
           "Unlimited invoices and contacts",
           "2 users and free fiduciary access",
           "50 documents read by AI each month",
-          "Unlimited assistant",
+          "Unlimited assistant questions",
           "Automatic reminders on 3 levels, fees and interest",
           "VAT return (effective and net tax rate methods)",
           "Unlimited camt bank import, Monday autopilot summary",
-          "Recurring invoices, multi-currency"
+          "Unlimited recurring invoices, multi-currency"
         ]
       },
       "proPlus": {
@@ -1994,7 +2006,7 @@
       },
       {
         "q": "What does the Free plan include?",
-        "a": "Each month: 10 invoices, 20 documents read by AI, 10 questions to the assistant, 5 first reminders and 1 bank statement with the autopilot. It also includes 50 contacts and 1 active recurring invoice. Pro features stay visible in the app, greyed out with the Pro mark, so you know they exist."
+        "a": "Each month: 10 invoices, 20 documents read by AI, 10 questions to the assistant, 5 first-level reminders and 1 bank statement with the autopilot. It also includes 50 contacts and 1 active recurring invoice, and receives e-invoices without limit. Pro and Pro+ features stay visible in the app, greyed out with their mark, so you know they exist."
       },
       {
         "q": "Do I need a payment card to start?",

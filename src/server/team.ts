@@ -84,14 +84,18 @@ export function seated<T extends Member & { userId: string; createdAt: Date }>(
   return new Set(ordered.slice(0, seats).map((m) => m.userId));
 }
 
-/** La personne a-t-elle une place dans l'entreprise d'après sa formule ? */
+/**
+ * La personne a-t-elle une place dans l'entreprise d'après sa formule ? Une fiduciaire n'occupe pas
+ * de place, mais son accès fait partie de la formule Pro : il est suspendu tant que l'entreprise est
+ * en formule gratuite (l'accès reste enregistré et revient avec Pro, comme les clés d'API en Pro+).
+ */
 export async function hasSeat(
   database: Db,
   org: { id: string; leadPlan: string; entitlements: unknown },
   userId: string,
 ): Promise<boolean> {
   const { members, fiduciaries } = await listTeam(database, org.id);
-  if (fiduciaries.some((f) => f.userId === userId)) return true;
+  if (fiduciaries.some((f) => f.userId === userId)) return featureAccess(org, "fiduciary").allowed;
   return seated(members, seatsOf(org)).has(userId);
 }
 
