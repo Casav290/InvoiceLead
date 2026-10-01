@@ -7,6 +7,7 @@ import { documentVariant } from "@/server/document-pdf";
 import { renderInvoicePdf } from "@/server/invoice-pdf";
 import {
   convertQuoteToInvoice,
+  createCreditNote,
   createDepositInvoice,
   createInvoice,
   depositInvoices,
@@ -93,6 +94,8 @@ describe("factures d'acompte", () => {
     expect(deposit.netCents).toBe(12_465);
     // Plus de 100 % au total : refusé, brouillons compris.
     expect(await createDepositInvoice(db, who, quote.id, 75, "2026-03-05")).toBe("tooHigh");
+    // Acompte encore en brouillon : pas de facture finale qui l'oublierait.
+    expect(await convertQuoteToInvoice(db, who, quote.id, "2026-03-06")).toBe("depositDraft");
     const issuedDeposit = await issueInvoice(db, who, deposit.id);
     if (typeof issuedDeposit !== "object") throw new Error(issuedDeposit);
     expect(issuedDeposit.number).toBe("2026-0001");
@@ -111,6 +114,25 @@ describe("factures d'acompte", () => {
     expect(final.deposit).toBe(false);
     // Plus d'acompte sur un devis facturé.
     expect(await createDepositInvoice(db, who, quote.id, 10, "2026-04-02")).toBe("notConvertible");
+  });
+
+  it("ne déduit pas un acompte annulé par avoir", async () => {
+    const { who, quote } = await issuedQuote();
+    const deposit = await createDepositInvoice(db, who, quote.id, 50, "2026-03-05");
+    if (typeof deposit !== "object") throw new Error(deposit);
+    await issueInvoice(db, who, deposit.id);
+    const credit = await createCreditNote(db, who, deposit.id, "2026-03-10");
+    if (typeof credit !== "object") throw new Error(credit);
+    expect(typeof (await issueInvoice(db, who, credit.id))).toBe("object");
+    // L'acompte annulé ne compte plus dans le plafond, ni dans la facture finale.
+    expect(typeof (await createDepositInvoice(db, who, quote.id, 80, "2026-03-11"))).toBe("object");
+    const drafts = await depositInvoices(db, who.organizationId, quote.id);
+    const second = drafts.find((d) => d.status === "draft");
+    if (!second) throw new Error("acompte");
+    await issueInvoice(db, who, second.id);
+    const final = await convertQuoteToInvoice(db, who, quote.id, "2026-04-01");
+    if (typeof final !== "object") throw new Error(final);
+    expect(final.netCents).toBe(41_550 - 33_240);
   });
 
   it("tire confirmation de commande et bon de livraison des bonnes pièces", async () => {

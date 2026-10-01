@@ -459,6 +459,9 @@ export async function approveBill(
 ): Promise<ApproveResult> {
   const bill = await getBill(database, who.organizationId, id);
   if (bill?.status !== "draft") return "notFound";
+  // Personne ne valide sa propre note de frais.
+  if ((bill.source === "expense" || bill.source === "mileage") && bill.claimantId === who.userId)
+    return "sameApprover";
   if (!bill.accountId) return "noAccount";
   const [org] = await database
     .select({ dualApproval: organizations.dualApproval, currency: organizations.currency })

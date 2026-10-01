@@ -13,6 +13,8 @@ export type ExportLine = {
   vatRateBp: number | null;
   /** Ligne d'impôt (TVA due ou préalable) plutôt que ligne de base. */
   isVat: boolean;
+  /** Ligne d'impôt : TVA due (« output ») ou impôt préalable (« input »), selon le compte. */
+  vatSide?: "output" | "input" | null;
 };
 
 export type ExportEntry = {
@@ -70,7 +72,10 @@ export function datevRows(entry: ExportEntry): DatevRow[] {
   for (const v of entry.lines.filter((l) => l.isVat)) {
     const amount = v.debitCents - v.creditCents;
     const rate = v.vatRateBp ?? 0;
-    const key = amount < 0 ? OUTPUT_KEY[rate] : INPUT_KEY[rate];
+    // La clé suit le compte d'impôt, pas le signe : un remboursement de fournisseur crédite
+    // l'impôt préalable et garde une clé d'impôt préalable.
+    const side = v.vatSide ?? (amount < 0 ? "output" : "input");
+    const key = side === "output" ? OUTPUT_KEY[rate] : INPUT_KEY[rate];
     const base = work
       .filter((w) => w.rate === rate && Math.sign(w.amount) === Math.sign(amount) && !w.key)
       .sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount))[0];
@@ -82,6 +87,9 @@ export function datevRows(entry: ExportEntry): DatevRow[] {
     base.amount += amount;
     base.key = AUTOMATIC[base.account] === rate ? "-" : key;
   }
+  // Compte automatique hors de son taux (0 %, export, autoliquidation, entreprise non assujettie) :
+  // la clé 40 coupe le calcul automatique, sinon DATEV y ajouterait sa TVA.
+  for (const w of work) if (AUTOMATIC[w.account] && !w.key) w.key = "40";
   const lines = work.filter((w) => w.amount !== 0);
   if (lines.length < 2) return [];
   // Ligne principale : le plus gros montant, de préférence sans clé (compte de tiers ou banque).

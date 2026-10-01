@@ -78,6 +78,34 @@ describe("export DATEV", () => {
     ]);
   });
 
+  it("coupe l'automatique hors taux et suit le compte d'impôt pour la clé", () => {
+    // Livraison intracommunautaire à 0 % sur 4400 : clé 40.
+    const export0: ExportEntry = {
+      ...invoice,
+      lines: [line("1200", 1_000_000, 0), line("4400", 0, 1_000_000, 0)],
+    };
+    expect(datevRows(export0)).toEqual([
+      expect.objectContaining({
+        account: "1200",
+        counter: "4400",
+        key: "40",
+        amountCents: 1_000_000,
+      }),
+    ]);
+    // Remboursement d'un fournisseur : charge et impôt préalable au crédit, clé d'impôt préalable.
+    const refund: ExportEntry = {
+      ...bill,
+      lines: [
+        line("1800", 11_900, 0),
+        line("6821", 0, 10_000, 1900),
+        { ...line("1400", 0, 1_900, 1900, true), vatSide: "input" as const },
+      ],
+    };
+    expect(datevRows(refund)).toEqual([
+      expect.objectContaining({ account: "1800", counter: "6821", key: "9", side: "S" }),
+    ]);
+  });
+
   it("garde le solde de chaque compte", () => {
     const entry: ExportEntry = {
       ...bill,

@@ -639,7 +639,8 @@
         "closed": "Diese Zahlung ist in einem abgeschlossenen Geschäftsjahr verbucht und kann nicht mehr gelöscht werden.",
         "planLimit": "Sie haben die 10 Rechnungen pro Monat des Gratis-Abos erreicht. Mit Pro stellen Sie unbegrenzt Rechnungen aus.",
         "recurring": "Die Wiederholung konnte nicht gespeichert werden.",
-        "fxRate": "Der Tageskurs konnte nicht abgerufen werden. Bitte den Kurs im Entwurf erfassen und erneut ausstellen."
+        "fxRate": "Der Tageskurs konnte nicht abgerufen werden. Bitte den Kurs im Entwurf erfassen und erneut ausstellen.",
+        "depositDraft": "Eine Anzahlungsrechnung zu dieser Offerte ist noch ein Entwurf: Stellen Sie sie aus oder löschen Sie sie, bevor Sie die Schlussrechnung erstellen."
       },
       "addLine": "Position hinzufügen",
       "removeLine": "Entfernen",

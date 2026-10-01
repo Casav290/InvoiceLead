@@ -56,6 +56,7 @@ const ERRORS = [
   "recurring",
   "percent",
   "tooHigh",
+  "depositDraft",
 ];
 
 /** Objet et message proposés, dans la langue de la pièce. */
@@ -432,7 +433,7 @@ export async function DocumentDetailPage({
                 {t("download")}
               </a>
             </Button>
-            {kind === "quote" ? (
+            {kind === "quote" && ["issued", "accepted", "invoiced"].includes(invoice.status) ? (
               <Button asChild variant="secondary">
                 <a
                   href={`/${locale}/app/quotes/${invoice.id}/pdf?as=order`}

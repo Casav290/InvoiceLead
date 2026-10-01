@@ -29,6 +29,7 @@ export async function exportEntries(
       creditCents: journalLines.creditCents,
       vatRateBp: journalLines.vatRateBp,
       vatBaseCents: journalLines.vatBaseCents,
+      role: accounts.role,
     })
     .from(journalLines)
     .innerJoin(accounts, eq(accounts.id, journalLines.accountId))
@@ -50,6 +51,8 @@ export async function exportEntries(
         creditCents: l.creditCents,
         vatRateBp: l.vatRateBp,
         isVat: l.vatBaseCents !== null,
+        vatSide:
+          l.role === "vat_output" ? "output" : l.role?.startsWith("vat_input") ? "input" : null,
       },
     ]);
   return entries.map((e) => ({

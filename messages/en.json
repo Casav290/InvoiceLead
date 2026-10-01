@@ -639,7 +639,8 @@
         "closed": "This payment is already posted in a closed fiscal year: it can no longer be deleted.",
         "planLimit": "You have reached the Free plan limit of 10 invoices per month. Upgrade to Pro for unlimited invoicing.",
         "recurring": "The recurrence could not be saved.",
-        "fxRate": "The day's exchange rate could not be retrieved. Enter the rate in the draft, then issue again."
+        "fxRate": "The day's exchange rate could not be retrieved. Enter the rate in the draft, then issue again.",
+        "depositDraft": "A deposit invoice for this quote is still a draft: issue or delete it before creating the final invoice."
       },
       "addLine": "Add line",
       "removeLine": "Remove",

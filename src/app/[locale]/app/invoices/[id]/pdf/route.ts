@@ -27,5 +27,8 @@ export async function GET(
   const as = url.searchParams.get("as");
   const variant = documentVariant(as, kind);
   if (as && !variant) notFound();
+  // Confirmation de commande : seulement pour un devis encore valable ou accepté.
+  if (variant === "order" && !["issued", "accepted", "invoiced"].includes(found.invoice.status))
+    notFound();
   return pdfResponse(await buildDocumentPdf(found.invoice, found.lines, found.related, variant));
 }

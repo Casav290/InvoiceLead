@@ -115,8 +115,15 @@ describe("notes de frais", () => {
     expect(await lastClaimIban(db, who.organizationId, who.userId)).toBe("CH5604835012345678009");
     expect(await listClaims(db, who.organizationId, who.userId)).toHaveLength(2);
 
+    // Personne ne valide sa propre note ; une autre personne de l'équipe le fait.
+    expect(await approveBill(db, who, trip.id)).toBe("sameApprover");
+    const b = await attachLeadIdentity(
+      db,
+      claims({ sub: "sub-b", email: "b@atelier.test", org: "org-atelier", org_role: "admin" }),
+    );
+    const boss = { organizationId: who.organizationId, userId: b.user.id };
     // Approbation : charge sans impôt préalable pour les kilomètres, avec pour le repas.
-    const approved = await approveBill(db, who, trip.id);
+    const approved = await approveBill(db, boss, trip.id);
     if (typeof approved !== "object") throw new Error(approved);
     const lines = await db
       .select()
@@ -124,7 +131,7 @@ describe("notes de frais", () => {
       .where(eq(journalLines.entryId, approved.journalEntryId ?? ""));
     expect(lines.find((l) => l.accountId === travel.id)?.debitCents).toBe(17_500);
     expect(lines).toHaveLength(2);
-    const approvedMeal = await approveBill(db, who, meal.id);
+    const approvedMeal = await approveBill(db, boss, meal.id);
     if (typeof approvedMeal !== "object") throw new Error(approvedMeal);
     const mealLines = await db
       .select()

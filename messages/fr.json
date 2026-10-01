@@ -639,7 +639,8 @@
         "closed": "Ce paiement est déjà comptabilisé dans un exercice fermé : il ne peut plus être supprimé.",
         "planLimit": "Vous avez atteint les 10 factures du mois de la formule gratuite. Passez à Pro pour facturer sans limite.",
         "recurring": "La récurrence n'a pas pu être enregistrée.",
-        "fxRate": "Le cours du jour n'a pas pu être obtenu. Saisissez le cours dans le brouillon, puis émettez à nouveau."
+        "fxRate": "Le cours du jour n'a pas pu être obtenu. Saisissez le cours dans le brouillon, puis émettez à nouveau.",
+        "depositDraft": "Une facture d'acompte de ce devis est encore en brouillon : émettez-la ou supprimez-la avant de créer la facture finale."
       },
       "addLine": "Ajouter une ligne",
       "removeLine": "Retirer",

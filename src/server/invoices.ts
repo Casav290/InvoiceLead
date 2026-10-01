@@ -690,10 +690,24 @@ export async function convertQuoteToInvoice(
   who: Who,
   quoteId: string,
   today: string,
-): Promise<Invoice | "notConvertible" | "contact"> {
+): Promise<Invoice | "notConvertible" | "contact" | "depositDraft"> {
   const found = await getInvoice(database, who.organizationId, quoteId);
   if (found?.invoice.kind !== "quote") return "notConvertible";
   const { invoice: quote, lines } = found;
+  // Un acompte encore en brouillon ne serait pas déduit : il faut l'émettre ou le supprimer avant.
+  const [pendingDeposit] = await database
+    .select({ id: invoices.id })
+    .from(invoices)
+    .where(
+      and(
+        eq(invoices.organizationId, who.organizationId),
+        eq(invoices.sourceQuoteId, quoteId),
+        eq(invoices.deposit, true),
+        eq(invoices.status, "draft"),
+      ),
+    )
+    .limit(1);
+  if (pendingDeposit) return "depositDraft";
   return database
     .transaction(async (tx) => {
       const [claimed] = await tx
@@ -790,7 +804,12 @@ async function depositDeductions(
   language: string,
 ): Promise<InvoiceLineInput[]> {
   const rows = await database
-    .select({ number: invoices.number, line: invoiceLines })
+    .select({
+      id: invoices.id,
+      number: invoices.number,
+      totalCents: invoices.totalCents,
+      line: invoiceLines,
+    })
     .from(invoices)
     .innerJoin(invoiceLines, eq(invoiceLines.invoiceId, invoices.id))
     .where(
@@ -803,14 +822,26 @@ async function depositDeductions(
     )
     .orderBy(invoices.issueDate, invoiceLines.position);
   const text = DEPOSIT_TEXT[documentLanguage(language)];
-  return rows.map((r) => ({
-    productId: null,
-    description: text.less(r.number ?? ""),
-    quantityMilli: -r.line.quantityMilli,
-    unit: r.line.unit as InvoiceLineInput["unit"],
-    unitPriceCents: r.line.unitPriceCents,
-    vatCode: (r.line.vatCode as VatCode | null) ?? "normal",
-  }));
+  // Acompte annulé par avoir : seule la part non créditée se déduit.
+  const remaining = new Map<string, number>();
+  for (const r of rows)
+    if (!remaining.has(r.id))
+      remaining.set(
+        r.id,
+        r.totalCents > 0
+          ? Math.max(0, r.totalCents - (await creditedCents(database, r.id))) / r.totalCents
+          : 0,
+      );
+  return rows
+    .filter((r) => (remaining.get(r.id) ?? 0) > 0)
+    .map((r) => ({
+      productId: null,
+      description: text.less(r.number ?? ""),
+      quantityMilli: -Math.round(r.line.quantityMilli * (remaining.get(r.id) ?? 0)),
+      unit: r.line.unit as InvoiceLineInput["unit"],
+      unitPriceCents: r.line.unitPriceCents,
+      vatCode: (r.line.vatCode as VatCode | null) ?? "normal",
+    }));
 }
 
 export type DepositResult = Invoice | "notConvertible" | "percent" | "tooHigh" | "contact";
@@ -837,8 +868,9 @@ export async function createDepositInvoice(
     const code = l.vatCode ?? "normal";
     groups.set(code, (groups.get(code) ?? 0) + l.netCents);
   }
-  const [already] = await database
-    .select({ net: sql<string | null>`sum(${invoices.netCents})` })
+  // Acomptes déjà demandés (brouillons compris), sans la part annulée par avoir.
+  const previous = await database
+    .select({ id: invoices.id, netCents: invoices.netCents, totalCents: invoices.totalCents })
     .from(invoices)
     .where(
       and(
@@ -847,12 +879,18 @@ export async function createDepositInvoice(
         eq(invoices.deposit, true),
       ),
     );
+  let alreadyNet = 0;
+  for (const d of previous) {
+    const credited = await creditedCents(database, d.id);
+    const share = d.totalCents > 0 ? Math.max(0, d.totalCents - credited) / d.totalCents : 0;
+    alreadyNet += Math.round(d.netCents * share);
+  }
   const depositLines = [...groups]
     .map(([code, net]) => ({ code, cents: Math.round((net * percent) / 100) }))
     .filter((g) => g.cents > 0);
   const total = depositLines.reduce((s, g) => s + g.cents, 0);
   if (total === 0) return "percent";
-  if (Number(already?.net ?? 0) + total > quote.netCents) return "tooHigh";
+  if (alreadyNet + total > quote.netCents) return "tooHigh";
   const text = DEPOSIT_TEXT[documentLanguage(quote.language)];
   const shown = String(Math.round(percent * 100) / 100);
   const result = await writeInvoice(
