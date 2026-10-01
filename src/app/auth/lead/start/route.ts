@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
       { state: login.state, nonce: login.nonce, verifier: login.verifier, locale, invite, next },
       SESSION_SECRET,
     ),
-    { ...cookieOptions(600), path: LOGIN_COOKIE_PATH },
+    { ...cookieOptions(1800), path: LOGIN_COOKIE_PATH },
   );
   return response;
 }

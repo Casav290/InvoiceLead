@@ -1,7 +1,7 @@
-import { type NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import createMiddleware from "next-intl/middleware";
 import { routing } from "./i18n/routing";
-import { SESSION_COOKIE } from "./lib/cookies";
+import { REQUESTED_PATH_HEADER, SESSION_COOKIE } from "./lib/cookies";
 
 const intl = createMiddleware(routing);
 const PROTECTED = new RegExp(`^/(${routing.locales.join("|")})/(?:app|no-access)(?:/|$)`, "i");
@@ -28,6 +28,13 @@ export default function proxy(request: NextRequest) {
     url.pathname = `/${locale}/login`;
     url.search = `?${new URLSearchParams({ next: wanted })}`;
     return NextResponse.redirect(url);
+  }
+  // Page de l'application avec un cookie : la page demandée suit, au cas où la session aurait expiré
+  // (requireSession la redonne au Compte Lead pour y revenir après la connexion).
+  if (match) {
+    const headers = new Headers(request.headers);
+    headers.set(REQUESTED_PATH_HEADER, `${request.nextUrl.pathname}${request.nextUrl.search}`);
+    return intl(new NextRequest(request, { headers }));
   }
   return intl(request);
 }

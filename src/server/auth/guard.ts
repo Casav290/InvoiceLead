@@ -1,13 +1,15 @@
 import "server-only";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { cache } from "react";
 import { countryPack } from "@/countries";
+import { REQUESTED_PATH_HEADER } from "@/lib/cookies";
 import { betaAllowed } from "../beta";
 import { db } from "../db";
 import { env } from "../env";
 import { can, hasAppAccess, type Permission } from "../roles";
 import { hasSeat } from "../team";
-import { pickLocale } from "./login-cookie";
+import { pickLocale, safeNext } from "./login-cookie";
 import { type CurrentSession, getSession } from "./session";
 
 /**
@@ -16,7 +18,13 @@ import { type CurrentSession, getSession } from "./session";
  */
 export async function requireSession(locale: string): Promise<CurrentSession> {
   const session = await getSession();
-  if (!session) redirect(`/auth/lead/start?locale=${pickLocale(locale)}`);
+  if (!session) {
+    // Cookie de session expiré : la page demandée est redonnée au Compte Lead, on y revient ensuite.
+    const next = safeNext((await headers()).get(REQUESTED_PATH_HEADER));
+    redirect(
+      `/auth/lead/start?${new URLSearchParams({ locale: pickLocale(locale), ...(next ? { next } : {}) })}`,
+    );
+  }
   return session;
 }
 

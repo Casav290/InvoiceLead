@@ -45,6 +45,25 @@ test("« Connexion » et « Créer un compte » mènent tout droit au Compte Lea
   await page.waitForURL("**/fr/app");
 });
 
+test("session expirée : la page demandée se rouvre après la reconnexion", async ({
+  page,
+  context,
+}) => {
+  await context.addCookies([
+    { name: "il_session", value: "expiree", url: "http://localhost:3100/" },
+  ]);
+  await page.goto("/fr/app/invoices?kind=quote");
+  await expect(page).toHaveURL(/\/fr\/app\/invoices\?kind=quote$/);
+});
+
+test("l'écran d'erreur garde la page demandée pour « Réessayer »", async ({ page }) => {
+  await page.goto("/fr/login?erreur=lead&next=%2Ffr%2Fapp%2Finvoices");
+  await expect(page.getByTestId("lead-login")).toHaveAttribute(
+    "href",
+    "/auth/lead/start?locale=fr&next=%2Ffr%2Fapp%2Finvoices",
+  );
+});
+
 test("la racine choisit une langue", async ({ page }) => {
   await page.goto("/");
   await expect(page).toHaveURL(/\/(de|fr)$/);
@@ -134,13 +153,30 @@ test("une application retirée montre l'écran sans accès", async ({ page }) =>
   expect(await direct.text()).not.toContain("dashboard-title");
 });
 
-test("un retour sans demande en cours est refusé proprement", async ({ page }) => {
+test("un retour sans demande en cours relance la connexion une fois, sans écran", async ({
+  page,
+}) => {
+  // Demande expirée (plus de 30 minutes, autre onglet) : relancée, la personne arrive dans l'application.
+  await page.goto("/auth/lead/callback?code=x&state=y");
+  await expect(page).toHaveURL(/\/de\/app$/);
+});
+
+test("un retour sans demande, juste après une relance, montre l'écran d'erreur", async ({
+  page,
+  context,
+}) => {
+  await context.addCookies([
+    { name: "il_login_retry", value: "1", url: "http://localhost:3100/auth/lead/callback" },
+  ]);
   await page.goto("/auth/lead/callback?code=x&state=y");
   await expect(page).toHaveURL(/\/de\/login\?erreur=session$/);
   await expect(page.getByText("Die Anmeldeanfrage ist abgelaufen")).toBeVisible();
 });
 
-test("un état falsifié au retour est refusé", async ({ page }) => {
+test("un état falsifié au retour est refusé", async ({ page, context }) => {
+  await context.addCookies([
+    { name: "il_login_retry", value: "1", url: "http://localhost:3100/auth/lead/callback" },
+  ]);
   await page.goto("/de/login?erreur=session");
   // Départ réel (cookie posé), mais retour avec un autre `state`.
   const start = await page.request.get("/auth/lead/start?locale=de", { maxRedirects: 0 });
@@ -177,9 +213,9 @@ test("une adresse inconnue donne une page 404 traduite", async ({ page }) => {
 test.describe("navigateur en français", () => {
   test.use({ locale: "fr-CH" });
 
-  test("un retour expiré ramène à la connexion en français", async ({ page }) => {
+  test("un retour expiré relance la connexion en français", async ({ page }) => {
     await page.goto("/auth/lead/callback?code=x&state=y");
-    await expect(page).toHaveURL(/\/fr\/login\?erreur=session$/);
+    await expect(page).toHaveURL(/\/fr\/app$/);
   });
 });
 

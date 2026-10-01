@@ -6,10 +6,13 @@ export function LeadLoginPanel({
   mode,
   locale,
   error,
+  next,
 }: {
   mode: "login" | "signup";
   locale: string;
   error?: "lead" | "session";
+  /** Page demandée avant la connexion : « Réessayer » y ramène. */
+  next?: string;
 }) {
   const t = useTranslations("auth");
   return (
@@ -38,7 +41,7 @@ export function LeadLoginPanel({
           className="h-auto min-h-12 w-full px-4 py-3 text-center whitespace-normal sm:px-6"
         >
           <a
-            href={`/auth/lead/start?locale=${locale}${mode === "signup" ? "&signup=1" : ""}`}
+            href={`/auth/lead/start?${new URLSearchParams({ locale, ...(mode === "signup" ? { signup: "1" } : {}), ...(next ? { next } : {}) })}`}
             data-testid="lead-login"
           >
             {t("leadButton")}

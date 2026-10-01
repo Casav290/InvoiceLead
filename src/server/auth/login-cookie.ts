@@ -8,7 +8,7 @@ export const INVITE_TOKEN = /^[A-Za-z0-9_-]{20,100}$/;
  * Page à rouvrir après la connexion : une adresse de l'application, sur ce site seulement
  * (« /fr/app/invoices/… »), avec une recherche simple. Rien d'autre n'est suivi.
  */
-export const NEXT_PATH = /^\/(de|fr|en)\/app(\/[A-Za-z0-9_\-/]*)?(\?[A-Za-z0-9=&%._-]*)?$/;
+export const NEXT_PATH = /^\/(de|fr|en)\/app(\/[A-Za-z0-9_\-/]*)?(\?[A-Za-z0-9=&%._~+,:-]*)?$/;
 
 export function safeNext(value: string | null | undefined): string | undefined {
   if (!value || value.length > 500 || value.includes("//")) return undefined;
