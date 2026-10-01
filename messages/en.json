@@ -397,7 +397,7 @@
         "role": "Tick customer, supplier or both.",
         "usState": "Enter the state code (two letters, for example TX)."
       },
-      "planLimit": "The Free plan includes up to 50 contacts. Upgrade to Pro to add more."
+      "planLimit": "The Free plan includes up to {limit} contacts. Upgrade to Pro to add more."
     },
     "products": {
       "title": "Items",
@@ -681,11 +681,12 @@
         "contact": "The customer on this quote has been archived.",
         "creditTooHigh": "The credit note exceeds the amount still available to credit on the invoice.",
         "closed": "This payment is already posted in a closed fiscal year: it can no longer be deleted.",
-        "planLimit": "You have reached the Free plan limit of 10 invoices per month. Upgrade to Pro for unlimited invoicing.",
+        "planLimit": "You have reached the Free plan limit of {limit} invoices per month. Upgrade to Pro for unlimited invoicing.",
         "recurring": "The recurrence could not be saved.",
         "fxRate": "The day's exchange rate could not be retrieved. Enter the rate in the draft, then issue again.",
         "depositDraft": "A deposit invoice for this quote is still a draft: issue or delete it before creating the final invoice.",
-        "recurringLimit": "The Free plan includes one active recurring invoice. Pause one, or upgrade to Pro to add more."
+        "recurringLimit": "The Free plan includes {limit, plural, one {one active recurring invoice} other {# active recurring invoices}}. Pause one, or upgrade to Pro to add more.",
+        "recurringCurrency": "An invoice in a foreign currency can only recur with Pro, which includes multi-currency."
       },
       "addLine": "Add line",
       "removeLine": "Remove",
@@ -899,7 +900,8 @@
         "every": "{months, plural, one {Every month} other {Every # months}}",
         "next": "Next invoice on",
         "autoSend": "Issue and send automatically (otherwise: draft to review)",
-        "create": "Save recurrence"
+        "create": "Save recurrence",
+        "currencyPlan": "Invoice in {currency}: making it recurring is part of multi-currency, in the Pro plan."
       },
       "einvoice": {
         "download": "XRechnung (XML)",
@@ -1037,7 +1039,8 @@
         "noFiscalYear": "No open fiscal year covers the date of this transaction.",
         "noProposal": "Choose an account first.",
         "notFound": "Transaction not found or already processed.",
-        "vatPeriodClosed": "This date falls in a VAT period that has already been validated: entries can no longer be added to it."
+        "vatPeriodClosed": "This date falls in a VAT period that has already been validated: entries can no longer be added to it.",
+        "scope": "On the Free plan, one import covers a single account and one month at most. Export a monthly statement, or upgrade to Pro to import more."
       },
       "aiError": "The assistant could not respond. The transactions are still awaiting proposals; try again later.",
       "aiOff": "The accounting assistant is not enabled yet: only invoice payments recognised by their QR reference are proposed automatically.",
@@ -1046,7 +1049,7 @@
       "import": "Import",
       "toReview": "{count, plural, =0 {Nothing to validate} one {# transaction to validate} other {# transactions to validate}}",
       "propose": "Propose entries",
-      "validateConfident": "Validate the {count} confident proposals",
+      "validateConfident": "{count, plural, one {Validate the confident proposal} other {Validate the # confident proposals}}",
       "nothing": "All transactions have been processed.",
       "noSuggestion": "No proposal: choose the account.",
       "paysInvoice": "Payment of invoice {invoice}",
@@ -1088,8 +1091,8 @@
     },
     "receipts": {
       "title": "Receipts",
-      "subtitle": "Upload your supplier invoices and till receipts (PDF or photo). The assistant reads them and matches them to the corresponding payment in the bank statement.",
-      "added": "{count, plural, =0 {No receipts added} one {# receipt added} other {# receipts added}}{rejected, plural, =0 {.} one { (# rejected: duplicate, format or size).} other { (# rejected: duplicates, format or size).}}",
+      "subtitle": "Upload your supplier invoices and till receipts (PDF or photo). AI reads them and matches them to the corresponding payment in the bank statement.",
+      "added": "{count, plural, =0 {No receipts added} one {# receipt added} other {# receipts added}}.{rejected, plural, =0 {} one { # rejected: duplicate, format or size.} other { # rejected: duplicates, format or size.}}{quota, plural, =0 {} one { # not uploaded: this month's AI reads are used up.} other { # not uploaded: this month's AI reads are used up.}}",
       "errors": {
         "unreadable": "This PDF is a scanned image: upload a clear photo of the document instead.",
         "failed": "The assistant could not read this receipt. Try again later.",
@@ -1340,7 +1343,7 @@
       "week": "Week of {date}",
       "later": "Later",
       "forecastEmpty": "No open invoices.",
-      "levelPlan": "Pro feature. The Free plan sends the first reminder; later reminders are part of Pro."
+      "levelPlan": "Pro feature. On the Free plan, you send the first reminder yourself; later reminders are part of Pro."
     },
     "recurring": {
       "title": "Recurring invoices",
@@ -1357,7 +1360,9 @@
       "pause": "Pause",
       "resume": "Resume",
       "delete": "Delete",
-      "held": "On hold: the Free plan runs one recurring invoice."
+      "held": "On hold: the Free plan runs {limit, plural, one {one recurring invoice} other {# recurring invoices}}.",
+      "heldCurrency": "Invoice in {currency}: it recurs with Pro, which includes multi-currency.",
+      "currencyPlan": "An invoice in a foreign currency recurs with Pro, which includes multi-currency."
     },
     "plan": {
       "upgrade": "Upgrade to Pro",
@@ -1701,7 +1706,8 @@
         "plan": "Entering a bill in a foreign currency is part of the Pro plan."
       },
       "claim": "Expense claim",
-      "currencyPlan": "Other currencies are part of the Pro plan."
+      "currencyPlan": "Other currencies are part of the Pro plan.",
+      "approveCurrencyPlan": "Bill in {currency}: approving and booking it at the day's rate is part of multi-currency, in the Pro plan."
     },
     "time": {
       "title": "Time",
@@ -1805,7 +1811,7 @@
         "off": "The AI assistant is not configured yet.",
         "empty": "Ask a question.",
         "failed": "The assistant could not answer. Try again in a moment.",
-        "quota": "This month's free questions are used up. Upgrade to Pro to keep asking."
+        "quota": "Question not sent. With Pro, the assistant answers without limit."
       }
     },
     "expenses": {
@@ -1951,7 +1957,7 @@
           "50 documents read by AI each month",
           "Unlimited assistant questions",
           "Automatic reminders on 3 levels, fees and interest",
-          "VAT return (effective and net tax rate methods)",
+          "Tax returns: Swiss VAT (effective and net tax rate), UStVA, CA3, MTD and US sales tax",
           "Unlimited camt bank import, Monday autopilot summary",
           "Unlimited recurring invoices, multi-currency"
         ]
@@ -1994,7 +2000,7 @@
       },
       {
         "q": "Can my accountant access my accounts?",
-        "a": "Yes, free fiduciary access is provided from the Pro plan upwards."
+        "a": "Yes, from the Pro plan on, your accountant gets free access to your books."
       },
       {
         "q": "Where is my data hosted?",
@@ -2006,7 +2012,7 @@
       },
       {
         "q": "What does the Free plan include?",
-        "a": "Each month: 10 invoices, 20 documents read by AI, 10 questions to the assistant, 5 first-level reminders and 1 bank statement with the autopilot. It also includes 50 contacts and 1 active recurring invoice, and receives e-invoices without limit. Pro and Pro+ features stay visible in the app, greyed out with their mark, so you know they exist."
+        "a": "Each month: 10 invoices, 20 documents read by AI, 10 questions to the assistant, 5 first-level reminders and 1 bank statement with the autopilot. It also includes 50 contacts and 1 active recurring invoice, and receives e-invoices without limit. Pro and Pro+ features stay visible in the app, greyed out and labelled Pro or Pro+, so you know they exist."
       },
       {
         "q": "Do I need a payment card to start?",

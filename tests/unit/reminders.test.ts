@@ -17,7 +17,6 @@ import {
   dueReminders,
   lateInterest,
   listReminders,
-  runAutoReminders,
   sendReminder,
   waiveCharges,
 } from "@/server/reminders";
@@ -42,6 +41,7 @@ describe("relances", () => {
   it("montent de niveau selon le retard, s'arrêtent au paiement et restent propres à l'organisation", async () => {
     const a = await attachLeadIdentity(db, claims());
     const who = { organizationId: a.organization.id, userId: a.user.id };
+    // Frais et intérêt réglés (du temps de Pro) : la formule gratuite ne doit pas les réclamer.
     await db
       .update(organizations)
       .set({
@@ -51,6 +51,8 @@ describe("relances", () => {
         town: "Zürich",
         iban: "CH9300762011623852957",
         settingsCompletedAt: new Date(),
+        reminderFeeCents: 2_000,
+        lateInterestBp: 500,
       })
       .where(eq(organizations.id, a.organization.id));
     const c = parseContactForm(
@@ -88,7 +90,15 @@ describe("relances", () => {
 
     expect(await dueReminders(db, who.organizationId, "2026-04-09")).toEqual([]);
     const [first] = await dueReminders(db, who.organizationId, "2026-04-10");
-    expect(first).toMatchObject({ level: 1, daysLate: 10, openCents: 50_000, email: null });
+    expect(first).toMatchObject({
+      level: 1,
+      daysLate: 10,
+      openCents: 50_000,
+      email: null,
+      feeCents: 0,
+      interestCents: 0,
+      totalDueCents: 50_000,
+    });
     expect(await sendReminder(db, who, invoice.id, "2026-04-10")).toBe("noEmail");
     expect(await sendReminder(db, who, invoice.id, "2026-04-10", true)).toBe("recorded");
     expect(await dueReminders(db, who.organizationId, "2026-04-24")).toEqual([]);
@@ -100,8 +110,9 @@ describe("relances", () => {
       .update(organizations)
       .set({ leadPlan: "pro", entitlements: { plan: { rank: 1 } } })
       .where(eq(organizations.id, a.organization.id));
+    // En Pro, la même relance porte les frais et les intérêts courus (25 jours à 5 %).
     expect(await dueReminders(db, who.organizationId, "2026-04-25")).toMatchObject([
-      { level: 2, locked: false },
+      { level: 2, locked: false, feeCents: 2_000, interestCents: 171 },
     ]);
 
     const b = await attachLeadIdentity(
@@ -246,15 +257,5 @@ describe("relances", () => {
       .from(invoiceReminders)
       .where(eq(invoiceReminders.invoiceId, draft.id));
     expect(reminders.every((x) => x.waivedAt)).toBe(true);
-  });
-
-  it("n'envoie automatiquement que pour les entreprises Pro qui l'ont activé", async () => {
-    const a = await attachLeadIdentity(db, claims());
-    await db
-      .update(organizations)
-      .set({ reminderAuto: true })
-      .where(eq(organizations.id, a.organization.id));
-    // Formule gratuite : rien ne part, même activé.
-    expect(await runAutoReminders(db, "2026-04-10")).toEqual({ sent: 0 });
   });
 });

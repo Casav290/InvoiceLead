@@ -16,7 +16,15 @@ import {
   issueInvoice,
 } from "./invoices";
 import { postPending } from "./ledger";
-import { lockQuota, organizationPlan, PLANS, quotaAccess, tierOf } from "./plans";
+import {
+  featureAccess,
+  lockQuota,
+  type OrgPlan,
+  organizationPlan,
+  PLANS,
+  quotaAccess,
+  tierOf,
+} from "./plans";
 
 type Who = { organizationId: string; userId: string };
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -52,17 +60,28 @@ async function withActiveSlot<T>(
   });
 }
 
+/**
+ * Facture en devise étrangère et entreprise sans la multidevise (formule Pro) : la répéter
+ * produirait de nouvelles factures en devise, donc une nouvelle récurrence (ou une reprise) est
+ * refusée, et celles d'avant attendent (runningRecurring).
+ */
+async function foreignWithoutPro(database: Db, organizationId: string, currency: string) {
+  const plan = await organizationPlan(database, organizationId);
+  return !!plan && currency !== plan.currency && !featureAccess(plan, "multiCurrency").allowed;
+}
+
 export async function createRecurring(
   database: Db,
   who: Who,
   invoiceId: string,
   input: { intervalMonths: number; nextDate: string; autoSend: boolean },
-): Promise<RecurringInvoice | "notFound" | "invalid" | "planLimit"> {
+): Promise<RecurringInvoice | "notFound" | "invalid" | "planLimit" | "plan"> {
   if (!UUID.test(invoiceId)) return "notFound";
   if (!(INTERVALS as readonly number[]).includes(input.intervalMonths)) return "invalid";
   if (!/^\d{4}-\d{2}-\d{2}$/.test(input.nextDate)) return "invalid";
   const found = await getInvoice(database, who.organizationId, invoiceId);
   if (found?.invoice.kind !== "invoice") return "notFound";
+  if (await foreignWithoutPro(database, who.organizationId, found.invoice.currency)) return "plan";
   const created = await withActiveSlot(database, who.organizationId, async (tx) => {
     const [inserted] = await tx
       .insert(recurringInvoices)
@@ -96,6 +115,7 @@ export async function listRecurring(database: Db, organizationId: string) {
       number: invoices.number,
       customer: contacts.name,
       total: invoices.totalCents,
+      currency: invoices.currency,
     })
     .from(recurringInvoices)
     .innerJoin(invoices, eq(invoices.id, recurringInvoices.sourceInvoiceId))
@@ -110,7 +130,7 @@ export async function setRecurringActive(
   who: Who,
   id: string,
   active: boolean,
-): Promise<boolean | "planLimit"> {
+): Promise<boolean | "planLimit" | "plan"> {
   if (!UUID.test(id)) return false;
   const set = (tx: Db) =>
     tx
@@ -123,37 +143,43 @@ export async function setRecurringActive(
       .then((rows) => rows.length > 0);
   if (!active) return set(database);
   const [row] = await database
-    .select({ active: recurringInvoices.active })
+    .select({ active: recurringInvoices.active, currency: invoices.currency })
     .from(recurringInvoices)
+    .innerJoin(invoices, eq(invoices.id, recurringInvoices.sourceInvoiceId))
     .where(
       and(eq(recurringInvoices.id, id), eq(recurringInvoices.organizationId, who.organizationId)),
     );
   if (!row) return false;
   if (row.active) return true;
+  if (await foreignWithoutPro(database, who.organizationId, row.currency)) return "plan";
   return withActiveSlot(database, who.organizationId, set);
 }
 
 /**
  * Récurrences qui tournent : toutes en Pro ; en formule gratuite, la plus ancienne active seulement
- * (celles d'avant un retour à la formule gratuite attendent, sans être modifiées).
+ * (celles d'avant un retour à la formule gratuite attendent, sans être modifiées). Sans la
+ * multidevise, une récurrence sur une facture en devise étrangère attend aussi.
  */
 export async function runningRecurring(
   database: Db,
-  organization: { id: string; leadPlan: string; entitlements: unknown },
+  organization: OrgPlan & { id: string; currency: string },
 ): Promise<Set<string> | null> {
   const limit = PLANS[tierOf(organization)].quotas.recurring;
-  if (!Number.isFinite(limit)) return null;
-  const rows = await database
+  const homeOnly = !featureAccess(organization, "multiCurrency").allowed;
+  if (!Number.isFinite(limit) && !homeOnly) return null;
+  const query = database
     .select({ id: recurringInvoices.id })
     .from(recurringInvoices)
+    .innerJoin(invoices, eq(invoices.id, recurringInvoices.sourceInvoiceId))
     .where(
       and(
         eq(recurringInvoices.organizationId, organization.id),
         eq(recurringInvoices.active, true),
+        ...(homeOnly ? [eq(invoices.currency, organization.currency)] : []),
       ),
     )
-    .orderBy(asc(recurringInvoices.createdAt), asc(recurringInvoices.id))
-    .limit(limit);
+    .orderBy(asc(recurringInvoices.createdAt), asc(recurringInvoices.id));
+  const rows = Number.isFinite(limit) ? await query.limit(limit) : await query;
   return new Set(rows.map((r) => r.id));
 }
 
@@ -207,6 +233,8 @@ export async function runRecurring(
               id: organizations.id,
               leadPlan: organizations.leadPlan,
               entitlements: organizations.entitlements,
+              entitlementsAt: organizations.entitlementsAt,
+              currency: organizations.currency,
             })
             .from(organizations)
             .where(inArray(organizations.id, orgIds))

@@ -60,7 +60,11 @@ export async function buildDocumentPdf(
     ["hour", "day", "piece", "flat", "km", "month"].map((u) => [u, tu(u)]),
   );
   const [org] = await db()
-    .select({ leadPlan: organizations.leadPlan, entitlements: organizations.entitlements })
+    .select({
+      leadPlan: organizations.leadPlan,
+      entitlements: organizations.entitlements,
+      entitlementsAt: organizations.entitlementsAt,
+    })
     .from(organizations)
     .where(eq(organizations.id, invoice.organizationId));
   const mention = org && poweredBy(org) ? t("poweredBy") : undefined;

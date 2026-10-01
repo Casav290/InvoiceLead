@@ -397,7 +397,7 @@
         "role": "Kunde, Lieferant oder beides ankreuzen.",
         "usState": "Geben Sie den Code des Bundesstaats an (zwei Buchstaben, zum Beispiel TX)."
       },
-      "planLimit": "Das Gratis-Abo umfasst höchstens 50 Kontakte. Mit Pro können Sie weitere erfassen."
+      "planLimit": "Das Gratis-Abo umfasst höchstens {limit} Kontakte. Mit Pro können Sie weitere erfassen."
     },
     "products": {
       "title": "Artikel",
@@ -681,11 +681,12 @@
         "contact": "Der Kunde dieser Offerte wurde archiviert.",
         "creditTooHigh": "Die Gutschrift übersteigt den noch gutschreibbaren Betrag der Rechnung.",
         "closed": "Diese Zahlung ist in einem abgeschlossenen Geschäftsjahr verbucht und kann nicht mehr gelöscht werden.",
-        "planLimit": "Sie haben die 10 Rechnungen pro Monat des Gratis-Abos erreicht. Mit Pro stellen Sie unbegrenzt Rechnungen aus.",
+        "planLimit": "Sie haben die {limit} Rechnungen pro Monat des Gratis-Abos erreicht. Mit Pro stellen Sie unbegrenzt Rechnungen aus.",
         "recurring": "Die Wiederholung konnte nicht gespeichert werden.",
         "fxRate": "Der Tageskurs konnte nicht abgerufen werden. Bitte den Kurs im Entwurf erfassen und erneut ausstellen.",
         "depositDraft": "Eine Anzahlungsrechnung zu dieser Offerte ist noch ein Entwurf: Stellen Sie sie aus oder löschen Sie sie, bevor Sie die Schlussrechnung erstellen.",
-        "recurringLimit": "Das Gratis-Abo umfasst eine aktive wiederkehrende Rechnung. Pausieren Sie eine oder wechseln Sie auf Pro, um weitere hinzuzufügen."
+        "recurringLimit": "Das Gratis-Abo umfasst {limit, plural, one {eine aktive wiederkehrende Rechnung} other {# aktive wiederkehrende Rechnungen}}. Pausieren Sie eine oder wechseln Sie auf Pro, um weitere hinzuzufügen.",
+        "recurringCurrency": "Eine Rechnung in Fremdwährung wird nur mit Pro wiederkehrend, das Fremdwährungen umfasst."
       },
       "addLine": "Position hinzufügen",
       "removeLine": "Entfernen",
@@ -899,7 +900,8 @@
         "every": "{months, plural, one {Jeden Monat} other {Alle # Monate}}",
         "next": "Nächste Rechnung am",
         "autoSend": "Automatisch ausstellen und senden (sonst: Entwurf zur Prüfung)",
-        "create": "Wiederholung speichern"
+        "create": "Wiederholung speichern",
+        "currencyPlan": "Rechnung in {currency}: Sie wiederkehrend zu machen gehört zu den Fremdwährungen im Pro-Abo."
       },
       "einvoice": {
         "download": "XRechnung (XML)",
@@ -1037,7 +1039,8 @@
         "noFiscalYear": "Kein offenes Geschäftsjahr umfasst das Datum dieser Bewegung.",
         "noProposal": "Wählen Sie zuerst ein Konto.",
         "notFound": "Bewegung nicht gefunden oder bereits verarbeitet.",
-        "vatPeriodClosed": "Dieses Datum liegt in einer bereits bestätigten MWST-Periode: Es kann dort nicht mehr gebucht werden."
+        "vatPeriodClosed": "Dieses Datum liegt in einer bereits bestätigten MWST-Periode: Es kann dort nicht mehr gebucht werden.",
+        "scope": "Im Gratis-Abo umfasst ein Import ein einziges Konto und höchstens einen Monat. Exportieren Sie einen Monatsauszug oder wechseln Sie auf Pro, um mehr zu importieren."
       },
       "aiError": "Der Assistent konnte nicht antworten. Die Bewegungen bleiben offen; versuchen Sie es später erneut.",
       "aiOff": "Der Buchhaltungsassistent ist noch nicht aktiviert: Automatisch vorgeschlagen werden nur Rechnungszahlungen, die an ihrer QR-Referenz erkannt werden.",
@@ -1046,7 +1049,7 @@
       "import": "Importieren",
       "toReview": "{count, plural, =0 {Nichts zu bestätigen} one {# Bewegung zu bestätigen} other {# Bewegungen zu bestätigen}}",
       "propose": "Buchungen vorschlagen",
-      "validateConfident": "Die {count} sicheren Vorschläge bestätigen",
+      "validateConfident": "{count, plural, one {Den sicheren Vorschlag bestätigen} other {Die # sicheren Vorschläge bestätigen}}",
       "nothing": "Alle Bewegungen sind verarbeitet.",
       "noSuggestion": "Kein Vorschlag: Wählen Sie das Konto.",
       "paysInvoice": "Zahlung der Rechnung {invoice}",
@@ -1088,8 +1091,8 @@
     },
     "receipts": {
       "title": "Belege",
-      "subtitle": "Laden Sie Lieferantenrechnungen und Quittungen hoch (PDF oder Foto). Der Assistent liest sie und ordnet sie der passenden Zahlung im Kontoauszug zu.",
-      "added": "{count, plural, =0 {Kein Beleg hinzugefügt} one {# Beleg hinzugefügt} other {# Belege hinzugefügt}}{rejected, plural, =0 {.} one { (# abgelehnt: Duplikat, Format oder Grösse).} other { (# abgelehnt: Duplikate, Format oder Grösse).}}",
+      "subtitle": "Laden Sie Lieferantenrechnungen und Quittungen hoch (PDF oder Foto). Die KI liest sie und ordnet sie der passenden Zahlung im Kontoauszug zu.",
+      "added": "{count, plural, =0 {Kein Beleg hinzugefügt} one {# Beleg hinzugefügt} other {# Belege hinzugefügt}}.{rejected, plural, =0 {} one { # abgelehnt: Duplikat, Format oder Grösse.} other { # abgelehnt: Duplikate, Format oder Grösse.}}{quota, plural, =0 {} one { # nicht hochgeladen: Das Kontingent dieses Monats ist aufgebraucht.} other { # nicht hochgeladen: Das Kontingent dieses Monats ist aufgebraucht.}}",
       "errors": {
         "unreadable": "Dieses PDF ist ein gescanntes Bild: Laden Sie stattdessen ein scharfes Foto des Dokuments hoch.",
         "failed": "Der Assistent konnte diesen Beleg nicht lesen. Versuchen Sie es später erneut.",
@@ -1340,7 +1343,7 @@
       "week": "Woche vom {date}",
       "later": "Später",
       "forecastEmpty": "Keine offenen Rechnungen.",
-      "levelPlan": "Pro-Funktion. Das Gratis-Abo verschickt die erste Mahnung; die weiteren sind Teil von Pro."
+      "levelPlan": "Pro-Funktion. Im Gratis-Abo verschicken Sie die erste Mahnung selbst; die weiteren sind Teil von Pro."
     },
     "recurring": {
       "title": "Wiederkehrende Rechnungen",
@@ -1357,14 +1360,16 @@
       "pause": "Pausieren",
       "resume": "Fortsetzen",
       "delete": "Löschen",
-      "held": "Wartet: Im Gratis-Abo läuft nur eine wiederkehrende Rechnung."
+      "held": "Wartet: Im Gratis-Abo {limit, plural, one {läuft nur eine wiederkehrende Rechnung} other {laufen nur # wiederkehrende Rechnungen}}.",
+      "heldCurrency": "Rechnung in {currency}: Die Wiederholung läuft mit Pro, das Fremdwährungen umfasst.",
+      "currencyPlan": "Eine Rechnung in Fremdwährung wiederholt sich mit Pro, das Fremdwährungen umfasst."
     },
     "plan": {
       "upgrade": "Auf Pro wechseln",
       "free": "Gratis",
       "pro": "Pro",
       "proplus": "Pro+",
-      "usage": "{tier, select, free {Gratis-Abo: {invoices} von {invoiceLimit} Rechnungen diesen Monat, {contacts} von {contactLimit} Kontakten.} pro {Abo Pro.} other {Abo Pro+.}}",
+      "usage": "{tier, select, free {Gratis-Abo: {invoices} von {invoiceLimit} Rechnungen diesen Monat, {contacts} von {contactLimit} Kontakten.} pro {Pro-Abo.} other {Pro+-Abo.}}",
       "upgradePlus": "Auf Pro+ wechseln",
       "locked": "Pro-Funktion. Wechseln Sie auf Pro, um sie zu nutzen.",
       "lockedPlus": "Pro+-Funktion. Wechseln Sie auf Pro+, um sie zu nutzen.",
@@ -1376,8 +1381,8 @@
         "recurring": "Aktive wiederkehrende Rechnungen: {used} von {limit}"
       },
       "used": {
-        "aiReads": "{plan, select, free {Die KI hat diesen Monat bereits Ihre {limit} Gratis-Belege gelesen.} other {Die KI hat diesen Monat bereits Ihre {limit} Belege gelesen.}}",
-        "assistant": "{plan, select, free {Ihre {limit} Gratis-Fragen dieses Monats sind gestellt.} other {Ihre {limit} Fragen dieses Monats sind gestellt.}}",
+        "aiReads": "{plan, select, free {Das Gratis-Kontingent von {limit} Belegen ist für diesen Monat aufgebraucht.} other {Das Kontingent von {limit} Belegen ist für diesen Monat aufgebraucht.}}",
+        "assistant": "{plan, select, free {Sie haben Ihre {limit} Gratis-Fragen für diesen Monat gestellt.} other {Sie haben Ihre {limit} Fragen für diesen Monat gestellt.}}",
         "reminders": "{plan, select, free {Ihre {limit} Gratis-Mahnungen dieses Monats sind verschickt.} other {Ihre {limit} Mahnungen dieses Monats sind verschickt.}}",
         "bankImports": "{limit, plural, one {Ihr Gratis-Kontoauszug dieses Monats ist importiert.} other {Ihre # Gratis-Kontoauszüge dieses Monats sind importiert.}}",
         "recurring": "{limit, plural, one {Das Gratis-Abo umfasst eine aktive wiederkehrende Rechnung.} other {Das Gratis-Abo umfasst # aktive wiederkehrende Rechnungen.}} Pausieren Sie eine oder wechseln Sie auf Pro, um weitere hinzuzufügen.",
@@ -1477,7 +1482,7 @@
       "title": "Gewonnener Lead aus CRMlead",
       "subtitle": "Prüfen Sie, was CRMlead übermittelt. Der Kunde wird übernommen, wenn er schon existiert (gleiche Karte, gleiche E-Mail oder gleicher Name), sonst neu angelegt.",
       "invalid": "Dieser CRMlead-Link ist unvollständig oder unlesbar. Starten Sie die Erstellung erneut in CRMlead.",
-      "contactLimit": "Ihr Abo hat die Kontaktgrenze erreicht. Wechseln Sie zu Pro, um diesen Kunden hinzuzufügen.",
+      "contactLimit": "Ihr Abo hat die Kontaktgrenze erreicht. Wechseln Sie auf Pro, um diesen Kunden hinzuzufügen.",
       "quote": "Offerte",
       "invoice": "Rechnung",
       "net": "Total ohne MWST",
@@ -1701,7 +1706,8 @@
         "plan": "Rechnungen in Fremdwährung zu erfassen ist Teil des Pro-Abos."
       },
       "claim": "Spesen",
-      "currencyPlan": "Weitere Währungen sind Teil des Pro-Abos."
+      "currencyPlan": "Weitere Währungen sind Teil des Pro-Abos.",
+      "approveCurrencyPlan": "Rechnung in {currency}: Freigabe und Verbuchung zum Tageskurs gehören zu den Fremdwährungen im Pro-Abo."
     },
     "time": {
       "title": "Zeit",
@@ -1805,7 +1811,7 @@
         "off": "Der KI-Assistent ist noch nicht eingerichtet.",
         "empty": "Stellen Sie eine Frage.",
         "failed": "Der Assistent konnte nicht antworten. Bitte gleich nochmals versuchen.",
-        "quota": "Die Gratis-Fragen dieses Monats sind gestellt. Wechseln Sie auf Pro, um weiterzufragen."
+        "quota": "Frage nicht gesendet. Mit Pro antwortet der Assistent ohne Limite."
       }
     },
     "expenses": {
@@ -1934,7 +1940,7 @@
           "50 Kontakte",
           "QR-Rechnung, Dokumente auf DE, FR, IT, EN",
           "Buchhaltung direkt aus Ihren Rechnungen",
-          "20 von der KI gelesene Belege pro Monat (Quittungen, Lieferantenrechnungen), E-Rechnungen ohne Limite",
+          "20 von der KI gelesene Belege pro Monat (Quittungen, Belege), E-Rechnungen ohne Limite",
           "Assistent: 10 Fragen pro Monat",
           "Erste Mahnung von Hand, 5 pro Monat",
           "1 aktive wiederkehrende Rechnung",
@@ -1951,7 +1957,7 @@
           "50 von der KI gelesene Belege pro Monat",
           "Assistent ohne Limite",
           "Automatische Mahnungen in 3 Stufen, Gebühren und Zinsen",
-          "MWST-Abrechnung (effektiv und Saldosteuersatz)",
+          "Steuerabrechnung: Schweizer MWST (effektiv und Saldosteuersatz), UStVA, CA3, MTD und Sales Tax",
           "Bankimport camt ohne Limite, Autopilot-Übersicht am Montag",
           "Wiederkehrende Rechnungen ohne Limite, Fremdwährungen"
         ]
@@ -1994,7 +2000,7 @@
       },
       {
         "q": "Kann meine Treuhand auf die Buchhaltung zugreifen?",
-        "a": "Ja, ab dem Pro-Abo ist ein kostenloser Treuhandzugang vorgesehen."
+        "a": "Ja, ab dem Pro-Abo greift Ihre Treuhand kostenlos auf Ihre Buchhaltung zu."
       },
       {
         "q": "Wo werden meine Daten gespeichert?",
@@ -2006,7 +2012,7 @@
       },
       {
         "q": "Was umfasst das Gratis-Abo?",
-        "a": "Jeden Monat: 10 Rechnungen, 20 von der KI gelesene Belege, 10 Fragen an den Assistenten, 5 Mahnungen der ersten Stufe und 1 Kontoauszug mit Autopilot. Dazu kommen 50 Kontakte und 1 aktive wiederkehrende Rechnung, und E-Rechnungen empfangen Sie ohne Limite. Die Funktionen von Pro und Pro+ bleiben in der App sichtbar, grau und mit ihrer Marke, damit Sie wissen, dass es sie gibt."
+        "a": "Jeden Monat: 10 Rechnungen, 20 von der KI gelesene Belege, 10 Fragen an den Assistenten, 5 Mahnungen der ersten Stufe und 1 Kontoauszug mit Autopilot. Dazu kommen 50 Kontakte und 1 aktive wiederkehrende Rechnung, und E-Rechnungen empfangen Sie ohne Limite. Die Funktionen von Pro und Pro+ bleiben in der App sichtbar, grau und mit dem Hinweis Pro oder Pro+, damit Sie wissen, dass es sie gibt."
       },
       {
         "q": "Brauche ich für den Start eine Kreditkarte?",

@@ -33,7 +33,7 @@ import { invoiceOptions } from "@/server/invoice-options";
 import { type DocumentKind, depositInvoices, getInvoice, listInvoices } from "@/server/invoices";
 import { invoiceBalance, listPayments, paymentState } from "@/server/payments";
 import { lockFor } from "@/server/plan-lock";
-import { featureAccess, type OrgPlan, quotaAccess } from "@/server/plans";
+import { featureAccess, type OrgPlan, PLANS, quotaAccess, tierOf } from "@/server/plans";
 import { addMonths } from "@/server/recurring";
 import { listReminders } from "@/server/reminders";
 import { documentOrganization } from "@/server/team";
@@ -59,6 +59,7 @@ const ERRORS = [
   "planLimit",
   "recurring",
   "recurringLimit",
+  "recurringCurrency",
   "percent",
   "tooHigh",
   "depositDraft",
@@ -399,14 +400,26 @@ export async function DocumentDetailPage({
   // Factures récurrentes : formule gratuite, une active ; au-delà, le panneau reste là, grisé.
   const recurringSlots =
     kind === "invoice" && !draft ? await quotaAccess(db(), organization, "recurring") : null;
-  const recurringLock = recurringSlots
-    ? await lockFor(
-        locale,
-        organization,
-        recurringSlots,
-        tp("used.recurring", { limit: recurringSlots.limit, plan: recurringSlots.tier }),
-      )
-    : null;
+  // Facture en devise étrangère sans la multidevise : la répéter fait partie de la formule Pro.
+  const recurringCurrency =
+    recurringSlots && invoice.currency !== organization.currency
+      ? await lockFor(
+          locale,
+          organization,
+          featureAccess(organization, "multiCurrency"),
+          t("recurring.currencyPlan", { currency: invoice.currency }),
+        )
+      : null;
+  const recurringLock =
+    recurringCurrency ??
+    (recurringSlots
+      ? await lockFor(
+          locale,
+          organization,
+          recurringSlots,
+          tp("used.recurring", { limit: recurringSlots.limit, plan: recurringSlots.tier }),
+        )
+      : null);
   const recurringForm = (
     <form action={createRecurringAction} className="mt-3 grid gap-3 sm:grid-cols-3">
       {hidden}
@@ -487,7 +500,12 @@ export async function DocumentDetailPage({
           role="alert"
           className="mt-6 border border-hot-fg bg-hot-bg px-4 py-3 text-[13px] text-hot-fg"
         >
-          {t(`issueErrors.${query.error}`)}
+          {t(`issueErrors.${query.error}`, {
+            limit:
+              PLANS[tierOf(organization)].quotas[
+                query.error === "recurringLimit" ? "recurring" : "invoices"
+              ],
+          })}
           {query.error === "companyIncomplete" ? (
             <>
               {" "}

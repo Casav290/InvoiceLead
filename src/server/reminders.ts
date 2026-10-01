@@ -233,47 +233,12 @@ async function deliverReminder(
   manual: boolean,
 ): Promise<"sent" | "recorded" | "notDue" | "noEmail" | "failed"> {
   const invoiceId = due.invoiceId;
-  if (!manual) {
-    if (!due.email) return "noEmail";
-    const found = await getInvoice(database, who.organizationId, invoiceId);
-    if (!found) return "notDue";
-    const { invoice, lines, related } = found;
-    const t = await getTranslations({ locale: invoice.language, namespace: "app.reminders.email" });
-    const token = await enableShareLink(database, who.organizationId, invoiceId);
-    const pdf = await buildDocumentPdf(invoice, lines, related);
-    const values = {
-      number: invoice.number ?? "",
-      amount: formatAmount(due.totalDueCents),
-      currency: invoice.currency,
-      due: formatDate(invoice.dueDate),
-      company: invoice.sender?.name ?? "",
-    };
-    // Détail des frais et intérêts réclamés, sous le texte de la relance.
-    const charged = due.totalDueCents - due.openCents;
-    const detail =
-      charged > 0
-        ? `\n\n${t("charges", {
-            currency: invoice.currency,
-            open: formatAmount(due.openCents),
-            charges: formatAmount(charged),
-            total: formatAmount(due.totalDueCents),
-          })}`
-        : "";
-    try {
-      await sendEmail({
-        to: due.email,
-        subject: t(`subject${due.level}`, values),
-        text: `${t(`body${due.level}`, values)}${detail}\n\n${t("link")} ${token ? shareUrl(invoice.language, token) : ""}`.trim(),
-        replyTo: invoice.sender?.email ?? null,
-        fromName: invoice.sender?.name,
-        attachments: [{ filename: pdf.filename, content: pdf.pdf }],
-      });
-    } catch (e) {
-      console.error("[reminder] échec", e instanceof Error ? e.message : "inconnu");
-      return "failed";
-    }
-  }
-  const inserted = await database
+  if (!manual && !due.email) return "noEmail";
+  const found = manual ? null : await getInvoice(database, who.organizationId, invoiceId);
+  if (!manual && !found) return "notDue";
+  // La relance est réservée avant l'e-mail (index unique facture et niveau) : deux demandes
+  // simultanées n'envoient qu'un e-mail, et la seconde, qui n'a rien envoyé, rend son unité.
+  const [reserved] = await database
     .insert(invoiceReminders)
     .values({
       organizationId: who.organizationId,
@@ -287,8 +252,49 @@ async function deliverReminder(
     })
     .onConflictDoNothing()
     .returning({ id: invoiceReminders.id });
-  // Relance déjà notée par une demande simultanée : rien de plus à compter ni à écrire.
-  if (inserted.length === 0) return "notDue";
+  if (!reserved) return "notDue";
+  if (found && due.email) {
+    const { invoice, lines, related } = found;
+    try {
+      const t = await getTranslations({
+        locale: invoice.language,
+        namespace: "app.reminders.email",
+      });
+      const token = await enableShareLink(database, who.organizationId, invoiceId);
+      const pdf = await buildDocumentPdf(invoice, lines, related);
+      const values = {
+        number: invoice.number ?? "",
+        amount: formatAmount(due.totalDueCents),
+        currency: invoice.currency,
+        due: formatDate(invoice.dueDate),
+        company: invoice.sender?.name ?? "",
+      };
+      // Détail des frais et intérêts réclamés, sous le texte de la relance.
+      const charged = due.totalDueCents - due.openCents;
+      const detail =
+        charged > 0
+          ? `\n\n${t("charges", {
+              currency: invoice.currency,
+              open: formatAmount(due.openCents),
+              charges: formatAmount(charged),
+              total: formatAmount(due.totalDueCents),
+            })}`
+          : "";
+      await sendEmail({
+        to: due.email,
+        subject: t(`subject${due.level}`, values),
+        text: `${t(`body${due.level}`, values)}${detail}\n\n${t("link")} ${token ? shareUrl(invoice.language, token) : ""}`.trim(),
+        replyTo: invoice.sender?.email ?? null,
+        fromName: invoice.sender?.name,
+        attachments: [{ filename: pdf.filename, content: pdf.pdf }],
+      });
+    } catch (e) {
+      // Rien n'est parti : la relance redevient due.
+      await database.delete(invoiceReminders).where(eq(invoiceReminders.id, reserved.id));
+      console.error("[reminder] échec", e instanceof Error ? e.message : "inconnu");
+      return "failed";
+    }
+  }
   await database.insert(auditLog).values({
     organizationId: who.organizationId,
     userId: who.userId,

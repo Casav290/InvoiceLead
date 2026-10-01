@@ -12,9 +12,12 @@ import {
   updateContact,
 } from "@/server/contacts";
 import { db } from "@/server/db";
+import { PLANS, tierOf } from "@/server/plans";
 
 export type ContactFormState = {
   status: "idle" | "invalid" | "notFound" | "planLimit";
+  /** Contacts de la formule, pour le message « planLimit ». */
+  limit?: number;
   errors?: ContactErrors;
   values?: Record<string, string>;
   round: number;
@@ -38,7 +41,12 @@ export async function saveContact(
     if (!(await updateContact(db(), who, id, parsed.data))) return { status: "notFound", round };
   } else {
     if ((await createContactWithinPlan(db(), who, parsed.data)) === "planLimit")
-      return { status: "planLimit", values, round };
+      return {
+        status: "planLimit",
+        limit: PLANS[tierOf(session.organization)].quotas.contacts,
+        values,
+        round,
+      };
   }
   revalidatePath(`/${locale}/app/contacts`);
   redirect(`/${locale}/app/contacts?saved=1`);

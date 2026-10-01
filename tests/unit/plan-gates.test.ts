@@ -1,14 +1,16 @@
 import { and, eq, sql } from "drizzle-orm";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import type { ApiCaller } from "@/server/api-keys";
+import { type ApiCaller, apiCaller, createApiKey } from "@/server/api-keys";
 import { askAssistant } from "@/server/assistant";
 import { attachLeadIdentity } from "@/server/auth/attach";
 import { sendAutopilotDigests } from "@/server/autopilot-digest";
 import { importStatement } from "@/server/bank";
+import { approveBill, createBill } from "@/server/bills";
 import { parseCompanyForm, saveCompanySettings } from "@/server/company";
 import { createContact, createContactWithinPlan, parseContactForm } from "@/server/contacts";
 import {
   contacts,
+  invoiceReminders,
   invoices,
   organizations,
   recurringInvoices,
@@ -16,10 +18,11 @@ import {
 } from "@/server/db/schema";
 import { createCreditNote, createInvoice, issueInvoice, parseInvoiceForm } from "@/server/invoices";
 import { handleMcp } from "@/server/mcp";
-import { consumeQuota, quotaAccess } from "@/server/plans";
-import { readReceipt, uploadReceipt } from "@/server/receipts";
+import { forgetRefreshAttempts, refreshPlan, refreshStalePlans } from "@/server/plan-refresh";
+import { consumeQuota, featureAccess, quotaAccess, tierOf } from "@/server/plans";
+import { extractReceipt, readReceipt, uploadReceipt } from "@/server/receipts";
 import { createRecurring, runRecurring, setRecurringActive } from "@/server/recurring";
-import { sendAllReminders, sendReminder } from "@/server/reminders";
+import { runAutoReminders, sendAllReminders, sendReminder } from "@/server/reminders";
 import { acceptInvitation, hasSeat, inviteFiduciary } from "@/server/team";
 import { createEndpoint, deliverPending, emitEvent } from "@/server/webhooks";
 import { camt053 } from "../support/camt";
@@ -109,6 +112,7 @@ async function invoiceFor(
   who: { organizationId: string; userId: string },
   name: string,
   email?: string,
+  currency?: string,
 ) {
   const c = parseContactForm(
     form({
@@ -134,10 +138,11 @@ async function invoiceFor(
       "line.unitPrice": ["100"],
       "line.vatCode": ["normal"],
       "line.productId": [""],
+      ...(currency ? { currency, fxRate: "0.95" } : {}),
     }),
     { vatRegistered: false },
   );
-  if (!r.ok) throw new Error("facture");
+  if (!r.ok) throw new Error(`facture ${JSON.stringify(r.errors)}`);
   const draft = await createInvoice(db, who, r.data);
   if (typeof draft !== "object" || !draft) throw new Error("brouillon");
   return draft;
@@ -649,5 +654,299 @@ describe("changement de pays", () => {
     // En Pro, le brouillon en CHF devient une facture en devise, permise.
     await setRank(org.id, 1);
     expect(await saveCompanySettings(db, who, germany())).toBe("saved");
+  });
+});
+
+describe("relances automatiques du matin", () => {
+  it("ne partent pas pour une entreprise gratuite qui les a activées ; partent en Pro", async () => {
+    const { org, who } = await company(0);
+    await db.update(organizations).set({ reminderAuto: true }).where(eq(organizations.id, org.id));
+    // Une facture échue depuis 10 jours, avec une adresse : la relance serait envoyable.
+    const draft = await invoiceFor(who, "Kunde AG", "kunde@example.test");
+    const issued = await issueInvoice(db, who, draft.id);
+    if (typeof issued !== "object") throw new Error(issued);
+    const mail = vi.fn(async () => Response.json({ id: "m1" }));
+    vi.stubGlobal("fetch", mail);
+    expect(await runAutoReminders(db, "2026-04-10")).toEqual({ sent: 0 });
+    expect(mail).not.toHaveBeenCalled();
+    expect(await db.select().from(invoiceReminders)).toHaveLength(0);
+    expect((await quotaAccess(db, org, "reminders", "2026-04-10")).used).toBe(0);
+    await setRank(org.id, 1);
+    expect(await runAutoReminders(db, "2026-04-10")).toEqual({ sent: 1 });
+    expect(mail).toHaveBeenCalledOnce();
+  });
+});
+
+describe("relance envoyée deux fois en même temps", () => {
+  it("un seul e-mail part et une seule relance est comptée", async () => {
+    const { org, who } = await company(0);
+    const draft = await invoiceFor(who, "Kunde AG", "kunde@example.test");
+    const issued = await issueInvoice(db, who, draft.id);
+    if (typeof issued !== "object") throw new Error(issued);
+    // L'envoi prend du temps : sans réservation, la seconde demande enverrait aussi.
+    const mail = vi.fn(async () => {
+      await new Promise((r) => setTimeout(r, 300));
+      return Response.json({ id: "m1" });
+    });
+    vi.stubGlobal("fetch", mail);
+    const results = await Promise.all([
+      sendReminder(db, who, issued.id, "2026-04-10"),
+      sendReminder(db, who, issued.id, "2026-04-10"),
+      sendReminder(db, who, issued.id, "2026-04-10"),
+    ]);
+    expect(results.filter((r) => r === "sent")).toHaveLength(1);
+    expect(mail).toHaveBeenCalledOnce();
+    expect((await quotaAccess(db, org, "reminders", "2026-04-10")).used).toBe(1);
+    expect(await db.select().from(invoiceReminders)).toHaveLength(1);
+  });
+
+  it("un e-mail refusé ne laisse aucune relance notée et rend l'unité", async () => {
+    const { org, who } = await company(0);
+    const draft = await invoiceFor(who, "Kunde AG", "kunde@example.test");
+    const issued = await issueInvoice(db, who, draft.id);
+    if (typeof issued !== "object") throw new Error(issued);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response("down", { status: 503 })),
+    );
+    expect(await sendReminder(db, who, issued.id, "2026-04-10")).toBe("failed");
+    expect(await db.select().from(invoiceReminders)).toHaveLength(0);
+    expect((await quotaAccess(db, org, "reminders", "2026-04-10")).used).toBe(0);
+  });
+});
+
+describe("lectures de pièces : réservation et remboursement sur le même mois", () => {
+  it("une lecture commencée le 31 et ratée rend l'unité de ce mois-là", async () => {
+    const { org, who } = await company(0);
+    const receipt = await uploadReceipt(db, who, {
+      name: "ticket.png",
+      type: "image/png",
+      bytes: Buffer.from("ticket du 31"),
+    });
+    if (typeof receipt !== "object") throw new Error(receipt);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response("down", { status: 503 })),
+    );
+    expect(await extractReceipt(db, who, receipt.id, "fr", "2026-01-31")).toBe("failed");
+    expect((await quotaAccess(db, org, "aiReads", "2026-01-31")).used).toBe(0);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => aiJson({ supplier: "Café", total: "4.50", confidence: 0.9 })),
+    );
+    expect(await extractReceipt(db, who, receipt.id, "fr", "2026-01-31")).toMatchObject({
+      supplier: "Café",
+    });
+    expect((await quotaAccess(db, org, "aiReads", "2026-01-31")).used).toBe(1);
+    expect((await quotaAccess(db, org, "aiReads", "2026-02-01")).used).toBe(0);
+  });
+});
+
+describe("import des relevés : un relevé, c'est un compte et un mois", () => {
+  const entry = (id: string, date: string) => ({
+    id,
+    date,
+    amount: "10.00",
+    credit: false,
+    party: "Swisscom",
+  });
+  /** Deux relevés (deux comptes) dans un seul fichier camt.053. */
+  const twoAccounts = () => {
+    const a = camt053("CH9300762011623852957", [entry("M1", "2026-03-10")]);
+    const b = camt053("CH5604835012345678009", [entry("M2", "2026-03-11")]);
+    const second = b.slice(b.indexOf("<Stmt>"), b.indexOf("</Stmt>") + "</Stmt>".length);
+    return a.replace("</Stmt>", `</Stmt>${second}`);
+  };
+
+  it("formule gratuite : un fichier de plusieurs comptes ou de plusieurs mois est refusé sans compter", async () => {
+    const { org, who } = await company(0);
+    expect(await importStatement(db, who, twoAccounts(), "2026-10-02")).toBe("scope");
+    const year = camt053("CH9300762011623852957", [
+      entry("Y1", "2026-01-05"),
+      entry("Y2", "2026-06-05"),
+      entry("Y3", "2026-12-05"),
+    ]);
+    expect(await importStatement(db, who, year, "2026-10-02")).toBe("scope");
+    expect((await quotaAccess(db, org, "bankImports", "2026-10-02")).used).toBe(0);
+    // Un relevé mensuel ordinaire (31 jours au plus) passe.
+    const month = camt053("CH9300762011623852957", [
+      entry("S1", "2026-09-01"),
+      entry("S2", "2026-09-30"),
+    ]);
+    expect(await importStatement(db, who, month, "2026-10-02")).toMatchObject({ imported: 2 });
+    // En Pro, le fichier de l'année et celui des deux comptes passent.
+    await setRank(org.id, 1);
+    expect(await importStatement(db, who, year, "2026-10-03")).toMatchObject({ imported: 3 });
+    expect(await importStatement(db, who, twoAccounts(), "2026-10-03")).toMatchObject({
+      imported: 2,
+    });
+  });
+});
+
+describe("multidevise par d'autres chemins", () => {
+  it("formule gratuite : une facture fournisseur en EUR (justificatif, e-facture) ne s'approuve pas", async () => {
+    const { org, who } = await company(0);
+    const bill = await createBill(
+      db,
+      who,
+      {
+        supplierName: "Lieferant GmbH",
+        supplierStreet: null,
+        supplierPostalCode: null,
+        supplierTown: null,
+        supplierCountry: "DE",
+        iban: null,
+        bic: null,
+        paymentReference: null,
+        number: "R-1",
+        issueDate: "2026-03-10",
+        dueDate: "2026-04-09",
+        currency: "EUR",
+        totalCents: 12_000,
+        vatCode: null,
+        accountId: null,
+        description: null,
+      },
+      { source: "einvoice" },
+    );
+    const noRate = vi.fn(async () => new Response("down", { status: 503 }));
+    expect(await approveBill(db, who, bill.id, noRate)).toBe("plan");
+    expect(noRate).not.toHaveBeenCalled();
+    // En Pro, le contrôle de formule passe (ici, faute de compte de charge).
+    await setRank(org.id, 1);
+    expect(await approveBill(db, who, bill.id, noRate)).toBe("noAccount");
+  });
+
+  it("formule gratuite : pas de nouvelle récurrence sur une facture en EUR, et celle d'avant attend", async () => {
+    const { org, who } = await company(1);
+    const eur = await invoiceFor(who, "Kunde GmbH", undefined, "EUR");
+    const input = { intervalMonths: 1, nextDate: today(), autoSend: false };
+    const before = await createRecurring(db, who, eur.id, input);
+    if (typeof before !== "object") throw new Error(before);
+    await setRank(org.id, 0);
+    expect(await runRecurring(db, today())).toMatchObject({ created: 0, held: 1 });
+    expect(await setRecurringActive(db, who, before.id, false)).toBe(true);
+    expect(await setRecurringActive(db, who, before.id, true)).toBe("plan");
+    expect(await createRecurring(db, who, eur.id, input)).toBe("plan");
+    // Une facture en CHF reste répétable (une active en formule gratuite).
+    const chf = await invoiceFor(who, "Kunde AG");
+    expect(await createRecurring(db, who, chf.id, input)).toMatchObject({ active: true });
+    await setRank(org.id, 1);
+    expect(await setRecurringActive(db, who, before.id, true)).toBe(true);
+  });
+});
+
+describe("formule relue au Compte Lead", () => {
+  const ago = (hours: number) => new Date(Date.now() - hours * 3_600_000);
+  async function aged(organizationId: string, hours: number) {
+    await db
+      .update(organizations)
+      .set({ entitlementsAt: ago(hours) })
+      .where(eq(organizations.id, organizationId));
+    const [row] = await db.select().from(organizations).where(eq(organizations.id, organizationId));
+    if (!row) throw new Error("entreprise");
+    return row;
+  }
+  /**
+   * Faux Compte Lead : jeton d'application, puis les droits de l'organisation (rang donné, ou
+   * silence si null). Toute autre adresse (Resend) répond comme un envoi réussi.
+   */
+  function leadAnswers(rank: number | null) {
+    return vi.fn(async (input: string | URL | Request) => {
+      const url = String(input instanceof Request ? input.url : input);
+      if (url.endsWith("/oauth/token"))
+        return Response.json({ access_token: "app", token_type: "Bearer", expires_in: 300 });
+      if (url.includes("/api/lead-id/v1/entitlements"))
+        return rank === null
+          ? new Response("down", { status: 503 })
+          : Response.json({
+              org: "org-a",
+              plan: { code: ["free", "pro", "pro_plus"][rank], name: "x", rank, seats: null },
+              apps: { invoicelead: { access: true, status: "live", upgrade_url: null } },
+              subscriptions: [],
+            });
+      return Response.json({ id: "m1" });
+    });
+  }
+  beforeEach(() => forgetRefreshAttempts());
+
+  it("au-delà de 72 h sans nouvelle, la formule enregistrée ne vaut plus (formule gratuite)", async () => {
+    const { org } = await company(2);
+    const fresh = await aged(org.id, 1);
+    expect(tierOf(fresh)).toBe("proplus");
+    expect(tierOf(await aged(org.id, 71))).toBe("proplus");
+    const old = await aged(org.id, 73);
+    expect(tierOf(old)).toBe("free");
+    expect(featureAccess(old, "api").allowed).toBe(false);
+  });
+
+  it("une clé d'API d'une entreprise qui a résilié Pro+ sans se reconnecter est refusée", async () => {
+    const { org, who } = await company(2);
+    const key = await createApiKey(db, who, "Compta");
+    if (typeof key === "string") throw new Error(key);
+    await aged(org.id, 13);
+    // Le Compte Lead dit : formule gratuite. La formule est réécrite et l'API refusée.
+    vi.stubGlobal("fetch", leadAnswers(0));
+    expect(await apiCaller(db, `Bearer ${key.key}`)).toBe("forbidden");
+    const [row] = await db.select().from(organizations).where(eq(organizations.id, org.id));
+    expect(row && tierOf(row)).toBe("free");
+    expect(row?.leadPlan).toBe("free");
+    // Revenue à Pro+ : la clé repasse dès la relecture suivante.
+    await aged(org.id, 13);
+    forgetRefreshAttempts();
+    vi.stubGlobal("fetch", leadAnswers(2));
+    expect(await apiCaller(db, `Bearer ${key.key}`)).toMatchObject({ keyId: key.row.id });
+  });
+
+  it("Compte Lead muet : la formule vaut encore jusqu'à 72 h, puis la clé est refusée", async () => {
+    const { org, who } = await company(2);
+    const key = await createApiKey(db, who, "Compta");
+    if (typeof key === "string") throw new Error(key);
+    const lead = leadAnswers(null);
+    vi.stubGlobal("fetch", lead);
+    await aged(org.id, 20);
+    expect(await apiCaller(db, `Bearer ${key.key}`)).toMatchObject({ keyId: key.row.id });
+    expect(lead).toHaveBeenCalled();
+    // Pas de nouvelle tentative avant 10 minutes.
+    lead.mockClear();
+    expect(await apiCaller(db, `Bearer ${key.key}`)).toMatchObject({ keyId: key.row.id });
+    expect(lead).not.toHaveBeenCalled();
+    await aged(org.id, 80);
+    expect(await apiCaller(db, `Bearer ${key.key}`)).toBe("forbidden");
+  });
+
+  it("la tâche quotidienne relit les formules payantes anciennes avant les relances", async () => {
+    const { org, who } = await company(1);
+    await db.update(organizations).set({ reminderAuto: true }).where(eq(organizations.id, org.id));
+    const draft = await invoiceFor(who, "Kunde AG", "kunde@example.test");
+    const issued = await issueInvoice(db, who, draft.id);
+    if (typeof issued !== "object") throw new Error(issued);
+    await aged(org.id, 13);
+    const free = await company(0, "b");
+    await aged(free.org.id, 200);
+    const lead = leadAnswers(0);
+    vi.stubGlobal("fetch", lead);
+    // Seule l'entreprise payante est relue ; l'entreprise gratuite n'a rien à perdre.
+    expect(await refreshStalePlans(db)).toEqual({ refreshed: 1, stale: 0 });
+    const asked = lead.mock.calls
+      .map((c) => String(c[0]))
+      .filter((u) => u.includes("entitlements"));
+    expect(asked).toEqual([expect.stringContaining("org=org-a")]);
+    // Résiliée : rien ne part le matin.
+    lead.mockClear();
+    expect(await runAutoReminders(db, "2026-04-10")).toEqual({ sent: 0 });
+    expect(lead).not.toHaveBeenCalled();
+    // Témoin : la même entreprise, revenue à Pro, reçoit sa relance par e-mail.
+    await setRank(org.id, 1);
+    expect(await runAutoReminders(db, "2026-04-10")).toEqual({ sent: 1 });
+  });
+
+  it("une formule récente n'est pas relue", async () => {
+    const { org } = await company(1);
+    const row = await aged(org.id, 2);
+    const lead = leadAnswers(0);
+    vi.stubGlobal("fetch", lead);
+    expect(await refreshPlan(db, row)).toBe(row);
+    expect(lead).not.toHaveBeenCalled();
   });
 });

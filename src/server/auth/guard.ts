@@ -7,6 +7,7 @@ import { REQUESTED_PATH_HEADER } from "@/lib/cookies";
 import { betaAllowed } from "../beta";
 import { db } from "../db";
 import { env } from "../env";
+import { refreshPlan } from "../plan-refresh";
 import { featureAccess } from "../plans";
 import { can, hasAppAccess, isFiduciary, type Permission } from "../roles";
 import { hasSeat } from "../team";
@@ -64,7 +65,11 @@ export const accessProblem = cache(
  * pages, que Next rend en parallèle d'elle.
  */
 export async function requireAppSession(locale: string, back?: ReturnTo): Promise<CurrentSession> {
-  const session = await requireSession(locale, back);
+  const found = await requireSession(locale, back);
+  // Formule de plus de 12 h (fiduciaire d'une entreprise dont personne ne se connecte) : relue au
+  // Compte Lead avant de décider de l'accès et des fonctions.
+  const organization = await refreshPlan(db(), found.organization);
+  const session = organization === found.organization ? found : { ...found, organization };
   const problem = await accessProblem(session);
   if (problem) {
     const reason = problem === "plan" ? "" : `?reason=${problem}`;

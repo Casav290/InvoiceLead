@@ -16,7 +16,10 @@ const ITEMS = [
 
 export type SettingsMarks = Partial<Record<(typeof ITEMS)[number]["key"], "pro" | "proplus">>;
 
-/** Onglets des réglages : entreprise, plan comptable, exercices, équipe, paiements, API. */
+/**
+ * Onglets des réglages : entreprise, plan comptable, exercices, équipe, paiements, API. Un onglet
+ * marqué (fonction réservée) reste un lien, grisé, avec sa marque.
+ */
 export function SettingsTabs({ marks }: { marks: SettingsMarks }) {
   const t = useTranslations("app.settingsNav");
   const pathname = usePathname();
@@ -35,7 +38,10 @@ export function SettingsTabs({ marks }: { marks: SettingsMarks }) {
               "-mb-px inline-flex items-center gap-1.5 border-b-2 px-3 py-2 text-[13px] font-semibold",
               active
                 ? "border-b-accent text-accent-dark"
-                : "border-b-transparent text-ink-muted hover:text-ink",
+                : mark
+                  ? // Onglet d'une fonction réservée : grisé (fond gris), sans effet au survol.
+                    "border-b-transparent bg-muted text-ink-muted"
+                  : "border-b-transparent text-ink-2 hover:text-ink",
             )}
           >
             {t(item.key)}

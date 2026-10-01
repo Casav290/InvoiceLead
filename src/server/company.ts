@@ -299,6 +299,7 @@ export async function saveCompanySettings(
       country: organizations.country,
       leadPlan: organizations.leadPlan,
       entitlements: organizations.entitlements,
+      entitlementsAt: organizations.entitlementsAt,
     })
     .from(organizations)
     .where(eq(organizations.id, who.organizationId));

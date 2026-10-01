@@ -116,8 +116,40 @@ export const PLANS: Record<Tier, Plan> = {
   },
 };
 
-export type OrgPlan = { leadPlan: string; entitlements: unknown };
+/**
+ * Formule d'une entreprise telle qu'enregistrée. `entitlementsAt` dit quand le Compte Lead l'a donnée
+ * (connexion, ou relecture par plan-refresh.ts) ; quand il est connu et trop ancien, la formule ne
+ * vaut plus (planTooOld).
+ */
+export type OrgPlan = {
+  leadPlan: string;
+  entitlements: unknown;
+  entitlementsAt?: Date | string | null;
+};
 type Org = OrgPlan & { id: string };
+
+/** Une formule plus récente que ceci n'est pas relue : la durée d'une session web. */
+export const PLAN_FRESH_MS = 12 * 3_600_000;
+/**
+ * Au-delà, sans nouvelle du Compte Lead, la formule enregistrée ne vaut plus : l'entreprise est
+ * traitée en formule gratuite jusqu'à la prochaine relecture (tâche quotidienne, API) ou connexion.
+ */
+export const PLAN_MAX_AGE_MS = 72 * 3_600_000;
+
+/** Âge de la formule enregistrée en millisecondes ; Infinity si on ne sait pas quand elle a été lue. */
+export function planAge(org: OrgPlan, now = Date.now()): number {
+  if (!org.entitlementsAt) return Number.POSITIVE_INFINITY;
+  const at = new Date(org.entitlementsAt).getTime();
+  return Number.isFinite(at) ? now - at : Number.POSITIVE_INFINITY;
+}
+
+/**
+ * Formule trop ancienne pour être crue : seulement quand l'objet porte sa date de lecture (une ligne
+ * d'entreprise complète, ou une sélection qui la demande).
+ */
+export function planTooOld(org: OrgPlan, now = Date.now()): boolean {
+  return org.entitlementsAt !== undefined && planAge(org, now) > PLAN_MAX_AGE_MS;
+}
 
 /**
  * Accès à une fonction ou à une allocation : permis ou non, formule actuelle, formule qui l'ouvre
@@ -133,6 +165,7 @@ export type Access = {
 };
 
 export function tierOf(org: OrgPlan): Tier {
+  if (planTooOld(org)) return "free";
   const rank = Number((org.entitlements as { plan?: { rank?: unknown } } | null)?.plan?.rank);
   if (rank >= 2) return "proplus";
   if (rank === 1) return "pro";
@@ -151,6 +184,7 @@ export function upgradeUrl(org: OrgPlan): string {
 
 /** Places de l'entreprise : celles du Compte Lead quand il les donne, sinon celles de la formule. */
 export function seatsOf(org: OrgPlan): number {
+  if (planTooOld(org)) return PLANS.free.seats;
   const seats = Number((org.entitlements as { plan?: { seats?: unknown } } | null)?.plan?.seats);
   return Number.isInteger(seats) && seats > 0 ? seats : PLANS[tierOf(org)].seats;
 }
@@ -332,12 +366,17 @@ export async function refundQuota(
 }
 
 /** Formule d'une entreprise, pour les traitements qui n'ont que son identifiant. */
-export async function organizationPlan(database: Db, organizationId: string): Promise<Org | null> {
+export async function organizationPlan(
+  database: Db,
+  organizationId: string,
+): Promise<(Org & { currency: string }) | null> {
   const [row] = await database
     .select({
       id: organizations.id,
       leadPlan: organizations.leadPlan,
       entitlements: organizations.entitlements,
+      entitlementsAt: organizations.entitlementsAt,
+      currency: organizations.currency,
     })
     .from(organizations)
     .where(eq(organizations.id, organizationId));

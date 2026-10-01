@@ -62,7 +62,7 @@ export function ContactForm({
           className="border border-hot-fg bg-hot-bg px-4 py-3 text-[13px] text-hot-fg"
           data-testid="plan-limit"
         >
-          {t("planLimit")}
+          {t("planLimit", { limit: state.limit ?? 0 })}
         </p>
       ) : null}
 

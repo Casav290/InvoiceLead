@@ -397,7 +397,7 @@
         "role": "Cochez client, fournisseur ou les deux.",
         "usState": "Indiquez le code de l'État (deux lettres, par exemple TX)."
       },
-      "planLimit": "La formule gratuite compte 50 contacts au plus. Passez à Pro pour en ajouter d'autres."
+      "planLimit": "La formule gratuite compte {limit} contacts au plus. Passez à Pro pour en ajouter d'autres."
     },
     "products": {
       "title": "Articles",
@@ -681,11 +681,12 @@
         "contact": "Le client de ce devis a été archivé.",
         "creditTooHigh": "L'avoir dépasse le montant qui reste à créditer sur la facture.",
         "closed": "Ce paiement est déjà comptabilisé dans un exercice fermé : il ne peut plus être supprimé.",
-        "planLimit": "Vous avez atteint les 10 factures du mois de la formule gratuite. Passez à Pro pour facturer sans limite.",
+        "planLimit": "Vous avez atteint les {limit} factures du mois de la formule gratuite. Passez à Pro pour facturer sans limite.",
         "recurring": "La récurrence n'a pas pu être enregistrée.",
         "fxRate": "Le cours du jour n'a pas pu être obtenu. Saisissez le cours dans le brouillon, puis émettez à nouveau.",
         "depositDraft": "Une facture d'acompte de ce devis est encore en brouillon : émettez-la ou supprimez-la avant de créer la facture finale.",
-        "recurringLimit": "La formule gratuite compte une facture récurrente active. Mettez-en une en pause ou passez à Pro pour en ajouter."
+        "recurringLimit": "La formule gratuite compte {limit, plural, one {une facture récurrente active} other {# factures récurrentes actives}}. Mettez-en une en pause ou passez à Pro pour en ajouter.",
+        "recurringCurrency": "Une facture en devise étrangère ne devient récurrente qu'avec Pro, qui comprend la multidevise."
       },
       "addLine": "Ajouter une ligne",
       "removeLine": "Retirer",
@@ -899,7 +900,8 @@
         "every": "{months, plural, one {Chaque mois} other {Tous les # mois}}",
         "next": "Prochaine facture le",
         "autoSend": "Émettre et envoyer automatiquement (sinon : brouillon à vérifier)",
-        "create": "Enregistrer la récurrence"
+        "create": "Enregistrer la récurrence",
+        "currencyPlan": "Facture en {currency} : la rendre récurrente fait partie de la multidevise, formule Pro."
       },
       "einvoice": {
         "download": "XRechnung (XML)",
@@ -1037,7 +1039,8 @@
         "noFiscalYear": "Aucun exercice ouvert ne couvre la date de ce mouvement.",
         "noProposal": "Choisissez d'abord un compte.",
         "notFound": "Mouvement introuvable ou déjà traité.",
-        "vatPeriodClosed": "Cette date tombe dans une période TVA déjà validée : l'écriture ne peut plus y entrer."
+        "vatPeriodClosed": "Cette date tombe dans une période TVA déjà validée : l'écriture ne peut plus y entrer.",
+        "scope": "En formule gratuite, un import couvre un seul compte et un mois au plus. Exportez un relevé mensuel, ou passez à Pro pour importer davantage."
       },
       "aiError": "L'assistant n'a pas pu répondre. Les mouvements restent à proposer ; réessayez plus tard.",
       "aiOff": "L'assistant comptable n'est pas encore activé : seuls les paiements de factures reconnus par leur référence QR sont proposés automatiquement.",
@@ -1046,7 +1049,7 @@
       "import": "Importer",
       "toReview": "{count, plural, =0 {Rien à valider} one {# mouvement à valider} other {# mouvements à valider}}",
       "propose": "Proposer les écritures",
-      "validateConfident": "Valider les {count} propositions sûres",
+      "validateConfident": "{count, plural, one {Valider la proposition sûre} other {Valider les # propositions sûres}}",
       "nothing": "Tous les mouvements sont traités.",
       "noSuggestion": "Aucune proposition : choisissez le compte.",
       "paysInvoice": "Paiement de la facture {invoice}",
@@ -1088,8 +1091,8 @@
     },
     "receipts": {
       "title": "Justificatifs",
-      "subtitle": "Déposez vos factures fournisseurs et tickets (PDF ou photo). L'assistant les lit et les rattache au paiement correspondant du relevé bancaire.",
-      "added": "{count, plural, =0 {Aucun justificatif ajouté} one {# justificatif ajouté} other {# justificatifs ajoutés}}{rejected, plural, =0 {.} one { (# refusé : doublon, format ou taille).} other { (# refusés : doublons, format ou taille).}}",
+      "subtitle": "Déposez vos factures fournisseurs et tickets (PDF ou photo). L'IA les lit et les rattache au paiement correspondant du relevé bancaire.",
+      "added": "{count, plural, =0 {Aucun justificatif ajouté} one {# justificatif ajouté} other {# justificatifs ajoutés}}.{rejected, plural, =0 {} one { # refusé : doublon, format ou taille.} other { # refusés : doublons, format ou taille.}}{quota, plural, =0 {} one { # pas déposé : les lectures du mois sont utilisées.} other { # pas déposés : les lectures du mois sont utilisées.}}",
       "errors": {
         "unreadable": "Ce PDF est une image scannée : déposez plutôt une photo nette du document.",
         "failed": "L'assistant n'a pas pu lire ce justificatif. Réessayez plus tard.",
@@ -1340,7 +1343,7 @@
       "week": "Semaine du {date}",
       "later": "Plus tard",
       "forecastEmpty": "Aucune facture ouverte.",
-      "levelPlan": "Fonction Pro. La formule gratuite envoie la première relance ; les suivantes font partie de Pro."
+      "levelPlan": "Fonction Pro. En formule gratuite, vous envoyez vous-même la première relance ; les suivantes font partie de Pro."
     },
     "recurring": {
       "title": "Factures récurrentes",
@@ -1357,7 +1360,9 @@
       "pause": "Mettre en pause",
       "resume": "Reprendre",
       "delete": "Supprimer",
-      "held": "En attente : la formule gratuite fait tourner une seule facture récurrente."
+      "held": "En attente : la formule gratuite fait tourner {limit, plural, one {une seule facture récurrente} other {# factures récurrentes}}.",
+      "heldCurrency": "Facture en {currency} : sa récurrence tourne avec Pro, qui comprend la multidevise.",
+      "currencyPlan": "Une facture en devise étrangère se répète avec Pro, qui comprend la multidevise."
     },
     "plan": {
       "upgrade": "Passer à Pro",
@@ -1377,7 +1382,7 @@
       },
       "used": {
         "aiReads": "{plan, select, free {Vos {limit} lectures gratuites de ce mois sont utilisées.} other {Vos {limit} lectures de ce mois sont utilisées.}}",
-        "assistant": "{plan, select, free {Vos {limit} questions gratuites de ce mois sont posées.} other {Vos {limit} questions de ce mois sont posées.}}",
+        "assistant": "{plan, select, free {Vous avez posé vos {limit} questions gratuites de ce mois.} other {Vous avez posé vos {limit} questions de ce mois.}}",
         "reminders": "{plan, select, free {Vos {limit} relances gratuites de ce mois sont envoyées.} other {Vos {limit} relances de ce mois sont envoyées.}}",
         "bankImports": "{limit, plural, one {Votre relevé gratuit de ce mois est importé.} other {Vos # relevés gratuits de ce mois sont importés.}}",
         "recurring": "{limit, plural, one {La formule gratuite compte une facture récurrente active.} other {La formule gratuite compte # factures récurrentes actives.}} Mettez-en une en pause ou passez à Pro pour en ajouter.",
@@ -1701,7 +1706,8 @@
         "plan": "Saisir une facture en devise étrangère fait partie de la formule Pro."
       },
       "claim": "Note de frais",
-      "currencyPlan": "Les autres devises font partie de la formule Pro."
+      "currencyPlan": "Les autres devises font partie de la formule Pro.",
+      "approveCurrencyPlan": "Facture en {currency} : l'approuver et la comptabiliser au cours du jour fait partie de la multidevise, formule Pro."
     },
     "time": {
       "title": "Temps",
@@ -1805,7 +1811,7 @@
         "off": "L'assistant IA n'est pas encore configuré.",
         "empty": "Posez une question.",
         "failed": "L'assistant n'a pas pu répondre. Réessayez dans un instant.",
-        "quota": "Les questions gratuites de ce mois sont posées. Passez à Pro pour continuer."
+        "quota": "Question non envoyée. Avec Pro, l'assistant répond sans limite."
       }
     },
     "expenses": {
@@ -1951,7 +1957,7 @@
           "50 pièces lues par l'IA chaque mois",
           "Assistant sans limite",
           "Relances automatiques sur 3 niveaux, frais et intérêts",
-          "Décompte TVA (effective et TDFN)",
+          "Décompte TVA : TVA suisse (effective et TDFN), UStVA, CA3, MTD et sales tax",
           "Import bancaire camt sans limite, récapitulatif du pilote le lundi",
           "Factures récurrentes sans limite, multidevise"
         ]
@@ -1994,7 +2000,7 @@
       },
       {
         "q": "Ma fiduciaire peut-elle accéder à ma comptabilité ?",
-        "a": "Oui, un accès fiduciaire gratuit est prévu dès la formule Pro."
+        "a": "Oui, dès la formule Pro, votre fiduciaire accède gratuitement à votre comptabilité."
       },
       {
         "q": "Où sont hébergées mes données ?",
@@ -2006,7 +2012,7 @@
       },
       {
         "q": "Que comprend la formule gratuite ?",
-        "a": "Chaque mois : 10 factures, 20 pièces lues par l'IA, 10 questions à l'assistant, 5 relances de premier niveau et 1 relevé bancaire avec le pilote automatique. Elle compte aussi 50 contacts et 1 facture récurrente active, et reçoit les e-factures sans limite. Les fonctions Pro et Pro+ restent visibles dans l'application, en gris avec leur marque, pour que vous sachiez qu'elles existent."
+        "a": "Chaque mois : 10 factures, 20 pièces lues par l'IA, 10 questions à l'assistant, 5 relances de premier niveau et 1 relevé bancaire avec le pilote automatique. Elle compte aussi 50 contacts et 1 facture récurrente active, et reçoit les e-factures sans limite. Les fonctions Pro et Pro+ restent visibles dans l'application, en gris avec la mention Pro ou Pro+, pour que vous sachiez qu'elles existent."
       },
       {
         "q": "Faut-il une carte bancaire pour commencer ?",
