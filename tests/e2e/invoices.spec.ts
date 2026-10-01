@@ -68,6 +68,14 @@ test("facture : brouillon avec article et ligne libre, émission avec numéro, f
   await expect(page.getByTestId("payment-state")).toHaveText("Payée en partie");
   await expect(page.getByTestId("balance-openCents")).toHaveText("45.88");
 
+  // Le tableau de bord suit : chiffre d'affaires HT du mois, encaissé, reste à encaisser.
+  const invoiceUrl = page.url();
+  await page.goto("/fr/app");
+  await expect(page.getByTestId("figure-revenue-month")).toHaveText("CHF 416");
+  await expect(page.getByTestId("figure-collected")).toHaveText("CHF 400");
+  await expect(page.getByTestId("figure-open")).toHaveText("CHF 46");
+  await page.goto(invoiceUrl);
+
   await page.getByTestId("credit-note-create").click();
   await expect(page).toHaveURL(/\/fr\/app\/credit-notes\/[0-9a-f-]+\?saved=1$/);
   await page.getByTestId("invoice-line-remove-0").click();

@@ -30,6 +30,10 @@ test("connexion par le Compte Lead, puis retour direct dans l'application", asyn
   await login(page, "fr");
   await expect(page.getByTestId("dashboard-title")).toHaveText("Bonjour Ada");
   await expect(page.getByTestId("org-name")).toHaveText("Atelier Muster GmbH");
+  // Le tableau de bord donne des chiffres, à zéro pour une entreprise neuve.
+  await expect(page.getByTestId("figure-revenue-month")).toHaveText("CHF 0");
+  await expect(page.getByTestId("figure-open")).toHaveText("CHF 0");
+  await expect(page.getByTestId("dashboard-chart")).toBeVisible();
 
   // Déjà connecté : /login et /signup mènent directement à l'application.
   await page.goto("/fr/login");
