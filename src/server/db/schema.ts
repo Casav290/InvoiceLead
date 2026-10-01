@@ -379,6 +379,8 @@ export const invoices = pgTable(
     journalEntryId: uuid("journal_entry_id"),
     /** Origine dans une autre application de la famille, « crmlead:<id du lead> » : évite les doublons. */
     externalRef: text("external_ref"),
+    /** Projet facturé (heures reprises du suivi du temps). */
+    projectId: uuid("project_id"),
     issuedAt: timestamp("issued_at", { withTimezone: true }),
     createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
     createdAt: createdAt(),
@@ -951,3 +953,61 @@ export const supplierBills = pgTable(
 );
 
 export type SupplierBill = typeof supplierBills.$inferSelect;
+
+/** Projet d'un client : le temps saisi s'y rattache, puis se facture. */
+export const projects = pgTable(
+  "projects",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    contactId: uuid("contact_id")
+      .notNull()
+      .references(() => contacts.id, { onDelete: "restrict" }),
+    name: text("name").notNull(),
+    /** Tarif horaire hors TVA, en centimes, repris sur chaque saisie. */
+    hourlyRateCents: bigint("hourly_rate_cents", { mode: "number" }).notNull().default(0),
+    /** Budget en heures, pour suivre l'avancement ; vide : sans budget. */
+    budgetMinutes: integer("budget_minutes"),
+    archivedAt: timestamp("archived_at", { withTimezone: true }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [index("projects_org_idx").on(t.organizationId, t.archivedAt)],
+);
+
+export type Project = typeof projects.$inferSelect;
+
+/**
+ * Temps passé sur un projet. Un chrono en cours a `startedAt` et pas encore de durée. Facturé, il
+ * porte la facture : il n'est plus repris, et redevient facturable si le brouillon est supprimé.
+ */
+export const timeEntries = pgTable(
+  "time_entries",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
+    workDate: date("work_date", { mode: "string" }).notNull(),
+    minutes: integer("minutes").notNull().default(0),
+    description: text("description"),
+    billable: boolean("billable").notNull().default(true),
+    rateCents: bigint("rate_cents", { mode: "number" }).notNull().default(0),
+    startedAt: timestamp("started_at", { withTimezone: true }),
+    invoiceId: uuid("invoice_id").references(() => invoices.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    index("time_entries_project_idx").on(t.projectId, t.workDate),
+    index("time_entries_user_running_idx").on(t.userId, t.startedAt),
+    check("time_entries_minutes", sql`${t.minutes} >= 0 and ${t.minutes} <= 1440`),
+  ],
+);
+
+export type TimeEntry = typeof timeEntries.$inferSelect;

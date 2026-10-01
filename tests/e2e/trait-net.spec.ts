@@ -82,6 +82,10 @@ for (const size of WIDTHS) {
       expect(await traitNetIssues(page)).toEqual([]);
       await page.goto("/de/app/invoices/recurring");
       expect(await traitNetIssues(page)).toEqual([]);
+      await page.goto("/fr/app/time");
+      expect(await traitNetIssues(page)).toEqual([]);
+      await page.goto("/de/app/time/projects");
+      expect(await traitNetIssues(page)).toEqual([]);
       await page.goto("/de/app/accounting");
       expect(await traitNetIssues(page)).toEqual([]);
       await page.goto("/fr/app/accounting/bank");
