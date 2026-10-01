@@ -65,6 +65,7 @@ test("entreprise française : facture en euros à 20 %, SIRET, Factur-X, PCG et 
   await expect(page.locator("body")).toContainText("Prestations de services");
   await page.goto("/fr/app/settings/fiscal-years");
   await page.getByTestId("fiscal-year-first").click();
+  await expect(page).toHaveURL(/opened=1/);
   await page.goto("/fr/app/accounting");
   await page.getByTestId("post-pending").click();
   const journal = page.getByTestId("journal");
