@@ -17,6 +17,8 @@ export async function GET(request: NextRequest) {
   const invite = INVITE_TOKEN.test(inviteParam) ? inviteParam : undefined;
   // Page demandée avant la connexion (« /fr/app/invoices/… ») : on y revient ensuite.
   const next = safeNext(request.nextUrl.searchParams.get("next"));
+  // Depuis « Créer un compte » : le Compte Lead ouvre directement son inscription.
+  const signup = request.nextUrl.searchParams.get("signup") === "1";
 
   const current = (await cookies()).get(SESSION_COOKIE)?.value;
   if (current && (await findSession(db(), current))) {
@@ -24,7 +26,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${APP_URL}${target}`, 303);
   }
 
-  const login = startLogin({ locale });
+  const login = startLogin({ locale, ...(signup ? { prompt: "create" as const } : {}) });
   const response = NextResponse.redirect(login.url, 303);
   response.cookies.set(
     LOGIN_COOKIE,

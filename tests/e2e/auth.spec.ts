@@ -21,6 +21,18 @@ test("l'écran de connexion ne reste que pour dire une erreur", async ({ page })
   await expect(page.getByTestId("lead-login")).toBeVisible();
 });
 
+test("« Créer un compte » ouvre directement l'inscription du Compte Lead", async ({ page }) => {
+  const first = await page.request.get("/fr/signup", { maxRedirects: 0 });
+  expect([303, 307, 308]).toContain(first.status());
+  const start = first.headers().location ?? "";
+  expect(start).toContain("/auth/lead/start?locale=fr&signup=1");
+  const second = await page.request.get(start, { maxRedirects: 0 });
+  expect(second.status()).toBe(303);
+  const authorize = new URL(second.headers().location ?? "");
+  expect(authorize.pathname).toBe("/oauth/authorize");
+  expect(authorize.searchParams.get("prompt")).toBe("create");
+});
+
 test("la racine choisit une langue", async ({ page }) => {
   await page.goto("/");
   await expect(page).toHaveURL(/\/(de|fr)$/);
@@ -30,9 +42,9 @@ test("connexion par le Compte Lead, puis retour direct dans l'application", asyn
   await login(page, "fr");
   await expect(page.getByTestId("dashboard-title")).toHaveText("Bonjour Ada");
   await expect(page.getByTestId("org-name")).toHaveText("Atelier Muster GmbH");
-  // Le tableau de bord donne des chiffres, à zéro pour une entreprise neuve.
-  await expect(page.getByTestId("figure-revenue-month")).toHaveText("CHF 0");
-  await expect(page.getByTestId("figure-open")).toHaveText("CHF 0");
+  // Le tableau de bord donne des chiffres (les montants exacts sont vérifiés dans invoices.spec).
+  await expect(page.getByTestId("figure-revenue-month")).toHaveText(/^[A-Z]{3} [\d'.,]+$/);
+  await expect(page.getByTestId("figure-open")).toHaveText(/^[A-Z]{3} [\d'.,]+$/);
   await expect(page.getByTestId("dashboard-chart")).toBeVisible();
 
   // Déjà connecté : /login et /signup mènent directement à l'application.
