@@ -3,7 +3,9 @@
  * (InvoiceLead 3300, CRMlead 3301). Une étape par défaut, nommée d'après lui. Lot 6 : IL-FIDU-ORG,
  * IL-INVITE-SWITCH, IL-STRIPE-AFTER-EXPIRY, IL-DOWNLOAD-AFTER-EXPIRY, IL-NEXT-LONG-NO-COOKIE,
  * IL-ASTERISK, CRM-TEAM-INVITE-SHARED-BROWSER, CRM-EXISTING-APP-ACCOUNTS-EMAILS (désinscrits,
- * conseils rallumés, 113 rejouée) et CRM-SHARED-NEXT-REPLAY (Google).
+ * conseils rallumés, 113 rejouée) et CRM-SHARED-NEXT-REPLAY (Google). Intégration du lot 6 :
+ * SW-RETOUR-OFFLINE, CRM-THEME-FROM-IL, CRM-LEAD-EMAILS-HTML, et dans CRM-EXISTING-APP-ACCOUNTS-EMAILS les
+ * comptes inscrits sur CRMlead puis passés par InvoiceLead, et les notifications réglées par la personne.
  *
  *   node scripts/lead-login-live/e2e-login5.mjs <dossier des captures>
  *
@@ -14,6 +16,9 @@
  *   GOOGLE_CLIENT_ID=x GOOGLE_CLIENT_SECRET=y GOOGLE_AUTH_URL=http://127.0.0.1:8942/auth
  *   GOOGLE_TOKEN_URL=http://127.0.0.1:8942/token GOOGLE_USERINFO_URL=http://127.0.0.1:8942/userinfo
  *   (le faux Google tourne dans ce script, port GOOGLE_PORT). Sans elle, les étapes Google sont sautées ;
+ * - CRM_MAILCAP (+ CRM_MAILCAP_FILE) : un CRMlead sur la même base qui capture ses emails au lieu de les envoyer
+ *   (crochet resend-capture.mjs, voir son en-tête ; PUBLIC_URL = son adresse). Sans elle, CRM-LEAD-EMAILS-HTML
+ *   est sautée ;
  * - IL_URL : un autre InvoiceLead que celui de 3300 (son adresse de retour déclarée dans CRMlead) ;
  * - ONLY=<motif> : seulement les étapes dont le nom correspond ; DEBUG_NAV=1 : navigations de l'étape
  *   « envoi après expiration ».
@@ -290,7 +295,14 @@ await step("SW-OAUTH : hors connexion, l'écran neutre et jamais l'accueil de CR
   expect((await p.title()) === "Lead-Konto", `titre « ${await p.title()} »`);
   const body = await p.locator("body").innerText();
   expect(!/CRMlead/.test(body) && /Keine Internetverbindung/.test(body), `page : ${body}`);
-  expect((await p.locator('link[rel~="icon"]').count()) === 0, "icône de CRMlead");
+  // Pas d'icône de CRMlead : une icône vide (data:) et celle d'écran d'accueil des quatre carrés, rien d'autre.
+  const offHeads = await p
+    .locator('link[rel~="icon"], link[rel="apple-touch-icon"], link[rel="manifest"]')
+    .evaluateAll((ls) => ls.map((l) => `${l.rel}=${l.getAttribute("href")}`));
+  expect(
+    offHeads.every((h) => /^icon=data:/.test(h) || h === "apple-touch-icon=/lead-touch-icon.png"),
+    `icône de CRMlead : ${offHeads.join(" ")}`,
+  );
   await ctx.unroute(`${CRM}/**`, cut);
   await p.getByText("Erneut versuchen").click();
   await waitAt(p, `${CRM}/login?next=`, "Réessayer");
@@ -320,6 +332,174 @@ await step("SW-OAUTH : hors connexion, l'écran neutre et jamais l'accueil de CR
   await ctx.unroute(`${CRM}/**`, cut);
   await ctx.close();
 });
+
+await step(
+  "SW-RETOUR-OFFLINE : hors connexion au second saut d'un retour de Google sans trace, jamais l'accueil de CRMlead",
+  async () => {
+    const K = "crmlead.leadid.next";
+    const RETOUR = /\/(login|signup)\?.*retour=/;
+    const off = (r) => r.abort("internetdisconnected");
+    for (const withApp of [true, false]) {
+      const tag = withApp ? "swoff" : "swoff-direct";
+      const ctx = await newCtx(browser, "de-CH", tag);
+      const p = await ctx.newPage();
+      // Le travailleur de service est installé par une première visite (ici, l'inscription depuis InvoiceLead).
+      const email = await signupFromIl(p, "de", tag);
+      if (!ctx.serviceWorkers().some((w) => w.url().startsWith(CRM)))
+        await ctx.waitForEvent("serviceworker", { timeout: 15000 });
+      await ctx.clearCookies();
+      if (withApp) {
+        await p.goto(`${IL}/de/app/invoices`);
+        await waitAt(p, `${CRM}/login?next=`, "écran Lead-Konto");
+        await p.waitForFunction((k) => !!sessionStorage.getItem(k), K, { timeout: 10000 });
+      } else {
+        await p.goto(`${CRM}/login`);
+      }
+      await p.waitForFunction(() => navigator.serviceWorker?.controller != null, null, {
+        timeout: 15000,
+      });
+      // Départ vers Google tel que parkForSso + markSsoStart le font ; au retour, plus aucun cookie.
+      await p.evaluate(
+        ([k, app]) => {
+          const raw = sessionStorage.getItem(k);
+          if (app && raw) sessionStorage.setItem(`${k}.sso-parked`, raw);
+          else sessionStorage.removeItem(`${k}.sso-parked`);
+          sessionStorage.removeItem(k);
+          sessionStorage.setItem(`${k}.sso`, String(Date.now()));
+        },
+        [K, withApp],
+      );
+      await ctx.clearCookies();
+      const from = events.length;
+      await ctx.route(RETOUR, off);
+      const res = await p.goto(`${CRM}/api/auth/sso/google/callback?error=access_denied`);
+      expect(/retour=(inconnu|orphelin)/.test(p.url()), `${tag} : adresse ${p.url()}`);
+      expect(res?.status() === 503, `${tag} : statut ${res?.status()}`);
+      expect((await p.title()) === "Lead-Konto", `${tag} : titre « ${await p.title()} »`);
+      const body = await p.locator("body").innerText();
+      expect(
+        !/CRMlead/.test(body) && /Keine Internetverbindung/.test(body),
+        `${tag} : page ${body}`,
+      );
+      const heads = await p
+        .locator('link[rel~="icon"], link[rel="apple-touch-icon"], link[rel="manifest"]')
+        .evaluateAll((ls) => ls.map((l) => `${l.rel}=${l.getAttribute("href")}`));
+      expect(
+        heads.every((h) => /^icon=data:/.test(h) || h === "apple-touch-icon=/lead-touch-icon.png"),
+        `${tag} : icônes ${heads.join(" ")}`,
+      );
+      const parked = await p.evaluate((k) => sessionStorage.getItem(`${k}.sso-parked`), K);
+      expect(!withApp || !!parked, `${tag} : la demande garée a disparu`);
+      neutralSince(from, tag);
+      // Réseau revenu : « Erneut versuchen » recharge la même adresse, la page « retour » tranche.
+      await ctx.unroute(RETOUR, off);
+      await p.getByText("Erneut versuchen").click();
+      if (withApp) {
+        await waitAt(p, `${CRM}/login?next=%2Foauth%2Fauthorize`, "réseau revenu");
+        expect((await p.title()) === "Lead-Konto", `réseau revenu : « ${await p.title()} »`);
+        await passwordLogin(p, email);
+        await waitAt(p, `${IL}/de/app/invoices`, "page demandée");
+        neutralSince(from, tag, (e) => !e.url.startsWith("/de/"));
+      } else {
+        await p.waitForURL((u) => u.href.startsWith(`${CRM}/login`) && !RETOUR.test(u.href), {
+          timeout: 15000,
+        });
+        await p.waitForFunction(() => /CRMlead/.test(document.title), null, { timeout: 10000 });
+        expect(!p.url().includes("next="), `direct : ${p.url()}`);
+      }
+      await ctx.close();
+    }
+  },
+);
+
+await step(
+  "CRM-THEME-FROM-IL : couleur et icône d'écran d'accueil de l'application, CRMlead direct inchangé",
+  async () => {
+    const PLUM = "rgb(122, 46, 103)",
+      GREEN = "rgb(15, 111, 112)";
+    const ctx = await newCtx(browser, "fr-CH", "thm");
+    const p = await ctx.newPage();
+    const look = () =>
+      p.evaluate(() => ({
+        app: document.documentElement.dataset.leadApp ?? "",
+        button: getComputedStyle(Array.from(document.querySelectorAll("form button")).pop())
+          .backgroundColor,
+        touch: Array.from(document.querySelectorAll('link[rel="apple-touch-icon"]')).map((l) =>
+          l.getAttribute("href"),
+        ),
+        manifest: !!document.querySelector('link[rel="manifest"]'),
+      }));
+    const from = events.length;
+    // Premier octet : la page servie porte déjà la couleur et l'icône neutre.
+    const first = await (
+      await ctx.request.get(`${IL}/auth/lead/start?locale=fr&next=%2Ffr%2Fapp%2Finvoices`)
+    ).text();
+    expect(
+      /<html[^>]*data-lead-app="invoicelead"/.test(first) &&
+        /<link rel="apple-touch-icon"[^>]*href="\/lead-touch-icon.png"/.test(first) &&
+        !/apple-touch-icon.png"|rel="manifest"/.test(first),
+      `premier octet : ${first.match(/<html[^>]*>/)?.[0]} ${first.match(/<link rel="apple-touch-icon"[^>]*>/g)}`,
+    );
+    for (const path of ["/fr/app/invoices", "signup", "forgot"]) {
+      if (path.startsWith("/")) {
+        await p.goto(`${IL}${path}`);
+        await waitAt(p, `${CRM}/login?next=`, "écran");
+      } else if (path === "signup") {
+        await p.getByRole("link", { name: /Créer un compte/ }).click();
+        await waitAt(p, `${CRM}/signup?next=`, "inscription");
+      } else {
+        await p.goto(`${IL}/fr/app/invoices`);
+        await waitAt(p, `${CRM}/login?next=`, "écran");
+        await p.getByRole("link", { name: /oublié/ }).click();
+        await waitAt(p, `${CRM}/mot-de-passe?`, "mot de passe oublié");
+      }
+      await p.waitForSelector("form button");
+      const l = await look();
+      expect(l.app === "invoicelead", `${path} : data-lead-app « ${l.app} »`);
+      expect(l.button === PLUM, `${path} : bouton ${l.button}`);
+      expect(
+        l.touch.length === 1 && l.touch[0] === "/lead-touch-icon.png" && !l.manifest,
+        `${path} : icônes ${l.touch} manifeste ${l.manifest}`,
+      );
+      if (path.startsWith("/")) {
+        const link = await p
+          .getByRole("link", { name: /Créer un compte/ })
+          .evaluate((e) => getComputedStyle(e).color);
+        expect(link === PLUM, `${path} : lien ${link}`);
+      }
+    }
+    neutralSince(from, "thm");
+    const icon = await ctx.request.get(`${CRM}/lead-touch-icon.png`);
+    expect(
+      icon.ok() && icon.headers()["content-type"] === "image/png",
+      `/lead-touch-icon.png ${icon.status()}`,
+    );
+    // CRMlead ouvert directement : son vert, son icône CL et son manifeste, sans data-lead-app.
+    const d = await browser.newContext({ locale: "fr-CH" });
+    const q = await d.newPage();
+    await q.goto(`${CRM}/login`);
+    await q.waitForSelector("form button");
+    const dl = await q.evaluate(() => ({
+      app: document.documentElement.dataset.leadApp ?? "",
+      button: getComputedStyle(Array.from(document.querySelectorAll("form button")).pop())
+        .backgroundColor,
+      touch: Array.from(document.querySelectorAll('link[rel="apple-touch-icon"]')).map((l) =>
+        l.getAttribute("href"),
+      ),
+      manifest: !!document.querySelector('link[rel="manifest"]'),
+      title: document.title,
+    }));
+    expect(
+      !dl.app &&
+        dl.button === GREEN &&
+        dl.touch.join() === "/apple-touch-icon.png" &&
+        dl.manifest &&
+        /CRMlead/.test(dl.title),
+      `CRMlead direct : ${JSON.stringify(dl)}`,
+    );
+    await Promise.all([ctx.close(), d.close()]);
+  },
+);
 
 await step(
   "CRM-FIRSTBYTE-LANG-META : premier octet dans la langue demandée, sans accroche CRMlead",
@@ -858,6 +1038,147 @@ await step(
   },
 );
 
+// Le HTML des emails n'est pas journalisé : un CRMlead à part (CRM_MAILCAP) les écrit dans CRM_MAILCAP_FILE.
+const MAILCAP = process.env.CRM_MAILCAP ?? "";
+if (!MAILCAP) console.log("=== CRM-LEAD-EMAILS-HTML : sautée (CRM_MAILCAP absent)");
+else
+  await step(
+    "CRM-LEAD-EMAILS-HTML : emails du Compte Lead pour InvoiceLead, ni « CRMlead » ni son vert ; CRMlead direct inchangé",
+    async () => {
+      const file = process.env.CRM_MAILCAP_FILE ?? "";
+      expect(file, "CRM_MAILCAP_FILE manquant");
+      const sent = (to, n = 1) =>
+        readFileSync(file, "utf8")
+          .split("\n")
+          .filter(Boolean)
+          .map((l) => JSON.parse(l))
+          .filter((m) => m.to.includes(to))[n - 1];
+      const mailTo = async (to, n = 1) => {
+        for (let i = 0; i < 40 && !sent(to, n); i++) await sleep(250);
+        return sent(to, n);
+      };
+      const words = (h) =>
+        h
+          .replace(/<style[\s\S]*?<\/style>/g, "")
+          .replace(/<[^>]+>/g, " ")
+          .replace(/\s+/g, " ");
+      /** Au nom du Compte Lead : la marque des quatre carrés (hors thème), aucun « CRMlead », la couleur d'InvoiceLead. */
+      const leadMail = (label, m, button) => {
+        expect(m, `${label} : aucun email`);
+        const marks = m.html.match(/>(SL|CL|PL|IL)<\/div>/g) ?? [];
+        const h = m.html.replace(
+          /<div style="width:22px;height:22px;[^"]*">(SL|CL|PL|IL)<\/div>/g,
+          "",
+        );
+        expect(marks.length === 4, `${label} : marque de la famille (${marks.length})`);
+        expect(
+          !/CRMlead/i.test(h + m.text + m.subject) && !/#0E6D6E|#0f6e70/i.test(h),
+          `${label} : ${(h.match(/.{60}(CRMlead|#0E6D6E|#0f6e70).{20}/i) ?? [m.subject])[0]}`,
+        );
+        expect(/#7a2e67/i.test(h), `${label} : pas la couleur d'InvoiceLead`);
+        if (button) expect(words(h).includes(button), `${label} : bouton « ${button} » absent`);
+      };
+      const H = { headers: { origin: MAILCAP } };
+      const ctx = await browser.newContext();
+      const admin = mail("cap-adm");
+      const s = await ctx.request.post(`${MAILCAP}/api/auth/signup`, {
+        data: {
+          accountName: "E2E5 emails",
+          name: "Eve",
+          email: admin,
+          password: PASS,
+          locale: "fr",
+          app: "invoicelead",
+        },
+        ...H,
+      });
+      expect(s.ok(), `inscription ${s.status()}`);
+      leadMail("confirmation d'adresse", await mailTo(admin));
+      const [org, inviter] = crmq(
+        `select account_id || '|' || id from users where email = '${admin}'`,
+      ).split("|");
+      crmq(
+        `insert into lead_subscriptions (account_id, source_app, external_id, app_plan, plan_code, status)
+         values ('${org}', 'scanlead', 'e2e5-cap-${stamp}', 'pro_plus', 'pro_plus', 'active') on conflict do nothing`,
+      );
+      const tok = await ctx.request.post(`${MAILCAP}/oauth/token`, {
+        form: {
+          grant_type: "client_credentials",
+          client_id: "invoicelead",
+          client_secret: process.env.LEAD_ID_CLIENT_SECRET ?? "lid_test_e2e_secret",
+          scope: "members",
+        },
+      });
+      const bearer = { authorization: `Bearer ${(await tok.json()).access_token}` };
+      // Invitation d'un collègue par InvoiceLead (Réglages → Équipe appelle cette route), dans trois langues.
+      const labels = {
+        fr: "Choisir mon mot de passe",
+        de: "Mein Passwort wählen",
+        en: "Choose my password",
+      };
+      let deId = "";
+      for (const l of Object.keys(labels)) {
+        const to = mail(`cap-coll-${l}`);
+        const r = await ctx.request.post(`${MAILCAP}/api/lead-id/v1/members/invite`, {
+          headers: bearer,
+          data: { org, inviter, email: to, name: `Collègue ${l}`, locale: l },
+        });
+        expect(r.status() === 201, `invitation ${l} : ${r.status()}`);
+        if (l === "de") deId = (await r.json()).id;
+        const m = await mailTo(to);
+        leadMail(`invitation (${l})`, m, labels[l]);
+        expect(/\/invitation\?jeton=[^"]+app=invoicelead/.test(m.html), `invitation (${l}) : lien`);
+      }
+      const again = await ctx.request.post(`${MAILCAP}/api/lead-id/v1/members/${deId}/invite`, {
+        headers: bearer,
+        data: { org, inviter, locale: "de" },
+      });
+      expect(again.ok(), `relance : ${again.status()}`);
+      leadMail("relance (de)", await mailTo(mail("cap-coll-de"), 2), labels.de);
+      // Mot de passe oublié depuis l'écran du Compte Lead d'InvoiceLead.
+      // Comme l'écran (appNextForSso) : « + » de la requête envoyé en « %20 ».
+      const { next } = await ilAuthorize(ctx, "locale=fr", MAILCAP);
+      const f = await ctx.request.post(`${MAILCAP}/api/auth/forgot`, {
+        data: { email: admin, next: next.replace(/\+/g, "%20") },
+        ...H,
+      });
+      expect(f.ok(), `mot de passe oublié : ${f.status()}`);
+      leadMail("réinitialisation", await mailTo(admin, 2));
+      // Contrôle : CRMlead ouvert directement garde « Rejoindre CRMlead » et son vert.
+      const d = await browser.newContext();
+      const direct = mail("cap-direct");
+      const ds = await d.request.post(`${MAILCAP}/api/auth/signup`, {
+        data: {
+          accountName: "E2E5 direct",
+          name: "Eve",
+          email: direct,
+          password: PASS,
+          locale: "fr",
+        },
+        ...H,
+      });
+      expect(ds.ok(), `inscription directe ${ds.status()}`);
+      const dv = await mailTo(direct);
+      expect(dv && /CRMlead/.test(dv.html) && /#0E6D6E/i.test(dv.html), "confirmation directe");
+      crmq(
+        `insert into lead_subscriptions (account_id, source_app, external_id, app_plan, plan_code, status)
+         select account_id, 'scanlead', 'e2e5-capd-${stamp}', 'pro_plus', 'pro_plus', 'active' from users where email = '${direct}'`,
+      );
+      const colD = mail("cap-coll-direct");
+      const di = await d.request.post(`${MAILCAP}/api/users`, {
+        data: { email: colD, name: "Direct" },
+        ...H,
+      });
+      expect(di.status() === 201, `invitation directe : ${di.status()}`);
+      const dm = await mailTo(colD);
+      expect(
+        dm && words(dm.html).includes("Rejoindre CRMlead") && /#0E6D6E/i.test(dm.html),
+        "invitation directe : « Rejoindre CRMlead » en vert",
+      );
+      await Promise.all([ctx.close(), d.close()]);
+    },
+  );
+
 await step(
   "CRM-EXISTING-APP-ACCOUNTS-EMAILS : comptes ouverts depuis InvoiceLead avant le lot, rendus muets par 113",
   async () => {
@@ -950,6 +1271,37 @@ await step(
     });
     expect(dr.ok(), `inscription directe ${dr.status()}`);
     await dc.close();
+    // Inscrite sur CRMlead (son écran de bienvenue vu), puis InvoiceLead ouvert dans le quart d'heure, sans vrai
+    // lead : une utilisatrice directe de CRMlead, jamais rendue muette.
+    const welcomed = mail("direct-then-il");
+    const wc = await browser.newContext({ locale: "fr-CH" });
+    const wp = await wc.newPage();
+    await wp.goto(`${CRM}/signup`);
+    await wp.fill("#auth-account", "E2E5 direct puis InvoiceLead");
+    await wp.fill("#auth-name", "Eve");
+    await wp.fill("#auth-email", welcomed);
+    await wp.fill("#auth-password", PASS);
+    await wp.locator("form button").last().click();
+    await waitAt(wp, `${CRM}/bienvenue`, "écran de bienvenue de CRMlead");
+    const marked = () =>
+      crmq(
+        `select count(*) from onboarding_marks o join users u on u.id = o.user_id where u.email = '${welcomed}'`,
+      ) !== "0";
+    for (let i = 0; i < 40 && !marked(); i++) await sleep(250);
+    expect(marked(), "bienvenue de CRMlead non relevée");
+    await wp.goto(`${IL}/auth/lead/start?locale=fr`);
+    await waitAt(wp, `${IL}/fr/app`, "InvoiceLead ouvert dans la foulée");
+    await wc.close();
+    // Ouvert depuis InvoiceLead avant le lot, notifications réglées par la personne : son choix reste.
+    const handSet = await make("legacy-hand-set", false);
+    backdate(handSet);
+    const ch = await signedIn(handSet);
+    const hs = await ch.request.put(`${CRM}/api/notifications/prefs`, {
+      data: { digest: "weekly" },
+      headers: { origin: CRM },
+    });
+    expect(hs.ok(), `récapitulatif hebdomadaire choisi : ${hs.status()}`);
+    await ch.close();
     const replay = () =>
       execFileSync("psql", [
         "-U",
@@ -976,6 +1328,14 @@ await step(
     expect(!/false/.test(prefs(kept)), `compte CRMlead avec un vrai lead : ${prefs(kept)}`);
     expect(!/^off|false\|/.test(prefs(tipsOn)), `conseils rallumés : ${prefs(tipsOn)}`);
     expect(!/false/.test(prefs(direct)), `compte CRMlead direct : ${prefs(direct)}`);
+    expect(
+      !/off|false/.test(prefs(welcomed)),
+      `inscrite sur CRMlead puis InvoiceLead : ${prefs(welcomed)}`,
+    );
+    expect(
+      /^weekly\|true\|/.test(prefs(handSet)) && !/false/.test(prefs(handSet)),
+      `notifications réglées par la personne : ${prefs(handSet)}`,
+    );
     // Rejouée, 113 ne repasse jamais sur un compte traité : le rapport du lundi rallumé reste.
     const cq = await signedIn(quiet);
     const wr = await cq.request.put(`${CRM}/api/notifications/prefs`, {
@@ -1660,10 +2020,14 @@ else {
       ).map((l) => `${l.rel}=${(l.getAttribute("href") ?? "").slice(0, 24)}`),
       text: document.body.innerText.replace(/\s+/g, " "),
     }));
+  // L'icône des quatre carrés, et celle d'écran d'accueil de l'iPhone qui la reprend (sans elle, Safari prenait
+  // /apple-touch-icon.png, le « CL » de CRMlead) ; rien d'autre.
   const neutralHead = (h) =>
     !/CRMlead/.test(h.title) &&
-    h.links.length > 0 &&
-    h.links.every((l) => l.startsWith("icon=data:image/svg"));
+    h.links.some((l) => l.startsWith("icon=data:image/svg")) &&
+    h.links.every(
+      (l) => l.startsWith("icon=data:image/svg") || l === "apple-touch-icon=/lead-touch-icon.png",
+    );
   const crmHead = (h) =>
     /CRMlead/.test(h.title) &&
     h.links.some((l) => l.includes("favicon-32")) &&
