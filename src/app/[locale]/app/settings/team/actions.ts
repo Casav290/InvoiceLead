@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { z } from "zod";
+import { isSingleLine } from "@/lib/single-line";
 import { requirePermission } from "@/server/auth/guard";
 import { pickLocale } from "@/server/auth/login-cookie";
 import { db } from "@/server/db";
@@ -95,7 +96,8 @@ export type MemberInviteState = {
 
 const memberInput = z.object({
   email: z.email().max(254),
-  name: z.string().trim().min(1).max(120),
+  // Une seule ligne : le nom part dans l'email d'invitation du Compte Lead (single-line.ts).
+  name: z.string().trim().min(1).max(120).refine(isSingleLine),
 });
 
 /**

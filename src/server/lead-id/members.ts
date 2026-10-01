@@ -1,4 +1,5 @@
 import "server-only";
+import { isSingleLine } from "@/lib/single-line";
 import { env } from "../env";
 
 /**
@@ -32,6 +33,8 @@ export type MemberInvite = {
 
 export type InviteOutcome =
   | { status: "invited" }
+  /** Nom vide ou sur plusieurs lignes : rien n'est demandé au Compte Lead. */
+  | { status: "invalid" }
   /** Déjà invitée, pas encore arrivée : l'invitation est renvoyée (l'ancien lien cesse de valoir). */
   | { status: "resent" }
   /** Invitation enregistrée, mais l'email n'est pas parti : un nouvel essai la renverra. */
@@ -112,6 +115,9 @@ function refused(answer: Answer): InviteOutcome {
 export async function inviteMember(invite: MemberInvite): Promise<InviteOutcome> {
   const { idToken, ...body } = invite;
   if (!idToken) return { status: "failed" };
+  // Le nom finit dans l'email d'invitation : une seule ligne, jamais un paragraphe (ni un lien seul
+  // sur sa ligne) glissé dans le corps du message.
+  if (!body.name.trim() || !isSingleLine(body.name)) return { status: "invalid" };
   try {
     const answer = await post("/api/lead-id/v1/members/invite", body, idToken);
     if (!answer) return { status: "failed" };
