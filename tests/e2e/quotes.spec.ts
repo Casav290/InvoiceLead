@@ -32,10 +32,31 @@ test("devis : émission, acceptation puis transformation en facture", async ({ p
 
   await page.getByTestId("quote-accept").click();
   await expect(page.getByTestId("document-status")).toHaveText("Angenommen");
+  const order = await page.request.get(
+    (await page.getByTestId("document-order").getAttribute("href")) ?? "",
+  );
+  expect(order.headers()["content-type"]).toBe("application/pdf");
+  expect(order.headers()["content-disposition"]).toContain(`Auftragsbest`);
+  const delivery = await page.request.get(
+    (await page.getByTestId("document-delivery").getAttribute("href")) ?? "",
+  );
+  expect(delivery.headers()["content-disposition"]).toContain(`Lieferschein-LS-${year}-0001.pdf`);
+
+  // Anzahlung 50 % : brouillon de facture, émis, puis déduit de la facture finale.
+  await page.getByLabel("Anzahlung in %").fill("50");
+  await page.getByTestId("deposit-create").click();
+  await expect(page).toHaveURL(/\/de\/app\/invoices\/[0-9a-f-]+\?saved=1$/);
+  await expect(page.getByTestId("invoice-totals")).toContainText("81.08");
+  await page.getByTestId("document-issue").click();
+  await page.getByRole("link", { name: "Ursprüngliche Offerte anzeigen" }).click();
+  await expect(page.getByTestId("deposits")).toContainText(`${year}-0001`);
   await page.getByTestId("quote-convert").click();
   await expect(page).toHaveURL(/\/de\/app\/invoices\/[0-9a-f-]+\?converted=1$/);
   await expect(page.getByText("Rechnungsentwurf aus der Offerte erstellt.")).toBeVisible();
-  await expect(page.getByTestId("invoice-totals")).toContainText("162.15");
+  await expect(page.getByTestId("invoice-totals")).toContainText("75.00");
+  await expect(page.locator('[name="line.description"]').nth(1)).toHaveValue(
+    `Abzüglich Anzahlungsrechnung ${year}-0001`,
+  );
 
   await page.getByRole("link", { name: "Offerten" }).click();
   await expect(page.getByRole("row", { name: new RegExp(`O-${year}-0001`) })).toContainText(

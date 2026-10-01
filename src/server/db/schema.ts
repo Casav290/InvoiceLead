@@ -381,6 +381,8 @@ export const invoices = pgTable(
     externalRef: text("external_ref"),
     /** Projet facturé (heures reprises du suivi du temps). */
     projectId: uuid("project_id"),
+    /** Facture d'acompte sur un devis (`source_quote_id`), déduite de la facture finale. */
+    deposit: boolean("deposit").notNull().default(false),
     issuedAt: timestamp("issued_at", { withTimezone: true }),
     createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
     createdAt: createdAt(),

@@ -232,6 +232,13 @@
       "when": 1790815746050,
       "tag": "0032_projects_time",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1790817976402,
+      "tag": "0033_invoice_deposit",
+      "breakpoints": true
     }
   ]
 }
