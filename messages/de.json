@@ -112,7 +112,8 @@
       "complete": "Ergänzen",
       "done": "Erledigt",
       "start": "Starten",
-      "forbidden": "Ihre Rolle erlaubt diese Aktion nicht. Eine verantwortliche Person kann sie in den Team-Einstellungen ändern."
+      "forbidden": "Ihre Rolle erlaubt diese Aktion nicht. Eine verantwortliche Person kann sie in den Team-Einstellungen ändern.",
+      "askBooks": "Fragen Sie Ihre Buchhaltung"
     },
     "noAccess": {
       "title": "Ihr Abo enthält InvoiceLead nicht",
@@ -1417,7 +1418,8 @@
         "tooMany": "Höchstzahl erreicht.",
         "url": "Ungültige Adresse: https zu einem öffentlichen Server, ohne Zugangsdaten.",
         "events": "Wählen Sie mindestens ein Ereignis."
-      }
+      },
+      "mcp": "MCP-Server für Claude, ChatGPT oder einen anderen Assistenten: {url}, mit einem API-Schlüssel im Header Authorization."
     },
     "review": {
       "title": "Zu prüfen",
@@ -1632,6 +1634,36 @@
       "recent": "Letzte Belege",
       "all": "Alle Belege",
       "planOnly": "Das Lesen von Belegen ist Teil des Pro-Abos."
+    },
+    "assistant": {
+      "title": "Assistent",
+      "subtitle": "Eine Frage zu Ihren Zahlen, in Alltagssprache. Der Assistent antwortet aus Ihren Büchern und ändert nichts.",
+      "question": "Ihre Frage",
+      "ask": "Fragen",
+      "thinking": "Überlegt …",
+      "disclaimer": "Antwort aus Ihren Büchern zum Zeitpunkt der Frage. Vor wichtigen Entscheiden prüfen.",
+      "suggestions": {
+        "owed": "Wer schuldet mir am meisten?",
+        "result": "Wie steht mein Ergebnis dieses Jahr?",
+        "toPay": "Was muss ich diesen Monat bezahlen?",
+        "unbilled": "Welche Stunden sind noch zu verrechnen?"
+      },
+      "links": {
+        "invoices": "Rechnungen",
+        "reminders": "Mahnungen",
+        "bank": "Bank",
+        "review": "Zu prüfen",
+        "bills": "Kreditoren",
+        "reports": "Bilanz und Erfolgsrechnung",
+        "vat": "MWST",
+        "time": "Projekte"
+      },
+      "errors": {
+        "plan": "Der Assistent ist Teil des Pro-Abos.",
+        "off": "Der KI-Assistent ist noch nicht eingerichtet.",
+        "empty": "Stellen Sie eine Frage.",
+        "failed": "Der Assistent konnte nicht antworten. Bitte gleich nochmals versuchen."
+      }
     }
   },
   "footer": {

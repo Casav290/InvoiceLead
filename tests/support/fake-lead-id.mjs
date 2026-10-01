@@ -248,6 +248,16 @@ createServer(async (req, res) => {
     if (req.headers.authorization !== "Bearer ai_test") return send(res, 401, { error: "key" });
     const body = JSON.parse((await readBody(req)) || "{}");
     const system = String(body.messages?.[0]?.content ?? "");
+    if (system.includes("bookkeeping assistant of InvoiceLead")) {
+      // Assistant : le faux modèle répond avec les chiffres reçus, comme le vrai doit le faire.
+      const { facts } = JSON.parse(String(body.messages?.[1]?.content ?? "{}"));
+      const answer = `Vos clients vous doivent ${facts.company.currency} ${facts.receivables.openTotal.toFixed(2)}, dont ${facts.receivables.overdueTotal.toFixed(2)} en retard.`;
+      return send(res, 200, {
+        choices: [
+          { message: { content: JSON.stringify({ answer, links: ["invoices", "nope"] }) } },
+        ],
+      });
+    }
     if (system.includes("receipts")) {
       // Lecture de justificatif : le faux modèle relit le montant et le fournisseur dans le texte.
       const text = String(body.messages?.[1]?.content ?? "");

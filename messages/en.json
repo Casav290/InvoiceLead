@@ -112,7 +112,8 @@
       "complete": "Complete",
       "done": "Done",
       "start": "Start",
-      "forbidden": "Your role does not allow this action. A manager can change it in the team settings."
+      "forbidden": "Your role does not allow this action. A manager can change it in the team settings.",
+      "askBooks": "Ask your books a question"
     },
     "noAccess": {
       "title": "Your plan does not include InvoiceLead",
@@ -1417,7 +1418,8 @@
         "tooMany": "Maximum reached.",
         "url": "Invalid URL: https to a public server, without credentials.",
         "events": "Choose at least one event."
-      }
+      },
+      "mcp": "MCP server for Claude, ChatGPT or another assistant: {url}, with an API key in the Authorization header."
     },
     "review": {
       "title": "To review",
@@ -1632,6 +1634,36 @@
       "recent": "Latest receipts",
       "all": "All receipts",
       "planOnly": "Reading receipts is part of the Pro plan."
+    },
+    "assistant": {
+      "title": "Assistant",
+      "subtitle": "A question about your numbers, in plain words. The assistant answers from your books and changes nothing.",
+      "question": "Your question",
+      "ask": "Ask",
+      "thinking": "Thinking…",
+      "disclaimer": "Answer drawn from your books at the time of the question. Check it before any important decision.",
+      "suggestions": {
+        "owed": "Who owes me the most?",
+        "result": "How is my result this year?",
+        "toPay": "What do I have to pay this month?",
+        "unbilled": "Which hours are still to invoice?"
+      },
+      "links": {
+        "invoices": "Invoices",
+        "reminders": "Reminders",
+        "bank": "Bank",
+        "review": "To review",
+        "bills": "Suppliers",
+        "reports": "Balance sheet and P&L",
+        "vat": "VAT",
+        "time": "Projects"
+      },
+      "errors": {
+        "plan": "The assistant is part of the Pro plan.",
+        "off": "The AI assistant is not configured yet.",
+        "empty": "Ask a question.",
+        "failed": "The assistant could not answer. Try again in a moment."
+      }
     }
   },
   "footer": {

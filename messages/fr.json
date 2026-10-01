@@ -112,7 +112,8 @@
       "complete": "Compléter",
       "done": "Fait",
       "start": "Commencer",
-      "forbidden": "Votre rôle ne permet pas cette action. Un responsable peut le changer dans les réglages de l'équipe."
+      "forbidden": "Votre rôle ne permet pas cette action. Un responsable peut le changer dans les réglages de l'équipe.",
+      "askBooks": "Posez une question à votre comptabilité"
     },
     "noAccess": {
       "title": "Votre formule n'inclut pas InvoiceLead",
@@ -1417,7 +1418,8 @@
         "tooMany": "Nombre maximal atteint.",
         "url": "Adresse invalide : https vers un serveur public, sans identifiants.",
         "events": "Choisissez au moins un événement."
-      }
+      },
+      "mcp": "Serveur MCP pour Claude, ChatGPT ou un autre assistant : {url}, avec une clé d'API dans l'en-tête Authorization."
     },
     "review": {
       "title": "À vérifier",
@@ -1632,6 +1634,36 @@
       "recent": "Derniers justificatifs",
       "all": "Tous les justificatifs",
       "planOnly": "La lecture des justificatifs fait partie de la formule Pro."
+    },
+    "assistant": {
+      "title": "Assistant",
+      "subtitle": "Une question sur vos chiffres, en langage courant. L'assistant répond à partir de vos livres, sans rien modifier.",
+      "question": "Votre question",
+      "ask": "Demander",
+      "thinking": "Réflexion…",
+      "disclaimer": "Réponse tirée de vos livres à l'instant de la question. À vérifier avant toute décision importante.",
+      "suggestions": {
+        "owed": "Qui me doit le plus ?",
+        "result": "Où en est mon résultat cette année ?",
+        "toPay": "Que dois-je payer ce mois-ci ?",
+        "unbilled": "Quelles heures restent à facturer ?"
+      },
+      "links": {
+        "invoices": "Factures",
+        "reminders": "Relances",
+        "bank": "Banque",
+        "review": "À vérifier",
+        "bills": "Fournisseurs",
+        "reports": "Bilan et résultat",
+        "vat": "TVA",
+        "time": "Projets"
+      },
+      "errors": {
+        "plan": "L'assistant fait partie de la formule Pro.",
+        "off": "L'assistant IA n'est pas encore configuré.",
+        "empty": "Posez une question.",
+        "failed": "L'assistant n'a pas pu répondre. Réessayez dans un instant."
+      }
     }
   },
   "footer": {

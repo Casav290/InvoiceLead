@@ -58,3 +58,20 @@ Corps (POST JSON) :
 Signature : l'en-tête `InvoiceLead-Signature: t=1790000000,v1=…` porte le HMAC-SHA256 hexadécimal de `t` + `.` + corps brut, avec le secret `whsec_…` affiché une fois à la création. Vérifier la signature et refuser un `t` trop ancien (cinq minutes). Les en-têtes `InvoiceLead-Event` et `InvoiceLead-Delivery` donnent le type et l'identifiant de l'envoi, à utiliser pour ignorer un doublon.
 
 Un envoi qui ne reçoit pas de réponse 2xx en cinq secondes est rejoué après 1 minute, 5 minutes, 30 minutes, 2 heures puis 12 heures, puis abandonné. Les reprises partent avec le prochain événement de l'entreprise ou la tâche quotidienne. Les derniers envois et leur état s'affichent sous chaque adresse.
+
+## Serveur MCP
+
+Les assistants compatibles MCP (Model Context Protocol), comme Claude ou ChatGPT, se branchent sur `https://invoicelead.io/api/mcp` avec une clé d'API dans l'en-tête `Authorization: Bearer il_live_…`. Transport HTTP « streamable », réponses JSON, version de protocole 2025-06-18.
+
+| Outil | Rôle |
+|---|---|
+| `get_books_summary` | Instantané des livres : résultat, banque, factures ouvertes et en retard, chiffre d'affaires par mois, clients, fournisseurs à payer, heures non facturées, travail à vérifier |
+| `list_invoices`, `get_invoice` | Lecture des factures, devis et avoirs |
+| `list_contacts`, `create_contact` | Clients et fournisseurs |
+| `create_invoice_draft` | Brouillon de facture ou de devis, TVA calculée par InvoiceLead |
+| `issue_invoice` | Émission, seulement à la demande explicite de la personne |
+| `record_payment` | Paiement reçu |
+| `list_supplier_bills` | Factures fournisseurs |
+| `list_projects`, `log_time` | Projets et saisie du temps |
+
+Les outils d'écriture portent `readOnlyHint: false`. Les mêmes règles que dans l'application s'appliquent (droits de la personne qui a créé la clé, formule Pro+, comptabilisation et webhooks après chaque écriture).

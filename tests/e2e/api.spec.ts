@@ -125,4 +125,31 @@ test("API Pro+ : clé, contact, facture émise et payée, PDF, webhooks signés"
 
   await page.reload();
   await expect(page.getByTestId("webhook-delivery").first()).toContainText("livré");
+
+  // Le même accès sert au serveur MCP (Claude, ChatGPT…).
+  const mcp = async (body: object) =>
+    api.post("/api/mcp", {
+      headers: { ...headers, Accept: "application/json, text/event-stream" },
+      data: body,
+    });
+  const init = await mcp({
+    jsonrpc: "2.0",
+    id: 1,
+    method: "initialize",
+    params: { protocolVersion: "2025-06-18", capabilities: {} },
+  });
+  expect((await init.json()).result.serverInfo.name).toBe("invoicelead");
+  expect((await mcp({ jsonrpc: "2.0", method: "notifications/initialized" })).status()).toBe(202);
+  const summary = await (
+    await mcp({
+      jsonrpc: "2.0",
+      id: 2,
+      method: "tools/call",
+      params: { name: "list_invoices", arguments: {} },
+    })
+  ).json();
+  expect(summary.result.structuredContent.items[0]).toMatchObject({ number, openCents: 0 });
+  expect(
+    (await api.post("/api/mcp", { data: { jsonrpc: "2.0", id: 3, method: "ping" } })).status(),
+  ).toBe(401);
 });
