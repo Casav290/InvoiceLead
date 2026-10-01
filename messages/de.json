@@ -1384,7 +1384,26 @@
       "noSeat": "ohne Platz",
       "save": "Speichern",
       "saved": "Rolle gespeichert.",
-      "addHint": "Um eine Person hinzuzufügen, laden Sie sie im Lead-Konto in Ihre Organisation ein. Sie erscheint hier nach ihrer ersten Anmeldung.",
+      "addHint": "Nur die Administratorin oder der Administrator der Organisation fügt neue Personen hinzu. Sie erhalten eine E-Mail und landen direkt in InvoiceLead.",
+      "memberInvite": {
+        "title": "Person hinzufügen",
+        "hint": "Sie erhält eine Einladung per E-Mail und landet direkt in InvoiceLead, sobald ihr Zugang aktiviert ist.",
+        "name": "Name",
+        "email": "E-Mail-Adresse",
+        "submit": "Einladen",
+        "sent": "Einladung an {email} gesendet.",
+        "resent": "Einladung erneut an {email} gesendet.",
+        "upgrade": "Zu einem Abo mit mehr Plätzen wechseln",
+        "errors": {
+          "invalid": "Geben Sie einen Namen und eine gültige E-Mail-Adresse an.",
+          "adminOnly": "Nur die Administratorin oder der Administrator der Organisation fügt neue Personen hinzu.",
+          "seatLimit": "Alle Plätze Ihres Abos sind belegt.",
+          "alreadyMember": "Diese Adresse hat bereits einen Lead-Zugang, in Ihrer Organisation oder in einer anderen.",
+          "failed": "Die Einladung konnte nicht gesendet werden. Versuchen Sie es gleich noch einmal.",
+          "notSent": "Die Einladung ist gespeichert, aber die E-Mail konnte nicht gesendet werden. Versuchen Sie es erneut: Sie wird nochmals gesendet.",
+          "tooMany": "Zu viele Einladungen innerhalb einer Stunde. Versuchen Sie es später erneut."
+        }
+      },
       "fiduciaryTitle": "Treuhand",
       "fiduciaryHint": "Ihre Treuhand greift kostenlos mit ihrem eigenen Lead-Konto auf die Buchhaltung zu (Bank, Belege, Journal, MWST, Abschluss). Rechnungen sieht sie, ohne sie ändern zu können.",
       "fiduciaryEmail": "E-Mail-Adresse der Treuhand",

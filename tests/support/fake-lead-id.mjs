@@ -6,6 +6,7 @@
  *   node tests/support/fake-lead-id.mjs            (port 4010)
  *   POST /test/next-user  {sub,email,name,org,org_name,org_role,access,plan,status}  choisit la prochaine personne
  *   POST /resend/emails   imite l'API d'envoi de Resend (clé « re_test ») ; GET /test/emails les relit
+ *   POST /api/lead-id/v1/members/invite  invitation dans l'organisation ; GET /test/member-invites les relit
  *   POST /ai/chat/completions  faux assistant comptable : chaque sortie d'argent va en frais bancaires
  */
 import { createHash, createSign, generateKeyPairSync, randomBytes } from "node:crypto";
@@ -34,6 +35,9 @@ const defaultUser = {
 let nextUser = { ...defaultUser };
 const codes = new Map();
 const logouts = [];
+const memberInvites = [];
+const memberResends = [];
+const MEMBERS_TOKEN = "members-token";
 
 const b64url = (v) =>
   Buffer.from(typeof v === "string" ? v : JSON.stringify(v)).toString("base64url");
@@ -101,6 +105,17 @@ createServer(async (req, res) => {
       return send(res, 401, { error: "invalid_client" });
     }
     const form = new URLSearchParams(await readBody(req));
+    // Jeton d'application (portée « members » : invitations dans l'organisation).
+    if (form.get("grant_type") === "client_credentials") {
+      if (!(form.get("scope") ?? "").split(" ").includes("members"))
+        return send(res, 400, { error: "invalid_scope" });
+      return send(res, 200, {
+        access_token: MEMBERS_TOKEN,
+        token_type: "Bearer",
+        expires_in: 600,
+        scope: "members",
+      });
+    }
     const entry = codes.get(form.get("code"));
     codes.delete(form.get("code"));
     if (!entry || Date.now() - entry.at > 120_000)
@@ -185,6 +200,38 @@ createServer(async (req, res) => {
     res.writeHead(302, { Location: q.get("post_logout_redirect_uri") ?? "/" });
     return res.end();
   }
+
+  // Invitation d'une personne dans l'organisation (mêmes réponses que le Compte Lead) : places pleines
+  // si l'adresse commence par « plein », compte actif si elle commence par « actif », invitation
+  // renvoyée si elle a déjà été invitée.
+  if (url.pathname === "/api/lead-id/v1/members/invite" && req.method === "POST") {
+    if (req.headers.authorization !== `Bearer ${MEMBERS_TOKEN}`)
+      return send(res, 401, { error: "invalid_token" });
+    const body = JSON.parse((await readBody(req)) || "{}");
+    if (String(body.email).startsWith("plein"))
+      return send(res, 402, { error: "seat_limit", max: 5 });
+    if (String(body.email).startsWith("actif"))
+      return send(res, 409, { error: "already_member", id: "usr_actif", active: true });
+    const known = memberInvites.findIndex((i) => i.email === body.email && i.org === body.org);
+    if (known >= 0)
+      return send(res, 409, { error: "already_member", id: `usr_${known + 1}`, active: false });
+    memberInvites.push(body);
+    return send(res, 201, {
+      id: `usr_${memberInvites.length}`,
+      email: body.email,
+      emailSent: true,
+    });
+  }
+  const resend = /^\/api\/lead-id\/v1\/members\/([^/]+)\/invite$/.exec(url.pathname);
+  if (resend && req.method === "POST") {
+    if (req.headers.authorization !== `Bearer ${MEMBERS_TOKEN}`)
+      return send(res, 401, { error: "invalid_token" });
+    const body = JSON.parse((await readBody(req)) || "{}");
+    memberResends.push({ id: decodeURIComponent(resend[1]), ...body });
+    return send(res, 200, { ok: true });
+  }
+  if (url.pathname === "/test/member-invites")
+    return send(res, 200, { invites: memberInvites, resends: memberResends });
 
   if (url.pathname === "/test/next-user" && req.method === "POST") {
     nextUser = { ...defaultUser, ...JSON.parse((await readBody(req)) || "{}") };

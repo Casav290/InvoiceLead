@@ -1384,7 +1384,26 @@
       "noSeat": "no seat",
       "save": "Save",
       "saved": "Role saved.",
-      "addHint": "To add someone, invite them to your organisation from the Lead account. They appear here after their first login.",
+      "addHint": "Only the organisation's administrator adds new people. They receive an email and land directly in InvoiceLead.",
+      "memberInvite": {
+        "title": "Add someone",
+        "hint": "They receive an invitation email and land directly in InvoiceLead once their access is activated.",
+        "name": "Name",
+        "email": "Email address",
+        "submit": "Invite",
+        "sent": "Invitation sent to {email}.",
+        "resent": "Invitation sent again to {email}.",
+        "upgrade": "Switch to a plan with more seats",
+        "errors": {
+          "invalid": "Enter a name and a valid email address.",
+          "adminOnly": "Only the organisation's administrator adds new people.",
+          "seatLimit": "All the seats in your plan are taken.",
+          "alreadyMember": "This address already has Lead access, in your organisation or in another one.",
+          "failed": "The invitation could not be sent. Try again in a moment.",
+          "notSent": "The invitation is saved, but the email could not be sent. Try again: it will be sent again.",
+          "tooMany": "Too many invitations within an hour. Try again later."
+        }
+      },
       "fiduciaryTitle": "Fiduciary",
       "fiduciaryHint": "Your fiduciary gets free access to the accounting (bank, receipts, journal, VAT, year-end closing) with their own Lead account. They can see invoices but cannot change them.",
       "fiduciaryEmail": "Fiduciary's email address",

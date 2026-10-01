@@ -3,6 +3,7 @@ import { getTranslations } from "next-intl/server";
 import { PlanNotice } from "@/components/app/PlanNotice";
 import { fieldClass } from "@/components/forms/fields";
 import { FiduciaryInvite } from "@/components/settings/FiduciaryInvite";
+import { MemberInvite } from "@/components/settings/MemberInvite";
 import { SettingsNav } from "@/components/settings/SettingsNav";
 import { Button } from "@/components/ui/button";
 import { formatDate } from "@/lib/fiscal-year";
@@ -106,7 +107,13 @@ export default async function TeamPage({ params, searchParams }: Props) {
             );
           })}
         </ul>
-        <p className="border-t border-line px-5 py-3 text-[13px] text-ink-muted">{t("addHint")}</p>
+        {editable && membership.role === "admin" ? (
+          <MemberInvite locale={locale} />
+        ) : (
+          <p className="border-t border-line px-5 py-3 text-[13px] text-ink-muted">
+            {t("addHint")}
+          </p>
+        )}
       </section>
 
       <section className="mt-8 border border-line-strong bg-panel" data-testid="team-fiduciary">

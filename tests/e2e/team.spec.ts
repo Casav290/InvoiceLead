@@ -87,6 +87,82 @@ test("équipe : rôle d'un utilisateur, invitation et accès d'une fiduciaire", 
   await fiduContext.close();
 });
 
+test("équipe : l'administrateur invite une personne depuis InvoiceLead", async ({ page }) => {
+  const run = Date.now();
+  const org = `org-add-${run}`;
+  await login(page, "fr", {
+    sub: `sub-add-${run}`,
+    email: `add-${run}@atelier.test`,
+    org,
+    org_name: "Ajout Sàrl",
+    plan: "proplus",
+  });
+  await page.goto("/fr/app/settings/team");
+  const form = page.getByTestId("member-invite");
+  await expect(form).toContainText("Ajouter une personne");
+  const colleague = `coll-${run}@atelier.test`;
+  await form.getByLabel("Nom").fill("Léa Collègue");
+  await form.getByLabel("Adresse e-mail").fill(colleague);
+  await page.getByTestId("member-invite-submit").click();
+  await expect(form.getByRole("status")).toHaveText(`Invitation envoyée à ${colleague}.`);
+  type Sent = { invites: Record<string, string>[]; resends: Record<string, string>[] };
+  const sent = async () =>
+    (await (await page.request.get(`${LEAD}/test/member-invites`)).json()) as Sent;
+  expect((await sent()).invites.at(-1)).toEqual({
+    org,
+    inviter: `sub-add-${run}`,
+    email: colleague,
+    name: "Léa Collègue",
+    locale: "fr",
+  });
+
+  // Déjà invitée, pas encore arrivée : l'invitation est renvoyée.
+  await form.getByLabel("Nom").fill("Léa Collègue");
+  await form.getByLabel("Adresse e-mail").fill(colleague);
+  await page.getByTestId("member-invite-submit").click();
+  await expect(form.getByRole("status")).toHaveText(`Invitation renvoyée à ${colleague}.`);
+  expect((await sent()).resends.at(-1)).toMatchObject({
+    org,
+    inviter: `sub-add-${run}`,
+    locale: "fr",
+  });
+
+  // Adresse qui a déjà un accès Lead : l'écran le dit et garde la saisie.
+  await form.getByLabel("Nom").fill("Actif");
+  await form.getByLabel("Adresse e-mail").fill(`actif-${run}@atelier.test`);
+  await page.getByTestId("member-invite-submit").click();
+  await expect(form.getByRole("alert")).toContainText("a déjà un accès Lead");
+  await expect(form.getByLabel("Adresse e-mail")).toHaveValue(`actif-${run}@atelier.test`);
+
+  // Plus de place dans la formule : lien vers une formule plus grande.
+  await form.getByLabel("Nom").fill("Plein");
+  await form.getByLabel("Adresse e-mail").fill(`plein-${run}@atelier.test`);
+  await page.getByTestId("member-invite-submit").click();
+  await expect(form.getByRole("alert")).toContainText("Toutes les places de votre formule");
+  await expect(form.getByRole("link", { name: /plus de places/ })).toHaveAttribute(
+    "href",
+    "https://scanlead.io/billing",
+  );
+});
+
+test("équipe : un responsable qui n'est pas administrateur ne voit pas l'invitation", async ({
+  page,
+}) => {
+  const run = Date.now();
+  await login(page, "fr", {
+    sub: `sub-mgr-${run}`,
+    email: `mgr-${run}@atelier.test`,
+    org: `org-mgr-${run}`,
+    org_role: "manager",
+    plan: "proplus",
+  });
+  await page.goto("/fr/app/settings/team");
+  await expect(page.getByTestId("member-invite")).toHaveCount(0);
+  await expect(page.getByTestId("team-members")).toContainText(
+    "Seul l'administrateur de l'organisation ajoute de nouvelles personnes.",
+  );
+});
+
 test("avis de bêta envoyé depuis le menu", async ({ page }) => {
   const run = Date.now();
   await login(page, "fr", {

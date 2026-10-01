@@ -1384,7 +1384,26 @@
       "noSeat": "sans place",
       "save": "Enregistrer",
       "saved": "Rôle enregistré.",
-      "addHint": "Pour ajouter une personne, invitez-la dans votre organisation depuis le Compte Lead. Elle apparaît ici après sa première connexion.",
+      "addHint": "Seul l'administrateur de l'organisation ajoute de nouvelles personnes. Elles reçoivent un e-mail et arrivent directement dans InvoiceLead.",
+      "memberInvite": {
+        "title": "Ajouter une personne",
+        "hint": "Elle reçoit un e-mail d'invitation et arrive directement dans InvoiceLead une fois son accès activé.",
+        "name": "Nom",
+        "email": "Adresse e-mail",
+        "submit": "Inviter",
+        "sent": "Invitation envoyée à {email}.",
+        "resent": "Invitation renvoyée à {email}.",
+        "upgrade": "Passer à une formule avec plus de places",
+        "errors": {
+          "invalid": "Indiquez un nom et une adresse e-mail valide.",
+          "adminOnly": "Seul l'administrateur de l'organisation ajoute de nouvelles personnes.",
+          "seatLimit": "Toutes les places de votre formule sont prises.",
+          "alreadyMember": "Cette adresse a déjà un accès Lead, dans votre organisation ou dans une autre.",
+          "failed": "L'invitation n'a pas pu partir. Réessayez dans un instant.",
+          "notSent": "L'invitation est enregistrée, mais l'e-mail n'a pas pu partir. Réessayez : il sera renvoyé.",
+          "tooMany": "Trop d'invitations en une heure. Réessayez plus tard."
+        }
+      },
       "fiduciaryTitle": "Fiduciaire",
       "fiduciaryHint": "Votre fiduciaire accède gratuitement à la comptabilité (banque, justificatifs, journal, TVA, clôture) avec son propre Compte Lead. Elle voit les factures sans pouvoir les modifier.",
       "fiduciaryEmail": "Adresse e-mail de la fiduciaire",
