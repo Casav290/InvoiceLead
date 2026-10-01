@@ -826,7 +826,7 @@
         }
       },
       "remindersLink": "Payment reminders",
-      "reminderLine": "{level, select, 1 {1st reminder} 2 {2nd reminder} other {Final reminder}} on {date} ({channel, select, email {email} other {post}})",
+      "reminderLine": "{level, select, 0 {Friendly reminder} 1 {1st reminder} 2 {2nd reminder} other {Final reminder}} on {date} ({channel, select, email {email} other {post}})",
       "recurringLink": "Recurring",
       "recurring": {
         "title": "Make recurring",
@@ -1208,7 +1208,7 @@
         "failed": "Sending failed. Try again later."
       },
       "empty": "No reminders to send today.",
-      "line": "{level, select, 1 {1st reminder} 2 {2nd reminder} other {Final reminder}} · {days} days overdue · due on {due}",
+      "line": "{level, select, 0 {Friendly reminder} 1 {1st reminder} 2 {2nd reminder} other {Final reminder}} · {days, plural, =0 {due today} other {{days} days late}} · due {due}",
       "noEmail": "no email",
       "send": "Send",
       "markManual": "Mark as sent (post)",
@@ -1220,7 +1220,9 @@
         "body1": "Hello,\n\nUnless we are mistaken, our invoice {number}, due on {due}, has not been paid yet. The outstanding amount is {currency} {amount}.\n\nIf payment is already on its way, please disregard this message.\n\nKind regards\n{company}",
         "body2": "Hello,\n\nDespite our first reminder, our invoice {number}, due on {due}, remains unpaid. Please pay the outstanding amount of {currency} {amount} within 10 days.\n\nKind regards\n{company}",
         "body3": "Hello,\n\nOur invoice {number}, due on {due}, is still unpaid despite our reminders. Please pay the outstanding amount of {currency} {amount} within 10 days. Without payment, we will have to take further steps.\n\nKind regards\n{company}",
-        "charges": "Open invoice amount: {currency} {open}\nReminder fees and late payment interest: {currency} {charges}\nTotal due: {currency} {total}"
+        "charges": "Open invoice amount: {currency} {open}\nReminder fees and late payment interest: {currency} {charges}\nTotal due: {currency} {total}",
+        "subject0": "Friendly reminder: invoice {number} from {company} due soon",
+        "body0": "Hello,\n\nA friendly reminder: our invoice {number} is due on {due}. The amount is {currency} {amount}.\n\nIf the payment is already on its way, thank you very much and please disregard this message.\n\nKind regards\n{company}"
       },
       "chargesLine": "Invoice open {open} · fee {fee} · interest {interest} · already charged {before}",
       "settings": {
@@ -1245,7 +1247,18 @@
           "invalidFee": "Invalid fee (a positive amount, at most two decimals).",
           "invalidRate": "Invalid rate (between 0 and 20%, for example 5)."
         }
-      }
+      },
+      "courtesyLine": "Friendly reminder before the due date ({due})",
+      "profile": {
+        "late": "usually pays {days} days after the due date",
+        "reliable": "pays on time",
+        "normal": "usually pays {days} days after the due date"
+      },
+      "forecastTitle": "Expected payments",
+      "forecastHint": "Open invoices, on the date each customer usually pays.",
+      "week": "Week of {date}",
+      "later": "Later",
+      "forecastEmpty": "No open invoices."
     },
     "recurring": {
       "title": "Recurring invoices",

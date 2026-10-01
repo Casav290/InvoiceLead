@@ -34,6 +34,8 @@ test("relances : facture échue proposée, relance notée, historique sur la fac
   await row.getByRole("button", { name: "Noter comme envoyée (courrier)" }).click();
   await expect(page.getByText("Relance notée comme envoyée.")).toBeVisible();
   await expect(page.getByText("Aucune relance à faire aujourd'hui.")).toBeVisible();
+  // La facture en retard est attendue cette semaine dans la prévision.
+  await expect(page.getByTestId("forecast-week").first()).toContainText("Semaine du");
   await expect(page.getByTestId("reminder-settings")).toContainText(
     "font partie de la formule Pro",
   );

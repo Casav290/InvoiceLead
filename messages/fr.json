@@ -826,7 +826,7 @@
         }
       },
       "remindersLink": "Relances",
-      "reminderLine": "{level, select, 1 {1re relance} 2 {2e relance} other {Dernière relance}} le {date} ({channel, select, email {e-mail} other {courrier}})",
+      "reminderLine": "{level, select, 0 {Rappel courtois} 1 {1re relance} 2 {2e relance} other {Dernière relance}} le {date} ({channel, select, email {e-mail} other {courrier}})",
       "recurringLink": "Récurrentes",
       "recurring": {
         "title": "Rendre récurrente",
@@ -1208,7 +1208,7 @@
         "failed": "L'envoi a échoué. Réessayez plus tard."
       },
       "empty": "Aucune relance à faire aujourd'hui.",
-      "line": "{level, select, 1 {1re relance} 2 {2e relance} other {Dernière relance}} · {days} jours de retard · échue le {due}",
+      "line": "{level, select, 0 {Rappel courtois} 1 {1re relance} 2 {2e relance} other {Dernière relance}} · {days, plural, =0 {échue aujourd'hui} other {{days} jours de retard}} · échue le {due}",
       "noEmail": "pas d'e-mail",
       "send": "Envoyer",
       "markManual": "Noter comme envoyée (courrier)",
@@ -1220,7 +1220,9 @@
         "body1": "Bonjour,\n\nSauf erreur de notre part, notre facture {number} échue le {due} n'a pas encore été réglée. Le montant ouvert est de {currency} {amount}.\n\nSi le paiement est en cours, merci de ne pas tenir compte de ce message.\n\nMeilleures salutations\n{company}",
         "body2": "Bonjour,\n\nMalgré notre premier rappel, notre facture {number} échue le {due} reste impayée. Nous vous prions de régler le montant ouvert de {currency} {amount} dans les 10 jours.\n\nMeilleures salutations\n{company}",
         "body3": "Bonjour,\n\nNotre facture {number} échue le {due} est toujours impayée malgré nos rappels. Nous vous prions de régler le montant ouvert de {currency} {amount} sous 10 jours. Sans paiement, nous serons contraints d'engager d'autres démarches.\n\nMeilleures salutations\n{company}",
-        "charges": "Montant ouvert de la facture : {currency} {open}\nFrais de rappel et intérêts moratoires : {currency} {charges}\nTotal à régler : {currency} {total}"
+        "charges": "Montant ouvert de la facture : {currency} {open}\nFrais de rappel et intérêts moratoires : {currency} {charges}\nTotal à régler : {currency} {total}",
+        "subject0": "Petit rappel : facture {number} de {company} bientôt échue",
+        "body0": "Bonjour,\n\nPetit rappel amical : notre facture {number} arrive à échéance le {due}. Le montant est de {currency} {amount}.\n\nSi le paiement est déjà en route, merci beaucoup et ne tenez pas compte de ce message.\n\nMeilleures salutations\n{company}"
       },
       "chargesLine": "Facture ouverte {open} · frais {fee} · intérêts {interest} · déjà réclamés {before}",
       "settings": {
@@ -1245,7 +1247,18 @@
           "invalidFee": "Frais invalides (montant positif, au plus deux décimales).",
           "invalidRate": "Taux invalide (entre 0 et 20 %, par exemple 5)."
         }
-      }
+      },
+      "courtesyLine": "Rappel courtois avant l’échéance du {due}",
+      "profile": {
+        "late": "paie en moyenne {days} jours après l’échéance",
+        "reliable": "paie à temps",
+        "normal": "paie en moyenne {days} jours après l’échéance"
+      },
+      "forecastTitle": "Encaissements attendus",
+      "forecastHint": "Factures ouvertes, à la date où chaque client paie d'habitude.",
+      "week": "Semaine du {date}",
+      "later": "Plus tard",
+      "forecastEmpty": "Aucune facture ouverte."
     },
     "recurring": {
       "title": "Factures récurrentes",

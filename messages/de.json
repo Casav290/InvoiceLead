@@ -826,7 +826,7 @@
         }
       },
       "remindersLink": "Mahnungen",
-      "reminderLine": "{level, select, 1 {1. Mahnung} 2 {2. Mahnung} other {Letzte Mahnung}} am {date} ({channel, select, email {E-Mail} other {Post}})",
+      "reminderLine": "{level, select, 0 {Freundliche Erinnerung} 1 {1. Mahnung} 2 {2. Mahnung} other {Letzte Mahnung}} am {date} ({channel, select, email {E-Mail} other {Post}})",
       "recurringLink": "Wiederkehrend",
       "recurring": {
         "title": "Wiederkehrend machen",
@@ -1208,7 +1208,7 @@
         "failed": "Der Versand ist fehlgeschlagen. Versuchen Sie es später erneut."
       },
       "empty": "Heute sind keine Mahnungen fällig.",
-      "line": "{level, select, 1 {1. Mahnung} 2 {2. Mahnung} other {Letzte Mahnung}} · {days} Tage überfällig · fällig seit {due}",
+      "line": "{level, select, 0 {Freundliche Erinnerung} 1 {1. Mahnung} 2 {2. Mahnung} other {Letzte Mahnung}} · {days, plural, =0 {heute fällig} other {{days} Tage überfällig}} · fällig am {due}",
       "noEmail": "keine E-Mail",
       "send": "Senden",
       "markManual": "Als gesendet vermerken (Post)",
@@ -1220,7 +1220,9 @@
         "body1": "Guten Tag\n\nGemäss unserer Buchhaltung ist unsere Rechnung {number}, fällig am {due}, noch offen. Der offene Betrag beträgt {currency} {amount}.\n\nFalls die Zahlung bereits unterwegs ist, betrachten Sie diese Nachricht bitte als gegenstandslos.\n\nFreundliche Grüsse\n{company}",
         "body2": "Guten Tag\n\nTrotz unserer Zahlungserinnerung ist unsere Rechnung {number}, fällig am {due}, weiterhin offen. Wir bitten Sie, den offenen Betrag von {currency} {amount} innert 10 Tagen zu begleichen.\n\nFreundliche Grüsse\n{company}",
         "body3": "Guten Tag\n\nUnsere Rechnung {number}, fällig am {due}, ist trotz unserer Mahnungen noch offen. Bitte begleichen Sie den offenen Betrag von {currency} {amount} innert 10 Tagen. Andernfalls sehen wir uns gezwungen, weitere Schritte einzuleiten.\n\nFreundliche Grüsse\n{company}",
-        "charges": "Offener Rechnungsbetrag: {currency} {open}\nMahngebühren und Verzugszinsen: {currency} {charges}\nZu bezahlen: {currency} {total}"
+        "charges": "Offener Rechnungsbetrag: {currency} {open}\nMahngebühren und Verzugszinsen: {currency} {charges}\nZu bezahlen: {currency} {total}",
+        "subject0": "Freundliche Erinnerung: Rechnung {number} von {company} bald fällig",
+        "body0": "Guten Tag\n\nEine freundliche Erinnerung: Unsere Rechnung {number} wird am {due} fällig. Der Betrag beläuft sich auf {currency} {amount}.\n\nFalls die Zahlung bereits unterwegs ist, herzlichen Dank, und betrachten Sie diese Nachricht als gegenstandslos.\n\nFreundliche Grüsse\n{company}"
       },
       "chargesLine": "Offene Rechnung {open} · Gebühr {fee} · Zinsen {interest} · bereits gefordert {before}",
       "settings": {
@@ -1245,7 +1247,18 @@
           "invalidFee": "Ungültige Gebühr (positiver Betrag, höchstens zwei Nachkommastellen).",
           "invalidRate": "Ungültiger Satz (zwischen 0 und 20 %, zum Beispiel 5)."
         }
-      }
+      },
+      "courtesyLine": "Freundliche Erinnerung vor Fälligkeit am {due}",
+      "profile": {
+        "late": "zahlt im Schnitt {days} Tage nach Fälligkeit",
+        "reliable": "zahlt pünktlich",
+        "normal": "zahlt im Schnitt {days} Tage nach Fälligkeit"
+      },
+      "forecastTitle": "Erwartete Zahlungseingänge",
+      "forecastHint": "Offene Rechnungen, am Tag, an dem der Kunde üblicherweise zahlt.",
+      "week": "Woche vom {date}",
+      "later": "Später",
+      "forecastEmpty": "Keine offenen Rechnungen."
     },
     "recurring": {
       "title": "Wiederkehrende Rechnungen",
