@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
+import { recordElsewhere } from "@/components/app/RecordElsewhere";
 import { ContactForm } from "@/components/contacts/ContactForm";
 import { Button } from "@/components/ui/button";
 import { formatUid } from "@/lib/swiss-ids";
@@ -19,8 +20,20 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function ContactPage({ params }: Props) {
   const { locale, id } = await params;
-  const { organization } = await requireAppSession(locale);
+  const { organization, user } = await requireAppSession(locale);
   const contact = await getContact(db(), organization.id, id);
+  if (!contact) {
+    // Fiche d'une autre entreprise de la personne (fiduciaire) : proposer d'y passer, puis la même fiche.
+    const elsewhere = await recordElsewhere({
+      locale,
+      userId: user.id,
+      organizationId: organization.id,
+      kind: "contact",
+      id,
+      next: `/${locale}/app/contacts/${id}`,
+    });
+    if (elsewhere) return elsewhere;
+  }
   if (!contact || contact.archivedAt) notFound();
   const t = await getTranslations({ locale, namespace: "app.contacts" });
   const initial: Record<string, string> = {

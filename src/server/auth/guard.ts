@@ -10,7 +10,7 @@ import { env } from "../env";
 import { refreshPlan } from "../plan-refresh";
 import { featureAccess } from "../plans";
 import { can, hasAppAccess, isFiduciary, type Permission } from "../roles";
-import { hasSeat } from "../team";
+import { detourOrganization, hasSeat } from "../team";
 import { pickLocale, safeInvite, safeNext } from "./login-cookie";
 import { type CurrentSession, getSession } from "./session";
 
@@ -72,10 +72,48 @@ export async function requireAppSession(locale: string, back?: ReturnTo): Promis
   const session = organization === found.organization ? found : { ...found, organization };
   const problem = await accessProblem(session);
   if (problem) {
-    const reason = problem === "plan" ? "" : `?reason=${problem}`;
-    redirect(`/${pickLocale(locale)}/no-access${reason}`);
+    const lang = pickLocale(locale);
+    const h = await headers();
+    const wanted = appPage(lang, h.get(REQUESTED_PATH_HEADER));
+    // Fiduciaire dont la session est chez un client revenu en formule gratuite : un lien qui désigne
+    // son entreprise (import de son CRMlead, sa pièce, une fiche d'un autre client ouvert) y mène,
+    // comme à la connexion (organizationForPage). Seulement pour une page qu'on ouvre : jamais pour
+    // une action serveur ni un préchargement, qui ne changent pas d'entreprise.
+    if (
+      problem === "fiduciary" &&
+      wanted &&
+      !h.has("next-action") &&
+      !h.has("next-router-prefetch")
+    ) {
+      const moved = await detourOrganization(
+        db(),
+        {
+          id: session.session.id,
+          userId: session.user.id,
+          organizationId: session.organization.id,
+          idToken: session.session.idToken,
+        },
+        wanted,
+      );
+      if (moved) redirect(wanted);
+    }
+    // L'écran « sans accès » garde la page demandée : changer d'entreprise depuis lui y ramène.
+    const q = new URLSearchParams({
+      ...(problem === "plan" ? {} : { reason: problem }),
+      ...(wanted ? { next: wanted } : {}),
+    }).toString();
+    redirect(`/${lang}/no-access${q ? `?${q}` : ""}`);
   }
   return session;
+}
+
+/** Page de l'application dans cette langue (safeNext), ou undefined. */
+export function appPage(locale: string, value: string | null | undefined): string | undefined {
+  const page = safeNext(value);
+  const base = `/${locale}/app`;
+  return page && (page === base || page.startsWith(`${base}/`) || page.startsWith(`${base}?`))
+    ? page
+    : undefined;
 }
 
 /** Comme requireAppSession, et le rôle de la personne permet l'action (roles.ts). */

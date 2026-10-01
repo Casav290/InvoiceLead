@@ -1399,7 +1399,9 @@
       "switch": "Changer d'entreprise",
       "client": "client",
       "goTo": "Passer dans {org}",
-      "documentElsewhere": "Cette pièce appartient à l'entreprise {org}. Passez-y pour l'ouvrir."
+      "documentElsewhere": "Cette pièce appartient à l'entreprise {org}. Passez-y pour l'ouvrir.",
+      "recordElsewhere": "Cette fiche appartient à l'entreprise {org}. Passez-y pour l'ouvrir.",
+      "pageElsewhere": "Cette page concerne l'entreprise {org}. Passez-y pour l'ouvrir."
     },
     "team": {
       "title": "Équipe",

@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { AccountingNav } from "@/components/accounting/AccountingNav";
 import { ProLock } from "@/components/app/ProLock";
+import { recordElsewhere } from "@/components/app/RecordElsewhere";
 import { BillForm } from "@/components/bills/BillForm";
 import { Button } from "@/components/ui/button";
 import { countryPack } from "@/countries";
@@ -51,7 +52,18 @@ export default async function BillPage({ params, searchParams }: Props) {
   const { organization, user } = await requireAppSession(locale);
   const q = await searchParams;
   const bill = await getBill(db(), organization.id, id);
-  if (!bill) notFound();
+  if (!bill) {
+    const elsewhere = await recordElsewhere({
+      locale,
+      userId: user.id,
+      organizationId: organization.id,
+      kind: "bill",
+      id,
+      next: `/${locale}/app/accounting/bills/${id}`,
+    });
+    if (elsewhere) return elsewhere;
+    notFound();
+  }
   const t = await getTranslations({ locale, namespace: "app.bills" });
   const style = countryPack(organization.country).amounts;
   const chart = await listAccounts(db(), organization.id);

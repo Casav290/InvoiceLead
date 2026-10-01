@@ -44,7 +44,9 @@ export async function sendAutopilotDigests(database: Db, today: string): Promise
             approve: s.toApprove,
             review: s.toReview,
             anomalies: s.anomalies,
-            link: `${env().APP_URL}/${locale}/app/accounting/review`,
+            // L'entreprise suit dans le lien : une personne qui travaille aussi chez des clients
+            // (fiduciaire) ouvre la file de revue de CETTE entreprise, pas de la dernière choisie.
+            link: `${env().APP_URL}/${locale}/app/accounting/review?org=${org.id}`,
           }),
         });
         sent += 1;

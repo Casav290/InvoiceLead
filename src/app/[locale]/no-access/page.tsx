@@ -4,7 +4,7 @@ import { getTranslations } from "next-intl/server";
 import { OrgSwitcher } from "@/components/app/OrgSwitcher";
 import { Button } from "@/components/ui/button";
 import { APP_CODE } from "@/server/auth/attach";
-import { accessProblem, requireSession } from "@/server/auth/guard";
+import { accessProblem, appPage, requireSession } from "@/server/auth/guard";
 import { db } from "@/server/db";
 import type { LeadEntitlements } from "@/server/lead-id/leadId";
 import { seatsOf } from "@/server/plans";
@@ -23,12 +23,22 @@ export async function generateMetadata({
   return { title: t("title"), robots: { index: false } };
 }
 
-export default async function NoAccessPage({ params }: { params: Promise<{ locale: string }> }) {
+export default async function NoAccessPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ locale: string }>;
+  searchParams: Promise<{ next?: string | string[] }>;
+}) {
   const { locale } = await params;
-  const session = await requireSession(locale);
+  // Page demandée avant cet écran (requireAppSession) : une page de l'application dans cette langue,
+  // rien d'autre. Changer d'entreprise d'ici y ramène.
+  const raw = (await searchParams).next;
+  const next = appPage(locale, typeof raw === "string" ? raw : undefined);
+  const session = await requireSession(locale, next ? { next } : undefined);
   const { organization } = session;
   const problem = await accessProblem(session);
-  if (!problem) redirect(`/${locale}/app`);
+  if (!problem) redirect(next ?? `/${locale}/app`);
   const t = await getTranslations({ locale, namespace: "app.noAccess" });
   const entitlements = organization.entitlements as LeadEntitlements | null;
   const upgradeUrl = entitlements?.apps?.[APP_CODE]?.upgrade_url ?? DEFAULT_UPGRADE_URL;
@@ -86,6 +96,7 @@ export default async function NoAccessPage({ params }: { params: Promise<{ local
               locale={locale}
               current={{ id: organization.id, name: organization.name }}
               orgs={orgs}
+              next={next}
             />
           </div>
         ) : null}

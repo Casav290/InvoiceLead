@@ -1399,7 +1399,9 @@
       "switch": "Switch company",
       "client": "client",
       "goTo": "Switch to {org}",
-      "documentElsewhere": "This document belongs to the company {org}. Switch to it to open the document."
+      "documentElsewhere": "This document belongs to the company {org}. Switch to it to open the document.",
+      "recordElsewhere": "This record belongs to the company {org}. Switch to it to open the record.",
+      "pageElsewhere": "This page is about the company {org}. Switch to it to open the page."
     },
     "team": {
       "title": "Team",

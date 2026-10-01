@@ -1399,7 +1399,9 @@
       "switch": "Unternehmen wechseln",
       "client": "Kunde",
       "goTo": "Zu {org} wechseln",
-      "documentElsewhere": "Dieser Beleg gehört zum Unternehmen {org}. Wechseln Sie dorthin, um ihn zu öffnen."
+      "documentElsewhere": "Dieser Beleg gehört zum Unternehmen {org}. Wechseln Sie dorthin, um ihn zu öffnen.",
+      "recordElsewhere": "Dieser Eintrag gehört zum Unternehmen {org}. Wechseln Sie dorthin, um ihn zu öffnen.",
+      "pageElsewhere": "Diese Seite betrifft das Unternehmen {org}. Wechseln Sie dorthin, um sie zu öffnen."
     },
     "team": {
       "title": "Team",

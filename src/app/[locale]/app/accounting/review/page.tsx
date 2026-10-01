@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { AccountingNav } from "@/components/accounting/AccountingNav";
 import { ProLock } from "@/components/app/ProLock";
+import { RecordElsewhere } from "@/components/app/RecordElsewhere";
 import { Button } from "@/components/ui/button";
 import { countryPack } from "@/countries";
 import { Link } from "@/i18n/navigation";
@@ -15,6 +16,7 @@ import { db } from "@/server/db";
 import { lockFor } from "@/server/plan-lock";
 import { featureAccess } from "@/server/plans";
 import { can } from "@/server/roles";
+import { organizationAccess } from "@/server/team";
 import { approveReviewAction, autopilotAction, undoAutoAction } from "../actions";
 
 type Props = {
@@ -26,6 +28,8 @@ type Props = {
     approved?: string;
     undone?: string;
     error?: string;
+    /** Entreprise dont parle le lien (récapitulatif du lundi). */
+    org?: string;
   }>;
 };
 
@@ -41,8 +45,23 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
  */
 export default async function ReviewPage({ params, searchParams }: Props) {
   const { locale } = await params;
-  const { organization, membership } = await requireAppSession(locale);
+  const { organization, membership, user } = await requireAppSession(locale);
   const q = await searchParams;
+  // Lien du récapitulatif du lundi : il parle d'une entreprise précise. Session ouverte dans une autre
+  // de ses entreprises : proposer d'y passer, puis la même page. Une entreprise où la personne n'entre
+  // pas n'est ni nommée ni ouverte : la file de la session s'affiche.
+  if (q.org && q.org !== organization.id) {
+    const named = await organizationAccess(db(), user.id, q.org);
+    if (named)
+      return (
+        <RecordElsewhere
+          locale={locale}
+          organization={named}
+          next={`/${locale}/app/accounting/review?org=${named.id}`}
+          message="pageElsewhere"
+        />
+      );
+  }
   const t = await getTranslations({ locale, namespace: "app.review" });
   const style = countryPack(organization.country).amounts;
   const [queue, anomalies, chart] = await Promise.all([
