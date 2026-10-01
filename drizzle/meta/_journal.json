@@ -246,6 +246,13 @@
       "when": 1790818255450,
       "tag": "0034_expense_claims",
       "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1790820273424,
+      "tag": "0035_de_reduced_revenue",
+      "breakpoints": true
     }
   ]
 }
