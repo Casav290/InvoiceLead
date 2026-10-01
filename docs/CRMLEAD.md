@@ -70,4 +70,6 @@ Dès qu'une pièce tirée d'un lead change d'état, InvoiceLead le dépose dans 
             "issue_date": "2026-10-01", "lead_id": "uuid du lead CRMlead" } }
 ```
 
+La langue de `source.url` (`/fr/`, celle de la pièce, donc de son client) n'est qu'une valeur par défaut : InvoiceLead ne sait pas quel membre cliquera. CRMlead réécrit ce premier segment dans la langue de la personne qui regarde la fiche (de ou fr, sinon en, comme le lien d'import), pour que l'interface et l'écran du Compte Lead s'ouvrent dans sa langue.
+
 CRMlead montre ces pièces sur la fiche du lead ; un devis accepté y fait passer le lead en « gagné », au montant hors taxes du devis. Les envois passent par une file (`crmlead_outbox`) : un nouvel état remplace l'envoi pas encore parti, une panne de CRMlead est reprise après 1 min, 5 min, 30 min, 2 h puis 12 h (et par la tâche quotidienne), un lead introuvable ou à la corbeille n'est pas réessayé.
