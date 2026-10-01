@@ -3,7 +3,7 @@ import { AppMark } from "@/components/brand/AppMark";
 import { PublicFooter } from "@/components/public/PublicFooter";
 import { PublicHeader } from "@/components/public/PublicHeader";
 import { Button } from "@/components/ui/button";
-import { Link } from "@/i18n/navigation";
+import { leadLoginHref } from "@/lib/lead-login";
 import { formatAmount, formatMoney, vatOf } from "@/lib/money";
 
 const FEATURES = ["quotes", "qr", "reminders", "accounting", "vat", "team"] as const;
@@ -27,7 +27,7 @@ export default function HomePage() {
               </p>
               <div className="mt-8 flex flex-wrap gap-3">
                 <Button asChild size="lg">
-                  <Link href="/signup">{t("ctaPrimary")}</Link>
+                  <a href={leadLoginHref(locale, true)}>{t("ctaPrimary")}</a>
                 </Button>
                 <Button asChild size="lg" variant="secondary">
                   <a href={`/${locale}#fonctions`}>{t("ctaSecondary")}</a>

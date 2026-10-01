@@ -3,7 +3,7 @@ import { getTranslations } from "next-intl/server";
 import { PublicFooter } from "@/components/public/PublicFooter";
 import { PublicHeader } from "@/components/public/PublicHeader";
 import { Button } from "@/components/ui/button";
-import { Link } from "@/i18n/navigation";
+import { leadLoginHref } from "@/lib/lead-login";
 import { cn } from "@/lib/utils";
 
 type Params = { params: Promise<{ locale: string }> };
@@ -93,9 +93,9 @@ export default async function PricingPage({ params }: Params) {
                   ))}
                 </ul>
                 <Button asChild variant={plan.highlighted ? "primary" : "secondary"}>
-                  <Link href="/signup">
+                  <a href={leadLoginHref(locale, true)}>
                     {plan.key === "free" ? t("cta.free") : t("cta.paid", { plan: name })}
-                  </Link>
+                  </a>
                 </Button>
               </section>
             );

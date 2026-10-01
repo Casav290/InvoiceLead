@@ -1,6 +1,7 @@
 import { useLocale, useTranslations } from "next-intl";
 import { AppMark } from "@/components/brand/AppMark";
 import { Link } from "@/i18n/navigation";
+import { leadLoginHref } from "@/lib/lead-login";
 
 export function PublicFooter() {
   const t = useTranslations("footer");
@@ -34,8 +35,8 @@ export function PublicFooter() {
     {
       heading: t("account"),
       links: [
-        { href: "/login", label: t("login"), internal: true },
-        { href: "/signup", label: t("signup"), internal: true },
+        { href: leadLoginHref(locale), label: t("login"), internal: false },
+        { href: leadLoginHref(locale, true), label: t("signup"), internal: false },
       ],
     },
   ];

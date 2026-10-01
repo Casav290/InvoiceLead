@@ -1,6 +1,7 @@
 import { useLocale, useTranslations } from "next-intl";
 import { AppMark } from "@/components/brand/AppMark";
 import { Link } from "@/i18n/navigation";
+import { leadLoginHref } from "@/lib/lead-login";
 import { LanguageSwitcher } from "./LanguageSwitcher";
 
 /** En-tête public en cellules, commun aux pages publiques (même dessin que Scanlead). */
@@ -37,18 +38,18 @@ export function PublicHeader() {
         </nav>
         <div className="flex w-full flex-wrap items-center justify-between gap-y-2 py-2 sm:ml-auto sm:w-auto sm:flex-nowrap sm:justify-start sm:py-0">
           <LanguageSwitcher className="border-r border-line-strong pr-1 sm:self-stretch sm:px-2" />
-          <Link
-            href="/login"
+          <a
+            href={leadLoginHref(locale)}
             className="border-r border-line-strong px-3 text-center text-[12px] font-semibold text-ink-muted hover:text-ink sm:px-4 sm:py-2 sm:text-[13px]"
           >
             {t("login")}
-          </Link>
-          <Link
-            href="/signup"
+          </a>
+          <a
+            href={leadLoginHref(locale, true)}
             className="ml-2 bg-accent px-3 py-2 text-center text-[12px] font-bold text-white hover:bg-accent-dark sm:ml-3 sm:px-4 sm:text-[13px] sm:whitespace-nowrap"
           >
             {t("cta")}
-          </Link>
+          </a>
         </div>
         <nav className="flex w-full border-t border-line sm:hidden">
           {links.map((link) => (
