@@ -17,7 +17,9 @@
  * - HOST : une connexion Google commencée sur un autre nom du serveur aboutit ;
  * - QUIET : une inscription depuis InvoiceLead porte le repère du rattrapage de 113.
  *
- * Comptes : eve+e2e6-<étape>-<horodatage>@example.test.
+ * Comptes : eve+e2e6-<étape>-<horodatage>@example.test. Un compte ouvert par mot de passe confirme son adresse (son
+ * lien de confirmation) avant de passer par Google : depuis le lot 8, Google ne se rattache plus à une adresse jamais
+ * confirmée (statut unconfirmed de 113).
  */
 // Le travailleur de service de CRMlead passe par le réseau du contexte : couper CRMlead le coupe aussi.
 process.env.PW_EXPERIMENTAL_SERVICE_WORKER_NETWORK_EVENTS = "1";
@@ -224,6 +226,23 @@ if (step("REPLAY")) {
 
 // =============================================================== 2. second facteur dans deux onglets (navigateur)
 const browser = await chromium.launch();
+/** L'adresse confirmée par son lien (jeton posé ici, route de l'écran /verification), comme depuis l'email. */
+async function confirmEmail(f, email) {
+  const token = randomBytes(32).toString("base64url");
+  execFileSync("psql", [
+    "-U",
+    "postgres",
+    "-h",
+    "localhost",
+    "-d",
+    "crmlead_e2e",
+    "-tA",
+    "-c",
+    `select 1 from auth_token_issue('verify', '${email}', '${createHash("sha256").update(token).digest("hex")}', '1 hour'::interval)`,
+  ]);
+  const r = await post(f, "/api/auth/verify", { token });
+  if (r.status !== 200) throw new Error(`confirmation de ${email} : ${r.status}`);
+}
 async function userWith2fa(label) {
   const f = jar();
   const email = mail(label);
@@ -235,6 +254,7 @@ async function userWith2fa(label) {
     locale: "fr",
   });
   if (s.status !== 200) throw new Error(`signup ${s.status}`);
+  await confirmEmail(f, email);
   const { secret } = await (await post(f, "/api/auth/totp/begin", {})).json();
   const conf = await post(f, "/api/auth/totp/confirm", { code: totp(secret) });
   if (conf.status !== 200) throw new Error(`totp confirm ${conf.status} ${await conf.text()}`);
@@ -569,6 +589,7 @@ if (step("HOST")) {
     password: PASS,
     locale: "fr",
   });
+  await confirmEmail(f, persona.email);
   const ctx = await browser.newContext({ locale: "fr-CH" });
   const page = await ctx.newPage();
   await page.goto(`${CRM_HOST.protocol}//127.0.0.1:${CRM_HOST.port}/login`);

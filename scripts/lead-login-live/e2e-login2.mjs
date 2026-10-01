@@ -109,6 +109,9 @@ await step("mot-de-passe-oublie", async () => {
   await page.waitForURL(`${CRM}/login**`);
   await page.getByRole("link", { name: /Mot de passe oublié/ }).click();
   await page.waitForURL(`${CRM}/mot-de-passe?next=**`);
+  // L'adresse change avant l'écran (transition du routeur) : sans cette attente, l'email partait parfois dans le champ
+  // de la connexion qui s'en va, et le formulaire restait vide.
+  await page.getByRole("heading", { name: /Mot de passe oublié/ }).waitFor();
   await page.fill("#auth-email", email);
   await page.locator("form button").last().click();
   await page

@@ -35,6 +35,14 @@
  * d'erreur), IL-FIDU-CRM-IMPORT (lien d'import d'une fiduciaire), CRM-FORGOT-THROTTLE (adresses 192.0.2.x et
  * 198.18-19.x.x en X-Forwarded-For, compteurs effacés ensuite), CRM-113-LEGACY-COLLEAGUES (collègues invités par
  * CRMlead), CRM-MEMBERS-PROOF (preuve de l'administrateur, renvoi) et, avec CRM_GOOGLE, CRM-REAUTH-GOOGLE-2FA.
+ *
+ * Intégration du lot 8 (pile reconstruite) : CRM-BACK-AFTER-DETOUR (Retour depuis la page demandée après un détour par
+ * l'inscription, le mot de passe oublié ou « Se connecter », et avec CRM_GOOGLE après Google), CRM-RESET-2FA (mot de
+ * passe oublié avec la 2FA : le code avant InvoiceLead), IL-CALLBACK-LOGOUT-CSRF (lien vers le retour posé ailleurs),
+ * CRM-SIGNUP-UNKNOWN-APP (client enregistré hors de la liste, serveur de retour lancé par ce script, client effacé
+ * ensuite), dans CRM-LEAD-EMAILS-HTML les carrés de la marque (seul celui de l'application en couleur), et avec
+ * CRM_GOOGLE : CRM-GOOGLE-UNCONFIRMED (compte ouvert d'avance sur une adresse jamais confirmée, puis la session
+ * InvoiceLead de son auteur) et CRM-GOOGLE-INVITED (collègue invité qui passe par Google avant son lien).
  */
 import { execFileSync } from "node:child_process";
 import { createHash, createHmac, hkdfSync, randomBytes, randomUUID } from "node:crypto";
@@ -435,7 +443,8 @@ await step(
       );
       const parked = await p.evaluate((k) => sessionStorage.getItem(`${k}.sso-parked`), K);
       expect(!withApp || !!parked, `${tag} : la demande garée a disparu`);
-      neutralSince(from, tag);
+      // CRMlead direct : l'écran de connexion d'avant (CRMlead, à bon droit) peut encore se redessiner après `from`.
+      neutralSince(from, tag, withApp ? undefined : (e) => e.url.includes("retour="));
       // Réseau revenu : « Erneut versuchen » recharge la même adresse, la page « retour » tranche.
       await ctx.unroute(RETOUR, off);
       await p.getByText("Erneut versuchen").click();
@@ -1170,20 +1179,32 @@ else
           .replace(/<style[\s\S]*?<\/style>/g, "")
           .replace(/<[^>]+>/g, " ")
           .replace(/\s+/g, " ");
-      /** Au nom du Compte Lead : la marque des quatre carrés (hors thème), aucun « CRMlead », la couleur d'InvoiceLead. */
-      const leadMail = (label, m, button) => {
+      /**
+       * Au nom du Compte Lead : la marque des quatre carrés, aucun « CRMlead », la couleur de l'application. Seul le
+       * carré de l'application qui envoie (`lit`) est en couleur ; « CL » reste neutre, jamais blanc sur le vert de
+       * l'icône de CRMlead (lot 8) : la recherche de ce vert porte sur tout l'email, carrés compris.
+       */
+      const leadMail = (label, m, button, lit = "IL") => {
         expect(m, `${label} : aucun email`);
-        const marks = m.html.match(/>(SL|CL|PL|IL)<\/div>/g) ?? [];
-        const h = m.html.replace(
-          /<div style="width:22px;height:22px;[^"]*">(SL|CL|PL|IL)<\/div>/g,
-          "",
-        );
-        expect(marks.length === 4, `${label} : marque de la famille (${marks.length})`);
+        const squares = [...m.html.matchAll(/<div style="([^"]*)">(SL|CL|PL|IL)<\/div>/g)];
+        expect(squares.length === 4, `${label} : marque de la famille (${squares.length})`);
+        for (const [, style, sq] of squares) {
+          const neutral = /background:#fff;border:1px solid #cfcac4;color:#57534e/.test(style);
+          expect(
+            sq === lit ? !neutral && /color:#fff/.test(style) : neutral,
+            `${label} : carré ${sq} ${neutral ? "neutre" : "en couleur"} (${style.slice(0, 70)})`,
+          );
+        }
+        const h = m.html.replace(/<div style="[^"]*">(SL|CL|PL|IL)<\/div>/g, "");
         expect(
-          !/CRMlead/i.test(h + m.text + m.subject) && !/#0E6D6E|#0f6e70/i.test(h),
-          `${label} : ${(h.match(/.{60}(CRMlead|#0E6D6E|#0f6e70).{20}/i) ?? [m.subject])[0]}`,
+          !/CRMlead/i.test(h + m.text + m.subject) && !/#0E6D6E|#0f6e70/i.test(m.html),
+          `${label} : ${(m.html.match(/.{60}(CRMlead|#0E6D6E|#0f6e70).{20}/i) ?? [m.subject])[0]}`,
         );
-        expect(/#7a2e67/i.test(h), `${label} : pas la couleur d'InvoiceLead`);
+        if (lit === "IL") {
+          const il = squares.find((x) => x[2] === "IL")?.[1] ?? "";
+          expect(/background:#7a2e67;color:#fff/i.test(il), `${label} : IL pas en prune (${il})`);
+          expect(/#7a2e67/i.test(h), `${label} : pas la couleur d'InvoiceLead`);
+        }
         if (button) expect(words(h).includes(button), `${label} : bouton « ${button} » absent`);
       };
       const H = { headers: { origin: MAILCAP } };
@@ -1256,6 +1277,23 @@ else
       });
       expect(f.ok(), `mot de passe oublié : ${f.status()}`);
       leadMail("réinitialisation", await mailTo(admin, 2));
+      // ProjectLead : seul « PL » en couleur, toujours sans le vert de CRMlead.
+      const pctx = await browser.newContext();
+      const pl = mail("cap-pl");
+      const sp = await pctx.request.post(`${MAILCAP}/api/auth/signup`, {
+        data: {
+          accountName: "E2E5 PL",
+          name: "Eve",
+          email: pl,
+          password: PASS,
+          locale: "fr",
+          app: "projectlead",
+        },
+        ...H,
+      });
+      expect(sp.ok(), `inscription ProjectLead ${sp.status()}`);
+      leadMail("confirmation ProjectLead", await mailTo(pl), undefined, "PL");
+      await pctx.close();
       // Contrôle : CRMlead ouvert directement garde « Rejoindre CRMlead » et son vert.
       const d = await browser.newContext();
       const direct = mail("cap-direct");
@@ -1271,7 +1309,10 @@ else
       });
       expect(ds.ok(), `inscription directe ${ds.status()}`);
       const dv = await mailTo(direct);
-      expect(dv && /CRMlead/.test(dv.html) && /#0E6D6E/i.test(dv.html), "confirmation directe");
+      expect(
+        dv && /CRMlead/.test(dv.html) && /#0E6D6E/i.test(dv.html) && /icon-192\.png/.test(dv.html),
+        "confirmation directe : CRMlead, son vert et son icône",
+      );
       crmq(
         `insert into lead_subscriptions (account_id, source_app, external_id, app_plan, plan_code, status)
          select account_id, 'scanlead', 'e2e5-capd-${stamp}', 'pro_plus', 'pro_plus', 'active' from users where email = '${direct}'`,
@@ -3010,6 +3051,408 @@ await step(
   },
 );
 
+// ---------- intégration du lot 8 : chaque correction rejouée sur la pile reconstruite ----------
+const B32 = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+/** Code temporel (RFC 6238) d'un secret en base 32, décalé de `offset` périodes de 30 s. */
+function totpCode(secret, offset = 0) {
+  let bits = "";
+  for (const ch of secret.replace(/=+$/, "")) bits += B32.indexOf(ch).toString(2).padStart(5, "0");
+  const key = [];
+  for (let i = 0; i + 8 <= bits.length; i += 8) key.push(Number.parseInt(bits.slice(i, i + 8), 2));
+  const buf = Buffer.alloc(8);
+  buf.writeBigUInt64BE(BigInt(Math.floor(Date.now() / 30000) + offset));
+  const h = createHmac("sha1", Buffer.from(key)).update(buf).digest();
+  const o = h[h.length - 1] & 15;
+  return String((h.readUInt32BE(o) & 0x7fffffff) % 1e6).padStart(6, "0");
+}
+/** Double authentification allumée pour la personne connectée au Compte Lead (`base`) dans `ctx` : son secret. */
+async function enable2fa(ctx, base = CRM) {
+  const post = (path, data = {}) =>
+    ctx.request.post(`${base}${path}`, { data, headers: { origin: base } });
+  const secret = (await (await post("/api/auth/totp/begin")).json()).secret;
+  const on = await post("/api/auth/totp/confirm", { code: totpCode(secret) });
+  expect(on.ok(), `2FA : ${on.status()}`);
+  return secret;
+}
+/** Les adresses où le cadre principal de `page` navigue à partir de maintenant. */
+function navLog(page) {
+  const seen = [];
+  page.on("framenavigated", (f) => {
+    if (f === page.mainFrame()) seen.push(f.url());
+  });
+  return seen;
+}
+/** Lien « nouveau mot de passe » d'un Compte Lead (`base`), avec la demande de l'application s'il y en a une. */
+function resetLinkAt(base, email, next) {
+  const token = randomBytes(32).toString("base64url");
+  crmq(`select 1 from auth_token_issue('reset', '${email}', '${sha(token)}', '1 hour'::interval)`);
+  return `${base}/mot-de-passe?jeton=${token}${next ? `&next=${encodeURIComponent(next)}` : ""}`;
+}
+/** Même demande d'application (son `state`), quel que soit l'encodage des espaces (« + » ou « %20 »). */
+const sameRequest = (a, b) => {
+  const st = (n) =>
+    n?.startsWith("/oauth/authorize?") ? new URLSearchParams(n.split("?")[1]).get("state") : null;
+  return !!st(a) && st(a) === st(b);
+};
+const quietOf = (email) =>
+  crmq(
+    `select coalesce(p.digest, 'défaut') || '|' || coalesce(p.weekly_report::text, 'défaut') from users u
+       left join notification_prefs p on p.user_id = u.id where u.email = '${email}'`,
+  );
+
+await step(
+  "CRM-BACK-AFTER-DETOUR : Retour depuis la page demandée rend la page d'avant, après inscription, mot de passe oublié ou « Se connecter »",
+  async () => {
+    const target = `${IL}/fr/app/invoices?status=open`;
+    const ctx = await newCtx(browser, "fr-CH", "back8");
+    const from = events.length;
+    /** Retour depuis la page demandée : /fr aussitôt, sans repasser par le Compte Lead, la même session. */
+    const backToFr = async (p, label) => {
+      const token = await ilToken(ctx);
+      expect(token, `${label} : pas de session InvoiceLead`);
+      const entries = await p.evaluate(() => history.length);
+      const navs = navLog(p);
+      await p.goBack();
+      await sleep(2500);
+      const trail = navs.join(" -> ");
+      expect(
+        p.url() === `${IL}/fr`,
+        `${label} : Retour mène à ${p.url()} (navigations : ${trail})`,
+      );
+      expect(
+        !navs.some((u) => u.startsWith(CRM)),
+        `${label} : Retour repasse par le Compte Lead (${trail})`,
+      );
+      expect(
+        (await ilToken(ctx)) === token && !sessionGone(token),
+        `${label} : session InvoiceLead remplacée (nouvelle connexion silencieuse)`,
+      );
+      console.log(`  ${label} : historique ${entries} entrées, Retour -> ${p.url()}`);
+    };
+    // 1. Connexion, « Créer un compte », inscription.
+    const p = await ctx.newPage();
+    await p.goto(`${IL}/fr`);
+    await p.goto(target);
+    await waitAt(p, `${CRM}/login?next=`, "inscription : écran du Compte Lead");
+    await p.getByRole("link", { name: "Créer un compte" }).click();
+    await waitAt(p, `${CRM}/signup?next=`, "inscription : écran d'inscription");
+    const who = mail("back8");
+    await p.fill("#auth-account", "E2E5 retour");
+    await p.fill("#auth-name", "Eve E2E5");
+    await p.fill("#auth-email", who);
+    await p.fill("#auth-password", PASS);
+    await p.locator("form button").last().click();
+    await waitAt(p, target, "inscription : arrivée");
+    await backToFr(p, "inscription");
+    await p.close();
+    // 2. Connexion, « Mot de passe oublié ? », « Retour à la connexion », connexion.
+    await ctx.clearCookies();
+    const p2 = await ctx.newPage();
+    await p2.goto(`${IL}/fr`);
+    await p2.goto(target);
+    await waitAt(p2, `${CRM}/login?next=`, "oubli : écran du Compte Lead");
+    await p2.getByRole("link", { name: /Mot de passe oublié/ }).click();
+    await waitAt(p2, `${CRM}/mot-de-passe?next=`, "oubli : mot de passe oublié");
+    await p2.getByRole("heading", { name: /Mot de passe oublié/ }).waitFor();
+    await p2.getByRole("link", { name: /Retour à la connexion/ }).click();
+    await waitAt(p2, `${CRM}/login?next=`, "oubli : retour à la connexion");
+    await passwordLogin(p2, who);
+    await waitAt(p2, target, "oubli : arrivée");
+    await backToFr(p2, "oubli");
+    await p2.close();
+    // 3. « Créer un compte » d'InvoiceLead, puis « Se connecter » sur l'écran d'inscription.
+    await ctx.clearCookies();
+    const p3 = await ctx.newPage();
+    await p3.goto(`${IL}/fr`);
+    await p3.goto(
+      `${IL}/auth/lead/start?locale=fr&signup=1&next=${encodeURIComponent("/fr/app/invoices?status=open")}`,
+    );
+    await waitAt(p3, `${CRM}/signup?next=`, "se connecter : écran d'inscription");
+    await p3.getByRole("link", { name: "Se connecter" }).click();
+    await waitAt(p3, `${CRM}/login?next=`, "se connecter : connexion");
+    // L'adresse change avant l'écran (transition du routeur) : l'inscription a aussi ses champs email et mot de passe.
+    await p3.getByRole("heading", { name: "Connexion" }).waitFor();
+    await passwordLogin(p3, who);
+    await waitAt(p3, target, "se connecter : arrivée");
+    await backToFr(p3, "se connecter");
+    // Témoin : sans détour, comme avant.
+    await ctx.clearCookies();
+    const p4 = await ctx.newPage();
+    await p4.goto(`${IL}/fr`);
+    await p4.goto(target);
+    await waitAt(p4, `${CRM}/login?next=`, "témoin : écran du Compte Lead");
+    await passwordLogin(p4, who);
+    await waitAt(p4, target, "témoin : arrivée");
+    await backToFr(p4, "témoin");
+    neutralSince(from, "back8", (e) => /next=|\/oauth\//.test(e.url));
+    await ctx.close();
+    // CRMlead ouvert directement : les écrans se poussent comme avant, Retour ramène à la connexion.
+    const d = await browser.newContext({ locale: "fr-CH" });
+    const dp = await d.newPage();
+    await dp.goto(`${CRM}/login`);
+    await dp.waitForSelector("#auth-password");
+    for (const [link, path] of [
+      ["Créer un compte", "/signup"],
+      [/Mot de passe oublié/, "/mot-de-passe"],
+    ]) {
+      await dp.getByRole("link", { name: link }).click();
+      await waitAt(dp, `${CRM}${path}`, `direct : ${path}`);
+      await dp.goBack();
+      await dp.waitForURL((u) => u.pathname === "/login", { timeout: 10000 }).catch(() => {});
+      expect(
+        new URL(dp.url()).pathname === "/login",
+        `direct : Retour depuis ${path} mène à ${dp.url()}`,
+      );
+      await dp.waitForSelector("#auth-password");
+    }
+    await d.close();
+  },
+);
+
+await step(
+  "CRM-RESET-2FA : mot de passe oublié avec la 2FA, le code est demandé avant InvoiceLead ; CRMlead direct et sans 2FA inchangés",
+  async () => {
+    // Compte ouvert depuis InvoiceLead, double authentification allumée.
+    const own = await browser.newContext({ locale: "fr-CH" });
+    const who = await signupFromIl(await own.newPage(), "fr", "reset2fa");
+    const secret = await enable2fa(own);
+    await own.close();
+    // Quelqu'un qui a la boîte mail, pas l'authentificateur : InvoiceLead, « Mot de passe oublié ? ».
+    const ctx = await newCtx(browser, "fr-CH", "reset2fa");
+    const from = events.length;
+    const p = await ctx.newPage();
+    await p.goto(`${IL}/fr/app/invoices`);
+    await waitAt(p, `${CRM}/login?next=`, "écran du Compte Lead");
+    await p.getByRole("link", { name: /Mot de passe oublié/ }).click();
+    await waitAt(p, `${CRM}/mot-de-passe?next=`, "mot de passe oublié");
+    // L'adresse change avant l'écran : sans cette attente, l'email partait parfois dans le champ de la connexion.
+    await p.getByRole("heading", { name: /Mot de passe oublié/ }).waitFor();
+    const next = new URL(p.url()).searchParams.get("next");
+    await p.fill("#auth-email", who);
+    await p.locator("form button").last().click();
+    await p.getByText(/le lien vient de partir/).waitFor({ timeout: 10000 });
+    expect(
+      await waitLog(
+        crmLog,
+        new RegExp(
+          `à ${who.replace(/[+.]/g, "\\$&")} — Réinitialiser le mot de passe de votre Compte Lead`,
+        ),
+      ),
+      "email de réinitialisation au nom du Compte Lead",
+    );
+    // Le lien de l'email (même adresse ; le jeton est posé ici), un nouveau mot de passe.
+    const answers = [];
+    p.on("response", (r) => {
+      if (r.url() === `${CRM}/api/auth/reset`) answers.push(r.status());
+    });
+    await p.goto(resetLink(who, next));
+    await p.fill("#auth-password", `${PASS}-n`);
+    await p.locator("form button").last().click();
+    await p
+      .waitForURL((u) => u.href.startsWith(`${CRM}/login?sso=totp`), { timeout: 15000 })
+      .catch(() => {
+        throw new Error(`après le nouveau mot de passe : ${p.url()}`);
+      });
+    await p.locator("#auth-code").waitFor({ timeout: 10000 });
+    expect(answers.join() === "200", `/reset : ${answers.join()}`);
+    expect(
+      !(await leadWho(ctx)),
+      `session du Compte Lead ouverte sans le code : ${await leadWho(ctx)}`,
+    );
+    expect(!(await ilToken(ctx)), "session InvoiceLead ouverte sans le code");
+    expect(
+      sameRequest(new URL(p.url()).searchParams.get("next"), next),
+      `demande perdue : ${p.url()}`,
+    );
+    expect((await p.title()) === "Compte Lead", `écran du code : « ${await p.title()} »`);
+    // Le nouveau mot de passe seul ne coupe pas la 2FA.
+    const off = await ctx.request.post(`${CRM}/api/auth/totp/disable`, {
+      data: { password: `${PASS}-n` },
+      headers: { origin: CRM },
+    });
+    expect(off.status() === 401, `couper la 2FA sans le code : ${off.status()}`);
+    await p.fill("#auth-code", totpCode(secret, 1));
+    await p.getByRole("button", { name: /Valider/ }).click();
+    await waitAt(p, `${IL}/fr/app/invoices`, "après le code");
+    expect((await ilWho(ctx)).startsWith(`${who}|`), `InvoiceLead : ${await ilWho(ctx)}`);
+    neutralSince(from, "reset2fa", (e) => /next=|\/oauth\//.test(e.url));
+    await ctx.close();
+    // CRMlead direct : le lien sans application demande aussi le code, puis ouvre CRMlead.
+    const dOwn = await browser.newContext({ locale: "fr-CH" });
+    const direct = mail("reset2fa-direct");
+    const s = await dOwn.request.post(`${CRM}/api/auth/signup`, {
+      data: {
+        accountName: "E2E5 direct 2FA",
+        name: "Eve",
+        email: direct,
+        password: PASS,
+        locale: "fr",
+      },
+      headers: { origin: CRM },
+    });
+    expect(s.ok(), `inscription directe : ${s.status()}`);
+    const dSecret = await enable2fa(dOwn);
+    await dOwn.close();
+    const dctx = await browser.newContext({ locale: "fr-CH" });
+    const dp = await dctx.newPage();
+    await dp.goto(resetLinkAt(CRM, direct));
+    await dp.fill("#auth-password", `${PASS}-n`);
+    await dp.locator("form button").last().click();
+    await dp
+      .waitForURL((u) => u.href.startsWith(`${CRM}/login?sso=totp`), { timeout: 15000 })
+      .catch(() => {
+        throw new Error(`direct, après le nouveau mot de passe : ${dp.url()}`);
+      });
+    await dp.locator("#auth-code").waitFor({ timeout: 10000 });
+    expect(!(await leadWho(dctx)), "direct : session ouverte sans le code");
+    expect(/CRMlead/.test(await dp.title()), `direct : écran du code « ${await dp.title()} »`);
+    await dp.fill("#auth-code", totpCode(dSecret, 1));
+    await dp.getByRole("button", { name: /Valider/ }).click();
+    await dp.waitForURL(
+      (u) => u.href.startsWith(CRM) && !/^\/(api|login|mot-de-passe)/.test(u.pathname),
+      { timeout: 15000 },
+    );
+    expect((await leadWho(dctx)) === direct, `direct : session ${await leadWho(dctx)}`);
+    await dctx.close();
+    // Sans 2FA, rien ne change : le lien ouvre la session et ramène tout droit sur la page demandée.
+    const pctx = await browser.newContext({ locale: "fr-CH" });
+    const pp = await pctx.newPage();
+    const plain = await signupFromIl(pp, "fr", "reset-plain");
+    await pctx.clearCookies();
+    const { next: n2 } = await ilAuthorize(pctx, "locale=fr&next=%2Ffr%2Fapp%2Fquotes");
+    await pp.goto(resetLink(plain, n2));
+    await pp.fill("#auth-password", `${PASS}-n`);
+    await pp.locator("form button").last().click();
+    await waitAt(pp, `${IL}/fr/app/quotes`, "sans 2FA : arrivée");
+    await pctx.close();
+  },
+);
+
+await step(
+  "IL-CALLBACK-LOGOUT-CSRF : un lien vers le retour posé par un autre site ne déconnecte jamais",
+  async () => {
+    const ctx = await browser.newContext({ locale: "fr-CH" });
+    const p = await ctx.newPage();
+    const who = await signupFromIl(p, "fr", "csrf8");
+    const token = await ilToken(ctx);
+    // L'autre site prend un état scellé par InvoiceLead, sans aucun cookie, et publie le lien du retour.
+    const att = await browser.newContext();
+    const s = await att.request.get(
+      `${IL}/auth/lead/start?locale=fr&fresh=1&retry=1&next=%2Ffr%2Fapp%2Fsettings`,
+      { maxRedirects: 0 },
+    );
+    const state = new URL(s.headers().location ?? "/", IL).searchParams.get("state");
+    await att.close();
+    expect(state, `état : ${s.status()} ${s.headers().location}`);
+    for (const extra of ["", "&code=x"]) {
+      const cleared = [];
+      const watch = (r) => {
+        if (/(^|\n)il_session=;/.test(r.headers()["set-cookie"] ?? "")) cleared.push(r.url());
+      };
+      p.on("response", watch);
+      await p.goto(`${IL}/auth/lead/callback?state=${encodeURIComponent(state)}${extra}`);
+      p.off("response", watch);
+      const u = new URL(p.url());
+      expect(
+        u.pathname === "/fr/login" &&
+          u.searchParams.get("erreur") === "session" &&
+          u.searchParams.get("fresh") === "1" &&
+          u.searchParams.get("next") === "/fr/app/settings",
+        `lien${extra} : ${p.url()}`,
+      );
+      expect(!cleared.length, `lien${extra} : il_session effacé (${cleared.join(", ")})`);
+      expect(
+        (await ilToken(ctx)) === token && !sessionGone(token),
+        `lien${extra} : session supprimée`,
+      );
+      const probe = await ctx.request.get(`${IL}/fr/app`, { maxRedirects: 0 });
+      expect(probe.status() === 200, `lien${extra} : /fr/app répond ${probe.status()}`);
+      const retry = await p.locator('[data-testid="lead-login"]').getAttribute("href");
+      expect(/fresh=1/.test(retry ?? ""), `Réessayer : ${retry}`);
+    }
+    // « Réessayer » repasse par le Compte Lead (encore ouvert) et ramène la même personne sur la page.
+    await p.locator('[data-testid="lead-login"]').click();
+    await waitAt(p, `${IL}/fr/app/settings`, "Réessayer");
+    expect((await ilWho(ctx)).startsWith(`${who}|`), `après Réessayer : ${await ilWho(ctx)}`);
+    await ctx.close();
+  },
+);
+
+await step(
+  "CRM-SIGNUP-UNKNOWN-APP : une application enregistrée hors de la liste (Cashlead) inscrit par mot de passe, sans emails de CRMlead",
+  async () => {
+    // L'API : une application hors de la liste n'est plus un motif de refus.
+    const api = await browser.newContext();
+    const raw = mail("cash-api");
+    const r = await api.request.post(`${CRM}/api/auth/signup`, {
+      data: {
+        accountName: "E2E5 cash api",
+        name: "Eve",
+        email: raw,
+        password: PASS,
+        locale: "fr",
+        app: "cashlead",
+      },
+      headers: { origin: CRM },
+    });
+    expect(r.ok(), `app « cashlead » : ${r.status()} ${await r.text()}`);
+    await api.close();
+    // Un client du Compte Lead enregistré après coup, avec sa propre adresse de retour (un serveur de ce script).
+    const app = http.createServer((_req, res) => {
+      res.writeHead(200, { "Content-Type": "text/html" });
+      res.end("<!doctype html><title>Cash</title>ok");
+    });
+    await new Promise((ok) => app.listen(0, "127.0.0.1", ok));
+    const cb = `http://127.0.0.1:${app.address().port}/cb`;
+    const client = `e2e5-cash-${stamp}`;
+    crmq(`select lead_id_client_save('${client}', 'Cash E2E5', null, array['${cb}'], null)`);
+    try {
+      const ctx = await newCtx(browser, "fr-CH", "cash");
+      const from = events.length;
+      const p = await ctx.newPage();
+      const q = new URLSearchParams({
+        response_type: "code",
+        client_id: client,
+        redirect_uri: cb,
+        scope: "openid email profile",
+        state: "st-cash",
+        code_challenge: createHash("sha256")
+          .update(randomBytes(32).toString("base64url"))
+          .digest("base64url"),
+        code_challenge_method: "S256",
+      });
+      await p.goto(`${CRM}/oauth/authorize?${q}`);
+      await waitAt(p, `${CRM}/login?next=`, "écran du Compte Lead");
+      await p.getByRole("link", { name: "Créer un compte" }).click();
+      await waitAt(p, `${CRM}/signup?next=`, "inscription");
+      const who = mail("cash");
+      await p.fill("#auth-account", "E2E5 Cash");
+      await p.fill("#auth-name", "Eve E2E5");
+      await p.fill("#auth-email", who);
+      await p.fill("#auth-password", PASS);
+      await p.locator("form button").last().click();
+      await waitAt(p, `${cb}?`, "retour vers l'application");
+      const back = new URL(p.url());
+      expect(
+        back.searchParams.get("code") && back.searchParams.get("state") === "st-cash",
+        `retour : ${p.url()}`,
+      );
+      expect(quietOf(who) === "off|false", `réglages de CRMlead : ${quietOf(who)}`);
+      await sleep(1000);
+      expect(
+        !crmLog().includes(`à ${who} — Bienvenue sur CRMlead`),
+        "bienvenue de CRMlead envoyée",
+      );
+      neutralSince(from, "cash", (e) => /next=|\/oauth\//.test(e.url));
+      await ctx.close();
+    } finally {
+      // Le client jetable (ses codes et jetons partent avec lui).
+      crmq(`delete from lead_id_clients where client_id = '${client}'`);
+      app.close();
+    }
+  },
+);
+
 // ---------- étapes Google (second CRMlead, faux Google) ----------
 const gq = (o) => ({ data: o, headers: { origin: CRM_G } });
 async function google(page, who, click = true) {
@@ -3846,6 +4289,368 @@ else {
       await waitAt(r, `${IL}/fr/app/invoices`, "InvoiceLead : page demandée");
       neutralSince(from, "g-reauth-il", (e) => /next=|\/oauth\//.test(e.url));
       await il.close();
+    },
+  );
+
+  // ---------- intégration du lot 8, étapes Google ----------
+  await step(
+    "CRM-BACK-AFTER-DETOUR (Google) : Retour depuis la page demandée après « Continuer avec Google » rend la page d'avant",
+    async () => {
+      const ctx = await newCtx(browser, "fr-CH", "back8g");
+      const from = events.length;
+      const who = mail("back8-g");
+      /** Google (compte déjà choisi : retour aussitôt), arrivée sur `target`, puis Retour : /fr, la même session. */
+      const viaGoogle = async (query, path, target, account) => {
+        const p = await ctx.newPage();
+        await p.goto(`${IL}/fr`);
+        const { url } = await ilAuthorize(ctx, query, CRM_G);
+        await p.goto(url);
+        await waitAt(p, `${CRM_G}${path}?next=`, `${path} : écran du Compte Lead`);
+        if (account) await p.fill("#auth-account", account);
+        await p.waitForSelector("#auth-password");
+        persona = { sub: `sub-${who}`, email: who, action: "auto" };
+        await p.getByRole("button", { name: /Google/ }).click();
+        await waitAt(p, target, `${path} : arrivée`);
+        const token = await ilToken(ctx);
+        const navs = navLog(p);
+        await p.goBack();
+        await sleep(2500);
+        const trail = navs.join(" -> ");
+        expect(
+          p.url() === `${IL}/fr`,
+          `${path} : Retour mène à ${p.url()} (navigations : ${trail})`,
+        );
+        expect(
+          !navs.some((u) => u.startsWith(CRM_G) || u.startsWith(GOOGLE)),
+          `${path} : Retour repasse par le Compte Lead ou Google (${trail})`,
+        );
+        expect(
+          (await ilToken(ctx)) === token && !sessionGone(token),
+          `${path} : session remplacée`,
+        );
+        await p.close();
+        await ctx.clearCookies();
+      };
+      await viaGoogle(
+        "locale=fr&signup=1&next=%2Ffr%2Fapp%2Finvoices",
+        "/signup",
+        `${IL}/fr/app/invoices`,
+        "E2E5 retour Google",
+      );
+      await viaGoogle("locale=fr&next=%2Ffr%2Fapp%2Fquotes", "/login", `${IL}/fr/app/quotes`);
+      neutralSince(from, "back8g", (e) => /next=|\/oauth\//.test(e.url));
+      await ctx.close();
+      // CRMlead direct : Google reste une entrée poussée, Retour ramène à l'écran de connexion.
+      const d = await browser.newContext({ locale: "fr-CH" });
+      const dp = await d.newPage();
+      await dp.goto(`${CRM_G}/login`);
+      await google(dp, mail("back8-gd"));
+      await dp.goBack();
+      await dp
+        .waitForURL((u) => u.href.startsWith(`${CRM_G}/login`), { timeout: 10000 })
+        .catch(() => {});
+      expect(
+        dp.url().startsWith(`${CRM_G}/login`),
+        `direct : Retour depuis Google mène à ${dp.url()}`,
+      );
+      await d.close();
+    },
+  );
+
+  // Compte ouvert d'avance par un tiers, depuis InvoiceLead, à l'adresse d'une autre personne (jamais confirmée).
+  const preh = { victim: mail("g-preh"), pass: `${PASS}-intrus`, intr: null, next: "" };
+  await step(
+    "CRM-GOOGLE-UNCONFIRMED : Google ne se rattache pas à un compte ouvert d'avance sur une adresse jamais confirmée",
+    async () => {
+      const { victim } = preh;
+      preh.intr = await browser.newContext({ locale: "fr-CH" });
+      const ip = await preh.intr.newPage();
+      const { url: iu } = await ilAuthorize(preh.intr, "locale=fr&signup=1", CRM_G);
+      await ip.goto(iu);
+      await waitAt(ip, `${CRM_G}/signup?next=`, "tiers : inscription");
+      await ip.fill("#auth-account", "Compte prepare");
+      await ip.fill("#auth-name", "Tiers");
+      await ip.fill("#auth-email", victim);
+      await ip.fill("#auth-password", preh.pass);
+      await ip.locator("form button").last().click();
+      await waitAt(ip, `${IL}/fr/app`, "tiers : arrivée dans InvoiceLead");
+      const before = crmq(
+        `select (email_verified_at is null)::text || '|' || coalesce(sso_subject, '') from users where email = '${victim}'`,
+      );
+      expect(before === "true|", `avant Google : ${before}`);
+      // La personne : InvoiceLead, « Créer un compte », « Victime SA », « Continuer avec Google » à son adresse.
+      const ctx = await newCtx(browser, "fr-CH", "preh");
+      const from = events.length;
+      const p = await ctx.newPage();
+      const { url, next } = await ilAuthorize(
+        ctx,
+        "locale=fr&signup=1&next=%2Ffr%2Fapp%2Finvoices",
+        CRM_G,
+      );
+      preh.next = next;
+      await p.goto(url);
+      await waitAt(p, `${CRM_G}/signup?next=`, "inscription");
+      await p.fill("#auth-account", "Victime SA");
+      await google(p, victim);
+      await p.click("#ok");
+      await waitAt(p, `${CRM_G}/login?sso=unconfirmed`, "retour de Google");
+      await p.waitForSelector("#auth-password");
+      const text = (await p.locator("body").innerText()).replace(/\s+/g, " ");
+      expect(/n'a jamais été confirmée/.test(text), `message : ${text.slice(0, 240)}`);
+      expect(
+        sameRequest(new URL(p.url()).searchParams.get("next"), next),
+        `demande perdue : ${p.url()}`,
+      );
+      expect((await p.title()) === "Compte Lead", `titre : ${await p.title()}`);
+      expect(!(await session(ctx)), `session ouverte : ${await session(ctx)}`);
+      expect(!(await ilToken(ctx)), "session InvoiceLead ouverte");
+      const after = crmq(
+        `select (email_verified_at is null)::text || '|' || coalesce(sso_subject, '') from users where email = '${victim}'`,
+      );
+      expect(after === "true|", `Google rattaché ou adresse confirmée : ${after}`);
+      expect(
+        await waitLog(
+          gLog,
+          new RegExp(
+            `à ${victim.replace(/[+.]/g, "\\$&")} — Réinitialiser le mot de passe de votre Compte Lead`,
+          ),
+        ),
+        "lien « nouveau mot de passe » au nom du Compte Lead",
+      );
+      neutralSince(from, "preh", (e) => /next=|\/oauth\//.test(e.url));
+      // Le lien reçu : la personne choisit son mot de passe et arrive sur la page demandée.
+      await p.goto(resetLinkAt(CRM_G, victim, next));
+      await p.fill("#auth-password", `${PASS}-victime`);
+      await p.locator("form button").last().click();
+      await waitAt(p, `${IL}/fr/app/invoices`, "après le nouveau mot de passe");
+      // Le mot de passe du tiers ne vaut plus, ses sessions du Compte Lead sont fermées.
+      const lg = await preh.intr.request.post(`${CRM_G}/api/auth/login`, {
+        data: { email: victim, password: preh.pass },
+        headers: { origin: CRM_G },
+      });
+      expect(lg.status() === 401, `mot de passe du tiers : ${lg.status()}`);
+      expect(!(await session(preh.intr)), "session du tiers au Compte Lead encore ouverte");
+      // Google se rattache maintenant (adresse prouvée par le lien) et mène à la page demandée.
+      await ctx.clearCookies();
+      const g = await ctx.newPage();
+      const { url: gu } = await ilAuthorize(ctx, "locale=fr&next=%2Ffr%2Fapp%2Fquotes", CRM_G);
+      await g.goto(gu);
+      await waitAt(g, `${CRM_G}/login?next=`, "connexion Google");
+      await google(g, victim);
+      await g.click("#ok");
+      await waitAt(g, `${IL}/fr/app/quotes`, "Google après le lien");
+      const linked = crmq(
+        `select (email_verified_at is not null)::text || '|' || coalesce(sso_subject, '') from users where email = '${victim}'`,
+      );
+      expect(linked === `true|sub-${victim}`, `Google rattaché : ${linked}`);
+      await ctx.close();
+      // CRMlead direct : même refus, sur l'écran de CRMlead.
+      const direct = await directAccount("g-preh-direct");
+      const d = await browser.newContext({ locale: "fr-CH" });
+      const dp = await d.newPage();
+      await dp.goto(`${CRM_G}/login`);
+      await google(dp, direct);
+      await dp.click("#ok");
+      await waitAt(dp, `${CRM_G}/login?sso=unconfirmed`, "direct : retour de Google");
+      await dp.waitForSelector("#auth-password");
+      expect(/CRMlead/.test(await dp.title()), `direct : titre ${await dp.title()}`);
+      expect(
+        /n'a jamais été confirmée/.test(await dp.locator("body").innerText()),
+        "direct : message",
+      );
+      expect(!(await session(d)), "direct : session ouverte");
+      await d.close();
+    },
+  );
+  await step(
+    "CRM-GOOGLE-UNCONFIRMED (InvoiceLead du tiers) : une fois la personne entrée, l'auteur du compte d'avance ne lit plus rien",
+    async () => {
+      expect(preh.intr, "étape précédente pas jouée");
+      // Ce que la personne saisit dans InvoiceLead, puis ce que la session InvoiceLead du tiers en voit encore.
+      const ctx = await browser.newContext({ locale: "fr-CH" });
+      const p = await ctx.newPage();
+      const { url } = await ilAuthorize(ctx, "locale=fr&next=%2Ffr%2Fapp%2Fcontacts%2Fnew", CRM_G);
+      await p.goto(url);
+      await waitAt(p, `${CRM_G}/login?next=`, "connexion");
+      await passwordLogin(p, preh.victim, `${PASS}-victime`);
+      await waitAt(p, `${IL}/fr/app/contacts/new`, "personne : nouveau contact");
+      const secret = `Client confidentiel ${stamp}`;
+      await p.fill("#contact-name", secret);
+      await p.locator('[data-testid="contact-save"]').click();
+      await waitAt(p, `${IL}/fr/app/contacts?saved=1`, "personne : contact enregistré");
+      await ctx.close();
+      const seen = await preh.intr.request.get(`${IL}/fr/app/contacts`, { maxRedirects: 0 });
+      const body = seen.status() === 200 ? await seen.text() : "";
+      const tok = (await preh.intr.cookies()).find((c) => c.name === "il_session")?.value ?? "";
+      const who = tok
+        ? ilq(
+            `select u.email || '|' || o.name from sessions s join users u on u.id = s.user_id
+               join organizations o on o.id = s.organization_id
+              where s.id = '${sha(decodeURIComponent(tok))}' and s.expires_at > now()`,
+          )
+        : "";
+      await preh.intr.close();
+      expect(
+        seen.status() !== 200 && !body.includes(secret),
+        `la session InvoiceLead du tiers (${who}) répond ${seen.status()} sur /fr/app/contacts${body.includes(secret) ? ` et montre « ${secret} »` : ""}`,
+      );
+    },
+  );
+
+  await step(
+    "CRM-GOOGLE-INVITED : collègue invité depuis InvoiceLead qui passe par Google avant son lien, connexion ou inscription",
+    async () => {
+      // Administrateur InvoiceLead (Pro+, places) ; invitations par Réglages → Équipe.
+      const actx = await browser.newContext({ locale: "fr-CH" });
+      const ap = await actx.newPage();
+      const manager = await signupFromIl(ap, "fr", "invg-mgr");
+      const org = crmq(`select account_id from users where email = '${manager}'`);
+      crmq(
+        `insert into lead_subscriptions (account_id, source_app, external_id, app_plan, plan_code, status)
+         values ('${org}', 'scanlead', 'e2e5-invg-${stamp}', 'pro_plus', 'pro_plus', 'active') on conflict do nothing`,
+      );
+      await dropCookies(actx, (n) => n === "il_session");
+      await ap.goto(`${IL}/fr/app/settings/team`);
+      await waitAt(ap, `${IL}/fr/app/settings/team`, "équipe");
+      const invite = async (who) => {
+        const form = ap.locator('[data-testid="member-invite"]');
+        await form.locator('input[name="name"]').fill("Collègue Google");
+        await form.locator('input[name="email"]').fill(who);
+        await form.locator('[data-testid="member-invite-submit"]').click();
+        const line = await waitLog(crmLog, new RegExp(`à ${who.replace(/[+.]/g, "\\$&")} — `));
+        expect(line && /InvoiceLead/.test(line), `invitation de ${who} : ${line}`);
+        await ap.reload();
+      };
+      const ilOrg = ownOrgOf(manager);
+      const state = (who) =>
+        crmq(
+          `select u.is_active::text || '|' || (u.sso_subject is not null)::text || '|' || (u.account_id = '${org}')::text
+                  || '|' || (select count(*) from auth_tokens t where t.user_id = u.id and t.purpose = 'invite' and t.consumed_at is null)
+             from users u where u.email = '${who}'`,
+        );
+      const ctx = await newCtx(browser, "fr-CH", "invg");
+      const from = events.length;
+      // Connexion, puis inscription (« Créer un compte », une autre entreprise tapée) : la même invitation acceptée.
+      for (const [label, query, path, target] of [
+        ["connexion", "locale=fr&next=%2Ffr%2Fapp%2Finvoices", "/login", `${IL}/fr/app/invoices`],
+        [
+          "inscription",
+          "locale=fr&signup=1&next=%2Ffr%2Fapp%2Fquotes",
+          "/signup",
+          `${IL}/fr/app/quotes`,
+        ],
+      ]) {
+        const who = mail(`invg-${label}`);
+        await invite(who);
+        expect(
+          state(who) === "false|false|true|1",
+          `${label} : invitation en attente ${state(who)}`,
+        );
+        await ctx.clearCookies();
+        const p = await ctx.newPage();
+        const { url } = await ilAuthorize(ctx, query, CRM_G);
+        await p.goto(url);
+        await waitAt(p, `${CRM_G}${path}?next=`, `${label} : écran du Compte Lead`);
+        if (path === "/signup") await p.fill("#auth-account", "Autre entreprise");
+        await google(p, who);
+        await p.click("#ok");
+        await waitAt(p, target, `${label} : arrivée`);
+        expect(state(who) === "true|true|true|0", `${label} : ${state(who)}`);
+        expect(quietOf(who) === "off|false", `${label} : réglages de CRMlead ${quietOf(who)}`);
+        expect(
+          (await ilWho(ctx)) === `${who}|${ilOrg}`,
+          `${label} : InvoiceLead ${await ilWho(ctx)}`,
+        );
+        await p.close();
+      }
+      // Invitation échue : le message juste, la demande gardée, aucune session.
+      const late = mail("invg-late");
+      await invite(late);
+      crmq(
+        `update auth_tokens set expires_at = now() - interval '1 minute'
+          where user_id = (select id from users where email = '${late}') and purpose = 'invite'`,
+      );
+      await ctx.clearCookies();
+      const e = await ctx.newPage();
+      const { url: eu, next: en } = await ilAuthorize(
+        ctx,
+        "locale=fr&next=%2Ffr%2Fapp%2Finvoices",
+        CRM_G,
+      );
+      await e.goto(eu);
+      await waitAt(e, `${CRM_G}/login?next=`, "échue : écran du Compte Lead");
+      await google(e, late);
+      await e.click("#ok");
+      await waitAt(e, `${CRM_G}/login?sso=invite_expired`, "échue : retour de Google");
+      await e.waitForSelector("#auth-password");
+      expect(
+        /Votre invitation a expiré/.test(await e.locator("body").innerText()),
+        "échue : message",
+      );
+      expect(
+        sameRequest(new URL(e.url()).searchParams.get("next"), en),
+        `échue : demande perdue ${e.url()}`,
+      );
+      expect(
+        !(await session(ctx)) && state(late).startsWith("false|false"),
+        `échue : ${state(late)}`,
+      );
+      // Invitation annulée (jeton retiré) : l'accès reste refusé.
+      const gone = mail("invg-gone");
+      await invite(gone);
+      crmq(
+        `update auth_tokens set consumed_at = now()
+          where user_id = (select id from users where email = '${gone}') and purpose = 'invite'`,
+      );
+      await ctx.clearCookies();
+      const c = await ctx.newPage();
+      const { url: cu } = await ilAuthorize(ctx, "locale=fr&next=%2Ffr%2Fapp%2Finvoices", CRM_G);
+      await c.goto(cu);
+      await waitAt(c, `${CRM_G}/login?next=`, "annulée : écran du Compte Lead");
+      await google(c, gone);
+      await c.click("#ok");
+      await waitAt(c, `${CRM_G}/login?sso=inactive`, "annulée : retour de Google");
+      expect(
+        !(await session(ctx)) && state(gone).startsWith("false|false"),
+        `annulée : ${state(gone)}`,
+      );
+      neutralSince(from, "invg", (ev) => /next=|\/oauth\//.test(ev.url));
+      await Promise.all([ctx.close(), actx.close()]);
+      // CRMlead direct : collègue invité dans Réglages → Équipe de CRMlead, Google arrive dans CRMlead.
+      const dctx = await browser.newContext({ locale: "fr-CH" });
+      const admin = mail("invg-crm-adm");
+      const sd = await dctx.request.post(
+        `${CRM_G}/api/auth/signup`,
+        gq({
+          accountName: "E2E5 invités CRMlead",
+          name: "Eve",
+          email: admin,
+          password: PASS,
+          locale: "fr",
+        }),
+      );
+      expect(sd.ok(), `direct : inscription ${sd.status()}`);
+      crmq(
+        `insert into lead_subscriptions (account_id, source_app, external_id, app_plan, plan_code, status)
+         select account_id, 'scanlead', 'e2e5-invgd-${stamp}', 'pro_plus', 'pro_plus', 'active' from users where email = '${admin}'`,
+      );
+      const colD = mail("invg-crm");
+      const di = await dctx.request.post(`${CRM_G}/api/users`, gq({ email: colD, name: "Direct" }));
+      expect(di.status() === 201, `direct : invitation ${di.status()}`);
+      await dctx.close();
+      const k = await browser.newContext({ locale: "fr-CH" });
+      const kp = await k.newPage();
+      await kp.goto(`${CRM_G}/login`);
+      await google(kp, colD);
+      await kp.click("#ok");
+      await kp.waitForURL(
+        (u) => u.href.startsWith(CRM_G) && !/^\/(api|login|signup)/.test(u.pathname),
+        { timeout: 20000 },
+      );
+      expect((await session(k)) === colD, `direct : session ${await session(k)}`);
+      expect(/CRMlead/.test(await kp.title()), `direct : titre ${await kp.title()}`);
+      expect(quietOf(colD) !== "off|false", `direct : réglages de CRMlead coupés ${quietOf(colD)}`);
+      await k.close();
     },
   );
 }
