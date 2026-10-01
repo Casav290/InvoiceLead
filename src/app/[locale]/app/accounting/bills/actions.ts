@@ -1,0 +1,130 @@
+"use server";
+
+import { eq } from "drizzle-orm";
+import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+import { requirePermission } from "@/server/auth/guard";
+import { pickLocale } from "@/server/auth/login-cookie";
+import {
+  approveBill,
+  billFromReceipt,
+  createBill,
+  deleteBill,
+  importEInvoice,
+  markBillPaid,
+  parseBillForm,
+  updateBill,
+} from "@/server/bills";
+import { db } from "@/server/db";
+import { auditLog, organizations } from "@/server/db/schema";
+import { hasFeature } from "@/server/plans";
+
+export type BillFormState = {
+  status: "idle" | "invalid" | "notFound";
+  errors?: Record<string, string>;
+  values?: Record<string, string>;
+  round: number;
+};
+
+async function guard(form: FormData) {
+  const locale = pickLocale(form.get("locale"));
+  const session = await requirePermission(locale, "accounting");
+  return {
+    locale,
+    session,
+    who: { organizationId: session.organization.id, userId: session.user.id },
+    path: `/${locale}/app/accounting/bills`,
+  };
+}
+
+export async function saveBillAction(prev: BillFormState, form: FormData): Promise<BillFormState> {
+  const { locale, who, path } = await guard(form);
+  const round = prev.round + 1;
+  const values = Object.fromEntries(
+    [...form.entries()].filter(([k]) => !k.startsWith("$")).map(([k, v]) => [k, String(v)]),
+  );
+  const parsed = parseBillForm(form);
+  if (!parsed.ok) return { status: "invalid", errors: parsed.errors, values, round };
+  const id = String(form.get("id") ?? "");
+  const bill = id
+    ? await updateBill(db(), who, id, parsed.data)
+    : await createBill(db(), who, parsed.data);
+  if (!bill) return { status: "notFound", round };
+  revalidatePath(`/${locale}/app/accounting`, "layout");
+  redirect(`${path}/${bill.id}?saved=1`);
+}
+
+export async function approveBillAction(form: FormData) {
+  const { locale, who, path } = await guard(form);
+  const id = String(form.get("id") ?? "");
+  const result = await approveBill(db(), who, id);
+  revalidatePath(`/${locale}/app/accounting`, "layout");
+  if (typeof result === "string") redirect(`${path}/${id}?error=${result}`);
+  redirect(`${path}/${id}?${result.status === "approved" ? "approved=1" : "firstApproval=1"}`);
+}
+
+export async function deleteBillAction(form: FormData) {
+  const { locale, who, path } = await guard(form);
+  await deleteBill(db(), who, String(form.get("id") ?? ""));
+  revalidatePath(`/${locale}/app/accounting`, "layout");
+  redirect(`${path}?deleted=1`);
+}
+
+export async function markBillPaidAction(form: FormData) {
+  const { locale, who, path } = await guard(form);
+  const id = String(form.get("id") ?? "");
+  const money = form.get("money") === "cash" ? "cash" : "bank";
+  const result = await markBillPaid(db(), who, id, String(form.get("paidOn") ?? ""), money);
+  revalidatePath(`/${locale}/app/accounting`, "layout");
+  redirect(`${path}/${id}?${result === "paid" ? "paid=1" : `error=${result}`}`);
+}
+
+/** E-factures reçues (XML, ou PDF ZUGFeRD / Factur-X) : chacune devient une facture à payer. */
+export async function importEInvoicesAction(form: FormData) {
+  const { locale, session, who, path } = await guard(form);
+  if (!hasFeature(session.organization, "receipts")) redirect(`${path}?error=plan`);
+  const files = form.getAll("files").filter((f): f is File => f instanceof File && f.size > 0);
+  let imported = 0;
+  let rejected = 0;
+  for (const f of files.slice(0, 20)) {
+    const type = f.type || (f.name.toLowerCase().endsWith(".xml") ? "application/xml" : "");
+    const result = await importEInvoice(db(), who, {
+      name: f.name,
+      type,
+      bytes: Buffer.from(await f.arrayBuffer()),
+    });
+    if (typeof result === "object") imported += 1;
+    else rejected += 1;
+  }
+  revalidatePath(`/${locale}/app/accounting`, "layout");
+  redirect(`${path}?imported=${imported}&rejected=${rejected}`);
+}
+
+export async function billFromReceiptAction(form: FormData) {
+  const { locale, who, path } = await guard(form);
+  const result = await billFromReceipt(db(), who, String(form.get("receiptId") ?? ""));
+  revalidatePath(`/${locale}/app/accounting`, "layout");
+  if (typeof result === "string") redirect(`/${locale}/app/accounting/receipts?error=${result}`);
+  redirect(`${path}/${result.id}?saved=1`);
+}
+
+export async function dualApprovalAction(form: FormData) {
+  const locale = pickLocale(form.get("locale"));
+  const session = await requirePermission(locale, "company");
+  const on = form.get("dualApproval") === "on";
+  await db()
+    .update(organizations)
+    .set({ dualApproval: on })
+    .where(eq(organizations.id, session.organization.id));
+  await db()
+    .insert(auditLog)
+    .values({
+      organizationId: session.organization.id,
+      userId: session.user.id,
+      action: on ? "bills.dual_on" : "bills.dual_off",
+      entity: "organization",
+      entityId: session.organization.id,
+    });
+  revalidatePath(`/${locale}/app/accounting/bills`);
+  redirect(`/${locale}/app/accounting/bills?dual=${on ? "on" : "off"}`);
+}

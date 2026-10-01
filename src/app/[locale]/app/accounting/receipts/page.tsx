@@ -12,6 +12,7 @@ import { db } from "@/server/db";
 import { hasFeature, upgradeUrl } from "@/server/plans";
 import { listReceipts } from "@/server/receipts";
 import { readReceiptAction, uploadReceiptsAction } from "../actions";
+import { billFromReceiptAction } from "../bills/actions";
 
 type Props = {
   params: Promise<{ locale: string }>;
@@ -148,6 +149,15 @@ export default async function ReceiptsPage({ params, searchParams }: Props) {
                   </a>
                   {r.status === "matched" ? (
                     <span className="text-ok-fg">{t("matchedHint")}</span>
+                  ) : null}
+                  {(r.status === "read" || r.status === "matched") && x?.totalCents ? (
+                    <form action={billFromReceiptAction}>
+                      {hidden}
+                      <input type="hidden" name="receiptId" value={r.id} />
+                      <Button type="submit" variant="ghost" size="sm" data-testid="receipt-to-bill">
+                        {t("toBill")}
+                      </Button>
+                    </form>
                   ) : null}
                   {(r.status === "new" || r.status === "error" || r.status === "read") &&
                   aiConfigured() ? (

@@ -18,8 +18,11 @@ XRECHNUNG_OUT=tmp/xrechnung npx vitest run --config vitest.einvoice.config.ts
 # Décomptes suisses eCH-0217, contre le schéma officiel (types importés en extrait minimal).
 xmllint --noout --schema docs/ech-0217/eCH-0217-1-0-local.xsd tmp/xrechnung/ech0217-*.xml
 
+# Ordres de paiement pain.001.001.09 contre le schéma ISO 20022 (docs/pain001).
+xmllint --noout --schema docs/pain001/pain.001.001.09.xsd tmp/xrechnung/pain001-*.xml
+
 java -jar "$DIR/validator/validationtool-1.5.0-standalone.jar" \
-  -s "$DIR/config/scenarios.xml" -r "$DIR/config" -o "$DIR/out" $(ls tmp/xrechnung/*.xml | grep -v ech0217)
+  -s "$DIR/config/scenarios.xml" -r "$DIR/config" -o "$DIR/out" $(ls tmp/xrechnung/*.xml | grep -v ech0217 | grep -v pain001)
 
 # PDF ZUGFeRD : conformité PDF/A-3b avec veraPDF (récupéré par Maven s'il est installé).
 if command -v mvn >/dev/null; then

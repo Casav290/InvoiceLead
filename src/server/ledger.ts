@@ -43,6 +43,8 @@ export type EntryInput = {
     | "reminder_waiver"
     | "bank"
     | "bank_reversal"
+    | "bill"
+    | "bill_payment"
     | "vat"
     | "closing"
     | "opening"

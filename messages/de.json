@@ -948,7 +948,8 @@
         "receipts": "Belege",
         "reports": "Auswertungen",
         "vat": "MWST",
-        "review": "Zu prüfen"
+        "review": "Zu prüfen",
+        "bills": "Kreditoren"
       },
       "welcomeFiduciary": "Willkommen. Sie arbeiten jetzt in der Buchhaltung Ihres Kunden; das Unternehmen wechseln Sie in der Kopfzeile.",
       "unavailableTitle": "Buchhaltung für dieses Land folgt bald",
@@ -1015,7 +1016,8 @@
       },
       "planOnly": "Der Import von Kontoauszügen und die Vorschläge des Assistenten sind im Pro-Abo enthalten.",
       "autoPosted": "{count, plural, one {# Bewegung} other {# Bewegungen}} vom Autopiloten verbucht.",
-      "autoReview": "Prüfen"
+      "autoReview": "Prüfen",
+      "paysBill": "Zahlung einer Lieferantenrechnung"
     },
     "receipts": {
       "title": "Belege",
@@ -1043,9 +1045,11 @@
         "read": "Gelesen, Zahlung noch nicht gefunden",
         "error": "Unlesbar",
         "matched": "Zugeordnet",
-        "posted": "Verbucht"
+        "posted": "Verbucht",
+        "billed": "Lieferantenrechnung"
       },
-      "planOnly": "Das automatische Lesen von Belegen ist in Pro (50 pro Monat) und Pro+ (300 pro Monat) enthalten."
+      "planOnly": "Das automatische Lesen von Belegen ist in Pro (50 pro Monat) und Pro+ (300 pro Monat) enthalten.",
+      "toBill": "Als Kreditorenrechnung erfassen"
     },
     "reports": {
       "title": "Auswertungen",
@@ -1447,6 +1451,108 @@
       "digest": {
         "subject": "InvoiceLead: Ihre Buchhaltung der Woche, {company}",
         "body": "Guten Tag\n\nDiese Woche hat der Autopilot für {company} {auto, plural, =0 {keine Bewegung} one {# Bewegung} other {# Bewegungen}} verbucht.\n\nZu genehmigen: {approve}\nUnter Bank zu prüfen: {review}\nAuffälligkeiten: {anomalies}\n\nAlles ansehen und mit einem Klick genehmigen: {link}\n\nInvoiceLead"
+      }
+    },
+    "bills": {
+      "title": "Lieferantenrechnungen",
+      "new": "Neue Lieferantenrechnung",
+      "back": "Alle Lieferantenrechnungen",
+      "subtitle": "Erhaltene Rechnungen, von der KI gelesen oder als E-Rechnung importiert: genehmigen und mit einer Datei fürs E-Banking bezahlen. Der Kontoauszug gleicht sie danach selbst aus.",
+      "empty": "Keine Lieferantenrechnungen. Importieren Sie eine E-Rechnung, erfassen Sie eine aus einem Beleg oder von Hand.",
+      "importLabel": "Erhaltene E-Rechnungen (XRechnung, ZUGFeRD, Factur-X, UBL)",
+      "importHint": "XML-Dateien oder PDF mit eingebettetem XML. Ohne KI gelesen, auf den Rappen genau.",
+      "import": "Importieren",
+      "imported": "{count, plural, =0 {Keine Rechnung importiert} one {# Rechnung importiert} other {# Rechnungen importiert}}{rejected, plural, =0 {.} other {, # Datei(en) nicht als E-Rechnung erkannt.}}",
+      "deleted": "Entwurf gelöscht.",
+      "dualOn": "Vier-Augen-Prinzip eingeschaltet.",
+      "dualOff": "Vier-Augen-Prinzip ausgeschaltet.",
+      "exportHint": "{count, plural, one {# genehmigte Rechnung} other {# genehmigte Rechnungen}} zu bezahlen, total {total}. Die pain.001-Datei laden Sie ins E-Banking, das jede Zahlung zur Fälligkeit ausführt.",
+      "export": "Zahlungsdatei herunterladen (pain.001)",
+      "groups": {
+        "draft": "Zu genehmigen",
+        "approved": "Zu bezahlen",
+        "scheduled": "Zahlung übermittelt",
+        "paid": "Bezahlt"
+      },
+      "status": {
+        "draft": "Entwurf",
+        "approved": "Genehmigt, zu bezahlen",
+        "scheduled": "Zahlung übermittelt",
+        "paid": "Bezahlt"
+      },
+      "due": "fällig {date}",
+      "dualApproval": "Vier-Augen-Prinzip für Lieferantenrechnungen",
+      "dualApprovalHint": "Zwei verschiedene Personen genehmigen jede Rechnung, bevor sie verbucht und zahlbar wird.",
+      "saveSetting": "Speichern",
+      "sections": {
+        "supplier": "Lieferant",
+        "invoice": "Rechnung",
+        "payment": "Zahlung"
+      },
+      "fields": {
+        "supplierName": "Lieferant",
+        "supplierStreet": "Strasse und Nummer",
+        "supplierPostalCode": "PLZ",
+        "supplierTown": "Ort",
+        "supplierCountry": "Land (Code)",
+        "number": "Rechnungsnummer",
+        "issueDate": "Rechnungsdatum",
+        "dueDate": "Fälligkeit",
+        "currency": "Währung",
+        "total": "Zu zahlender Betrag inkl. MWST",
+        "vatCode": "Enthaltene MWST",
+        "account": "Aufwandkonto",
+        "description": "Beschreibung",
+        "iban": "IBAN des Lieferanten",
+        "bic": "BIC (freiwillig)",
+        "paymentReference": "Zahlungsreferenz"
+      },
+      "hints": {
+        "supplierCountry": "Zwei Buchstaben: CH, DE, FR …",
+        "dueDate": "Leer: 30 Tage nach Rechnungsdatum.",
+        "total": "Zum Beispiel 107.70",
+        "account": "Wird ab der ersten genehmigten Rechnung vom Lieferanten gelernt.",
+        "paymentReference": "QR-Referenz, RF-Referenz oder freie Mitteilung."
+      },
+      "noVat": "Ohne MWST",
+      "choose": "Auswählen …",
+      "save": "Speichern",
+      "invalid": "Einige Felder sind zu korrigieren.",
+      "notEditable": "Diese Rechnung kann nicht mehr geändert werden.",
+      "saved": "Rechnung gespeichert.",
+      "approve": "Genehmigen",
+      "approveSecond": "Genehmigen (2. Freigabe)",
+      "approveHint": "Genehmigt wird die Rechnung verbucht (Aufwand und Vorsteuer gegen Kreditoren) und ist zahlbereit.",
+      "waitingSecond": "Sie haben die erste Freigabe erteilt. Eine andere Person muss genehmigen.",
+      "secondNeeded": "Erste Freigabe durch eine andere Person erteilt. Ihre Genehmigung verbucht die Rechnung.",
+      "approvedNotice": "Rechnung genehmigt und verbucht.",
+      "firstApprovalNotice": "Erste Freigabe gespeichert. Eine zweite Person muss genehmigen.",
+      "paidNotice": "Zahlung erfasst.",
+      "delete": "Entwurf löschen",
+      "openReceipt": "Beleg ansehen",
+      "openEInvoice": "E-Rechnung ansehen",
+      "paidOn": "Bezahlt am",
+      "money": "Bezahlt von",
+      "moneyBank": "Bank",
+      "moneyCash": "Kasse",
+      "markPaid": "Als bezahlt erfassen",
+      "markPaidHint": "Nur für eine Zahlung ausserhalb eines importierten Kontoauszugs: sonst gleicht die Belastung im Auszug die Rechnung selbst aus.",
+      "errors": {
+        "required": "Pflichtfeld.",
+        "tooLong": "Text zu lang.",
+        "date": "Ungültiges Datum.",
+        "amount": "Ungültiger Betrag.",
+        "iban": "Ungültige IBAN (Prüfziffer).",
+        "noAccount": "Wählen Sie zuerst das Aufwandkonto.",
+        "sameApprover": "Die zweite Freigabe muss von einer anderen Person kommen.",
+        "fxRate": "Der Tageskurs konnte nicht abgerufen werden. Bitte später erneut versuchen.",
+        "noChart": "Installieren Sie zuerst den Kontenplan.",
+        "noFiscalYear": "Kein offenes Geschäftsjahr am Rechnungsdatum.",
+        "vatPeriodClosed": "Die MWST-Periode dieses Datums ist bereits abgeschlossen.",
+        "notFound": "Rechnung nicht gefunden oder bereits erledigt.",
+        "none": "Keine genehmigte Rechnung mit IBAN zu bezahlen.",
+        "noIban": "Erfassen Sie zuerst die IBAN des Unternehmens in den Einstellungen.",
+        "plan": "Der Import von E-Rechnungen ist Teil des Pro-Abos."
       }
     }
   },

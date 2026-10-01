@@ -8,6 +8,7 @@ const ITEMS = [
   { href: "/app/accounting/bank", key: "bank" },
   { href: "/app/accounting/review", key: "review" },
   { href: "/app/accounting/receipts", key: "receipts" },
+  { href: "/app/accounting/bills", key: "bills" },
   { href: "/app/accounting", key: "journal" },
   { href: "/app/accounting/reports", key: "reports" },
   { href: "/app/accounting/vat", key: "vat" },
@@ -20,7 +21,9 @@ export function AccountingNav() {
   return (
     <nav aria-label={t("label")} className="mb-8 flex flex-wrap border-b border-line-strong">
       {ITEMS.map((item) => {
-        const active = pathname === item.href;
+        const active =
+          pathname === item.href ||
+          (item.href !== "/app/accounting" && pathname.startsWith(`${item.href}/`));
         return (
           <Link
             key={item.href}

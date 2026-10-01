@@ -948,7 +948,8 @@
         "receipts": "Receipts",
         "reports": "Reports",
         "vat": "VAT",
-        "review": "To review"
+        "review": "To review",
+        "bills": "Suppliers"
       },
       "welcomeFiduciary": "Welcome. You are now working in your client's accounts; switch company from the header.",
       "unavailableTitle": "Accounting coming soon for this country",
@@ -1015,7 +1016,8 @@
       },
       "planOnly": "Bank statement import and assistant proposals are included in the Pro plan.",
       "autoPosted": "{count, plural, one {# transaction} other {# transactions}} posted by the autopilot.",
-      "autoReview": "Review them"
+      "autoReview": "Review them",
+      "paysBill": "Supplier invoice payment"
     },
     "receipts": {
       "title": "Receipts",
@@ -1043,9 +1045,11 @@
         "read": "Read, payment not found yet",
         "error": "Unreadable",
         "matched": "Matched",
-        "posted": "Posted"
+        "posted": "Posted",
+        "billed": "Supplier invoice"
       },
-      "planOnly": "Automatic receipt reading is included in the Pro plan (50 per month) and Pro+ (300 per month)."
+      "planOnly": "Automatic receipt reading is included in the Pro plan (50 per month) and Pro+ (300 per month).",
+      "toBill": "Create the bill to pay"
     },
     "reports": {
       "title": "Reports",
@@ -1447,6 +1451,108 @@
       "digest": {
         "subject": "InvoiceLead: your books this week, {company}",
         "body": "Hello,\n\nThis week the autopilot posted {auto, plural, =0 {no transaction} one {# transaction} other {# transactions}} for {company}.\n\nTo approve: {approve}\nTo review under Bank: {review}\nThings to look at: {anomalies}\n\nSee everything and approve in one click: {link}\n\nInvoiceLead"
+      }
+    },
+    "bills": {
+      "title": "Supplier bills",
+      "new": "New supplier bill",
+      "back": "All supplier bills",
+      "subtitle": "Bills received, read by AI or imported as e-invoices, to approve and then pay with one file for your online banking. The bank statement settles them on its own afterwards.",
+      "empty": "No supplier bill. Import an e-invoice, create one from a receipt or enter it by hand.",
+      "importLabel": "E-invoices received (XRechnung, ZUGFeRD, Factur-X, UBL)",
+      "importHint": "XML files, or PDFs with the XML attached. Read without AI, to the cent.",
+      "import": "Import",
+      "imported": "{count, plural, =0 {No bill imported} one {# bill imported} other {# bills imported}}{rejected, plural, =0 {.} other {, # file(s) not recognised as e-invoices.}}",
+      "deleted": "Draft deleted.",
+      "dualOn": "Dual approval on.",
+      "dualOff": "Dual approval off.",
+      "exportHint": "{count, plural, one {# approved bill} other {# approved bills}} to pay, {total} in total. Upload the pain.001 file to your online banking, which pays each one on its due date.",
+      "export": "Download the payment file (pain.001)",
+      "groups": {
+        "draft": "To approve",
+        "approved": "To pay",
+        "scheduled": "Payment sent",
+        "paid": "Paid"
+      },
+      "status": {
+        "draft": "Draft",
+        "approved": "Approved, to pay",
+        "scheduled": "Payment sent",
+        "paid": "Paid"
+      },
+      "due": "due {date}",
+      "dualApproval": "Dual approval of supplier bills",
+      "dualApprovalHint": "Two different people approve each bill before it is posted and payable.",
+      "saveSetting": "Save",
+      "sections": {
+        "supplier": "Supplier",
+        "invoice": "Bill",
+        "payment": "Payment"
+      },
+      "fields": {
+        "supplierName": "Supplier",
+        "supplierStreet": "Street and number",
+        "supplierPostalCode": "Postcode",
+        "supplierTown": "Town",
+        "supplierCountry": "Country (code)",
+        "number": "Bill number",
+        "issueDate": "Bill date",
+        "dueDate": "Due date",
+        "currency": "Currency",
+        "total": "Amount to pay, VAT included",
+        "vatCode": "VAT included",
+        "account": "Expense account",
+        "description": "Description",
+        "iban": "Supplier's IBAN",
+        "bic": "BIC (optional)",
+        "paymentReference": "Payment reference"
+      },
+      "hints": {
+        "supplierCountry": "Two letters: CH, DE, FR…",
+        "dueDate": "Empty: 30 days after the bill date.",
+        "total": "For example 107.70",
+        "account": "Learnt from the supplier from the first approved bill.",
+        "paymentReference": "QR reference, RF reference or free text."
+      },
+      "noVat": "No VAT",
+      "choose": "Choose…",
+      "save": "Save",
+      "invalid": "Some fields need correcting.",
+      "notEditable": "This bill can no longer be changed.",
+      "saved": "Bill saved.",
+      "approve": "Approve",
+      "approveSecond": "Approve (2nd approval)",
+      "approveHint": "Once approved, the bill is posted (expense and input VAT against payables) and ready to pay.",
+      "waitingSecond": "You gave the first approval. Another person must approve.",
+      "secondNeeded": "First approval given by someone else. Your approval posts the bill.",
+      "approvedNotice": "Bill approved and posted.",
+      "firstApprovalNotice": "First approval saved. A second person must approve.",
+      "paidNotice": "Payment recorded.",
+      "delete": "Delete draft",
+      "openReceipt": "See the receipt",
+      "openEInvoice": "See the e-invoice",
+      "paidOn": "Paid on",
+      "money": "Paid from",
+      "moneyBank": "Bank",
+      "moneyCash": "Cash",
+      "markPaid": "Mark as paid",
+      "markPaidHint": "Only for a payment outside an imported statement: otherwise the debit on the statement settles the bill on its own.",
+      "errors": {
+        "required": "Required field.",
+        "tooLong": "Text too long.",
+        "date": "Invalid date.",
+        "amount": "Invalid amount.",
+        "iban": "Invalid IBAN (check digits).",
+        "noAccount": "Choose the expense account first.",
+        "sameApprover": "The second approval must come from another person.",
+        "fxRate": "The day's exchange rate could not be retrieved. Try again later.",
+        "noChart": "Install the chart of accounts first.",
+        "noFiscalYear": "No open financial year on the bill date.",
+        "vatPeriodClosed": "The VAT period of this date is already validated.",
+        "notFound": "Bill not found or already handled.",
+        "none": "No approved bill with an IBAN to pay.",
+        "noIban": "Enter the company's IBAN in the settings first.",
+        "plan": "Importing e-invoices is part of the Pro plan."
       }
     }
   },

@@ -200,7 +200,9 @@ export default async function BankPage({ params, searchParams }: Props) {
               ? t("noSuggestion")
               : p.kind === "invoice"
                 ? t("paysInvoice", { invoice: invoiceName.get(p.invoiceId) ?? "" })
-                : `${accountLabel.get(p.accountId) ?? ""}${p.vatCode ? ` · ${t(`vat.${p.vatCode}`)}` : ""}`;
+                : p.kind === "bill"
+                  ? t("paysBill")
+                  : `${accountLabel.get(p.accountId) ?? ""}${p.vatCode ? ` · ${t(`vat.${p.vatCode}`)}` : ""}`;
             const sure = (p?.confidence ?? 0) >= CONFIDENT;
             return (
               <li key={r.id} className="border border-line-strong bg-panel" data-testid="bank-row">

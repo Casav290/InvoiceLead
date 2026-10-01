@@ -88,6 +88,8 @@ export const organizations = pgTable("organizations", {
    * confiante) sont comptabilisées sans clic ; la personne ne relit que les exceptions.
    */
   autopilot: boolean("autopilot").notNull().default(false),
+  /** Factures fournisseurs : deux personnes différentes approuvent avant le paiement. */
+  dualApproval: boolean("dual_approval").notNull().default(false),
   /** Relances envoyées chaque jour par la tâche quotidienne (formule Pro), sans clic. */
   reminderAuto: boolean("reminder_auto").notNull().default(false),
   /** Frais de rappel dès la deuxième relance, en centimes ; 0 : aucun. */
@@ -544,6 +546,13 @@ export type BankProposal =
       confidence: number;
       explanation: string;
       source: "ai" | "rule" | "receipt";
+    }
+  | {
+      kind: "bill";
+      billId: string;
+      confidence: number;
+      explanation: string;
+      source: "reference" | "ai";
     };
 
 /** Mouvement d'un relevé bancaire importé, en attente de validation humaine. */
@@ -639,6 +648,10 @@ export type ReceiptExtraction = {
   description: string | null;
   accountNumber: string | null;
   confidence: number;
+  /** Section paiement d'une facture fournisseur : échéance, compte et référence du créancier. */
+  dueDate?: string | null;
+  iban?: string | null;
+  paymentReference?: string | null;
 };
 
 /**
@@ -657,7 +670,7 @@ export const receipts = pgTable(
     contentType: text("content_type").notNull(),
     sizeBytes: integer("size_bytes").notNull(),
     sha256: text("sha256").notNull(),
-    status: text("status").notNull().default("new"), // new | read | error | matched | posted
+    status: text("status").notNull().default("new"), // new | read | error | matched | billed | posted
     extraction: jsonb("extraction").$type<ReceiptExtraction>(),
     bankTransactionId: uuid("bank_transaction_id"),
     journalEntryId: uuid("journal_entry_id"),
@@ -878,3 +891,63 @@ export const webhookDeliveries = pgTable(
     index("webhook_deliveries_endpoint_idx").on(t.endpointId, t.createdAt),
   ],
 );
+
+/**
+ * Facture fournisseur à payer : lue d'un justificatif, d'une e-facture reçue (XRechnung, ZUGFeRD,
+ * Factur-X) ou saisie. Approuvée, elle est comptabilisée (charge et impôt préalable contre
+ * fournisseurs) ; payée par le fichier pain.001 puis retrouvée dans le relevé, elle est soldée.
+ */
+export const supplierBills = pgTable(
+  "supplier_bills",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    contactId: uuid("contact_id").references(() => contacts.id, { onDelete: "set null" }),
+    supplierName: text("supplier_name").notNull(),
+    /** Adresse du créancier, exigée par le virement (pain.001). */
+    supplierStreet: text("supplier_street"),
+    supplierPostalCode: text("supplier_postal_code"),
+    supplierTown: text("supplier_town"),
+    supplierCountry: text("supplier_country"),
+    iban: text("iban"),
+    bic: text("bic"),
+    /** Référence structurée (QRR, RF…) ou communication libre du créancier. */
+    paymentReference: text("payment_reference"),
+    number: text("number"),
+    issueDate: date("issue_date", { mode: "string" }).notNull(),
+    dueDate: date("due_date", { mode: "string" }).notNull(),
+    currency: text("currency").notNull().default("CHF"),
+    totalCents: bigint("total_cents", { mode: "number" }).notNull(),
+    vatCode: text("vat_code"),
+    accountId: uuid("account_id").references(() => accounts.id, { onDelete: "set null" }),
+    description: text("description"),
+    /** draft | approved | scheduled (fichier de paiement produit) | paid */
+    status: text("status").notNull().default("draft"),
+    source: text("source").notNull().default("manual"), // manual | receipt | einvoice
+    receiptId: uuid("receipt_id"),
+    /** Cours figé à l'approbation pour une facture en devise. */
+    fxRate: doublePrecision("fx_rate"),
+    firstApprovedBy: uuid("first_approved_by").references(() => users.id, { onDelete: "set null" }),
+    approvedBy: uuid("approved_by").references(() => users.id, { onDelete: "set null" }),
+    approvedAt: timestamp("approved_at", { withTimezone: true }),
+    exportedAt: timestamp("exported_at", { withTimezone: true }),
+    paidOn: date("paid_on", { mode: "string" }),
+    journalEntryId: uuid("journal_entry_id"),
+    paymentEntryId: uuid("payment_entry_id"),
+    bankTransactionId: uuid("bank_transaction_id"),
+    createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    index("supplier_bills_org_status_idx").on(t.organizationId, t.status, t.dueDate),
+    uniqueIndex("supplier_bills_receipt_idx")
+      .on(t.receiptId)
+      .where(sql`${t.receiptId} is not null`),
+    check("supplier_bills_positive", sql`${t.totalCents} > 0`),
+  ],
+);
+
+export type SupplierBill = typeof supplierBills.$inferSelect;

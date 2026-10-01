@@ -22,6 +22,8 @@ export const RECEIPT_TYPES: Record<string, string> = {
   "image/jpeg": "jpg",
   "image/png": "png",
   "image/webp": "webp",
+  // Facture électronique reçue (XRechnung, UBL) : archivée, lue sans IA par les factures fournisseurs.
+  "application/xml": "xml",
 };
 export const MAX_RECEIPT_BYTES = 10_000_000;
 
@@ -116,7 +118,8 @@ export async function readReceipt(
     .select()
     .from(receipts)
     .where(and(eq(receipts.id, id), eq(receipts.organizationId, who.organizationId)));
-  if (!row || row.status === "posted") return "notFound";
+  if (!row || row.status === "posted" || row.status === "billed") return "notFound";
+  if (row.contentType === "application/xml") return "unreadable";
   const file = await getFile(database, who.organizationId, row.fileKey);
   if (!file) return "notFound";
   const [org] = await database
@@ -142,7 +145,8 @@ export async function readReceipt(
 
   const instructions = [
     "You read supplier invoices and receipts (Switzerland, Germany, France, the UK or the US) for bookkeeping.",
-    'Answer with JSON only: {"supplier":"...","date":"YYYY-MM-DD","total":"123.45","currency":"CHF","vat":"8.07","vat_code":"normal|reduced|lodging|exempt|null","invoice_number":"...","description":"...","account":"6510","confidence":0.9}',
+    'Answer with JSON only: {"supplier":"...","date":"YYYY-MM-DD","total":"123.45","currency":"CHF","vat":"8.07","vat_code":"normal|reduced|lodging|exempt|null","invoice_number":"...","description":"...","account":"6510","due_date":"YYYY-MM-DD","iban":"CH...","payment_reference":"...","confidence":0.9}',
+    "due_date, iban and payment_reference come from the payment terms or the payment slip (Swiss QR-bill payment part, SEPA details): the creditor account, the QR or RF reference. Use null when absent.",
     germany
       ? "total is the amount to pay including VAT. vat is the VAT amount shown (null if none). vat_code: German VAT rate applied (19 % normal, 7 % reduced)."
       : france
@@ -197,7 +201,8 @@ export async function readReceipt(
   const str = (v: unknown, max: number) =>
     typeof v === "string" && v.trim() ? v.trim().slice(0, max) : null;
   const date = str(r.date, 10);
-  const account = str(r.account, 4);
+  const account = str(r.account, 8);
+  const due = str(r.due_date, 10);
   const extraction: ReceiptExtraction = {
     supplier: str(r.supplier, 100),
     date: date && isIsoDate(date) ? date : null,
@@ -212,6 +217,9 @@ export async function readReceipt(
     description: str(r.description, 200),
     accountNumber: account && chart.some((a) => a.number === account) ? account : null,
     confidence: Math.max(0, Math.min(1, Number(r.confidence) || 0)),
+    dueDate: due && isIsoDate(due) ? due : null,
+    iban: str(r.iban, 40)?.replace(/\s/g, "").toUpperCase() ?? null,
+    paymentReference: str(r.payment_reference, 40),
   };
   await database.update(receipts).set({ extraction, status: "read" }).where(eq(receipts.id, id));
   await matchReceipts(database, who, language);

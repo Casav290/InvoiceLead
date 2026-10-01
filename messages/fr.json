@@ -948,7 +948,8 @@
         "receipts": "Justificatifs",
         "reports": "Rapports",
         "vat": "TVA",
-        "review": "À vérifier"
+        "review": "À vérifier",
+        "bills": "Fournisseurs"
       },
       "welcomeFiduciary": "Bienvenue. Vous travaillez maintenant dans la comptabilité de votre client ; changez d'entreprise depuis l'en-tête.",
       "unavailableTitle": "Comptabilité bientôt disponible pour ce pays",
@@ -1015,7 +1016,8 @@
       },
       "planOnly": "L'import des relevés bancaires et les propositions de l'assistant sont compris dans la formule Pro.",
       "autoPosted": "{count, plural, one {# mouvement comptabilisé} other {# mouvements comptabilisés}} par le pilote automatique.",
-      "autoReview": "Les revoir"
+      "autoReview": "Les revoir",
+      "paysBill": "Paiement d’une facture fournisseur"
     },
     "receipts": {
       "title": "Justificatifs",
@@ -1043,9 +1045,11 @@
         "read": "Lu, paiement pas encore trouvé",
         "error": "Illisible",
         "matched": "Rattaché",
-        "posted": "Comptabilisé"
+        "posted": "Comptabilisé",
+        "billed": "Facture fournisseur"
       },
-      "planOnly": "La lecture automatique des justificatifs est comprise dans la formule Pro (50 par mois) et Pro+ (300 par mois)."
+      "planOnly": "La lecture automatique des justificatifs est comprise dans la formule Pro (50 par mois) et Pro+ (300 par mois).",
+      "toBill": "Créer la facture à payer"
     },
     "reports": {
       "title": "Rapports",
@@ -1447,6 +1451,108 @@
       "digest": {
         "subject": "InvoiceLead : votre comptabilité de la semaine, {company}",
         "body": "Bonjour,\n\nCette semaine, le pilote automatique a comptabilisé {auto, plural, =0 {aucun mouvement} one {# mouvement} other {# mouvements}} pour {company}.\n\nÀ approuver : {approve}\nÀ relire dans Banque : {review}\nPoints à regarder : {anomalies}\n\nTout voir et approuver en un clic : {link}\n\nInvoiceLead"
+      }
+    },
+    "bills": {
+      "title": "Factures fournisseurs",
+      "new": "Nouvelle facture fournisseur",
+      "back": "Toutes les factures fournisseurs",
+      "subtitle": "Les factures reçues, lues par l'IA ou importées en e-facture, à approuver puis payer en un fichier pour votre e-banking. Le relevé bancaire les solde ensuite tout seul.",
+      "empty": "Aucune facture fournisseur. Importez une e-facture, créez-en une depuis un justificatif ou saisissez-la.",
+      "importLabel": "E-factures reçues (XRechnung, ZUGFeRD, Factur-X, UBL)",
+      "importHint": "Fichiers XML, ou PDF avec le XML joint. Lus sans IA, au centime.",
+      "import": "Importer",
+      "imported": "{count, plural, =0 {Aucune facture importée} one {# facture importée} other {# factures importées}}{rejected, plural, =0 {.} other {, # fichier(s) non reconnu(s) comme e-facture.}}",
+      "deleted": "Brouillon supprimé.",
+      "dualOn": "Double validation activée.",
+      "dualOff": "Double validation coupée.",
+      "exportHint": "{count, plural, one {# facture approuvée} other {# factures approuvées}} à payer, {total} au total. Le fichier pain.001 se charge dans votre e-banking, qui exécute chaque paiement à son échéance.",
+      "export": "Télécharger le fichier de paiement (pain.001)",
+      "groups": {
+        "draft": "À approuver",
+        "approved": "À payer",
+        "scheduled": "Paiement transmis",
+        "paid": "Payées"
+      },
+      "status": {
+        "draft": "Brouillon",
+        "approved": "Approuvée, à payer",
+        "scheduled": "Paiement transmis",
+        "paid": "Payée"
+      },
+      "due": "échéance {date}",
+      "dualApproval": "Double validation des factures fournisseurs",
+      "dualApprovalHint": "Deux personnes différentes approuvent chaque facture avant qu'elle soit comptabilisée et payable.",
+      "saveSetting": "Enregistrer",
+      "sections": {
+        "supplier": "Fournisseur",
+        "invoice": "Facture",
+        "payment": "Paiement"
+      },
+      "fields": {
+        "supplierName": "Fournisseur",
+        "supplierStreet": "Rue et numéro",
+        "supplierPostalCode": "NPA",
+        "supplierTown": "Localité",
+        "supplierCountry": "Pays (code)",
+        "number": "Numéro de facture",
+        "issueDate": "Date de facture",
+        "dueDate": "Échéance",
+        "currency": "Devise",
+        "total": "Montant à payer, TVA comprise",
+        "vatCode": "TVA comprise",
+        "account": "Compte de charge",
+        "description": "Description",
+        "iban": "IBAN du fournisseur",
+        "bic": "BIC (facultatif)",
+        "paymentReference": "Référence de paiement"
+      },
+      "hints": {
+        "supplierCountry": "Deux lettres : CH, DE, FR…",
+        "dueDate": "Vide : 30 jours après la date de facture.",
+        "total": "Par exemple 107.70",
+        "account": "Appris du fournisseur dès la première facture approuvée.",
+        "paymentReference": "Référence QR, référence RF, ou communication libre."
+      },
+      "noVat": "Sans TVA",
+      "choose": "Choisir…",
+      "save": "Enregistrer",
+      "invalid": "Certains champs sont à corriger.",
+      "notEditable": "Cette facture n'est plus modifiable.",
+      "saved": "Facture enregistrée.",
+      "approve": "Approuver",
+      "approveSecond": "Approuver (2e validation)",
+      "approveHint": "Approuvée, la facture est comptabilisée (charge et impôt préalable contre fournisseurs) et prête à payer.",
+      "waitingSecond": "Vous avez donné la première validation. Une autre personne doit approuver.",
+      "secondNeeded": "Première validation donnée par une autre personne. Votre approbation la comptabilise.",
+      "approvedNotice": "Facture approuvée et comptabilisée.",
+      "firstApprovalNotice": "Première validation enregistrée. Une deuxième personne doit approuver.",
+      "paidNotice": "Paiement enregistré.",
+      "delete": "Supprimer le brouillon",
+      "openReceipt": "Voir le justificatif",
+      "openEInvoice": "Voir la facture électronique",
+      "paidOn": "Payée le",
+      "money": "Payée depuis",
+      "moneyBank": "Banque",
+      "moneyCash": "Caisse",
+      "markPaid": "Noter comme payée",
+      "markPaidHint": "Seulement pour un paiement hors relevé importé : sinon, le débit du relevé solde la facture tout seul.",
+      "errors": {
+        "required": "Champ obligatoire.",
+        "tooLong": "Texte trop long.",
+        "date": "Date invalide.",
+        "amount": "Montant invalide.",
+        "iban": "IBAN invalide (clé de contrôle).",
+        "noAccount": "Choisissez d'abord le compte de charge.",
+        "sameApprover": "La deuxième validation doit venir d'une autre personne.",
+        "fxRate": "Le cours de change du jour n'a pas pu être obtenu. Réessayez plus tard.",
+        "noChart": "Installez d'abord le plan comptable.",
+        "noFiscalYear": "Aucun exercice ouvert à la date de la facture.",
+        "vatPeriodClosed": "La période TVA de cette date est déjà validée.",
+        "notFound": "Facture introuvable ou déjà traitée.",
+        "none": "Aucune facture approuvée avec un IBAN à payer.",
+        "noIban": "Saisissez d'abord l'IBAN de l'entreprise dans les réglages.",
+        "plan": "L'import des e-factures fait partie de la formule Pro."
       }
     }
   },

@@ -12,6 +12,7 @@ import {
   journalLines,
   organizations,
   receipts,
+  supplierBills,
 } from "./db/schema";
 import { LedgerError, reverseEntry } from "./ledger";
 import { deletePayment } from "./payments";
@@ -361,6 +362,11 @@ export async function undoAutoPosting(
         .update(receipts)
         .set({ status: "matched", journalEntryId: null })
         .where(eq(receipts.bankTransactionId, tx.id));
+      // Paiement de facture fournisseur : la facture redevient à payer.
+      await t
+        .update(supplierBills)
+        .set({ status: "scheduled", paidOn: null, paymentEntryId: null, bankTransactionId: null })
+        .where(eq(supplierBills.bankTransactionId, tx.id));
       const key = counterpartyKey(tx.counterparty);
       if (tx.proposal?.kind === "account" && key)
         await t
