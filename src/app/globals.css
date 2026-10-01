@@ -170,3 +170,12 @@
     font-weight: 700;
   }
 }
+
+/*
+ * Fonction grisée (ProLock) : un fieldset désactivé donne à ses champs l'aspect désactivé, même
+ * quand le champ porte sa propre couleur de fond. Hors couche, pour passer devant les utilitaires.
+ */
+fieldset:disabled :is(input, select, textarea) {
+  background-color: var(--color-muted);
+  color: var(--color-ink-muted);
+}

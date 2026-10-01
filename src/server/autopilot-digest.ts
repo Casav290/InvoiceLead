@@ -5,7 +5,7 @@ import type { Db } from "./db";
 import { memberships, organizations, users } from "./db/schema";
 import { emailConfigured, sendEmail } from "./email";
 import { env } from "./env";
-import { hasFeature } from "./plans";
+import { featureAccess } from "./plans";
 
 /**
  * Récapitulatif du lundi : à chaque administrateur d'une entreprise au pilote automatique, ce qui a
@@ -17,7 +17,8 @@ export async function sendAutopilotDigests(database: Db, today: string): Promise
   const orgs = await database.select().from(organizations).where(eq(organizations.autopilot, true));
   let sent = 0;
   for (const org of orgs) {
-    if (!hasFeature(org, "bankImport")) continue;
+    // Le récapitulatif fait partie de la formule Pro ; le pilote lui-même est ouvert à tous.
+    if (!featureAccess(org, "autopilotDigest").allowed) continue;
     const s = await autopilotSummary(database, org.id, today);
     if (s.autoWeek + s.toApprove + s.toReview + s.anomalies === 0) continue;
     const admins = await database

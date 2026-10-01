@@ -23,6 +23,7 @@ import {
 } from "./db/schema";
 import { fetchFxRate } from "./fx";
 import { appendEntry, LedgerError, type Posting, roleAccounts } from "./ledger";
+import { consumeQuota, organizationPlan, refundQuota } from "./plans";
 import { uploadReceipt } from "./receipts";
 
 type Who = { organizationId: string; userId: string };
@@ -326,22 +327,28 @@ export async function einvoiceXml(file: { type: string; bytes: Buffer }): Promis
 /**
  * Importe une facture électronique reçue (XML, ou PDF avec XML joint) : lue sans IA, archivée comme
  * justificatif, et devenue facture à payer. Un avoir du fournisseur n'est pas une facture à payer.
+ * Chaque e-facture importée compte dans les pièces lues du mois, comme un justificatif.
  */
 export async function importEInvoice(
   database: Db,
   who: Who,
   file: { name: string; type: string; bytes: Buffer },
-): Promise<SupplierBill | "notEInvoice" | "creditNote" | "duplicate" | "type" | "size"> {
+): Promise<SupplierBill | "notEInvoice" | "creditNote" | "duplicate" | "type" | "size" | "quota"> {
   const xml = await einvoiceXml(file);
   const parsed: IncomingInvoice | null = xml ? parseIncomingInvoice(xml) : null;
   if (!parsed) return "notEInvoice";
   if (parsed.creditNote) return "creditNote";
+  const plan = await organizationPlan(database, who.organizationId);
+  if (!plan || !(await consumeQuota(database, plan, "aiReads")).allowed) return "quota";
   const stored = await uploadReceipt(database, who, {
     name: file.name,
     type: file.type === "text/xml" ? "application/xml" : file.type,
     bytes: file.bytes,
   });
-  if (typeof stored === "string") return stored;
+  if (typeof stored === "string") {
+    await refundQuota(database, plan.id, "aiReads");
+    return stored;
+  }
   const [org] = await database
     .select({ country: organizations.country })
     .from(organizations)

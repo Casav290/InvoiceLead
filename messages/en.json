@@ -681,7 +681,8 @@
         "planLimit": "You have reached the Free plan limit of 10 invoices per month. Upgrade to Pro for unlimited invoicing.",
         "recurring": "The recurrence could not be saved.",
         "fxRate": "The day's exchange rate could not be retrieved. Enter the rate in the draft, then issue again.",
-        "depositDraft": "A deposit invoice for this quote is still a draft: issue or delete it before creating the final invoice."
+        "depositDraft": "A deposit invoice for this quote is still a draft: issue or delete it before creating the final invoice.",
+        "recurringLimit": "The Free plan includes one active recurring invoice. Pause one, or upgrade to Pro to add more."
       },
       "addLine": "Add line",
       "removeLine": "Remove",
@@ -921,7 +922,8 @@
         "exempt": "Exempt",
         "export": "Not taxable (out of state)"
       },
-      "totalWithVatUs": "Total incl. tax"
+      "totalWithVatUs": "Total incl. tax",
+      "currencyPlan": "Other currencies are part of the Pro plan."
     },
     "quotes": {
       "title": "Quotes",
@@ -1032,8 +1034,7 @@
         "noFiscalYear": "No open fiscal year covers the date of this transaction.",
         "noProposal": "Choose an account first.",
         "notFound": "Transaction not found or already processed.",
-        "vatPeriodClosed": "This date falls in a VAT period that has already been validated: entries can no longer be added to it.",
-        "plan": "Bank statement import is only available on the Pro plan."
+        "vatPeriodClosed": "This date falls in a VAT period that has already been validated: entries can no longer be added to it."
       },
       "aiError": "The assistant could not respond. The transactions are still awaiting proposals; try again later.",
       "aiOff": "The accounting assistant is not enabled yet: only invoice payments recognised by their QR reference are proposed automatically.",
@@ -1078,7 +1079,6 @@
         "hits": "{count, plural, one {validated # time} other {validated # times}}",
         "delete": "Forget"
       },
-      "planOnly": "Bank statement import and assistant proposals are included in the Pro plan.",
       "autoPosted": "{count, plural, one {# transaction} other {# transactions}} posted by the autopilot.",
       "autoReview": "Review them",
       "paysBill": "Supplier invoice payment"
@@ -1090,8 +1090,7 @@
       "errors": {
         "unreadable": "This PDF is a scanned image: upload a clear photo of the document instead.",
         "failed": "The assistant could not read this receipt. Try again later.",
-        "notFound": "Receipt not found.",
-        "plan": "Receipt reading is only available on the Pro and Pro+ plans."
+        "notFound": "Receipt not found."
       },
       "aiOff": "The assistant is not enabled yet: receipts are kept and will be read once the assistant is set up.",
       "files": "Invoices or till receipts",
@@ -1112,7 +1111,6 @@
         "posted": "Posted",
         "billed": "Supplier invoice"
       },
-      "planOnly": "Automatic receipt reading is included in the Pro plan (50 per month) and Pro+ (300 per month).",
       "toBill": "Create the bill to pay",
       "captureLink": "Take a photo with your phone"
     },
@@ -1164,7 +1162,7 @@
         "blocked": "The VAT return cannot be validated while blocking issues remain.",
         "noFiscalYear": "No open fiscal year covers the end of this period.",
         "noChart": "The chart of accounts lacks the required VAT accounts.",
-        "plan": "Validating the VAT return is only available on the Pro plan."
+        "plan": "The VAT return is part of the Pro plan."
       },
       "periods": "Periods",
       "quarter": "Q{q} {year}",
@@ -1263,7 +1261,9 @@
       },
       "titleUs": "Sales tax report",
       "xmlDownload": "Download the return in eCH-0217 format, to file on the SFTA portal",
-      "xmlNoUid": "The eCH-0217 file needs the company's UID (settings)."
+      "xmlNoUid": "The eCH-0217 file needs the company's UID (settings).",
+      "validatePlan": "Pro feature. Upgrade to Pro to validate and file your return.",
+      "planOnlyUs": "The sales tax report prepared and validated in InvoiceLead is included in the Pro plan. You can view the figures below."
     },
     "reminders": {
       "title": "Payment reminders",
@@ -1276,7 +1276,8 @@
         "recorded": "Reminder recorded as sent.",
         "notDue": "This reminder is no longer due.",
         "noEmail": "No email address for this customer, or sending is not set up.",
-        "failed": "Sending failed. Try again later."
+        "failed": "Sending failed. Try again later.",
+        "plan": "This reminder is part of the Pro plan."
       },
       "empty": "No reminders to send today.",
       "line": "{level, select, 0 {Friendly reminder} 1 {1st reminder} 2 {2nd reminder} other {Final reminder}} · {days, plural, =0 {due today} other {{days} days late}} · due {due}",
@@ -1329,7 +1330,8 @@
       "forecastHint": "Open invoices, on the date each customer usually pays.",
       "week": "Week of {date}",
       "later": "Later",
-      "forecastEmpty": "No open invoices."
+      "forecastEmpty": "No open invoices.",
+      "levelPlan": "Pro feature. The Free plan sends the first reminder, the next ones are part of Pro."
     },
     "recurring": {
       "title": "Recurring invoices",
@@ -1345,14 +1347,33 @@
       "model": "View template",
       "pause": "Pause",
       "resume": "Resume",
-      "delete": "Delete"
+      "delete": "Delete",
+      "held": "On hold: the Free plan runs one recurring invoice."
     },
     "plan": {
       "upgrade": "Upgrade to Pro",
       "free": "Free",
       "pro": "Pro",
       "proplus": "Pro+",
-      "usage": "{plan} plan{hasLimit, select, yes {: {invoices} of {invoiceLimit} invoices this month, {contacts} of {contactLimit} contacts} other {}}."
+      "usage": "{plan} plan{hasLimit, select, yes {: {invoices} of {invoiceLimit} invoices this month, {contacts} of {contactLimit} contacts} other {}}.",
+      "upgradePlus": "Upgrade to Pro+",
+      "locked": "Pro feature. Upgrade to Pro to use it.",
+      "lockedPlus": "Pro+ feature. Upgrade to Pro+ to use it.",
+      "quota": {
+        "aiReads": "Documents read by AI: {used} of {limit} this month",
+        "assistant": "Questions to the assistant: {used} of {limit} this month",
+        "reminders": "Reminders: {used} of {limit} this month",
+        "bankImports": "Bank statements imported: {used} of {limit} this month",
+        "recurring": "Active recurring invoices: {used} of {limit}"
+      },
+      "used": {
+        "aiReads": "{plan, select, free {Your {limit} free reads for this month are used up.} other {Your {limit} reads for this month are used up.}}",
+        "assistant": "{plan, select, free {Your {limit} free questions for this month are used up.} other {Your {limit} questions for this month are used up.}}",
+        "reminders": "{plan, select, free {Your {limit} free reminders for this month are sent.} other {Your {limit} reminders for this month are sent.}}",
+        "bankImports": "{limit, plural, one {Your free bank statement for this month is imported.} other {Your # free bank statements for this month are imported.}}",
+        "recurring": "{limit, plural, one {The Free plan includes one active recurring invoice.} other {The Free plan includes # active recurring invoices.}} Pause one, or upgrade to Pro to add more.",
+        "invoices": "Your {limit} free invoices for this month are issued. The draft stays saved."
+      }
     },
     "orgSwitch": {
       "label": "Company",
@@ -1417,7 +1438,8 @@
       "expired": "This invitation link has expired. Ask for a new one.",
       "wrongEmail": "This invitation was sent to an address other than {email}. Log in with the right Lead account.",
       "logout": "Switch account",
-      "accept": "Accept invitation"
+      "accept": "Accept invitation",
+      "plan": "This company is no longer on the Pro plan, which includes fiduciary access. Ask them to upgrade to Pro, then open the link again."
     },
     "crmImport": {
       "title": "Lead won in CRMlead",
@@ -1511,7 +1533,6 @@
       "autopilot": "Autopilot",
       "autopilotHint": "Posts without a click the payments recognised by their reference, transactions covered by a rule confirmed at least three times and AI suggestions that are 97% certain. A possible duplicate or an unusual amount always waits for a person.",
       "save": "Save",
-      "planOnly": "The autopilot is part of the Pro plan, with bank import.",
       "enabled": "Autopilot on: {count, plural, =0 {nothing to post right now} one {# transaction posted} other {# transactions posted}}.",
       "disabled": "Autopilot off. Suggestions wait for your approval.",
       "approved": "{count, plural, =0 {Nothing to approve.} one {# entry approved.} other {# entries approved.}}",
@@ -1533,13 +1554,15 @@
       "openBank": "See in Bank",
       "errors": {
         "closed": "This entry is in a closed financial year or VAT period and can no longer be undone.",
-        "notFound": "Entry not found or already handled.",
-        "plan": "The autopilot is part of the Pro plan."
+        "notFound": "Entry not found or already handled."
       },
       "digest": {
         "subject": "InvoiceLead: your books this week, {company}",
         "body": "Hello,\n\nThis week the autopilot posted {auto, plural, =0 {no transaction} one {# transaction} other {# transactions}} for {company}.\n\nTo approve: {approve}\nTo review under Bank: {review}\nThings to look at: {anomalies}\n\nSee everything and approve in one click: {link}\n\nInvoiceLead"
-      }
+      },
+      "digestTitle": "Monday summary by email",
+      "digestHint": "Every Monday, administrators receive what the autopilot posted on its own during the week and what is waiting for a person.",
+      "digestPlan": "The Monday email summary is part of the Pro plan. The autopilot itself is included in your plan."
     },
     "bills": {
       "title": "Supplier bills",
@@ -1640,9 +1663,10 @@
         "notFound": "Bill not found or already handled.",
         "none": "No approved bill with an IBAN to pay.",
         "noIban": "Enter the company's IBAN in the settings first.",
-        "plan": "Importing e-invoices is part of the Pro plan."
+        "plan": "Entering a bill in a foreign currency is part of the Pro plan."
       },
-      "claim": "Expense claim"
+      "claim": "Expense claim",
+      "currencyPlan": "Other currencies are part of the Pro plan."
     },
     "time": {
       "title": "Time",
@@ -1717,8 +1741,7 @@
       "saved": "Receipt saved.",
       "rejected": "The photo could not be saved (format, size or plan limit).",
       "recent": "Latest receipts",
-      "all": "All receipts",
-      "planOnly": "Reading receipts is part of the Pro plan."
+      "all": "All receipts"
     },
     "assistant": {
       "title": "Assistant",
@@ -1744,10 +1767,10 @@
         "time": "Projects"
       },
       "errors": {
-        "plan": "The assistant is part of the Pro plan.",
         "off": "The AI assistant is not configured yet.",
         "empty": "Ask a question.",
-        "failed": "The assistant could not answer. Try again in a moment."
+        "failed": "The assistant could not answer. Try again in a moment.",
+        "quota": "This month's free questions are used up. Upgrade to Pro to keep asking."
       }
     },
     "expenses": {
@@ -1793,8 +1816,7 @@
         "size": "Receipt too large (10 MB at most).",
         "duplicate": "This receipt was already sent.",
         "role": "Your role does not allow expense claims.",
-        "invalid": "Invalid input.",
-        "quota": "You have used this month's 5 receipt reads on the free plan. Upgrade to Pro for 50 a month, or enter the expense by hand."
+        "invalid": "Invalid input."
       },
       "scan": {
         "title": "Scan a receipt",
@@ -1877,6 +1899,11 @@
           "50 contacts",
           "QR-bill, documents in DE, FR, IT, EN",
           "Accounting fed by your invoices",
+          "20 documents read by AI each month (receipts, supporting documents, e-invoices)",
+          "Assistant: 10 questions per month",
+          "First reminder sent by hand, 5 per month",
+          "1 active recurring invoice",
+          "1 bank statement per month, autopilot included",
           "“Created with InvoiceLead” notice"
         ]
       },
@@ -1886,9 +1913,11 @@
         "features": [
           "Unlimited invoices and contacts",
           "2 users and free fiduciary access",
-          "Automatic payment reminders on 3 levels",
+          "50 documents read by AI each month",
+          "Unlimited assistant",
+          "Automatic reminders on 3 levels, fees and interest",
           "VAT return (effective and net tax rate methods)",
-          "camt bank import and reconciliation",
+          "Unlimited camt bank import, Monday autopilot summary",
           "Recurring invoices, multi-currency"
         ]
       },
@@ -1897,9 +1926,11 @@
         "tagline": "For teams and multiple companies",
         "features": [
           "5 users with roles",
+          "300 documents read by AI each month",
+          "API, MCP server and webhooks",
           "Up to 3 companies",
           "Direct bank connection",
-          "eBill, API and webhooks",
+          "eBill",
           "GeBüV-compliant archiving",
           "Priority support"
         ]
@@ -1937,6 +1968,10 @@
       {
         "q": "Can I get my data back?",
         "a": "Yes, at any time, and for 30 days after cancellation. Your books must be kept for ten years: the export is designed for that."
+      },
+      {
+        "q": "What does the Free plan include?",
+        "a": "Each month: 10 invoices, 20 documents read by AI, 10 questions to the assistant, 5 first reminders and 1 bank statement with the autopilot. It also includes 50 contacts and 1 active recurring invoice. Pro features stay visible in the app, greyed out with the Pro mark, so you know they exist."
       },
       {
         "q": "Do I need a payment card to start?",

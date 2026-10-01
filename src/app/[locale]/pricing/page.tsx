@@ -16,10 +16,16 @@ const PLANS = [
 ] as const;
 
 /**
- * Lignes sans étiquette « Bientôt » : fonctions déjà disponibles, ou limites de la formule
- * (Gratuit : 1 utilisateur, mention « Créé avec InvoiceLead »). Toutes les autres sont à venir.
+ * Lignes sans étiquette « Bientôt » (index dans pricing.plans.*.features) : fonctions déjà
+ * disponibles et limites de la formule, décidées le 1er octobre 2026 (docs/PLAN.md, section 9).
+ * En Pro+, plusieurs sociétés, la connexion bancaire directe, eBill, l'archivage GeBüV et le
+ * support prioritaire restent à venir.
  */
-const AVAILABLE: Record<string, number[]> = { free: [0, 5], pro: [], proPlus: [] };
+const AVAILABLE: Record<string, number[]> = {
+  free: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+  pro: [0, 1, 2, 3, 4, 5, 6, 7],
+  proPlus: [0, 1, 2],
+};
 
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { locale } = await params;

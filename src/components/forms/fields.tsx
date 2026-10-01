@@ -86,10 +86,13 @@ export function SelectField({
   defaultValue,
   options,
   placeholder,
+  after,
 }: Common & {
   defaultValue?: string;
-  options: { value: string; label: string }[];
+  options: { value: string; label: string; disabled?: boolean }[];
   placeholder?: string;
+  /** Sous le champ : par exemple la raison d'options grisées (formule). */
+  after?: React.ReactNode;
 }) {
   return (
     <div className={cn(wide && "sm:col-span-2")}>
@@ -107,12 +110,13 @@ export function SelectField({
       >
         {placeholder !== undefined ? <option value="">{placeholder}</option> : null}
         {options.map((o) => (
-          <option key={o.value} value={o.value}>
+          <option key={o.value} value={o.value} disabled={o.disabled}>
             {o.label}
           </option>
         ))}
       </select>
       <Messages id={id} hint={hint} error={error} />
+      {after}
     </div>
   );
 }

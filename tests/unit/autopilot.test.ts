@@ -63,15 +63,15 @@ describe("seuils du pilote automatique", () => {
   });
 });
 
-async function setup(autopilot: boolean) {
+async function setup(autopilot: boolean, rank = 1) {
   const a = await attachLeadIdentity(db, claims());
   const who = { organizationId: a.organization.id, userId: a.user.id };
   await db
     .update(organizations)
     .set({
       autopilot,
-      leadPlan: "pro",
-      entitlements: { plan: { rank: 1 } },
+      leadPlan: rank === 0 ? "free" : "pro",
+      entitlements: { plan: { rank } },
       legalName: "Atelier Muster GmbH",
       street: "Bahnhofstrasse",
       postalCode: "8001",
@@ -152,6 +152,11 @@ describe("pilote automatique", () => {
   it("ne fait rien tant qu'il n'est pas activé", async () => {
     const { who } = await setup(false);
     expect(await runAutopilot(db, who)).toBe(0);
+  });
+
+  it("travaille aussi en formule gratuite, sur les lignes du relevé importé", async () => {
+    const { who } = await setup(true, 0);
+    expect(await runAutopilot(db, who)).toBe(2);
   });
 
   it("comptabilise le sûr, laisse le reste, se fait approuver ou annuler", async () => {

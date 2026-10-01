@@ -22,7 +22,7 @@ import { emailConfigured, sendEmail } from "./email";
 import { getInvoice } from "./invoices";
 import { LedgerError, postPending, reverseEntry } from "./ledger";
 import { invoiceBalance } from "./payments";
-import { hasFeature } from "./plans";
+import { consumeQuota, featureAccess, refundQuota } from "./plans";
 import { enableShareLink, shareUrl } from "./sharing";
 
 type Who = { organizationId: string; userId: string };
@@ -56,6 +56,11 @@ export type DueReminder = {
   /** Profil de paiement du client (formule Pro) et son retard moyen habituel. */
   risk: PaymentProfile["risk"];
   avgDaysLate: number | null;
+  /**
+   * Formule gratuite : la 2e ou la 3e relance est due mais fait partie de la formule Pro. La ligne
+   * reste visible (grisée), elle ne peut pas être envoyée.
+   */
+  locked: boolean;
 };
 
 /** Intérêt moratoire simple, sur 365 jours. */
@@ -75,9 +80,11 @@ export async function dueReminders(
     .from(organizations)
     .where(eq(organizations.id, organizationId));
   if (!org) return [];
-  // Formule gratuite : la première relance seulement, sans frais ni intérêts.
-  const pro = hasFeature(org, "reminders");
-  const maxLevel = pro ? REMINDER_DAYS.length : 1;
+  // Formule gratuite : la première relance seulement, sans frais ni intérêts ; les relances
+  // suivantes restent dans la liste, grisées, pour qu'on sache qu'elles existent.
+  const pro = featureAccess(org, "reminderLevels").allowed;
+  const charging = featureAccess(org, "reminderCharges").allowed;
+  const maxLevel = REMINDER_DAYS.length;
   const rows = await database
     .select({
       id: invoices.id,
@@ -135,7 +142,7 @@ export async function dueReminders(
       (Date.parse(`${today}T00:00:00Z`) - Date.parse(`${r.dueDate}T00:00:00Z`)) / 86_400_000,
     );
     // Frais et intérêts : formule Pro, factures dans la monnaie de l'entreprise.
-    const charges = pro && r.currency === org.currency;
+    const charges = charging && r.currency === org.currency;
     const feeCents = charges && level >= 2 ? org.reminderFeeCents : 0;
     const interestCents =
       charges && level >= 1
@@ -156,6 +163,7 @@ export async function dueReminders(
       totalDueCents: open + charged + feeCents + interestCents,
       risk,
       avgDaysLate: profile?.avgDaysLate ?? null,
+      locked: !pro && level > 1,
     });
   }
   return out;
@@ -174,11 +182,21 @@ export async function listReminders(database: Db, organizationId: string, invoic
     .orderBy(desc(invoiceReminders.level));
 }
 
-export type ReminderResult = "sent" | "recorded" | "notDue" | "noEmail" | "failed";
+export type ReminderResult =
+  | "sent"
+  | "recorded"
+  | "notDue"
+  | "noEmail"
+  | "failed"
+  | "plan"
+  | "quota";
 
 /**
  * Envoie la relance due d'une facture : e-mail dans la langue de la facture, avec le PDF (et sa
  * QR-facture) et le lien de consultation. `manual` note seulement une relance faite autrement.
+ *
+ * Formule gratuite : la première relance seulement (« plan » pour les suivantes), 5 par mois,
+ * envoyées ou notées ; l'unité est réservée avant l'envoi et rendue s'il échoue.
  */
 export async function sendReminder(
   database: Db,
@@ -187,12 +205,36 @@ export async function sendReminder(
   today: string,
   manual = false,
 ): Promise<ReminderResult> {
+  const [org] = await database
+    .select()
+    .from(organizations)
+    .where(eq(organizations.id, who.organizationId));
+  if (!org) return "notDue";
   const due = (await dueReminders(database, who.organizationId, today)).find(
     (d) => d.invoiceId === invoiceId,
   );
   if (!due) return "notDue";
+  if (due.locked) return "plan";
+  if (!manual && (!emailConfigured() || !due.email)) return "noEmail";
+  if (!(await consumeQuota(database, org, "reminders", today)).allowed) return "quota";
+  const result = await deliverReminder(database, who, due, manual).catch(async (e: unknown) => {
+    await refundQuota(database, org.id, "reminders", today);
+    throw e;
+  });
+  if (result !== "sent" && result !== "recorded")
+    await refundQuota(database, org.id, "reminders", today);
+  return result;
+}
+
+async function deliverReminder(
+  database: Db,
+  who: Who,
+  due: DueReminder,
+  manual: boolean,
+): Promise<"sent" | "recorded" | "notDue" | "noEmail" | "failed"> {
+  const invoiceId = due.invoiceId;
   if (!manual) {
-    if (!emailConfigured() || !due.email) return "noEmail";
+    if (!due.email) return "noEmail";
     const found = await getInvoice(database, who.organizationId, invoiceId);
     if (!found) return "notDue";
     const { invoice, lines, related } = found;
@@ -231,7 +273,7 @@ export async function sendReminder(
       return "failed";
     }
   }
-  await database
+  const inserted = await database
     .insert(invoiceReminders)
     .values({
       organizationId: who.organizationId,
@@ -243,7 +285,10 @@ export async function sendReminder(
       feeCents: due.feeCents,
       interestCents: due.interestCents,
     })
-    .onConflictDoNothing();
+    .onConflictDoNothing()
+    .returning({ id: invoiceReminders.id });
+  // Relance déjà notée par une demande simultanée : rien de plus à compter ni à écrire.
+  if (inserted.length === 0) return "notDue";
   await database.insert(auditLog).values({
     organizationId: who.organizationId,
     userId: who.userId,
@@ -335,7 +380,7 @@ export async function runAutoReminders(database: Db, today: string) {
     .where(eq(organizations.reminderAuto, true));
   let sent = 0;
   for (const org of orgs) {
-    if (!hasFeature(org, "reminders")) continue;
+    if (!featureAccess(org, "reminderAuto").allowed) continue;
     const [admin] = await database
       .select({ userId: memberships.userId })
       .from(memberships)
@@ -358,14 +403,23 @@ export async function runAutoReminders(database: Db, today: string) {
   return { sent };
 }
 
-/** « Tout envoyer » : chaque relance due qui a une adresse e-mail. */
+/**
+ * « Tout envoyer » : chaque relance due qui a une adresse e-mail et que la formule permet. En
+ * formule gratuite, l'envoi s'arrête aux 5 relances du mois (`quotaReached`).
+ */
 export async function sendAllReminders(database: Db, who: Who, today: string) {
   const due = await dueReminders(database, who.organizationId, today);
   let sent = 0;
-  for (const d of due.filter((x) => x.email)) {
-    if ((await sendReminder(database, who, d.invoiceId, today)) === "sent") sent += 1;
+  let quotaReached = false;
+  for (const d of due.filter((x) => x.email && !x.locked)) {
+    const result = await sendReminder(database, who, d.invoiceId, today);
+    if (result === "sent") sent += 1;
+    if (result === "quota") {
+      quotaReached = true;
+      break;
+    }
   }
-  return { sent, remaining: due.length - sent };
+  return { sent, remaining: due.length - sent, quotaReached };
 }
 
 export async function remindersFor(database: Db, organizationId: string, invoiceIds: string[]) {

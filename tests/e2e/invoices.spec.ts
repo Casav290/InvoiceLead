@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { login, setupBilling, traitNetIssues } from "./helpers";
+import { LEAD, login, setupBilling, traitNetIssues } from "./helpers";
 
 test("facture : brouillon avec article et ligne libre, émission avec numéro, facture figée", async ({
   page,
@@ -100,7 +100,7 @@ test("facture : brouillon avec article et ligne libre, émission avec numéro, f
   await expect(send.getByLabel("Objet")).toHaveValue(`Facture ${year}-0001 de Factures Sàrl`);
   await page.getByTestId("send-submit").click();
   await expect(page.getByText("E-mail envoyé.")).toBeVisible();
-  const emails = await (await page.request.get("http://localhost:4010/test/emails")).json();
+  const emails = await (await page.request.get(`${LEAD}/test/emails`)).json();
   const mail = emails.at(-1);
   expect(mail.to).toEqual(["client@exemple.ch"]);
   expect(mail.from).toBe('"Factures Sàrl" <factures@invoicelead.io>');

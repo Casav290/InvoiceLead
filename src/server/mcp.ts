@@ -15,6 +15,7 @@ import {
   parseInvoiceForm,
 } from "./invoices";
 import { addPayment, invoiceBalance, parsePaymentForm } from "./payments";
+import { quotaAccess } from "./plans";
 import { addEntry, listProjects, parseEntryForm } from "./time";
 
 /**
@@ -119,6 +120,8 @@ const TOOLS: Tool[] = [
         toForm({ kind: "company", isCustomer: true, ...a }, ["isCustomer", "isSupplier"]),
       );
       if (!parsed.ok) throw new ToolError(`invalid: ${JSON.stringify(parsed.errors)}`);
+      if (!(await quotaAccess(db(), c.organization, "contacts")).allowed)
+        throw new ToolError("plan_limit");
       return contactJson(await createContact(db(), who(c), parsed.data));
     },
   },
@@ -176,6 +179,8 @@ const TOOLS: Tool[] = [
     inputSchema: { type: "object", properties: { id: { type: "string" } }, required: ["id"] },
     write: true,
     run: async (c, a) => {
+      if (!(await quotaAccess(db(), c.organization, "invoices")).allowed)
+        throw new ToolError("plan_limit");
       const result = await issueInvoice(db(), who(c), str(a.id));
       if (typeof result === "string") throw new ToolError(result);
       return invoiceJson(result);

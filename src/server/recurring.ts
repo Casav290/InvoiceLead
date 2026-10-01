@@ -1,9 +1,10 @@
-import { and, asc, eq, lte } from "drizzle-orm";
+import { and, asc, eq, inArray, lte } from "drizzle-orm";
 import type { Db } from "./db";
 import {
   auditLog,
   contacts,
   invoices,
+  organizations,
   type RecurringInvoice,
   recurringInvoices,
 } from "./db/schema";
@@ -15,6 +16,7 @@ import {
   issueInvoice,
 } from "./invoices";
 import { postPending } from "./ledger";
+import { lockQuota, organizationPlan, PLANS, quotaAccess, tierOf } from "./plans";
 
 type Who = { organizationId: string; userId: string };
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -31,26 +33,50 @@ export function addMonths(iso: string, months: number): string {
   return target.toISOString().slice(0, 10);
 }
 
+/**
+ * Compte puis crée ou reprend une récurrence sous un verrou de l'entreprise : la formule gratuite
+ * garde une seule facture récurrente active, même avec deux demandes simultanées.
+ */
+async function withActiveSlot<T>(
+  database: Db,
+  organizationId: string,
+  run: (tx: Db) => Promise<T>,
+): Promise<T | "planLimit"> {
+  const plan = await organizationPlan(database, organizationId);
+  if (!plan) return "planLimit";
+  return database.transaction(async (tx) => {
+    const t = tx as unknown as Db;
+    await lockQuota(t, organizationId, "recurring");
+    if (!(await quotaAccess(t, plan, "recurring")).allowed) return "planLimit" as const;
+    return run(t);
+  });
+}
+
 export async function createRecurring(
   database: Db,
   who: Who,
   invoiceId: string,
   input: { intervalMonths: number; nextDate: string; autoSend: boolean },
-): Promise<RecurringInvoice | "notFound" | "invalid"> {
+): Promise<RecurringInvoice | "notFound" | "invalid" | "planLimit"> {
   if (!UUID.test(invoiceId)) return "notFound";
   if (!(INTERVALS as readonly number[]).includes(input.intervalMonths)) return "invalid";
   if (!/^\d{4}-\d{2}-\d{2}$/.test(input.nextDate)) return "invalid";
   const found = await getInvoice(database, who.organizationId, invoiceId);
   if (found?.invoice.kind !== "invoice") return "notFound";
-  const [row] = await database
-    .insert(recurringInvoices)
-    .values({
-      ...input,
-      organizationId: who.organizationId,
-      sourceInvoiceId: invoiceId,
-      createdBy: who.userId,
-    })
-    .returning();
+  const created = await withActiveSlot(database, who.organizationId, async (tx) => {
+    const [inserted] = await tx
+      .insert(recurringInvoices)
+      .values({
+        ...input,
+        organizationId: who.organizationId,
+        sourceInvoiceId: invoiceId,
+        createdBy: who.userId,
+      })
+      .returning();
+    return inserted;
+  });
+  if (created === "planLimit") return created;
+  const row = created;
   if (!row) throw new Error("recurring_not_saved");
   await database.insert(auditLog).values({
     organizationId: who.organizationId,
@@ -78,16 +104,57 @@ export async function listRecurring(database: Db, organizationId: string) {
     .orderBy(asc(recurringInvoices.nextDate));
 }
 
-export async function setRecurringActive(database: Db, who: Who, id: string, active: boolean) {
+/** Met en pause ou reprend ; reprendre compte dans les récurrences actives de la formule. */
+export async function setRecurringActive(
+  database: Db,
+  who: Who,
+  id: string,
+  active: boolean,
+): Promise<boolean | "planLimit"> {
   if (!UUID.test(id)) return false;
-  const rows = await database
-    .update(recurringInvoices)
-    .set({ active })
+  const set = (tx: Db) =>
+    tx
+      .update(recurringInvoices)
+      .set({ active })
+      .where(
+        and(eq(recurringInvoices.id, id), eq(recurringInvoices.organizationId, who.organizationId)),
+      )
+      .returning({ id: recurringInvoices.id })
+      .then((rows) => rows.length > 0);
+  if (!active) return set(database);
+  const [row] = await database
+    .select({ active: recurringInvoices.active })
+    .from(recurringInvoices)
     .where(
       and(eq(recurringInvoices.id, id), eq(recurringInvoices.organizationId, who.organizationId)),
+    );
+  if (!row) return false;
+  if (row.active) return true;
+  return withActiveSlot(database, who.organizationId, set);
+}
+
+/**
+ * Récurrences qui tournent : toutes en Pro ; en formule gratuite, la plus ancienne active seulement
+ * (celles d'avant un retour à la formule gratuite attendent, sans être modifiées).
+ */
+export async function runningRecurring(
+  database: Db,
+  organization: { id: string; leadPlan: string; entitlements: unknown },
+): Promise<Set<string> | null> {
+  const limit = PLANS[tierOf(organization)].quotas.recurring;
+  if (!Number.isFinite(limit)) return null;
+  const rows = await database
+    .select({ id: recurringInvoices.id })
+    .from(recurringInvoices)
+    .where(
+      and(
+        eq(recurringInvoices.organizationId, organization.id),
+        eq(recurringInvoices.active, true),
+      ),
     )
-    .returning({ id: recurringInvoices.id });
-  return rows.length > 0;
+    .orderBy(asc(recurringInvoices.createdAt), asc(recurringInvoices.id))
+    .limit(limit);
+  return new Set(rows.map((r) => r.id));
 }
 
 export async function deleteRecurring(database: Db, who: Who, id: string) {
@@ -101,12 +168,22 @@ export async function deleteRecurring(database: Db, who: Who, id: string) {
   return rows.length > 0;
 }
 
-export type RecurringRun = { created: number; issued: number; sent: number; failed: number };
+export type RecurringRun = {
+  created: number;
+  issued: number;
+  sent: number;
+  failed: number;
+  /** Retenues par la formule gratuite : récurrence au-delà de la première, ou facture laissée en brouillon (10 factures du mois émises). */
+  held: number;
+};
 
 /**
  * Tâche quotidienne : crée la facture de chaque récurrence échue (une par passage, pour rattraper
  * sans surprise), l'émet et l'envoie si l'envoi automatique est choisi, puis avance l'échéance.
  * `send` est injecté pour que la tâche planifiée utilise l'envoi réel (e-mail, PDF, lien).
+ *
+ * Formule gratuite : une seule récurrence tourne (la plus ancienne active), et la facture créée
+ * reste en brouillon quand les 10 factures du mois sont déjà émises.
  */
 export async function runRecurring(
   database: Db,
@@ -119,9 +196,32 @@ export async function runRecurring(
     .where(and(eq(recurringInvoices.active, true), lte(recurringInvoices.nextDate, today)))
     .orderBy(asc(recurringInvoices.nextDate))
     .limit(500);
-  const run: RecurringRun = { created: 0, issued: 0, sent: 0, failed: 0 };
+  const run: RecurringRun = { created: 0, issued: 0, sent: 0, failed: 0, held: 0 };
+  const orgIds = [...new Set(due.map((r) => r.organizationId))];
+  const orgs = new Map(
+    orgIds.length === 0
+      ? []
+      : (
+          await database
+            .select({
+              id: organizations.id,
+              leadPlan: organizations.leadPlan,
+              entitlements: organizations.entitlements,
+            })
+            .from(organizations)
+            .where(inArray(organizations.id, orgIds))
+        ).map((o) => [o.id, o]),
+  );
+  const running = new Map<string, Set<string> | null>();
+  for (const org of orgs.values()) running.set(org.id, await runningRecurring(database, org));
   for (const r of due) {
     const who = { organizationId: r.organizationId, userId: r.createdBy ?? "" };
+    const org = orgs.get(r.organizationId);
+    const allowed = running.get(r.organizationId);
+    if (!org || (allowed && !allowed.has(r.id))) {
+      run.held += 1;
+      continue;
+    }
     try {
       const found = await getInvoice(database, r.organizationId, r.sourceInvoiceId);
       if (!found || !r.createdBy) throw new Error("source_missing");
@@ -154,7 +254,9 @@ export async function runRecurring(
         .update(recurringInvoices)
         .set({ nextDate: addMonths(r.nextDate, r.intervalMonths), lastInvoiceId: created.id })
         .where(eq(recurringInvoices.id, r.id));
-      if (r.autoSend) {
+      if (r.autoSend && !(await quotaAccess(database, org, "invoices", today)).allowed) {
+        run.held += 1;
+      } else if (r.autoSend) {
         const issued = await issueInvoice(database, who, created.id);
         if (typeof issued === "object") {
           run.issued += 1;

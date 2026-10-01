@@ -681,7 +681,8 @@
         "planLimit": "Vous avez atteint les 10 factures du mois de la formule gratuite. Passez à Pro pour facturer sans limite.",
         "recurring": "La récurrence n'a pas pu être enregistrée.",
         "fxRate": "Le cours du jour n'a pas pu être obtenu. Saisissez le cours dans le brouillon, puis émettez à nouveau.",
-        "depositDraft": "Une facture d'acompte de ce devis est encore en brouillon : émettez-la ou supprimez-la avant de créer la facture finale."
+        "depositDraft": "Une facture d'acompte de ce devis est encore en brouillon : émettez-la ou supprimez-la avant de créer la facture finale.",
+        "recurringLimit": "La formule gratuite compte une facture récurrente active. Mettez-en une en pause ou passez à Pro pour en ajouter."
       },
       "addLine": "Ajouter une ligne",
       "removeLine": "Retirer",
@@ -921,7 +922,8 @@
         "exempt": "Exonéré",
         "export": "Non taxable (hors de l'État)"
       },
-      "totalWithVatUs": "Total taxe comprise"
+      "totalWithVatUs": "Total taxe comprise",
+      "currencyPlan": "Les autres devises font partie de la formule Pro."
     },
     "quotes": {
       "title": "Devis",
@@ -1032,8 +1034,7 @@
         "noFiscalYear": "Aucun exercice ouvert ne couvre la date de ce mouvement.",
         "noProposal": "Choisissez d'abord un compte.",
         "notFound": "Mouvement introuvable ou déjà traité.",
-        "vatPeriodClosed": "Cette date tombe dans une période TVA déjà validée : l'écriture ne peut plus y entrer.",
-        "plan": "L'import des relevés est réservé à la formule Pro."
+        "vatPeriodClosed": "Cette date tombe dans une période TVA déjà validée : l'écriture ne peut plus y entrer."
       },
       "aiError": "L'assistant n'a pas pu répondre. Les mouvements restent à proposer ; réessayez plus tard.",
       "aiOff": "L'assistant comptable n'est pas encore activé : seuls les paiements de factures reconnus par leur référence QR sont proposés automatiquement.",
@@ -1078,7 +1079,6 @@
         "hits": "{count, plural, one {validée # fois} other {validée # fois}}",
         "delete": "Oublier"
       },
-      "planOnly": "L'import des relevés bancaires et les propositions de l'assistant sont compris dans la formule Pro.",
       "autoPosted": "{count, plural, one {# mouvement comptabilisé} other {# mouvements comptabilisés}} par le pilote automatique.",
       "autoReview": "Les revoir",
       "paysBill": "Paiement d’une facture fournisseur"
@@ -1090,8 +1090,7 @@
       "errors": {
         "unreadable": "Ce PDF est une image scannée : déposez plutôt une photo nette du document.",
         "failed": "L'assistant n'a pas pu lire ce justificatif. Réessayez plus tard.",
-        "notFound": "Justificatif introuvable.",
-        "plan": "La lecture des justificatifs est réservée aux formules Pro et Pro+."
+        "notFound": "Justificatif introuvable."
       },
       "aiOff": "L'assistant n'est pas encore activé : les justificatifs sont conservés, et seront lus une fois l'assistant configuré.",
       "files": "Factures ou tickets",
@@ -1112,7 +1111,6 @@
         "posted": "Comptabilisé",
         "billed": "Facture fournisseur"
       },
-      "planOnly": "La lecture automatique des justificatifs est comprise dans la formule Pro (50 par mois) et Pro+ (300 par mois).",
       "toBill": "Créer la facture à payer",
       "captureLink": "Photographier avec le téléphone"
     },
@@ -1164,7 +1162,7 @@
         "blocked": "Le décompte ne peut pas être validé tant que des points bloquants subsistent.",
         "noFiscalYear": "Aucun exercice ouvert ne couvre la fin de cette période.",
         "noChart": "Le plan comptable n'a pas les comptes TVA nécessaires.",
-        "plan": "La validation du décompte TVA est réservée à la formule Pro."
+        "plan": "Le décompte TVA fait partie de la formule Pro."
       },
       "periods": "Périodes",
       "quarter": "T{q} {year}",
@@ -1263,7 +1261,9 @@
       },
       "titleUs": "Relevé de sales tax",
       "xmlDownload": "Télécharger le décompte au format eCH-0217, à déposer sur le portail de l'AFC",
-      "xmlNoUid": "Le fichier eCH-0217 demande le numéro IDE de l'entreprise (réglages)."
+      "xmlNoUid": "Le fichier eCH-0217 demande le numéro IDE de l'entreprise (réglages).",
+      "validatePlan": "Fonction Pro. Passez à Pro pour valider et déposer votre décompte.",
+      "planOnlyUs": "Le relevé de sales tax préparé et validé dans InvoiceLead est compris dans la formule Pro. Vous pouvez consulter les chiffres ci-dessous."
     },
     "reminders": {
       "title": "Relances",
@@ -1276,7 +1276,8 @@
         "recorded": "Relance notée comme envoyée.",
         "notDue": "Cette relance n'est plus due.",
         "noEmail": "Pas d'adresse e-mail pour ce client, ou envoi non configuré.",
-        "failed": "L'envoi a échoué. Réessayez plus tard."
+        "failed": "L'envoi a échoué. Réessayez plus tard.",
+        "plan": "Cette relance fait partie de la formule Pro."
       },
       "empty": "Aucune relance à faire aujourd'hui.",
       "line": "{level, select, 0 {Rappel courtois} 1 {1re relance} 2 {2e relance} other {Dernière relance}} · {days, plural, =0 {échue aujourd'hui} other {{days} jours de retard}} · échue le {due}",
@@ -1329,7 +1330,8 @@
       "forecastHint": "Factures ouvertes, à la date où chaque client paie d'habitude.",
       "week": "Semaine du {date}",
       "later": "Plus tard",
-      "forecastEmpty": "Aucune facture ouverte."
+      "forecastEmpty": "Aucune facture ouverte.",
+      "levelPlan": "Fonction Pro. La formule gratuite envoie la première relance, les suivantes font partie de Pro."
     },
     "recurring": {
       "title": "Factures récurrentes",
@@ -1345,14 +1347,33 @@
       "model": "Voir le modèle",
       "pause": "Mettre en pause",
       "resume": "Reprendre",
-      "delete": "Supprimer"
+      "delete": "Supprimer",
+      "held": "En attente : la formule gratuite fait tourner une seule facture récurrente."
     },
     "plan": {
       "upgrade": "Passer à Pro",
       "free": "Gratuit",
       "pro": "Pro",
       "proplus": "Pro+",
-      "usage": "Formule {plan}{hasLimit, select, yes { : {invoices} factures sur {invoiceLimit} ce mois-ci, {contacts} contacts sur {contactLimit}} other {}}."
+      "usage": "Formule {plan}{hasLimit, select, yes { : {invoices} factures sur {invoiceLimit} ce mois-ci, {contacts} contacts sur {contactLimit}} other {}}.",
+      "upgradePlus": "Passer à Pro+",
+      "locked": "Fonction Pro. Passez à Pro pour l'utiliser.",
+      "lockedPlus": "Fonction Pro+. Passez à Pro+ pour l'utiliser.",
+      "quota": {
+        "aiReads": "Pièces lues par l'IA : {used} sur {limit} ce mois-ci",
+        "assistant": "Questions à l'assistant : {used} sur {limit} ce mois-ci",
+        "reminders": "Relances : {used} sur {limit} ce mois-ci",
+        "bankImports": "Relevés bancaires importés : {used} sur {limit} ce mois-ci",
+        "recurring": "Factures récurrentes actives : {used} sur {limit}"
+      },
+      "used": {
+        "aiReads": "{plan, select, free {Vos {limit} lectures gratuites de ce mois sont utilisées.} other {Vos {limit} lectures de ce mois sont utilisées.}}",
+        "assistant": "{plan, select, free {Vos {limit} questions gratuites de ce mois sont posées.} other {Vos {limit} questions de ce mois sont posées.}}",
+        "reminders": "{plan, select, free {Vos {limit} relances gratuites de ce mois sont envoyées.} other {Vos {limit} relances de ce mois sont envoyées.}}",
+        "bankImports": "{limit, plural, one {Votre relevé gratuit de ce mois est importé.} other {Vos # relevés gratuits de ce mois sont importés.}}",
+        "recurring": "{limit, plural, one {La formule gratuite compte une facture récurrente active.} other {La formule gratuite compte # factures récurrentes actives.}} Mettez-en une en pause ou passez à Pro pour en ajouter.",
+        "invoices": "Vos {limit} factures gratuites de ce mois sont émises. Le brouillon reste enregistré."
+      }
     },
     "orgSwitch": {
       "label": "Entreprise",
@@ -1417,7 +1438,8 @@
       "expired": "Ce lien d'invitation a expiré. Demandez-en un nouveau.",
       "wrongEmail": "Cette invitation a été envoyée à une autre adresse que {email}. Connectez-vous avec le bon Compte Lead.",
       "logout": "Changer de compte",
-      "accept": "Accepter l'invitation"
+      "accept": "Accepter l'invitation",
+      "plan": "Cette entreprise n'a plus la formule Pro, qui comprend l'accès fiduciaire. Demandez-lui de passer à Pro, puis rouvrez le lien."
     },
     "crmImport": {
       "title": "Lead gagné dans CRMlead",
@@ -1511,7 +1533,6 @@
       "autopilot": "Pilote automatique",
       "autopilotHint": "Comptabilise sans clic les paiements reconnus par leur référence, les mouvements couverts par une règle confirmée au moins trois fois et les propositions de l'IA sûres à 97 %. Un doublon possible ou un montant inhabituel attend toujours une personne.",
       "save": "Enregistrer",
-      "planOnly": "Le pilote automatique fait partie de la formule Pro, avec l'import bancaire.",
       "enabled": "Pilote automatique activé : {count, plural, =0 {rien à comptabiliser pour le moment} one {# mouvement comptabilisé} other {# mouvements comptabilisés}}.",
       "disabled": "Pilote automatique coupé. Les propositions attendent votre validation.",
       "approved": "{count, plural, =0 {Rien à approuver.} one {# écriture approuvée.} other {# écritures approuvées.}}",
@@ -1533,13 +1554,15 @@
       "openBank": "Voir dans Banque",
       "errors": {
         "closed": "Cette écriture est dans un exercice ou une période TVA fermés : elle ne peut plus être annulée.",
-        "notFound": "Écriture introuvable ou déjà traitée.",
-        "plan": "Le pilote automatique fait partie de la formule Pro."
+        "notFound": "Écriture introuvable ou déjà traitée."
       },
       "digest": {
         "subject": "InvoiceLead : votre comptabilité de la semaine, {company}",
         "body": "Bonjour,\n\nCette semaine, le pilote automatique a comptabilisé {auto, plural, =0 {aucun mouvement} one {# mouvement} other {# mouvements}} pour {company}.\n\nÀ approuver : {approve}\nÀ relire dans Banque : {review}\nPoints à regarder : {anomalies}\n\nTout voir et approuver en un clic : {link}\n\nInvoiceLead"
-      }
+      },
+      "digestTitle": "Récapitulatif par e-mail le lundi",
+      "digestHint": "Chaque lundi, les administrateurs reçoivent ce que le pilote a comptabilisé seul pendant la semaine et ce qui attend une personne.",
+      "digestPlan": "Le récapitulatif du lundi par e-mail fait partie de la formule Pro. Le pilote automatique, lui, est compris dans votre formule."
     },
     "bills": {
       "title": "Factures fournisseurs",
@@ -1640,9 +1663,10 @@
         "notFound": "Facture introuvable ou déjà traitée.",
         "none": "Aucune facture approuvée avec un IBAN à payer.",
         "noIban": "Saisissez d'abord l'IBAN de l'entreprise dans les réglages.",
-        "plan": "L'import des e-factures fait partie de la formule Pro."
+        "plan": "Saisir une facture en devise étrangère fait partie de la formule Pro."
       },
-      "claim": "Note de frais"
+      "claim": "Note de frais",
+      "currencyPlan": "Les autres devises font partie de la formule Pro."
     },
     "time": {
       "title": "Temps",
@@ -1717,8 +1741,7 @@
       "saved": "Justificatif enregistré.",
       "rejected": "La photo n'a pas pu être enregistrée (format, taille ou limite de la formule).",
       "recent": "Derniers justificatifs",
-      "all": "Tous les justificatifs",
-      "planOnly": "La lecture des justificatifs fait partie de la formule Pro."
+      "all": "Tous les justificatifs"
     },
     "assistant": {
       "title": "Assistant",
@@ -1744,10 +1767,10 @@
         "time": "Projets"
       },
       "errors": {
-        "plan": "L'assistant fait partie de la formule Pro.",
         "off": "L'assistant IA n'est pas encore configuré.",
         "empty": "Posez une question.",
-        "failed": "L'assistant n'a pas pu répondre. Réessayez dans un instant."
+        "failed": "L'assistant n'a pas pu répondre. Réessayez dans un instant.",
+        "quota": "Les questions gratuites de ce mois sont posées. Passez à Pro pour continuer."
       }
     },
     "expenses": {
@@ -1793,8 +1816,7 @@
         "size": "Justificatif trop volumineux (10 Mo au plus).",
         "duplicate": "Ce justificatif a déjà été envoyé.",
         "role": "Votre rôle ne permet pas de saisir des notes de frais.",
-        "invalid": "Saisie invalide.",
-        "quota": "Vous avez utilisé les 5 lectures de tickets du mois de la formule gratuite. Passez à Pro pour en lire 50 par mois, ou saisissez la dépense à la main."
+        "invalid": "Saisie invalide."
       },
       "scan": {
         "title": "Scanner un ticket",
@@ -1877,7 +1899,12 @@
           "50 contacts",
           "QR-facture, documents en DE, FR, IT, EN",
           "Comptabilité alimentée par vos factures",
-          "Mention « Créé avec InvoiceLead »"
+          "20 pièces lues par l'IA chaque mois (tickets, justificatifs, e-factures)",
+          "Assistant : 10 questions par mois",
+          "Première relance à la main, 5 par mois",
+          "1 facture récurrente active",
+          "1 relevé bancaire par mois, pilote automatique compris",
+          "Mention « Créé avec InvoiceLead »"
         ]
       },
       "pro": {
@@ -1886,9 +1913,11 @@
         "features": [
           "Factures et contacts illimités",
           "2 utilisateurs et accès fiduciaire gratuit",
-          "Relances automatiques sur 3 niveaux",
+          "50 pièces lues par l'IA chaque mois",
+          "Assistant sans limite",
+          "Relances automatiques sur 3 niveaux, frais et intérêts",
           "Décompte TVA (effective et TDFN)",
-          "Import bancaire camt et lettrage",
+          "Import bancaire camt sans limite, récapitulatif du pilote le lundi",
           "Factures récurrentes, multidevise"
         ]
       },
@@ -1897,9 +1926,11 @@
         "tagline": "Pour les équipes et plusieurs sociétés",
         "features": [
           "5 utilisateurs avec rôles",
+          "300 pièces lues par l'IA chaque mois",
+          "API, serveur MCP et webhooks",
           "Jusqu'à 3 sociétés",
           "Connexion bancaire directe",
-          "eBill, API et webhooks",
+          "eBill",
           "Archivage conforme GeBüV",
           "Support prioritaire"
         ]
@@ -1937,6 +1968,10 @@
       {
         "q": "Puis-je récupérer mes données ?",
         "a": "Oui, à tout moment, et pendant 30 jours après une résiliation. Vos livres doivent être conservés dix ans : l'export est prévu pour cela."
+      },
+      {
+        "q": "Que comprend la formule gratuite ?",
+        "a": "Chaque mois : 10 factures, 20 pièces lues par l'IA, 10 questions à l'assistant, 5 premières relances et 1 relevé bancaire avec le pilote automatique. Elle compte aussi 50 contacts et 1 facture récurrente active. Les fonctions Pro restent visibles dans l'application, en gris avec la marque Pro, pour que vous sachiez qu'elles existent."
       },
       {
         "q": "Faut-il une carte bancaire pour commencer ?",

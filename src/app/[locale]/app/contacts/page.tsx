@@ -1,10 +1,13 @@
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
+import { LockNote, ProBadge } from "@/components/app/ProLock";
 import { Button } from "@/components/ui/button";
 import { Link } from "@/i18n/navigation";
 import { requireAppSession } from "@/server/auth/guard";
 import { listContacts } from "@/server/contacts";
 import { db } from "@/server/db";
+import { lockFor } from "@/server/plan-lock";
+import { quotaAccess } from "@/server/plans";
 
 type Props = {
   params: Promise<{ locale: string }>;
@@ -23,16 +26,36 @@ export default async function ContactsPage({ params, searchParams }: Props) {
   const { q = "", saved, archived } = await searchParams;
   const t = await getTranslations({ locale, namespace: "app.contacts" });
   const rows = await listContacts(db(), organization.id, q.slice(0, 100));
+  // Formule gratuite : 50 contacts ; ensuite « Nouveau contact » est grisé (les fiches restent).
+  const live = await quotaAccess(db(), organization, "contacts");
+  const lock = await lockFor(locale, organization, live, t("planLimit"));
   return (
     <div className="mx-auto max-w-5xl px-4 py-10 sm:px-8">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <h1 className="text-[28px] leading-tight">{t("title")}</h1>
-        <Button asChild>
-          <Link href="/app/contacts/new" data-testid="contact-new">
-            {t("new")}
-          </Link>
-        </Button>
+        {lock ? (
+          <span className="inline-flex items-center gap-2">
+            <Button disabled aria-disabled="true" aria-describedby="contacts-lock-reason">
+              {t("new")}
+            </Button>
+            {lock.tier ? <ProBadge tier={lock.tier} /> : null}
+          </span>
+        ) : (
+          <Button asChild>
+            <Link href="/app/contacts/new" data-testid="contact-new">
+              {t("new")}
+            </Link>
+          </Button>
+        )}
       </div>
+      {lock ? (
+        <LockNote
+          lock={lock}
+          id="contacts-lock-reason"
+          testId="contacts-lock"
+          className="mt-4 border border-line-strong bg-muted px-4 py-3"
+        />
+      ) : null}
       {saved ? (
         <p
           role="status"

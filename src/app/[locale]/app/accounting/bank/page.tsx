@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { AccountingNav } from "@/components/accounting/AccountingNav";
-import { PlanNotice } from "@/components/app/PlanNotice";
+import { ProLock } from "@/components/app/ProLock";
 import { Button } from "@/components/ui/button";
 import { countryPack } from "@/countries";
 import { VAT_CODES } from "@/countries/ch/vat";
@@ -16,7 +16,8 @@ import { CONFIDENT, listBankTransactions } from "@/server/bank";
 import { listRules } from "@/server/booking-rules";
 import { db } from "@/server/db";
 import { listInvoices } from "@/server/invoices";
-import { hasFeature, upgradeUrl } from "@/server/plans";
+import { lockFor } from "@/server/plan-lock";
+import { quotaAccess } from "@/server/plans";
 import {
   deleteRuleAction,
   ignoreBankAction,
@@ -53,7 +54,7 @@ const ERRORS = [
   "noProposal",
   "notFound",
   "vatPeriodClosed",
-  "plan",
+  "quota",
 ];
 
 export default async function BankPage({ params, searchParams }: Props) {
@@ -62,6 +63,15 @@ export default async function BankPage({ params, searchParams }: Props) {
   const style = countryPack(organization.country).amounts;
   const q = await searchParams;
   const t = await getTranslations({ locale, namespace: "app.bank" });
+  const tp = await getTranslations({ locale, namespace: "app.plan" });
+  // Formule gratuite : un relevé par mois, pilote automatique compris ; ensuite l'import est grisé.
+  const imports = await quotaAccess(db(), organization, "bankImports");
+  const importLock = await lockFor(
+    locale,
+    organization,
+    imports,
+    tp("used.bankImports", { limit: imports.limit, plan: imports.tier }),
+  );
   const [rows, chart, invoiceRows, rules] = await Promise.all([
     listBankTransactions(db(), organization.id),
     listAccounts(db(), organization.id),
@@ -79,6 +89,39 @@ export default async function BankPage({ params, searchParams }: Props) {
   ).length;
   const done = rows.filter((r) => r.status === "posted" || r.status === "ignored");
   const hidden = <input type="hidden" name="locale" value={locale} />;
+  const importForm = (
+    <form
+      action={importStatementAction}
+      className="flex flex-wrap items-end gap-3 border border-line-strong bg-panel px-5 py-4"
+    >
+      {hidden}
+      <div className="min-w-0 flex-1">
+        <label htmlFor="statement" className="mb-1 block text-[13px] font-semibold">
+          {t("file")}
+        </label>
+        <input
+          id="statement"
+          name="statement"
+          type="file"
+          accept=".xml,application/xml,text/xml"
+          required
+          aria-describedby="statement-hint"
+          className="block w-full text-[13px]"
+        />
+        <span id="statement-hint" className="mt-1 block text-[12px] text-ink-muted">
+          {t("fileHint")}
+        </span>
+        {Number.isFinite(imports.limit) ? (
+          <span className="mt-1 block text-[12px] text-ink-2" data-testid="bank-quota">
+            {tp("quota.bankImports", { used: imports.used, limit: imports.limit })}
+          </span>
+        ) : null}
+      </div>
+      <Button type="submit" data-testid="bank-import">
+        {t("import")}
+      </Button>
+    </form>
+  );
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-10 sm:px-8">
@@ -119,7 +162,9 @@ export default async function BankPage({ params, searchParams }: Props) {
           role="alert"
           className="mt-6 border border-hot-fg bg-hot-bg px-4 py-3 text-[13px] text-hot-fg"
         >
-          {t(`errors.${q.error}`)}
+          {q.error === "quota"
+            ? tp("used.bankImports", { limit: imports.limit, plan: imports.tier })
+            : t(`errors.${q.error}`)}
         </p>
       ) : null}
       {q.ai === "error" ? (
@@ -136,35 +181,13 @@ export default async function BankPage({ params, searchParams }: Props) {
         </p>
       )}
 
-      {hasFeature(organization, "bankImport") ? null : (
-        <PlanNotice locale={locale} message={t("planOnly")} href={upgradeUrl(organization)} />
+      {importLock ? (
+        <ProLock lock={importLock} testId="bank-import-lock" className="mt-6">
+          {importForm}
+        </ProLock>
+      ) : (
+        <div className="mt-6">{importForm}</div>
       )}
-      <form
-        action={importStatementAction}
-        className="mt-6 flex flex-wrap items-end gap-3 border border-line-strong bg-panel px-5 py-4"
-      >
-        {hidden}
-        <div className="min-w-0 flex-1">
-          <label htmlFor="statement" className="mb-1 block text-[13px] font-semibold">
-            {t("file")}
-          </label>
-          <input
-            id="statement"
-            name="statement"
-            type="file"
-            accept=".xml,application/xml,text/xml"
-            required
-            aria-describedby="statement-hint"
-            className="block w-full text-[13px]"
-          />
-          <span id="statement-hint" className="mt-1 block text-[12px] text-ink-muted">
-            {t("fileHint")}
-          </span>
-        </div>
-        <Button type="submit" data-testid="bank-import">
-          {t("import")}
-        </Button>
-      </form>
 
       <div className="mt-8 flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-[20px]">{t("toReview", { count: toReview.length })}</h2>

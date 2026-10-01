@@ -6,7 +6,7 @@ import { createApiKey, revokeApiKey } from "@/server/api-keys";
 import { requirePermission } from "@/server/auth/guard";
 import { pickLocale } from "@/server/auth/login-cookie";
 import { db } from "@/server/db";
-import { hasFeature } from "@/server/plans";
+import { featureAccess } from "@/server/plans";
 import { createEndpoint, disableEndpoint } from "@/server/webhooks";
 
 export type SecretState = { round: number; secret?: string; error?: string };
@@ -15,7 +15,7 @@ async function guard(form: FormData) {
   const locale = pickLocale(form.get("locale"));
   const session = await requirePermission(locale, "company");
   const who = { organizationId: session.organization.id, userId: session.user.id };
-  return { locale, session, who, allowed: hasFeature(session.organization, "api") };
+  return { locale, session, who, allowed: featureAccess(session.organization, "api").allowed };
 }
 
 /** Nouvelle clé : rendue une seule fois dans l'état du formulaire, jamais dans l'adresse. */

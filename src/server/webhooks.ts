@@ -4,8 +4,9 @@ import { isIP } from "node:net";
 import { and, asc, desc, eq, inArray, isNull, lte } from "drizzle-orm";
 import { decrypt, encrypt, randomToken } from "./auth/crypto";
 import type { Db } from "./db";
-import { auditLog, webhookDeliveries, webhookEndpoints } from "./db/schema";
+import { auditLog, organizations, webhookDeliveries, webhookEndpoints } from "./db/schema";
 import { env } from "./env";
+import { featureAccess, organizationPlan } from "./plans";
 
 type Who = { organizationId: string; userId: string };
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -172,6 +173,9 @@ export async function emitEvent(
   event: WebhookEvent,
   data: Record<string, unknown>,
 ): Promise<number> {
+  // Webhooks : formule Pro+. Les adresses d'une entreprise revenue en dessous restent enregistrées.
+  const plan = await organizationPlan(database, organizationId);
+  if (!plan || !featureAccess(plan, "api").allowed) return 0;
   const endpoints = await database
     .select({ id: webhookEndpoints.id, events: webhookEndpoints.events })
     .from(webhookEndpoints)
@@ -218,9 +222,14 @@ export async function deliverPending(
   const now = options.now ?? new Date();
   const fetcher = options.fetcher ?? fetch;
   const rows = await database
-    .select({ delivery: webhookDeliveries, endpoint: webhookEndpoints })
+    .select({
+      delivery: webhookDeliveries,
+      endpoint: webhookEndpoints,
+      plan: { leadPlan: organizations.leadPlan, entitlements: organizations.entitlements },
+    })
     .from(webhookDeliveries)
     .innerJoin(webhookEndpoints, eq(webhookEndpoints.id, webhookDeliveries.endpointId))
+    .innerJoin(organizations, eq(organizations.id, webhookDeliveries.organizationId))
     .where(
       and(
         eq(webhookDeliveries.status, "pending"),
@@ -235,7 +244,16 @@ export async function deliverPending(
     .limit(options.limit ?? 50);
   let delivered = 0;
   let failed = 0;
-  for (const { delivery, endpoint } of rows) {
+  for (const { delivery, endpoint, plan } of rows) {
+    // Entreprise sortie de Pro+ : l'envoi attend un jour de plus, sans compter de tentative ; il
+    // repart si elle revient à Pro+.
+    if (!featureAccess(plan, "api").allowed) {
+      await database
+        .update(webhookDeliveries)
+        .set({ nextAttemptAt: new Date(now.getTime() + 86_400_000) })
+        .where(eq(webhookDeliveries.id, delivery.id));
+      continue;
+    }
     const secret = decrypt(endpoint.secretEnc, env().SESSION_SECRET, PURPOSE);
     const body = JSON.stringify({ id: delivery.id, ...(delivery.payload as object) });
     let status: number | null = null;

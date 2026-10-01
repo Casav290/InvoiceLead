@@ -1,6 +1,7 @@
 import { expect, type Page } from "@playwright/test";
 
-export const LEAD = "http://localhost:4010";
+/** Faux Compte Lead des tests ; une configuration locale peut le servir sur un autre port. */
+export const LEAD = process.env.E2E_LEAD_URL ?? "http://localhost:4010";
 
 export type FakeUser = {
   sub?: string;

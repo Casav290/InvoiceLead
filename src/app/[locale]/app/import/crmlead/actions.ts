@@ -5,7 +5,7 @@ import { requirePermission } from "@/server/auth/guard";
 import { pickLocale } from "@/server/auth/login-cookie";
 import { decodeHandoff, importHandoff } from "@/server/crmlead";
 import { db } from "@/server/db";
-import { limitReached } from "@/server/plans";
+import { quotaAccess } from "@/server/plans";
 
 export async function importCrmleadAction(form: FormData) {
   const locale = pickLocale(form.get("locale"));
@@ -21,7 +21,7 @@ export async function importCrmleadAction(form: FormData) {
     {
       language: locale,
       today: new Date().toISOString().slice(0, 10),
-      canCreateContact: !(await limitReached(db(), session.organization, "contact")),
+      canCreateContact: (await quotaAccess(db(), session.organization, "contacts")).allowed,
     },
   );
   if (result.status === "contactLimit") redirect(`${back}&error=contactLimit`);

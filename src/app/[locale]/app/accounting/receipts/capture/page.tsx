@@ -1,20 +1,22 @@
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
-import { PlanNotice } from "@/components/app/PlanNotice";
+import { ProLock } from "@/components/app/ProLock";
 import { CaptureButton } from "@/components/receipts/CaptureButton";
 import { countryPack } from "@/countries";
 import { Link } from "@/i18n/navigation";
 import { formatDate } from "@/lib/fiscal-year";
 import { formatAmount } from "@/lib/money";
+import { aiConfigured } from "@/server/ai";
 import { requireAppSession } from "@/server/auth/guard";
 import { db } from "@/server/db";
-import { hasFeature, upgradeUrl } from "@/server/plans";
+import { lockFor } from "@/server/plan-lock";
+import { quotaAccess } from "@/server/plans";
 import { listReceipts } from "@/server/receipts";
 import { uploadReceiptsAction } from "../../actions";
 
 type Props = {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ added?: string; rejected?: string; last?: string }>;
+  searchParams: Promise<{ added?: string; rejected?: string; last?: string; quota?: string }>;
 };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -35,20 +37,29 @@ export default async function CapturePage({ params, searchParams }: Props) {
   const style = countryPack(organization.country).amounts;
   const recent = (await listReceipts(db(), organization.id)).slice(0, 5);
   const last = q.last ? recent.find((r) => r.id === q.last) : undefined;
+  const tp = await getTranslations({ locale, namespace: "app.plan" });
+  const reads = await quotaAccess(db(), organization, "aiReads");
+  const usedUp = tp("used.aiReads", { limit: reads.limit, plan: reads.tier });
+  const lock = aiConfigured() ? await lockFor(locale, organization, reads, usedUp) : null;
 
   return (
     <div className="mx-auto max-w-md px-4 py-8">
       <h1 className="text-[24px] leading-tight">{t("title")}</h1>
       <p className="mt-2 text-[14px] text-ink-muted">{t("subtitle")}</p>
-      {hasFeature(organization, "receipts") ? (
+      {lock ? (
+        <ProLock lock={lock} testId="capture-lock" className="mt-6">
+          <CaptureButton label={t("take")} sending={t("sending")} disabled />
+        </ProLock>
+      ) : (
         <form action={uploadReceiptsAction} className="mt-6">
           <input type="hidden" name="locale" value={locale} />
           <input type="hidden" name="from" value="capture" />
           <CaptureButton label={t("take")} sending={t("sending")} />
         </form>
-      ) : (
-        <PlanNotice locale={locale} message={t("planOnly")} href={upgradeUrl(organization)} />
       )}
+      <p className="mt-2 text-[12px] text-ink-2" data-testid="capture-quota">
+        {tp("quota.aiReads", { used: reads.used, limit: reads.limit })}
+      </p>
 
       {q.added !== undefined ? (
         <div
@@ -70,6 +81,8 @@ export default async function CapturePage({ params, searchParams }: Props) {
             ) : (
               t("saved")
             )
+          ) : q.quota ? (
+            usedUp
           ) : (
             t("rejected")
           )}

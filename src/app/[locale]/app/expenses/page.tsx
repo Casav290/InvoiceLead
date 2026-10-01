@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
+import { ProLock } from "@/components/app/ProLock";
 import { ScanTicket } from "@/components/app/ScanTicket";
 import { Button } from "@/components/ui/button";
 import { VAT_CODES } from "@/countries/ch/vat";
@@ -16,6 +17,8 @@ import {
   scannedTicket,
   travelAccountId,
 } from "@/server/expenses";
+import { lockFor } from "@/server/plan-lock";
+import { quotaAccess } from "@/server/plans";
 import { createClaimAction, deleteClaimAction, scanTicketAction } from "./actions";
 
 type Props = {
@@ -30,18 +33,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 const field = "h-10 w-full border border-line-strong bg-panel px-3 text-[14px]";
-const ERRORS = [
-  "date",
-  "required",
-  "iban",
-  "amount",
-  "km",
-  "type",
-  "size",
-  "duplicate",
-  "role",
-  "quota",
-];
+const ERRORS = ["date", "required", "iban", "amount", "km", "type", "size", "duplicate", "role"];
 
 /** Notes de frais et indemnités kilométriques de la personne connectée. */
 export default async function ExpensesPage({ params, searchParams }: Props) {
@@ -51,7 +43,12 @@ export default async function ExpensesPage({ params, searchParams }: Props) {
   const t = await getTranslations({ locale, namespace: "app.expenses" });
   const tb = await getTranslations({ locale, namespace: "app.bills" });
   const tv = await getTranslations({ locale, namespace: "app.bank.vat" });
+  const tp = await getTranslations({ locale, namespace: "app.plan" });
   const today = new Date().toISOString().slice(0, 10);
+  // Tickets lus par l'IA : même compteur que la boîte des justificatifs (Gratuit 20 par mois).
+  const reads = await quotaAccess(db(), organization, "aiReads");
+  const usedUp = tp("used.aiReads", { limit: reads.limit, plan: reads.tier });
+  const scanLock = await lockFor(locale, organization, reads, usedUp);
   const [claims, iban, chart, travel, ticket] = await Promise.all([
     listClaims(db(), organization.id, user.id),
     lastClaimIban(db(), organization.id, user.id),
@@ -100,7 +97,9 @@ export default async function ExpensesPage({ params, searchParams }: Props) {
           role="alert"
           className="mt-6 border border-hot-fg bg-hot-bg px-4 py-3 text-[13px] text-hot-fg"
         >
-          {t(`errors.${ERRORS.includes(q.error) ? q.error : "invalid"}`)}
+          {q.error === "quota"
+            ? usedUp
+            : t(`errors.${ERRORS.includes(q.error) ? q.error : "invalid"}`)}
         </p>
       ) : null}
       {q.added ? (
@@ -118,10 +117,30 @@ export default async function ExpensesPage({ params, searchParams }: Props) {
       >
         <h2 className="text-[18px]">{t("scan.title")}</h2>
         <p className="mt-1 mb-4 text-[14px] text-ink-2">{t("scan.subtitle")}</p>
-        <form action={scanTicketAction}>
-          {hidden}
-          <ScanTicket label={t("scan.button")} reading={t("scan.reading")} hint={t("scan.hint")} />
-        </form>
+        {scanLock ? (
+          <ProLock lock={scanLock} testId="scan-ticket-lock" className="bg-panel">
+            <div className="px-5 py-4">
+              <ScanTicket
+                label={t("scan.button")}
+                reading={t("scan.reading")}
+                hint={t("scan.hint")}
+                disabled
+              />
+            </div>
+          </ProLock>
+        ) : (
+          <form action={scanTicketAction}>
+            {hidden}
+            <ScanTicket
+              label={t("scan.button")}
+              reading={t("scan.reading")}
+              hint={t("scan.hint")}
+            />
+          </form>
+        )}
+        <p className="mt-3 text-[12px] text-ink-2" data-testid="scan-quota">
+          {tp("quota.aiReads", { used: reads.used, limit: reads.limit })}
+        </p>
       </section>
 
       <div className="mt-8 grid gap-6 lg:grid-cols-2">
