@@ -13,6 +13,8 @@ import { listAccounts } from "@/server/accounting";
 import { requireAppSession } from "@/server/auth/guard";
 import { getBill } from "@/server/bills";
 import { db } from "@/server/db";
+import { lockFor } from "@/server/plan-lock";
+import { featureAccess } from "@/server/plans";
 import { approveBillAction, deleteBillAction, markBillPaidAction } from "../actions";
 
 type Props = {
@@ -139,6 +141,15 @@ export default async function BillPage({ params, searchParams }: Props) {
             locale={locale}
             id={bill.id}
             vatRegistered={organization.vatRegistered}
+            homeCurrency={organization.currency}
+            currencyLock={
+              await lockFor(
+                locale,
+                organization,
+                featureAccess(organization, "multiCurrency"),
+                t("currencyPlan"),
+              )
+            }
             accounts={chart
               .filter((a) => a.active && (a.type === "expense" || a.type === "asset") && !a.role)
               .map((a) => ({ id: a.id, label: `${a.number} ${accountName(a, locale)}` }))}

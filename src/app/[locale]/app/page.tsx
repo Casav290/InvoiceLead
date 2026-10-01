@@ -1,16 +1,20 @@
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import type { ReactNode } from "react";
+import { ProBadge } from "@/components/app/ProLock";
 import { countryPack } from "@/countries";
 import { Link } from "@/i18n/navigation";
 import { formatDate } from "@/lib/fiscal-year";
 import { formatAmount } from "@/lib/money";
 import { requireAppSession } from "@/server/auth/guard";
+import { currentPlanUsage, markOf } from "@/server/current-plan";
 import { dashboardFigures } from "@/server/dashboard";
 import { db } from "@/server/db";
-import { LIMITS, tierOf, upgradeUrl, usage } from "@/server/plans";
+import { type Quota, tierOf, upgradeUrl } from "@/server/plans";
 
 const NEXT_STEPS = ["company", "contacts", "invoice"] as const;
+/** Allocations montrées sous la ligne de la formule, quand elles ont une limite. */
+const SHOWN_QUOTAS: Quota[] = ["aiReads", "assistant", "reminders", "bankImports", "recurring"];
 
 export async function generateMetadata({
   params,
@@ -36,7 +40,10 @@ export default async function DashboardPage({
   const tp = await getTranslations({ locale, namespace: "app.plan" });
   const tier = tierOf(organization);
   const today = new Date().toISOString().slice(0, 10);
-  const used = await usage(db(), organization.id, today);
+  const quotas = await currentPlanUsage(organization.id);
+  const used = { invoices: quotas?.invoices.used ?? 0, contacts: quotas?.contacts.used ?? 0 };
+  const shownQuotas = SHOWN_QUOTAS.filter((q) => quotas && Number.isFinite(quotas[q].limit));
+  const assistantMark = markOf(quotas?.assistant);
   const f = await dashboardFigures(db(), organization.id, today);
   const pack = countryPack(organization.country);
   // Les cartes montrent des montants ronds ; les listes gardent les centimes.
@@ -73,10 +80,15 @@ export default async function DashboardPage({
       <p className="mt-4">
         <Link
           href="/app/assistant"
-          className="inline-block border border-accent px-3 py-2 text-[13px] font-semibold text-accent-dark hover:bg-accent-pale"
+          className={
+            assistantMark
+              ? "inline-flex items-center gap-2 border border-line-strong bg-muted px-3 py-2 text-[13px] font-semibold text-ink-muted"
+              : "inline-block border border-accent px-3 py-2 text-[13px] font-semibold text-accent-dark hover:bg-accent-pale"
+          }
           data-testid="dashboard-assistant"
         >
           {t("askBooks")}
+          {assistantMark ? <ProBadge tier={assistantMark} /> : null}
         </Link>
       </p>
       {forbidden ? (
@@ -93,20 +105,37 @@ export default async function DashboardPage({
           plan: tp(tier),
           hasLimit: tier === "free" ? "yes" : "no",
           invoices: used.invoices,
-          invoiceLimit: LIMITS.free.invoicesPerMonth,
+          invoiceLimit: quotas?.invoices.limit ?? 0,
           contacts: used.contacts,
-          contactLimit: LIMITS.free.contacts,
+          contactLimit: quotas?.contacts.limit ?? 0,
         })}{" "}
-        {tier === "free" ? (
+        {tier !== "proplus" ? (
           <a
             href={upgradeUrl(organization)}
             className="font-semibold text-accent-dark underline"
             rel="noopener"
           >
-            {tp("upgrade")}
+            {tp(tier === "pro" ? "upgradePlus" : "upgrade")}
           </a>
         ) : null}
       </p>
+      {quotas && shownQuotas.length > 0 ? (
+        <ul className="mt-2 flex flex-wrap gap-2" data-testid="plan-quotas">
+          {shownQuotas.map((q) => {
+            const mark = markOf(quotas[q]);
+            return (
+              <li
+                key={q}
+                className={`inline-flex items-center gap-2 border px-2 py-1 text-[12px] ${mark ? "border-line-strong bg-muted text-ink-2" : "border-line bg-panel text-ink-2"}`}
+                data-testid={`quota-${q}`}
+              >
+                {tp(`quota.${q}`, { used: quotas[q].used, limit: quotas[q].limit })}
+                {mark ? <ProBadge tier={mark} /> : null}
+              </li>
+            );
+          })}
+        </ul>
+      ) : null}
       <div
         className="mt-8 grid grid-cols-2 border-t border-l border-line-strong lg:grid-cols-4"
         data-testid="dashboard-figures"

@@ -1,6 +1,6 @@
 import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import { countryPack } from "@/countries";
-import type { BankEntry } from "@/countries/ch/camt";
+import { type BankEntry, parseCamt } from "@/countries/ch/camt";
 import { VAT_CODES, type VatCode } from "@/countries/ch/vat";
 import { chartPack } from "@/countries/charts";
 import { roundHalfAwayFromZero } from "@/lib/money";
@@ -22,6 +22,7 @@ import {
 } from "./db/schema";
 import { appendEntry, LedgerError, type Posting, postPending, roleAccounts } from "./ledger";
 import { addPayment, invoiceBalance } from "./payments";
+import { consumeQuota, organizationPlan, refundQuota } from "./plans";
 
 type Who = { organizationId: string; userId: string };
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -44,6 +45,34 @@ export async function importEntries(database: Db, who: Who, entries: BankEntry[]
     data: { imported: rows.length, total: entries.length },
   });
   return { imported: rows.length, duplicates: entries.length - rows.length };
+}
+
+/**
+ * Import d'un relevé camt depuis l'écran de la banque. Une unité de l'allocation du mois (formule
+ * gratuite : 1 relevé) est réservée avant la lecture du fichier, et rendue si le fichier est
+ * illisible ou n'apporte aucune ligne nouvelle : seul un relevé réellement importé compte.
+ */
+export async function importStatement(
+  database: Db,
+  who: Who,
+  xml: string,
+  today = new Date().toISOString().slice(0, 10),
+): Promise<{ imported: number; duplicates: number } | "format" | "quota"> {
+  const plan = await organizationPlan(database, who.organizationId);
+  if (!plan || !(await consumeQuota(database, plan, "bankImports", today)).allowed) return "quota";
+  let entries: BankEntry[];
+  try {
+    entries = parseCamt(xml).entries;
+  } catch {
+    await refundQuota(database, plan.id, "bankImports", today);
+    return "format";
+  }
+  const result = await importEntries(database, who, entries).catch(async (e: unknown) => {
+    await refundQuota(database, plan.id, "bankImports", today);
+    throw e;
+  });
+  if (result.imported === 0) await refundQuota(database, plan.id, "bankImports", today);
+  return result;
 }
 
 export async function listBankTransactions(database: Db, organizationId: string) {

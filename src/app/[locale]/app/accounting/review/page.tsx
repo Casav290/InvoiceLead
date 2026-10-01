@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { AccountingNav } from "@/components/accounting/AccountingNav";
-import { PlanNotice } from "@/components/app/PlanNotice";
+import { ProLock } from "@/components/app/ProLock";
 import { Button } from "@/components/ui/button";
 import { countryPack } from "@/countries";
 import { Link } from "@/i18n/navigation";
@@ -12,7 +12,8 @@ import { listAccounts } from "@/server/accounting";
 import { requireAppSession } from "@/server/auth/guard";
 import { findAnomalies, reviewQueue } from "@/server/autopilot";
 import { db } from "@/server/db";
-import { hasFeature, upgradeUrl } from "@/server/plans";
+import { lockFor } from "@/server/plan-lock";
+import { featureAccess } from "@/server/plans";
 import { can } from "@/server/roles";
 import { approveReviewAction, autopilotAction, undoAutoAction } from "../actions";
 
@@ -50,7 +51,13 @@ export default async function ReviewPage({ params, searchParams }: Props) {
     listAccounts(db(), organization.id),
   ]);
   const accountLabel = new Map(chart.map((a) => [a.id, `${a.number} ${accountName(a, locale)}`]));
-  const allowed = hasFeature(organization, "bankImport");
+  // Le pilote est ouvert à toutes les formules ; son récapitulatif du lundi fait partie de Pro.
+  const digestLock = await lockFor(
+    locale,
+    organization,
+    featureAccess(organization, "autopilotDigest"),
+    t("digestPlan"),
+  );
   const canSetup = can(membership, "setup");
   const hidden = <input type="hidden" name="locale" value={locale} />;
   const notice = q.enabled
@@ -79,7 +86,7 @@ export default async function ReviewPage({ params, searchParams }: Props) {
           {notice}
         </p>
       ) : null}
-      {q.error === "closed" || q.error === "notFound" || q.error === "plan" ? (
+      {q.error === "closed" || q.error === "notFound" ? (
         <p
           role="alert"
           className="mt-6 border border-hot-fg bg-hot-bg px-4 py-3 text-[13px] text-hot-fg"
@@ -88,34 +95,48 @@ export default async function ReviewPage({ params, searchParams }: Props) {
         </p>
       ) : null}
 
-      {allowed ? (
-        <form
-          action={autopilotAction}
-          className={`${panel} mt-6 flex flex-wrap items-center gap-4 px-5 py-4`}
-          data-testid="autopilot-form"
-        >
-          {hidden}
-          <label className="flex min-w-0 flex-1 items-start gap-3">
-            <input
-              type="checkbox"
-              name="autopilot"
-              defaultChecked={organization.autopilot}
-              disabled={!canSetup}
-              className="mt-1 h-4 w-4 accent-accent"
-            />
+      <form
+        action={autopilotAction}
+        className={`${panel} mt-6 flex flex-wrap items-center gap-4 px-5 py-4`}
+        data-testid="autopilot-form"
+      >
+        {hidden}
+        <label className="flex min-w-0 flex-1 items-start gap-3">
+          <input
+            type="checkbox"
+            name="autopilot"
+            defaultChecked={organization.autopilot}
+            disabled={!canSetup}
+            className="mt-1 h-4 w-4 accent-accent"
+          />
+          <span>
+            <span className="block text-[14px] font-semibold">{t("autopilot")}</span>
+            <span className="block text-[12px] text-ink-muted">{t("autopilotHint")}</span>
+          </span>
+        </label>
+        {canSetup ? (
+          <Button type="submit" variant="secondary" size="sm" data-testid="autopilot-save">
+            {t("save")}
+          </Button>
+        ) : null}
+      </form>
+      {digestLock ? (
+        <ProLock lock={digestLock} testId="autopilot-digest-lock" className="border-t-0">
+          <label className="flex items-start gap-3 px-5 py-3">
+            <input type="checkbox" className="mt-1 h-4 w-4" />
             <span>
-              <span className="block text-[14px] font-semibold">{t("autopilot")}</span>
-              <span className="block text-[12px] text-ink-muted">{t("autopilotHint")}</span>
+              <span className="block text-[14px] font-semibold">{t("digestTitle")}</span>
+              <span className="block text-[12px]">{t("digestHint")}</span>
             </span>
           </label>
-          {canSetup ? (
-            <Button type="submit" variant="secondary" size="sm" data-testid="autopilot-save">
-              {t("save")}
-            </Button>
-          ) : null}
-        </form>
+        </ProLock>
       ) : (
-        <PlanNotice locale={locale} message={t("planOnly")} href={upgradeUrl(organization)} />
+        <p
+          className="border border-t-0 border-line-strong bg-panel px-5 py-3 text-[12px] text-ink-muted"
+          data-testid="autopilot-digest"
+        >
+          {t("digestHint")}
+        </p>
       )}
 
       <section className={`${panel} mt-6`} data-testid="review-queue">

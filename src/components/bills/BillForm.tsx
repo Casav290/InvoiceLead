@@ -3,6 +3,7 @@
 import { useTranslations } from "next-intl";
 import { useActionState } from "react";
 import { type BillFormState, saveBillAction } from "@/app/[locale]/app/accounting/bills/actions";
+import { type Lock, LockNote } from "@/components/app/ProLock";
 import { FormSection, SelectField, TextField } from "@/components/forms/fields";
 import { Button } from "@/components/ui/button";
 import { CURRENCIES } from "@/lib/currencies";
@@ -16,12 +17,18 @@ export function BillForm({
   initial,
   accounts,
   vatRegistered,
+  homeCurrency,
+  currencyLock = null,
 }: {
   locale: string;
   id?: string;
   initial: Record<string, string>;
   accounts: { id: string; label: string }[];
   vatRegistered: boolean;
+  /** Monnaie de l'entreprise. */
+  homeCurrency: string;
+  /** Formule sans multidevise : devises étrangères grisées (sauf celle déjà enregistrée). */
+  currencyLock?: Lock | null;
 }) {
   const t = useTranslations("app.bills");
   const tv = useTranslations("app.bank.vat");
@@ -117,7 +124,20 @@ export function BillForm({
           name="currency"
           label={t("fields.currency")}
           defaultValue={v.currency}
-          options={CURRENCIES.map((c) => ({ value: c, label: c }))}
+          options={CURRENCIES.map((c) => {
+            const locked = !!currencyLock && c !== homeCurrency && c !== initial.currency;
+            return {
+              value: c,
+              label: locked ? `${c} (${currencyLock?.tier === "proplus" ? "Pro+" : "Pro"})` : c,
+              disabled: locked,
+            };
+          })}
+          error={err("currency")}
+          after={
+            currencyLock ? (
+              <LockNote lock={currencyLock} testId="currency-lock" className="mt-1 text-[12px]" />
+            ) : null
+          }
         />
         <TextField
           id="bill-total"

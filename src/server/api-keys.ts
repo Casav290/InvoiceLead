@@ -12,7 +12,7 @@ import {
   users,
 } from "./db/schema";
 import { env } from "./env";
-import { hasFeature } from "./plans";
+import { featureAccess } from "./plans";
 import { can } from "./roles";
 
 type Who = { organizationId: string; userId: string };
@@ -108,7 +108,7 @@ export async function apiCaller(
     .limit(1);
   if (!row?.key.createdBy) return "unauthorized";
   const org = row.organization;
-  if (!org.hasAccess || !hasFeature(org, "api")) return "forbidden";
+  if (!org.hasAccess || !featureAccess(org, "api").allowed) return "forbidden";
   const [creator] = await database
     .select({ email: users.email })
     .from(users)

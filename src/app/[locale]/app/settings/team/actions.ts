@@ -10,7 +10,7 @@ import { db } from "@/server/db";
 import { emailConfigured, sendEmail } from "@/server/email";
 import { env } from "@/server/env";
 import { inviteMember } from "@/server/lead-id/members";
-import { hasFeature, seatsOf, upgradeUrl } from "@/server/plans";
+import { featureAccess, seatsOf, upgradeUrl } from "@/server/plans";
 import {
   cancelInvitation,
   INVITATION_DAYS,
@@ -47,7 +47,8 @@ export async function inviteFiduciaryAction(prev: InviteState, form: FormData) {
   const locale = pickLocale(form.get("locale"));
   const session = await requirePermission(locale, "company");
   const round = prev.round + 1;
-  if (!hasFeature(session.organization, "fiduciary")) return { round, error: "plan" as const };
+  if (!featureAccess(session.organization, "fiduciary").allowed)
+    return { round, error: "plan" as const };
   const result = await inviteFiduciary(
     db(),
     { organizationId: session.organization.id, userId: session.user.id },

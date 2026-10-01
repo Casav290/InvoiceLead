@@ -10,6 +10,7 @@ import {
   billFromReceipt,
   createBill,
   deleteBill,
+  getBill,
   importEInvoice,
   markBillPaid,
   parseBillForm,
@@ -17,7 +18,7 @@ import {
 } from "@/server/bills";
 import { db } from "@/server/db";
 import { auditLog, organizations } from "@/server/db/schema";
-import { hasFeature } from "@/server/plans";
+import { featureAccess } from "@/server/plans";
 
 export type BillFormState = {
   status: "idle" | "invalid" | "notFound";
@@ -38,7 +39,7 @@ async function guard(form: FormData) {
 }
 
 export async function saveBillAction(prev: BillFormState, form: FormData): Promise<BillFormState> {
-  const { locale, who, path } = await guard(form);
+  const { locale, session, who, path } = await guard(form);
   const round = prev.round + 1;
   const values = Object.fromEntries(
     [...form.entries()].filter(([k]) => !k.startsWith("$")).map(([k, v]) => [k, String(v)]),
@@ -46,6 +47,16 @@ export async function saveBillAction(prev: BillFormState, form: FormData): Promi
   const parsed = parseBillForm(form);
   if (!parsed.ok) return { status: "invalid", errors: parsed.errors, values, round };
   const id = String(form.get("id") ?? "");
+  // Saisir une facture fournisseur en devise étrangère fait partie de la formule Pro ; une facture
+  // déjà dans sa devise (lue d'un justificatif ou d'une e-facture) la garde.
+  if (
+    parsed.data.currency !== session.organization.currency &&
+    !featureAccess(session.organization, "multiCurrency").allowed
+  ) {
+    const stored = id ? await getBill(db(), session.organization.id, id) : null;
+    if (stored?.currency !== parsed.data.currency)
+      return { status: "invalid", errors: { currency: "plan" }, values, round };
+  }
   const bill = id
     ? await updateBill(db(), who, id, parsed.data)
     : await createBill(db(), who, parsed.data);
@@ -79,13 +90,16 @@ export async function markBillPaidAction(form: FormData) {
   redirect(`${path}/${id}?${result === "paid" ? "paid=1" : `error=${result}`}`);
 }
 
-/** E-factures reçues (XML, ou PDF ZUGFeRD / Factur-X) : chacune devient une facture à payer. */
+/**
+ * E-factures reçues (XML, ou PDF ZUGFeRD / Factur-X) : chacune devient une facture à payer et
+ * compte dans les pièces lues du mois (Gratuit 20, Pro 50, Pro+ 300).
+ */
 export async function importEInvoicesAction(form: FormData) {
-  const { locale, session, who, path } = await guard(form);
-  if (!hasFeature(session.organization, "receipts")) redirect(`${path}?error=plan`);
+  const { locale, who, path } = await guard(form);
   const files = form.getAll("files").filter((f): f is File => f instanceof File && f.size > 0);
   let imported = 0;
   let rejected = 0;
+  let quota = false;
   for (const f of files.slice(0, 20)) {
     const type = f.type || (f.name.toLowerCase().endsWith(".xml") ? "application/xml" : "");
     const result = await importEInvoice(db(), who, {
@@ -95,9 +109,10 @@ export async function importEInvoicesAction(form: FormData) {
     });
     if (typeof result === "object") imported += 1;
     else rejected += 1;
+    if (result === "quota") quota = true;
   }
   revalidatePath(`/${locale}/app/accounting`, "layout");
-  redirect(`${path}?imported=${imported}&rejected=${rejected}`);
+  redirect(`${path}?imported=${imported}&rejected=${rejected}${quota ? "&error=quota" : ""}`);
 }
 
 export async function billFromReceiptAction(form: FormData) {

@@ -3,6 +3,7 @@ import { getTranslations } from "next-intl/server";
 import { AccountingNav } from "@/components/accounting/AccountingNav";
 import { VatReview } from "@/components/accounting/VatReview";
 import { PlanNotice } from "@/components/app/PlanNotice";
+import { ProLock } from "@/components/app/ProLock";
 import { Button } from "@/components/ui/button";
 import { countryPack } from "@/countries";
 import { FIGURE_ORDER, periodsBetween, TAXED_FIGURES, vatDueDate } from "@/countries/ch/vat-return";
@@ -38,7 +39,8 @@ import { aiConfigured } from "@/server/ai";
 import { requireAppSession } from "@/server/auth/guard";
 import { db } from "@/server/db";
 import type { VatAnomaly, VatFigures } from "@/server/db/schema";
-import { hasFeature, upgradeUrl } from "@/server/plans";
+import { lockedReason, lockFor } from "@/server/plan-lock";
+import { featureAccess, upgradeUrl } from "@/server/plans";
 import { draftVatReturn, listVatReturns } from "@/server/vat-return";
 import { validateVatAction } from "../actions";
 
@@ -129,8 +131,34 @@ export default async function VatPage({ params, searchParams }: Props) {
       : null;
   const figures: VatFigures = validated?.figures ?? draft?.figures ?? {};
   const anomalies: VatAnomaly[] = validated?.anomalies ?? draft?.anomalies ?? [];
-  const allowed = hasFeature(organization, "vatReturn");
-  const blocking = !allowed || anomalies.some((a) => a.severity === "block");
+  // Décompte TVA : formule Pro. Les chiffres restent visibles ; la relecture par l'IA et la
+  // validation sont grisées avec la marque Pro.
+  const access = featureAccess(organization, "vatReturn");
+  const reviewLock = await lockFor(
+    locale,
+    organization,
+    access,
+    await lockedReason(locale, access.upgradeTo),
+  );
+  const validateLock = await lockFor(locale, organization, access, t("validatePlan"));
+  const blocking = anomalies.some((a) => a.severity === "block");
+  const validateForm =
+    draft && selected ? (
+      <form
+        action={validateVatAction}
+        className="flex flex-wrap items-center gap-3 border border-line-strong bg-panel px-5 py-4"
+      >
+        <input type="hidden" name="locale" value={locale} />
+        <input type="hidden" name="start" value={selected.start} />
+        <input type="hidden" name="end" value={selected.end} />
+        <p className="min-w-0 flex-1 text-[13px] text-ink-2">
+          {blocking ? t("cannotValidate") : t("validateHint")}
+        </p>
+        <Button type="submit" disabled={blocking} data-testid="vat-validate">
+          {t("validate")}
+        </Button>
+      </form>
+    ) : null;
   const shown = form.order.filter(
     (code) => code in figures && (figures[code] !== 0 || form.always.includes(code)),
   );
@@ -158,8 +186,13 @@ export default async function VatPage({ params, searchParams }: Props) {
         </p>
       ) : null}
 
-      {allowed ? null : (
-        <PlanNotice locale={locale} message={t("planOnly")} href={upgradeUrl(organization)} />
+      {access.allowed ? null : (
+        <PlanNotice
+          locale={locale}
+          message={t(usa ? "planOnlyUs" : "planOnly")}
+          href={upgradeUrl(organization)}
+          tier="pro"
+        />
       )}
       <nav aria-label={t("periods")} className="mt-6 flex flex-wrap gap-2">
         {quarters.slice(0, 8).map((p) => {
@@ -269,24 +302,28 @@ export default async function VatPage({ params, searchParams }: Props) {
           ) : null}
 
           {draft && aiConfigured() ? (
-            <VatReview locale={locale} start={selected.start} end={selected.end} />
+            reviewLock ? (
+              <ProLock lock={reviewLock} testId="vat-review-lock" className="mt-6">
+                <VatReview
+                  locale={locale}
+                  start={selected.start}
+                  end={selected.end}
+                  className="border-0"
+                />
+              </ProLock>
+            ) : (
+              <VatReview locale={locale} start={selected.start} end={selected.end} />
+            )
           ) : null}
 
-          {draft ? (
-            <form
-              action={validateVatAction}
-              className="mt-6 flex flex-wrap items-center gap-3 border border-line-strong bg-panel px-5 py-4"
-            >
-              <input type="hidden" name="locale" value={locale} />
-              <input type="hidden" name="start" value={selected.start} />
-              <input type="hidden" name="end" value={selected.end} />
-              <p className="min-w-0 flex-1 text-[13px] text-ink-2">
-                {blocking ? t("cannotValidate") : t("validateHint")}
-              </p>
-              <Button type="submit" disabled={blocking} data-testid="vat-validate">
-                {t("validate")}
-              </Button>
-            </form>
+          {validateForm ? (
+            validateLock ? (
+              <ProLock lock={validateLock} testId="vat-validate-lock" className="mt-6">
+                {validateForm}
+              </ProLock>
+            ) : (
+              <div className="mt-6">{validateForm}</div>
+            )
           ) : null}
         </>
       ) : null}

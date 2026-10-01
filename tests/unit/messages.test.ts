@@ -55,6 +55,11 @@ describe("messages", () => {
     expect(entries(de as Tree).filter(([, v]) => v.includes("ß"))).toEqual([]);
   });
 
+  it("n'ont ni tiret cadratin ni tiret demi-cadratin (consigne d'écriture d'Ève)", () => {
+    for (const t of [de, fr, en])
+      expect(entries(t as Tree).filter(([, v]) => /[\u2013\u2014]/.test(v))).toEqual([]);
+  });
+
   it("gardent la ponctuation française collée à son mot (espaces insécables)", () => {
     const bad = entries(fr as Tree).filter(([, v]) => / [?!;:%»]/.test(v) || /« /.test(v));
     expect(bad).toEqual([]);

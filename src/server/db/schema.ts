@@ -1059,6 +1059,29 @@ export const crmleadOutbox = pgTable(
 );
 
 /**
+ * Compteurs des petites allocations mensuelles (lectures de pièces par l'IA, questions à
+ * l'assistant, relances, imports de relevés) : une unité est réservée avant l'action, d'un seul
+ * ordre SQL qui refuse au-delà de la limite, et rendue si l'action échoue. Mois civil UTC.
+ */
+export const planUsage = pgTable(
+  "plan_usage",
+  {
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    /** Mois « AAAA-MM ». */
+    period: text("period").notNull(),
+    key: text("key").notNull(), // aiReads | assistant | reminders | bankImports
+    used: integer("used").notNull().default(0),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.organizationId, t.period, t.key] }),
+    check("plan_usage_used_check", sql`${t.used} >= 0`),
+  ],
+);
+
+/**
  * Page à rouvrir après une connexion, trop longue pour voyager dans le `state` (lien d'import de
  * CRMlead) : le `state` n'en porte que la référence (login-pages.ts). Elle revient ainsi même sans le
  * cookie de la demande (lien de l'email ouvert sur un autre appareil, écran resté ouvert). La

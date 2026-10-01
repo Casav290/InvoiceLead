@@ -3,7 +3,6 @@
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { parseCamt } from "@/countries/ch/camt";
 import { VAT_CODES, type VatCode } from "@/countries/ch/vat";
 import { aiConfigured } from "@/server/ai";
 import { requirePermission } from "@/server/auth/guard";
@@ -11,7 +10,7 @@ import { pickLocale } from "@/server/auth/login-cookie";
 import { approveReview, runAutopilot, undoAutoPosting } from "@/server/autopilot";
 import {
   ignoreTransaction,
-  importEntries,
+  importStatement,
   proposeAll,
   validateConfident,
   validateTransaction,
@@ -20,7 +19,7 @@ import { deleteRule } from "@/server/booking-rules";
 import { db } from "@/server/db";
 import { auditLog, organizations } from "@/server/db/schema";
 import { postPending } from "@/server/ledger";
-import { hasFeature, limitReached } from "@/server/plans";
+import { featureAccess, quotaAccess } from "@/server/plans";
 import { matchReceipts, readReceipt, uploadReceipt } from "@/server/receipts";
 import { aiReview, draftVatReturn, validateVatReturn } from "@/server/vat-return";
 import { flushWebhooks } from "@/server/webhooks";
@@ -38,22 +37,20 @@ export async function postPendingAction(form: FormData) {
   redirect(`/${locale}/app/accounting?${q}`);
 }
 
+/**
+ * Import d'un relevé camt. Formule gratuite : un relevé par mois (le pilote automatique compris) ;
+ * au-delà, ou pour une demande forgée, le serveur refuse avec « quota ».
+ */
 export async function importStatementAction(form: FormData) {
   const locale = pickLocale(form.get("locale"));
   const session = await requirePermission(locale, "accounting");
   const who = { organizationId: session.organization.id, userId: session.user.id };
   const file = form.get("statement");
   const path = `/${locale}/app/accounting/bank`;
-  if (!hasFeature(session.organization, "bankImport")) redirect(`${path}?error=plan`);
   if (!(file instanceof File) || file.size === 0 || file.size > 5_000_000)
     redirect(`${path}?error=file`);
-  let statement: ReturnType<typeof parseCamt>;
-  try {
-    statement = parseCamt(await file.text());
-  } catch {
-    redirect(`${path}?error=format`);
-  }
-  const result = await importEntries(db(), who, statement.entries);
+  const result = await importStatement(db(), who, await file.text());
+  if (typeof result === "string") redirect(`${path}?error=${result}`);
   const proposed = await proposeAll(db(), who, {
     language: locale,
     useAi: aiConfigured(),
@@ -140,20 +137,25 @@ export async function deleteRuleAction(form: FormData) {
   redirect(`/${locale}/app/accounting/bank`);
 }
 
+/**
+ * Boîte des justificatifs (et capture du téléphone) : chaque pièce lue par l'IA compte dans les
+ * lectures du mois (Gratuit 20, Pro 50, Pro+ 300). Une pièce au-delà de l'allocation est refusée.
+ */
 export async function uploadReceiptsAction(form: FormData) {
   const locale = pickLocale(form.get("locale"));
   const session = await requirePermission(locale, "accounting");
   const who = { organizationId: session.organization.id, userId: session.user.id };
   const language = locale;
   const files = form.getAll("files").filter((f): f is File => f instanceof File && f.size > 0);
-  if (!hasFeature(session.organization, "receipts"))
-    redirect(`/${locale}/app/accounting/receipts?error=plan`);
+  const ai = aiConfigured();
   let added = 0;
   let rejected = 0;
+  let quota = false;
   let last = "";
   for (const file of files.slice(0, 20)) {
-    if (await limitReached(db(), session.organization, "receipt")) {
+    if (ai && !(await quotaAccess(db(), session.organization, "aiReads")).allowed) {
       rejected += 1;
+      quota = true;
       continue;
     }
     const result = await uploadReceipt(db(), who, {
@@ -167,17 +169,20 @@ export async function uploadReceiptsAction(form: FormData) {
     }
     added += 1;
     last = result.id;
-    if (aiConfigured()) await readReceipt(db(), who, result.id, language);
+    if (ai && (await readReceipt(db(), who, result.id, language)) === "quota") quota = true;
   }
   revalidatePath(`/${locale}/app/accounting`, "layout");
+  const q = new URLSearchParams({ added: String(added), rejected: String(rejected) });
+  if (quota) q.set("quota", "1");
   // Depuis l'écran de capture du téléphone : on y revient, avec ce qui vient d'être lu.
-  if (form.get("from") === "capture")
-    redirect(
-      `/${locale}/app/accounting/receipts/capture?added=${added}&rejected=${rejected}${last ? `&last=${last}` : ""}`,
-    );
-  redirect(`/${locale}/app/accounting/receipts?added=${added}&rejected=${rejected}`);
+  if (form.get("from") === "capture") {
+    if (last) q.set("last", last);
+    redirect(`/${locale}/app/accounting/receipts/capture?${q}`);
+  }
+  redirect(`/${locale}/app/accounting/receipts?${q}`);
 }
 
+/** Lire ou relire une pièce : une lecture du mois, refusée au-delà de l'allocation. */
 export async function readReceiptAction(form: FormData) {
   const locale = pickLocale(form.get("locale"));
   const session = await requirePermission(locale, "accounting");
@@ -196,7 +201,7 @@ export async function validateVatAction(form: FormData) {
   const session = await requirePermission(locale, "accounting");
   const start = String(form.get("start") ?? "");
   const end = String(form.get("end") ?? "");
-  if (!hasFeature(session.organization, "vatReturn"))
+  if (!featureAccess(session.organization, "vatReturn").allowed)
     redirect(`/${locale}/app/accounting/vat?period=${start}&error=plan`);
   const result = await validateVatReturn(
     db(),
@@ -210,13 +215,16 @@ export async function validateVatAction(form: FormData) {
   );
 }
 
-export type ReviewState = { points?: string[]; failed?: boolean; round: number };
+export type ReviewState = { points?: string[]; failed?: boolean; plan?: boolean; round: number };
 
+/** Relecture du décompte par l'IA : elle fait partie du décompte TVA, donc de la formule Pro. */
 export async function reviewVatAction(prev: ReviewState, form: FormData): Promise<ReviewState> {
   const locale = pickLocale(form.get("locale"));
   const session = await requirePermission(locale, "accounting");
   const start = String(form.get("start") ?? "");
   const end = String(form.get("end") ?? "");
+  if (!featureAccess(session.organization, "vatReturn").allowed)
+    return { plan: true, round: prev.round + 1 };
   try {
     const draft = await draftVatReturn(db(), session.organization.id, start, end);
     const points = await aiReview(db(), session.organization.id, start, end, draft, locale);
@@ -227,13 +235,15 @@ export async function reviewVatAction(prev: ReviewState, form: FormData): Promis
   }
 }
 
-/** Active ou coupe le pilote automatique ; à l'activation, il passe tout de suite ce qui est sûr. */
+/**
+ * Active ou coupe le pilote automatique ; à l'activation, il passe tout de suite ce qui est sûr.
+ * Ouvert à toutes les formules (le récapitulatif du lundi par e-mail reste dans Pro).
+ */
 export async function autopilotAction(form: FormData) {
   const locale = pickLocale(form.get("locale"));
   const session = await requirePermission(locale, "setup");
   const who = { organizationId: session.organization.id, userId: session.user.id };
   const path = `/${locale}/app/accounting/review`;
-  if (!hasFeature(session.organization, "bankImport")) redirect(`${path}?error=plan`);
   const on = form.get("autopilot") === "on";
   await db()
     .update(organizations)

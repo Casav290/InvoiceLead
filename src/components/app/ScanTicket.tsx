@@ -10,13 +10,29 @@ export function ScanTicket({
   label,
   reading,
   hint,
+  disabled = false,
 }: {
   label: string;
   reading: string;
   hint: string;
+  /** Lectures du mois utilisées : le bouton reste visible, grisé, sans choix de fichier. */
+  disabled?: boolean;
 }) {
   const input = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
+  if (disabled)
+    return (
+      <div>
+        <span
+          className="inline-flex min-h-12 items-center justify-center border border-line-strong bg-panel px-6 text-[15px] font-bold text-ink-muted"
+          aria-disabled="true"
+          data-testid="scan-ticket-disabled"
+        >
+          {label}
+        </span>
+        <p className="mt-2 text-[13px] text-ink-muted">{hint}</p>
+      </div>
+    );
   return (
     <div>
       <label

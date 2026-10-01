@@ -1,6 +1,6 @@
 {
-  "id": "d60063f3-773c-4451-a779-146d2cdd7385",
-  "prevId": "63048571-1edf-4e02-bcb8-ef8a52cfb266",
+  "id": "63048571-1edf-4e02-bcb8-ef8a52cfb266",
+  "prevId": "aea7dabe-d86a-4b68-b029-9b783b614a94",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -2579,81 +2579,6 @@
       },
       "isRLSEnabled": false
     },
-    "public.login_pages": {
-      "name": "login_pages",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "next": {
-          "name": "next",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "client": {
-          "name": "client",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "login_pages_created_idx": {
-          "name": "login_pages_created_idx",
-          "columns": [
-            {
-              "expression": "created_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "login_pages_client_idx": {
-          "name": "login_pages_client_idx",
-          "columns": [
-            {
-              "expression": "client",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "created_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
     "public.memberships": {
       "name": "memberships",
       "schema": "",
@@ -4522,12 +4447,6 @@
           "notNull": true,
           "default": "'de'"
         },
-        "last_organization_id": {
-          "name": "last_organization_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp with time zone",
@@ -4576,21 +4495,7 @@
           "with": {}
         }
       },
-      "foreignKeys": {
-        "users_last_organization_id_organizations_id_fk": {
-          "name": "users_last_organization_id_organizations_id_fk",
-          "tableFrom": "users",
-          "tableTo": "organizations",
-          "columnsFrom": [
-            "last_organization_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
-        }
-      },
+      "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "users_lead_sub_unique": {

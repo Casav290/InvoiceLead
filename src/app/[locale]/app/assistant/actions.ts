@@ -5,21 +5,23 @@ import { type AssistantAnswer, askAssistant } from "@/server/assistant";
 import { requirePermission } from "@/server/auth/guard";
 import { pickLocale } from "@/server/auth/login-cookie";
 import { db } from "@/server/db";
-import { hasFeature } from "@/server/plans";
+import { quotaAccess } from "@/server/plans";
 
 export type AssistantState = {
   question?: string;
   result?: AssistantAnswer;
-  error?: "plan" | "off" | "empty" | "failed";
+  error?: "quota" | "off" | "empty" | "failed";
+  /** Questions posées ce mois-ci, pour tenir le compteur à jour sans recharger la page. */
+  used?: number;
   round: number;
 };
 
+/** Formule gratuite : 10 questions par mois ; le serveur refuse la onzième (« quota »). */
 export async function askAction(prev: AssistantState, form: FormData): Promise<AssistantState> {
   const locale = pickLocale(form.get("locale"));
   const session = await requirePermission(locale, "accounting");
   const round = prev.round + 1;
   const question = String(form.get("question") ?? "");
-  if (!hasFeature(session.organization, "assistant")) return { round, question, error: "plan" };
   if (!aiConfigured()) return { round, question, error: "off" };
   const result = await askAssistant(
     db(),
@@ -27,6 +29,7 @@ export async function askAction(prev: AssistantState, form: FormData): Promise<A
     question,
     locale,
   );
-  if (typeof result === "string") return { round, question, error: result };
-  return { round, question, result };
+  const { used } = await quotaAccess(db(), session.organization, "assistant");
+  if (typeof result === "string") return { round, question, error: result, used };
+  return { round, question, result, used };
 }

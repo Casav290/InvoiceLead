@@ -3,6 +3,7 @@
 import { useTranslations } from "next-intl";
 import { useActionState, useId, useState } from "react";
 import { type InvoiceFormState, saveInvoice } from "@/app/[locale]/app/invoices/actions";
+import { type Lock, LockNote } from "@/components/app/ProLock";
 import { FormSection, fieldClass, SelectField, TextField } from "@/components/forms/fields";
 import { Button } from "@/components/ui/button";
 import { countryPack } from "@/countries";
@@ -72,6 +73,8 @@ export function InvoiceForm({
   vatRegistered,
   country = "CH",
   localRateBp = null,
+  currencyLock = null,
+  storedCurrency,
 }: {
   locale: string;
   country?: string;
@@ -83,6 +86,10 @@ export function InvoiceForm({
   contacts: ContactOption[];
   products: ProductOption[];
   vatRegistered: boolean;
+  /** Formule sans multidevise : devises étrangères grisées, marque Pro et lien. */
+  currencyLock?: Lock | null;
+  /** Devise déjà enregistrée du brouillon : elle reste choisissable. */
+  storedCurrency?: string;
 }) {
   const t = useTranslations("app.invoices");
   const tk = useTranslations(kind === "quote" ? "app.quotes" : "app.invoices");
@@ -109,6 +116,8 @@ export function InvoiceForm({
       vatRegistered={vatRegistered}
       country={country}
       localRateBp={localRateBp}
+      currencyLock={currencyLock}
+      storedCurrency={storedCurrency}
       t={t}
     />
   );
@@ -130,6 +139,8 @@ function InvoiceFormBody({
   vatRegistered,
   country,
   localRateBp,
+  currencyLock,
+  storedCurrency,
   t,
 }: {
   locale: string;
@@ -147,6 +158,8 @@ function InvoiceFormBody({
   vatRegistered: boolean;
   country: string;
   localRateBp: number | null;
+  currencyLock: Lock | null;
+  storedCurrency?: string;
   t: ReturnType<typeof useTranslations>;
 }) {
   const pack = countryPack(country);
@@ -284,14 +297,28 @@ function InvoiceFormBody({
             onChange={(e) => setCurrency(e.target.value)}
             disabled={kind === "credit_note"}
             aria-invalid={errors.currency ? true : undefined}
+            aria-describedby={
+              currencyLock && kind !== "credit_note" ? "invoice-currency-lock" : undefined
+            }
             className={fieldClass}
           >
-            {CURRENCIES.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
+            {CURRENCIES.map((c) => {
+              const locked = !!currencyLock && c !== pack.currency && c !== storedCurrency;
+              return (
+                <option key={c} value={c} disabled={locked}>
+                  {locked ? `${c} (${currencyLock?.tier === "proplus" ? "Pro+" : "Pro"})` : c}
+                </option>
+              );
+            })}
           </select>
+          {currencyLock && kind !== "credit_note" ? (
+            <LockNote
+              lock={currencyLock}
+              id="invoice-currency-lock"
+              testId="currency-lock"
+              className="mt-1 text-[12px]"
+            />
+          ) : null}
           {err("currency") ? (
             <span className="mt-1 block text-[12px] font-semibold text-hot-fg">
               {err("currency")}

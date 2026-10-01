@@ -6,6 +6,7 @@ import { autopilotSummary } from "./autopilot";
 import type { Db } from "./db";
 import { auditLog, contacts, invoices, organizations, supplierBills } from "./db/schema";
 import { listInvoices } from "./invoices";
+import { consumeQuota, organizationPlan, refundQuota } from "./plans";
 import { accountBalances } from "./reports";
 import { listProjects } from "./time";
 
@@ -179,6 +180,9 @@ export type AssistantAnswer = { answer: string; links: AssistantLink[] };
 /**
  * Répond à une question sur les livres, à partir de l'instantané seulement. L'assistant ne voit pas
  * la base et ne peut rien modifier ; s'il ne trouve pas la réponse, il le dit.
+ *
+ * Formule gratuite : 10 questions par mois, réservées avant l'appel à l'IA et rendues si elle ne
+ * répond pas ; Pro et Pro+ sans limite (les questions sont comptées quand même).
  */
 export async function askAssistant(
   database: Db,
@@ -186,9 +190,26 @@ export async function askAssistant(
   question: string,
   language: "de" | "fr" | "en",
   today = new Date().toISOString().slice(0, 10),
-): Promise<AssistantAnswer | "empty" | "failed"> {
+): Promise<AssistantAnswer | "empty" | "failed" | "quota"> {
   const q = question.trim().slice(0, 500);
   if (!q) return "empty";
+  const plan = await organizationPlan(database, who.organizationId);
+  if (!plan || !(await consumeQuota(database, plan, "assistant", today)).allowed) return "quota";
+  const result = await answer(database, who, q, language, today).catch(async (e: unknown) => {
+    await refundQuota(database, plan.id, "assistant", today);
+    throw e;
+  });
+  if (typeof result === "string") await refundQuota(database, plan.id, "assistant", today);
+  return result;
+}
+
+async function answer(
+  database: Db,
+  who: Who,
+  q: string,
+  language: "de" | "fr" | "en",
+  today: string,
+): Promise<AssistantAnswer | "failed"> {
   const facts = await bookFacts(database, who.organizationId, today);
   const system = [
     "You are the bookkeeping assistant of InvoiceLead, an invoicing and accounting app for small businesses.",
@@ -209,8 +230,8 @@ export async function askAssistant(
     return "failed";
   }
   const r = (raw ?? {}) as { answer?: unknown; links?: unknown };
-  const answer = typeof r.answer === "string" ? r.answer.trim().slice(0, 2000) : "";
-  if (!answer) return "failed";
+  const text = typeof r.answer === "string" ? r.answer.trim().slice(0, 2000) : "";
+  if (!text) return "failed";
   const links = (Array.isArray(r.links) ? r.links : [])
     .filter((l): l is AssistantLink => typeof l === "string" && l in ASSISTANT_LINKS)
     .slice(0, 3);
@@ -222,5 +243,5 @@ export async function askAssistant(
     entityId: who.organizationId,
     data: { length: q.length },
   });
-  return { answer, links };
+  return { answer: text, links };
 }

@@ -25,6 +25,7 @@ import {
   receipts,
   supplierBills,
 } from "@/server/db/schema";
+import { consumeQuota, organizationPlan, quotaAccess } from "@/server/plans";
 import { camt053 } from "../support/camt";
 import { claims } from "../support/claims";
 import { testDb } from "../support/db";
@@ -314,5 +315,16 @@ describe("factures fournisseurs", () => {
         bytes: Buffer.from("<a/>"),
       }),
     ).toBe("notEInvoice");
+
+    // Chaque e-facture compte dans les pièces lues du mois ; un doublon rend son unité, et au-delà
+    // de l'allocation (formule gratuite : 20) l'import est refusé.
+    const plan = await organizationPlan(db, who.organizationId);
+    if (!plan) throw new Error("organisation");
+    expect((await quotaAccess(db, plan, "aiReads")).used).toBe(1);
+    const again = { name: "rechnung.xml", type: "application/xml", bytes: Buffer.from(UBL) };
+    expect(await importEInvoice(db, who, again)).toBe("duplicate");
+    expect((await quotaAccess(db, plan, "aiReads")).used).toBe(1);
+    for (let i = 0; i < 19; i++) await consumeQuota(db, plan, "aiReads");
+    expect(await importEInvoice(db, who, again)).toBe("quota");
   });
 });

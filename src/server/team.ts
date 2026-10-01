@@ -10,7 +10,7 @@ import {
   sessions,
   users,
 } from "./db/schema";
-import { seatsOf } from "./plans";
+import { featureAccess, seatsOf } from "./plans";
 import {
   APP_ROLES,
   type AppRole,
@@ -155,11 +155,12 @@ export async function inviteFiduciary(
 
 export type AcceptResult =
   | { status: "accepted"; organizationId: string; organizationName: string }
-  | { status: "invalid" | "expired" | "wrongEmail" };
+  | { status: "invalid" | "expired" | "wrongEmail" | "plan" };
 
 /**
  * Acceptation par la fiduciaire, connectée avec son propre Compte Lead : l'adresse de l'invitation doit
- * être la sienne. Une personne déjà membre de l'entreprise garde son rôle.
+ * être la sienne. Une personne déjà membre de l'entreprise garde son rôle. L'accès fiduciaire fait
+ * partie de la formule Pro : une invitation envoyée avant un retour à la formule gratuite attend.
  */
 export async function acceptInvitation(
   database: Db,
@@ -168,7 +169,11 @@ export async function acceptInvitation(
 ): Promise<AcceptResult> {
   return database.transaction(async (tx) => {
     const [inv] = await tx
-      .select({ invitation: fiduciaryInvitations, orgName: organizations.name })
+      .select({
+        invitation: fiduciaryInvitations,
+        orgName: organizations.name,
+        plan: { leadPlan: organizations.leadPlan, entitlements: organizations.entitlements },
+      })
       .from(fiduciaryInvitations)
       .innerJoin(organizations, eq(fiduciaryInvitations.organizationId, organizations.id))
       .where(eq(fiduciaryInvitations.tokenHash, sha256Hex(token)))
@@ -177,6 +182,7 @@ export async function acceptInvitation(
     if (!inv || inv.invitation.acceptedAt) return { status: "invalid" };
     if (inv.invitation.expiresAt < new Date()) return { status: "expired" };
     if (inv.invitation.email !== user.email.trim().toLowerCase()) return { status: "wrongEmail" };
+    if (!featureAccess(inv.plan, "fiduciary").allowed) return { status: "plan" };
     const organizationId = inv.invitation.organizationId;
     await tx
       .insert(memberships)

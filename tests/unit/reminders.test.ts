@@ -92,13 +92,17 @@ describe("relances", () => {
     expect(await sendReminder(db, who, invoice.id, "2026-04-10")).toBe("noEmail");
     expect(await sendReminder(db, who, invoice.id, "2026-04-10", true)).toBe("recorded");
     expect(await dueReminders(db, who.organizationId, "2026-04-24")).toEqual([]);
-    // Formule gratuite : la première relance seulement.
-    expect(await dueReminders(db, who.organizationId, "2026-04-25")).toEqual([]);
+    // Formule gratuite : la première relance seulement ; la deuxième reste visible, verrouillée.
+    const [locked] = await dueReminders(db, who.organizationId, "2026-04-25");
+    expect(locked).toMatchObject({ level: 2, locked: true, feeCents: 0, interestCents: 0 });
+    expect(await sendReminder(db, who, invoice.id, "2026-04-25", true)).toBe("plan");
     await db
       .update(organizations)
       .set({ leadPlan: "pro", entitlements: { plan: { rank: 1 } } })
       .where(eq(organizations.id, a.organization.id));
-    expect((await dueReminders(db, who.organizationId, "2026-04-25"))[0]?.level).toBe(2);
+    expect(await dueReminders(db, who.organizationId, "2026-04-25")).toMatchObject([
+      { level: 2, locked: false },
+    ]);
 
     const b = await attachLeadIdentity(
       db,

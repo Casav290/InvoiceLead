@@ -106,6 +106,17 @@ for (const size of WIDTHS) {
       expect(await traitNetIssues(page)).toEqual([]);
       await page.goto("/de/app/accounting/vat");
       expect(await traitNetIssues(page)).toEqual([]);
+      // Fonctions Pro grisées de la formule gratuite (marques, verrous, liens de mise à niveau).
+      await page.goto("/fr/app/settings/api");
+      expect(await traitNetIssues(page)).toEqual([]);
+      await page.goto("/fr/app/settings/team");
+      expect(await traitNetIssues(page)).toEqual([]);
+      await page.goto("/fr/app/expenses");
+      expect(await traitNetIssues(page)).toEqual([]);
+      await page.goto("/de/app/accounting/bills/new");
+      expect(await traitNetIssues(page)).toEqual([]);
+      await page.goto("/fr/app");
+      expect(await traitNetIssues(page)).toEqual([]);
     });
 
     test("écran sans accès", async ({ page }) => {

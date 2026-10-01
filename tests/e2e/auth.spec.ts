@@ -328,6 +328,10 @@ test("déconnexion au clavier depuis le menu", async ({ page, context }) => {
   await page.getByTestId("user-menu").focus();
   await page.keyboard.press("Enter");
   await expect(page.getByTestId("logout")).toBeVisible();
+  // Formule gratuite : « Passer à Pro » ouvre le menu, puis l'avis ; la déconnexion est la dernière.
+  await expect(page.getByTestId("menu-upgrade")).toBeFocused();
+  await page.keyboard.press("ArrowDown");
+  await expect(page.getByTestId("feedback-link")).toBeFocused();
   await page.keyboard.press("ArrowDown");
   await expect(page.getByTestId("logout")).toBeFocused();
   await page.keyboard.press("Enter");

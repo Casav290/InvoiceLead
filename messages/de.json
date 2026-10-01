@@ -681,7 +681,8 @@
         "planLimit": "Sie haben die 10 Rechnungen pro Monat des Gratis-Abos erreicht. Mit Pro stellen Sie unbegrenzt Rechnungen aus.",
         "recurring": "Die Wiederholung konnte nicht gespeichert werden.",
         "fxRate": "Der Tageskurs konnte nicht abgerufen werden. Bitte den Kurs im Entwurf erfassen und erneut ausstellen.",
-        "depositDraft": "Eine Anzahlungsrechnung zu dieser Offerte ist noch ein Entwurf: Stellen Sie sie aus oder löschen Sie sie, bevor Sie die Schlussrechnung erstellen."
+        "depositDraft": "Eine Anzahlungsrechnung zu dieser Offerte ist noch ein Entwurf: Stellen Sie sie aus oder löschen Sie sie, bevor Sie die Schlussrechnung erstellen.",
+        "recurringLimit": "Das Gratis-Abo umfasst eine aktive wiederkehrende Rechnung. Pausieren Sie eine oder wechseln Sie auf Pro, um weitere hinzuzufügen."
       },
       "addLine": "Position hinzufügen",
       "removeLine": "Entfernen",
@@ -921,7 +922,8 @@
         "exempt": "Steuerbefreit",
         "export": "Nicht steuerbar (ausserhalb des Bundesstaats)"
       },
-      "totalWithVatUs": "Total inklusive Steuer"
+      "totalWithVatUs": "Total inklusive Steuer",
+      "currencyPlan": "Weitere Währungen sind Teil des Pro-Abos."
     },
     "quotes": {
       "title": "Offerten",
@@ -1032,8 +1034,7 @@
         "noFiscalYear": "Kein offenes Geschäftsjahr umfasst das Datum dieser Bewegung.",
         "noProposal": "Wählen Sie zuerst ein Konto.",
         "notFound": "Bewegung nicht gefunden oder bereits verarbeitet.",
-        "vatPeriodClosed": "Dieses Datum liegt in einer bereits bestätigten MWST-Periode: Es kann dort nicht mehr gebucht werden.",
-        "plan": "Der Import von Kontoauszügen ist dem Pro-Abo vorbehalten."
+        "vatPeriodClosed": "Dieses Datum liegt in einer bereits bestätigten MWST-Periode: Es kann dort nicht mehr gebucht werden."
       },
       "aiError": "Der Assistent konnte nicht antworten. Die Bewegungen bleiben offen; versuchen Sie es später erneut.",
       "aiOff": "Der Buchhaltungsassistent ist noch nicht aktiviert: Automatisch vorgeschlagen werden nur Rechnungszahlungen, die an ihrer QR-Referenz erkannt werden.",
@@ -1078,7 +1079,6 @@
         "hits": "{count, plural, one {# Mal bestätigt} other {# Mal bestätigt}}",
         "delete": "Vergessen"
       },
-      "planOnly": "Der Import von Kontoauszügen und die Vorschläge des Assistenten sind im Pro-Abo enthalten.",
       "autoPosted": "{count, plural, one {# Bewegung} other {# Bewegungen}} vom Autopiloten verbucht.",
       "autoReview": "Prüfen",
       "paysBill": "Zahlung einer Lieferantenrechnung"
@@ -1090,8 +1090,7 @@
       "errors": {
         "unreadable": "Dieses PDF ist ein gescanntes Bild: Laden Sie stattdessen ein scharfes Foto des Dokuments hoch.",
         "failed": "Der Assistent konnte diesen Beleg nicht lesen. Versuchen Sie es später erneut.",
-        "notFound": "Beleg nicht gefunden.",
-        "plan": "Das Lesen von Belegen ist Pro und Pro+ vorbehalten."
+        "notFound": "Beleg nicht gefunden."
       },
       "aiOff": "Der Assistent ist noch nicht aktiviert: Die Belege werden aufbewahrt und gelesen, sobald er eingerichtet ist.",
       "files": "Rechnungen oder Quittungen",
@@ -1112,7 +1111,6 @@
         "posted": "Verbucht",
         "billed": "Lieferantenrechnung"
       },
-      "planOnly": "Das automatische Lesen von Belegen ist in Pro (50 pro Monat) und Pro+ (300 pro Monat) enthalten.",
       "toBill": "Als Kreditorenrechnung erfassen",
       "captureLink": "Mit dem Handy fotografieren"
     },
@@ -1164,7 +1162,7 @@
         "blocked": "Die Abrechnung kann nicht bestätigt werden, solange blockierende Punkte offen sind.",
         "noFiscalYear": "Kein offenes Geschäftsjahr umfasst das Ende dieser Periode.",
         "noChart": "Dem Kontenplan fehlen die nötigen MWST-Konten.",
-        "plan": "Die Bestätigung der MWST-Abrechnung ist dem Pro-Abo vorbehalten."
+        "plan": "Die MWST-Abrechnung ist Teil des Pro-Abos."
       },
       "periods": "Perioden",
       "quarter": "Q{q} {year}",
@@ -1263,7 +1261,9 @@
       },
       "titleUs": "Sales-Tax-Übersicht",
       "xmlDownload": "Abrechnung im Format eCH-0217 herunterladen, für das ESTV-Portal",
-      "xmlNoUid": "Die eCH-0217-Datei braucht die UID des Unternehmens (Einstellungen)."
+      "xmlNoUid": "Die eCH-0217-Datei braucht die UID des Unternehmens (Einstellungen).",
+      "validatePlan": "Pro-Funktion. Wechseln Sie auf Pro, um Ihre Abrechnung zu bestätigen und einzureichen.",
+      "planOnlyUs": "Die in InvoiceLead vorbereitete und bestätigte Sales-Tax-Übersicht ist im Pro-Abo enthalten. Die Zahlen unten können Sie einsehen."
     },
     "reminders": {
       "title": "Mahnungen",
@@ -1276,7 +1276,8 @@
         "recorded": "Mahnung als gesendet vermerkt.",
         "notDue": "Diese Mahnung ist nicht mehr fällig.",
         "noEmail": "Keine E-Mail-Adresse für diesen Kunden, oder Versand nicht eingerichtet.",
-        "failed": "Der Versand ist fehlgeschlagen. Versuchen Sie es später erneut."
+        "failed": "Der Versand ist fehlgeschlagen. Versuchen Sie es später erneut.",
+        "plan": "Diese Mahnung ist Teil des Pro-Abos."
       },
       "empty": "Heute sind keine Mahnungen fällig.",
       "line": "{level, select, 0 {Freundliche Erinnerung} 1 {1. Mahnung} 2 {2. Mahnung} other {Letzte Mahnung}} · {days, plural, =0 {heute fällig} other {{days} Tage überfällig}} · fällig am {due}",
@@ -1329,7 +1330,8 @@
       "forecastHint": "Offene Rechnungen, am Tag, an dem der Kunde üblicherweise zahlt.",
       "week": "Woche vom {date}",
       "later": "Später",
-      "forecastEmpty": "Keine offenen Rechnungen."
+      "forecastEmpty": "Keine offenen Rechnungen.",
+      "levelPlan": "Pro-Funktion. Das Gratis-Abo verschickt die erste Mahnung, die weiteren sind Teil von Pro."
     },
     "recurring": {
       "title": "Wiederkehrende Rechnungen",
@@ -1345,14 +1347,33 @@
       "model": "Vorlage anzeigen",
       "pause": "Pausieren",
       "resume": "Fortsetzen",
-      "delete": "Löschen"
+      "delete": "Löschen",
+      "held": "Wartet: Im Gratis-Abo läuft nur eine wiederkehrende Rechnung."
     },
     "plan": {
       "upgrade": "Auf Pro wechseln",
       "free": "Gratis",
       "pro": "Pro",
       "proplus": "Pro+",
-      "usage": "Abo {plan}{hasLimit, select, yes {: {invoices} von {invoiceLimit} Rechnungen diesen Monat, {contacts} von {contactLimit} Kontakten} other {}}."
+      "usage": "Abo {plan}{hasLimit, select, yes {: {invoices} von {invoiceLimit} Rechnungen diesen Monat, {contacts} von {contactLimit} Kontakten} other {}}.",
+      "upgradePlus": "Auf Pro+ wechseln",
+      "locked": "Pro-Funktion. Wechseln Sie auf Pro, um sie zu nutzen.",
+      "lockedPlus": "Pro+-Funktion. Wechseln Sie auf Pro+, um sie zu nutzen.",
+      "quota": {
+        "aiReads": "Von der KI gelesene Belege: {used} von {limit} diesen Monat",
+        "assistant": "Fragen an den Assistenten: {used} von {limit} diesen Monat",
+        "reminders": "Mahnungen: {used} von {limit} diesen Monat",
+        "bankImports": "Importierte Kontoauszüge: {used} von {limit} diesen Monat",
+        "recurring": "Aktive wiederkehrende Rechnungen: {used} von {limit}"
+      },
+      "used": {
+        "aiReads": "{plan, select, free {Ihre {limit} Gratis-Belegerkennungen dieses Monats sind aufgebraucht.} other {Ihre {limit} Belegerkennungen dieses Monats sind aufgebraucht.}}",
+        "assistant": "{plan, select, free {Ihre {limit} Gratis-Fragen dieses Monats sind gestellt.} other {Ihre {limit} Fragen dieses Monats sind gestellt.}}",
+        "reminders": "{plan, select, free {Ihre {limit} Gratis-Mahnungen dieses Monats sind verschickt.} other {Ihre {limit} Mahnungen dieses Monats sind verschickt.}}",
+        "bankImports": "{limit, plural, one {Ihr Gratis-Kontoauszug dieses Monats ist importiert.} other {Ihre # Gratis-Kontoauszüge dieses Monats sind importiert.}}",
+        "recurring": "{limit, plural, one {Das Gratis-Abo umfasst eine aktive wiederkehrende Rechnung.} other {Das Gratis-Abo umfasst # aktive wiederkehrende Rechnungen.}} Pausieren Sie eine oder wechseln Sie auf Pro, um weitere hinzuzufügen.",
+        "invoices": "Ihre {limit} Gratis-Rechnungen dieses Monats sind ausgestellt. Der Entwurf bleibt gespeichert."
+      }
     },
     "orgSwitch": {
       "label": "Unternehmen",
@@ -1438,7 +1459,8 @@
       "expired": "Dieser Einladungslink ist abgelaufen. Fordern Sie einen neuen an.",
       "wrongEmail": "Diese Einladung ging an eine andere Adresse als {email}. Melden Sie sich mit dem richtigen Lead-Konto an.",
       "logout": "Konto wechseln",
-      "accept": "Einladung annehmen"
+      "accept": "Einladung annehmen",
+      "plan": "Dieses Unternehmen hat kein Pro-Abo mehr, das den Treuhandzugang umfasst. Bitten Sie es, auf Pro zu wechseln, und öffnen Sie den Link danach erneut."
     },
     "crmImport": {
       "title": "Gewonnener Lead aus CRMlead",
@@ -1534,7 +1556,6 @@
       "autopilot": "Autopilot",
       "autopilotHint": "Verbucht ohne Klick Zahlungen, die an ihrer Referenz erkannt werden, Bewegungen mit einer mindestens dreimal bestätigten Regel und KI-Vorschläge mit 97 % Sicherheit. Mögliche Doppelungen und ungewöhnliche Beträge warten immer auf eine Person.",
       "save": "Speichern",
-      "planOnly": "Der Autopilot ist zusammen mit dem Bankimport Teil des Pro-Abos.",
       "enabled": "Autopilot aktiviert: {count, plural, =0 {im Moment nichts zu verbuchen} one {# Bewegung verbucht} other {# Bewegungen verbucht}}.",
       "disabled": "Autopilot ausgeschaltet. Die Vorschläge warten auf Ihre Bestätigung.",
       "approved": "{count, plural, =0 {Nichts zu genehmigen.} one {# Buchung genehmigt.} other {# Buchungen genehmigt.}}",
@@ -1556,13 +1577,15 @@
       "openBank": "Unter Bank ansehen",
       "errors": {
         "closed": "Diese Buchung liegt in einem abgeschlossenen Geschäftsjahr oder einer abgeschlossenen MWST-Periode und kann nicht mehr rückgängig gemacht werden.",
-        "notFound": "Buchung nicht gefunden oder bereits erledigt.",
-        "plan": "Der Autopilot ist Teil des Pro-Abos."
+        "notFound": "Buchung nicht gefunden oder bereits erledigt."
       },
       "digest": {
         "subject": "InvoiceLead: Ihre Buchhaltung der Woche, {company}",
         "body": "Guten Tag\n\nDiese Woche hat der Autopilot für {company} {auto, plural, =0 {keine Bewegung} one {# Bewegung} other {# Bewegungen}} verbucht.\n\nZu genehmigen: {approve}\nUnter Bank zu prüfen: {review}\nAuffälligkeiten: {anomalies}\n\nAlles ansehen und mit einem Klick genehmigen: {link}\n\nInvoiceLead"
-      }
+      },
+      "digestTitle": "Wochenübersicht per E-Mail am Montag",
+      "digestHint": "Jeden Montag erhalten die Administratoren, was der Autopilot in der Woche selbst gebucht hat und was noch auf eine Person wartet.",
+      "digestPlan": "Die Wochenübersicht per E-Mail ist Teil des Pro-Abos. Der Autopilot selbst ist in Ihrem Abo enthalten."
     },
     "bills": {
       "title": "Lieferantenrechnungen",
@@ -1663,9 +1686,10 @@
         "notFound": "Rechnung nicht gefunden oder bereits erledigt.",
         "none": "Keine genehmigte Rechnung mit IBAN zu bezahlen.",
         "noIban": "Erfassen Sie zuerst die IBAN des Unternehmens in den Einstellungen.",
-        "plan": "Der Import von E-Rechnungen ist Teil des Pro-Abos."
+        "plan": "Rechnungen in Fremdwährung zu erfassen ist Teil des Pro-Abos."
       },
-      "claim": "Spesen"
+      "claim": "Spesen",
+      "currencyPlan": "Weitere Währungen sind Teil des Pro-Abos."
     },
     "time": {
       "title": "Zeit",
@@ -1740,8 +1764,7 @@
       "saved": "Beleg gespeichert.",
       "rejected": "Das Foto konnte nicht gespeichert werden (Format, Grösse oder Abo-Limite).",
       "recent": "Letzte Belege",
-      "all": "Alle Belege",
-      "planOnly": "Das Lesen von Belegen ist Teil des Pro-Abos."
+      "all": "Alle Belege"
     },
     "assistant": {
       "title": "Assistent",
@@ -1767,10 +1790,10 @@
         "time": "Projekte"
       },
       "errors": {
-        "plan": "Der Assistent ist Teil des Pro-Abos.",
         "off": "Der KI-Assistent ist noch nicht eingerichtet.",
         "empty": "Stellen Sie eine Frage.",
-        "failed": "Der Assistent konnte nicht antworten. Bitte gleich nochmals versuchen."
+        "failed": "Der Assistent konnte nicht antworten. Bitte gleich nochmals versuchen.",
+        "quota": "Die Gratis-Fragen dieses Monats sind gestellt. Wechseln Sie auf Pro, um weiterzufragen."
       }
     },
     "expenses": {
@@ -1816,8 +1839,7 @@
         "size": "Beleg zu gross (höchstens 10 MB).",
         "duplicate": "Dieser Beleg wurde bereits gesendet.",
         "role": "Ihre Rolle erlaubt keine Spesenerfassung.",
-        "invalid": "Ungültige Eingabe.",
-        "quota": "Sie haben die 5 Belegerkennungen dieses Monats im Gratis-Plan verbraucht. Mit Pro sind es 50 pro Monat – oder erfassen Sie die Ausgabe von Hand."
+        "invalid": "Ungültige Eingabe."
       },
       "scan": {
         "title": "Beleg scannen",
@@ -1900,6 +1922,11 @@
           "50 Kontakte",
           "QR-Rechnung, Dokumente auf DE, FR, IT, EN",
           "Buchhaltung direkt aus Ihren Rechnungen",
+          "20 von der KI gelesene Belege pro Monat (Quittungen, Belege, E-Rechnungen)",
+          "Assistent: 10 Fragen pro Monat",
+          "Erste Mahnung von Hand, 5 pro Monat",
+          "1 aktive wiederkehrende Rechnung",
+          "1 Kontoauszug pro Monat, Autopilot inbegriffen",
           "Hinweis «Erstellt mit InvoiceLead»"
         ]
       },
@@ -1909,9 +1936,11 @@
         "features": [
           "Rechnungen und Kontakte unbegrenzt",
           "2 Benutzer und kostenloser Treuhandzugang",
-          "Automatische Mahnungen in 3 Stufen",
+          "50 von der KI gelesene Belege pro Monat",
+          "Assistent ohne Limite",
+          "Automatische Mahnungen in 3 Stufen, Gebühren und Zinsen",
           "MWST-Abrechnung (effektiv und Saldosteuersatz)",
-          "Bankimport camt und Abgleich",
+          "Bankimport camt ohne Limite, Autopilot-Übersicht am Montag",
           "Wiederkehrende Rechnungen, Fremdwährungen"
         ]
       },
@@ -1920,9 +1949,11 @@
         "tagline": "Für Teams und mehrere Firmen",
         "features": [
           "5 Benutzer mit Rollen",
+          "300 von der KI gelesene Belege pro Monat",
+          "API, MCP-Server und Webhooks",
           "Bis zu 3 Firmen",
           "Direkte Bankanbindung",
-          "eBill, API und Webhooks",
+          "eBill",
           "GeBüV-konforme Archivierung",
           "Priorisierter Support"
         ]
@@ -1960,6 +1991,10 @@
       {
         "q": "Kann ich meine Daten exportieren?",
         "a": "Ja, jederzeit und noch 30 Tage nach einer Kündigung. Ihre Bücher müssen Sie zehn Jahre aufbewahren: Der Export ist genau dafür vorgesehen."
+      },
+      {
+        "q": "Was umfasst das Gratis-Abo?",
+        "a": "Pro Monat: 10 Rechnungen, 20 von der KI gelesene Belege, 10 Fragen an den Assistenten, 5 erste Mahnungen und 1 Kontoauszug mit Autopilot. Dazu kommen 50 Kontakte und 1 aktive wiederkehrende Rechnung. Die Pro-Funktionen bleiben in der App sichtbar, grau und mit der Marke Pro, damit Sie wissen, dass es sie gibt."
       },
       {
         "q": "Brauche ich für den Start eine Kreditkarte?",

@@ -36,9 +36,15 @@ test("relances : facture échue proposée, relance notée, historique sur la fac
   await expect(page.getByText("Aucune relance à faire aujourd'hui.")).toBeVisible();
   // La facture en retard est attendue cette semaine dans la prévision.
   await expect(page.getByTestId("forecast-week").first()).toContainText("Semaine du");
+  // Formule gratuite : une relance comptée sur 5, réglages Pro visibles mais grisés.
+  await expect(page.getByTestId("reminders-quota")).toContainText(/1 sur 5 ce mois-ci/);
   await expect(page.getByTestId("reminder-settings")).toContainText(
     "font partie de la formule Pro",
   );
+  const settingsLock = page.getByTestId("reminder-settings-lock");
+  await expect(settingsLock.getByTestId("pro-badge")).toHaveText("Pro");
+  await expect(settingsLock.getByRole("checkbox")).toBeDisabled();
+  await expect(settingsLock.getByRole("link", { name: "Passer à Pro" })).toBeVisible();
 
   await page.goto("/fr/app/invoices");
   await page

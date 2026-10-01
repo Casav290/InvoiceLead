@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
-import { PlanNotice } from "@/components/app/PlanNotice";
+import { ProLock } from "@/components/app/ProLock";
 import { fieldClass } from "@/components/forms/fields";
 import { FiduciaryInvite } from "@/components/settings/FiduciaryInvite";
 import { MemberInvite } from "@/components/settings/MemberInvite";
@@ -9,7 +9,8 @@ import { Button } from "@/components/ui/button";
 import { formatDate } from "@/lib/fiscal-year";
 import { requireAppSession } from "@/server/auth/guard";
 import { db } from "@/server/db";
-import { hasFeature, seatsOf, upgradeUrl } from "@/server/plans";
+import { lockFor } from "@/server/plan-lock";
+import { featureAccess, seatsOf } from "@/server/plans";
 import { APP_ROLES, appRoleOf, can, isManager } from "@/server/roles";
 import { INVITATION_DAYS, listTeam, seated } from "@/server/team";
 import { cancelInvitationAction, removeFiduciaryAction, setAppRoleAction } from "./actions";
@@ -37,7 +38,13 @@ export default async function TeamPage({ params, searchParams }: Props) {
   const { members, fiduciaries, invitations } = await listTeam(db(), organization.id);
   const seats = seatsOf(organization);
   const withSeat = seated(members, seats);
-  const fiduciaryAllowed = hasFeature(organization, "fiduciary");
+  // Accès fiduciaire : formule Pro ; en dessous, l'invitation reste visible, grisée.
+  const fiduciaryLock = await lockFor(
+    locale,
+    organization,
+    featureAccess(organization, "fiduciary"),
+    t("planOnly"),
+  );
   const notice = q.saved ? t("saved") : q.removed ? t("removed") : null;
 
   return (
@@ -166,10 +173,10 @@ export default async function TeamPage({ params, searchParams }: Props) {
         {fiduciaries.length === 0 && invitations.length === 0 ? (
           <p className="px-5 pb-4 text-[13px] text-ink-muted">{t("noFiduciary")}</p>
         ) : null}
-        {!fiduciaryAllowed ? (
-          <div className="px-5 pb-4">
-            <PlanNotice locale={locale} message={t("planOnly")} href={upgradeUrl(organization)} />
-          </div>
+        {fiduciaryLock ? (
+          <ProLock lock={fiduciaryLock} testId="fiduciary-lock" className="border-x-0 border-b-0">
+            <FiduciaryInvite locale={locale} days={INVITATION_DAYS} />
+          </ProLock>
         ) : editable ? (
           <FiduciaryInvite locale={locale} days={INVITATION_DAYS} />
         ) : null}
