@@ -1103,7 +1103,16 @@
       "date": "Date",
       "entry": "N°",
       "text": "Libellé",
-      "balance": "Solde"
+      "balance": "Solde",
+      "export": {
+        "title": "Export pour la fiduciaire",
+        "consultant": "N° de conseiller DATEV",
+        "client": "N° de mandant",
+        "datev": "Télécharger le lot DATEV",
+        "datevHint": "Lot d'écritures au format DATEV (EXTF, SKR04) de l'exercice affiché : la TVA est reprise par les clés BU. Les numéros sont ceux que votre Steuerberater utilise.",
+        "fec": "Télécharger le FEC",
+        "fecHint": "Fichier des écritures comptables de l'exercice affiché (art. A47 A-1 du LPF), à remettre à l'administration en cas de contrôle ou à votre expert-comptable."
+      }
     },
     "vat": {
       "title": "TVA",

@@ -86,4 +86,21 @@ test("entreprise allemande : facture en euros à 19 %, GiroCode, SKR04 et UStVA"
   await expect(page.getByTestId("figure-81")).toContainText("1.000,00");
   await expect(page.getByTestId("figure-81")).toContainText("190,00");
   await expect(page.getByTestId("figure-83")).toContainText("190,00");
+
+  // Lot DATEV pour le Steuerberater.
+  await page.goto("/fr/app/accounting/reports");
+  const exportForm = page.getByTestId("ledger-export");
+  await exportForm.getByLabel("N° de conseiller DATEV").fill("1001");
+  await exportForm.getByLabel("N° de mandant").fill("7");
+  const [download] = await Promise.all([
+    page.waitForEvent("download"),
+    page.getByTestId("export-datev").click(),
+  ]);
+  expect(download.suggestedFilename()).toMatch(/^EXTF_Buchungsstapel_\d{4}\.csv$/);
+  const datev = await page.request.get(
+    `${new URL(download.url()).pathname}${new URL(download.url()).search}`,
+  );
+  const text = (await datev.body()).toString("latin1");
+  expect(text).toContain('"EXTF";700;21;"Buchungsstapel"');
+  expect(text).toContain('1190,00;"H";"EUR";;;"";4400;1200;""');
 });

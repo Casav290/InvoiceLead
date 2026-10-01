@@ -81,7 +81,7 @@ export const CHART_ACCOUNTS_DE: readonly TemplateAccount[] = [
     role: "revenue_default",
     vatCode: "normal",
   }),
-  a("4300", "Erlöse 7 % USt", "Produits soumis à 7 %", "revenue"),
+  a("4300", "Erlöse 7 % USt", "Produits soumis à 7 %", "revenue", { role: "revenue_reduced" }),
   a(
     "4125",
     "Steuerfreie innergemeinschaftliche Lieferungen",

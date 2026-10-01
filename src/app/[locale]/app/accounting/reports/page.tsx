@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { AccountingNav } from "@/components/accounting/AccountingNav";
 import { YearPicker } from "@/components/accounting/YearPicker";
+import { Button } from "@/components/ui/button";
 import { countryPack } from "@/countries";
 import { chartPack } from "@/countries/charts";
 import { Link } from "@/i18n/navigation";
@@ -91,6 +92,60 @@ export default async function ReportsPage({ params, searchParams }: Props) {
         <YearPicker locale={locale} years={years} selected={year?.id} />
       </div>
       <p className="mt-2 text-[13px] text-ink-muted">{t("provisional")}</p>
+      {year && (organization.country === "DE" || organization.country === "FR") ? (
+        <section className="mt-6 border border-line-strong bg-panel" data-testid="ledger-export">
+          <h2 className="border-b border-line bg-head px-5 py-3 text-[10.5px] font-extrabold tracking-[0.09em] text-ink-muted uppercase">
+            {t("export.title")}
+          </h2>
+          {organization.country === "DE" ? (
+            <form
+              method="get"
+              action={`/${locale}/app/accounting/reports/datev`}
+              className="flex flex-wrap items-end gap-3 p-5"
+            >
+              <input type="hidden" name="year" value={year.id} />
+              <label className="block">
+                <span className="mb-1 block text-[13px] font-semibold">
+                  {t("export.consultant")}
+                </span>
+                <input
+                  name="consultant"
+                  inputMode="numeric"
+                  required
+                  pattern="[0-9]{4,7}"
+                  className="h-10 w-32 border border-line-strong bg-panel px-3 text-[14px]"
+                />
+              </label>
+              <label className="block">
+                <span className="mb-1 block text-[13px] font-semibold">{t("export.client")}</span>
+                <input
+                  name="client"
+                  inputMode="numeric"
+                  required
+                  pattern="[0-9]{1,5}"
+                  className="h-10 w-28 border border-line-strong bg-panel px-3 text-[14px]"
+                />
+              </label>
+              <Button type="submit" variant="secondary" data-testid="export-datev">
+                {t("export.datev")}
+              </Button>
+              <p className="w-full text-[12px] text-ink-muted">{t("export.datevHint")}</p>
+            </form>
+          ) : (
+            <div className="p-5">
+              <Button asChild variant="secondary">
+                <a
+                  href={`/${locale}/app/accounting/reports/fec?year=${year.id}`}
+                  data-testid="export-fec"
+                >
+                  {t("export.fec")}
+                </a>
+              </Button>
+              <p className="mt-3 text-[12px] text-ink-muted">{t("export.fecHint")}</p>
+            </div>
+          )}
+        </section>
+      ) : null}
 
       {balances.length === 0 ? (
         <p className="mt-8 border border-line-strong bg-panel px-5 py-8 text-center text-[14px] text-ink-muted">

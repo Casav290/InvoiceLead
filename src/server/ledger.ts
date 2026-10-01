@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { and, asc, desc, eq, gte, inArray, isNotNull, isNull, lte, sql } from "drizzle-orm";
+import { countryPack } from "@/countries";
 import type { AccountRole } from "@/countries/ch/chart-of-accounts";
 import { clearingAccount } from "@/countries/clearing";
 import { lateChargesAccount } from "@/countries/late-charges";
@@ -234,9 +235,17 @@ async function documentPostings(
     });
   }
   const postings: Posting[] = [{ accountId: receivable, amountCents: sign * receivableCents }];
+  // Plan qui sépare les produits au taux réduit (SKR04 : 4300 pour 7 %) : chaque taux sur son compte.
+  const reducedRate =
+    roles.revenue_reduced && invoice.vatRegistered
+      ? countryPack(invoice.sender?.country).vatRateBp("reduced", invoice.serviceDate)
+      : null;
   for (const p of parts) {
     postings.push({
-      accountId: revenue,
+      accountId:
+        reducedRate && p.rateBp === reducedRate && roles.revenue_reduced
+          ? roles.revenue_reduced
+          : revenue,
       amountCents: -sign * p.netCents,
       vatRateBp: invoice.vatRegistered ? p.rateBp : null,
     });

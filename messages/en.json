@@ -1103,7 +1103,16 @@
       "date": "Date",
       "entry": "No.",
       "text": "Description",
-      "balance": "Balance"
+      "balance": "Balance",
+      "export": {
+        "title": "Export for your accountant",
+        "consultant": "DATEV consultant number",
+        "client": "Client number",
+        "datev": "Download DATEV batch",
+        "datevHint": "Posting batch in DATEV format (EXTF, SKR04) for the displayed financial year; VAT is passed on through BU keys. Your Steuerberater gives you the numbers.",
+        "fec": "Download FEC",
+        "fecHint": "French audit file (fichier des écritures comptables, art. A47 A-1 LPF) for the displayed financial year, for a tax audit or your accountant."
+      }
     },
     "vat": {
       "title": "VAT",

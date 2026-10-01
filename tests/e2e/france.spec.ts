@@ -80,4 +80,16 @@ test("entreprise française : facture en euros à 20 %, SIRET, Factur-X, PCG et 
   await expect(page.getByTestId("figure-A1")).toContainText("1\u00a0000,00");
   await expect(page.getByTestId("figure-08")).toContainText("200,00");
   await expect(page.getByTestId("figure-28")).toContainText("200,00");
+
+  // Fichier des écritures comptables.
+  await page.goto("/fr/app/accounting/reports");
+  const fec = await page.request.get(
+    (await page.getByTestId("export-fec").getAttribute("href")) ?? "",
+  );
+  expect(fec.headers()["content-disposition"]).toMatch(/filename="\d{9}FEC\d{8}\.txt"/);
+  const lines = (await fec.text()).split("\r\n");
+  expect(lines[0]).toBe(
+    "JournalCode|JournalLib|EcritureNum|EcritureDate|CompteNum|CompteLib|CompAuxNum|CompAuxLib|PieceRef|PieceDate|EcritureLib|Debit|Credit|EcritureLet|DateLet|ValidDate|Montantdevise|Idevise",
+  );
+  expect(lines[1]).toMatch(/^VE\|Ventes\|1\|\d{8}\|411000\|/);
 });

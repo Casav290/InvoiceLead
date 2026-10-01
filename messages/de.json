@@ -1103,7 +1103,16 @@
       "date": "Datum",
       "entry": "Nr.",
       "text": "Text",
-      "balance": "Saldo"
+      "balance": "Saldo",
+      "export": {
+        "title": "Export für die Steuerberatung",
+        "consultant": "DATEV-Beraternummer",
+        "client": "Mandantennummer",
+        "datev": "DATEV-Buchungsstapel herunterladen",
+        "datevHint": "Buchungsstapel im DATEV-Format (EXTF, SKR04) des angezeigten Geschäftsjahres; die Umsatzsteuer wird über BU-Schlüssel übergeben. Die Nummern erhalten Sie von Ihrer Steuerberatung.",
+        "fec": "FEC herunterladen",
+        "fecHint": "Fichier des écritures comptables des angezeigten Geschäftsjahres (Art. A47 A-1 LPF)."
+      }
     },
     "vat": {
       "title": "MWST",
