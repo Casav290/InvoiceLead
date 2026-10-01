@@ -1035,7 +1035,8 @@ export const crmleadOutbox = pgTable(
       .references(() => organizations.id, { onDelete: "cascade" }),
     invoiceId: uuid("invoice_id").notNull(),
     envelope: jsonb("envelope").notNull(),
-    status: text("status").notNull().default("pending"), // pending | delivered | failed
+    // pending | sending (réservé par un envoi en cours) | delivered | failed | superseded
+    status: text("status").notNull().default("pending"),
     attempts: integer("attempts").notNull().default(0),
     lastError: text("last_error"),
     nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true }).notNull().defaultNow(),

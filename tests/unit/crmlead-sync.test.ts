@@ -10,6 +10,13 @@ import { claims } from "../support/claims";
 import { testDb } from "../support/db";
 import { setTestEnv } from "../support/env";
 
+// Envoi tout de suite, pas après la réponse : le test voit chaque état dans l'ordre.
+vi.mock("next/server", () => ({
+  after: () => {
+    throw new Error("hors requête");
+  },
+}));
+
 const t = testDb();
 const db = t.database;
 beforeAll(() => setTestEnv({ LEAD_ID_ISSUER: "https://crm.test" }));

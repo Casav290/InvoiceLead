@@ -1,4 +1,4 @@
-import { and, eq, lte, sql } from "drizzle-orm";
+import { and, eq, inArray, lte, sql } from "drizzle-orm";
 import type { Db } from "./db";
 import { crmleadOutbox, invoices, organizations } from "./db/schema";
 import { env } from "./env";
@@ -81,6 +81,8 @@ export async function queueCrmlead(database: Db, organizationId: string, invoice
       currency: invoice.currency,
       issue_date: invoice.issueDate,
       lead_id: leadId,
+      // Ordre des états : CRMlead ignore un état plus ancien que celui qu'il a déjà.
+      version: Date.now(),
     },
   };
   await database
@@ -94,18 +96,26 @@ export async function queueCrmlead(database: Db, organizationId: string, invoice
   return true;
 }
 
-/** Envoie ce qui est dû (d'une organisation, ou de toutes pour la tâche quotidienne). */
+/** Un envoi réservé mais jamais conclu (arrêt brutal) est repris après ce délai. */
+const CLAIM_MINUTES = 10;
+
+/**
+ * Envoie ce qui est dû (d'une organisation, ou de toutes pour la tâche quotidienne). Chaque envoi
+ * est d'abord réservé (« sending ») : deux passages simultanés ne l'envoient jamais deux fois, et
+ * un nouvel état arrivé pendant l'envoi reste en attente au lieu d'être marqué livré.
+ */
 export async function deliverCrmlead(
   database: Db,
   opts: { organizationId?: string; limit?: number } = {},
 ): Promise<{ delivered: number; failed: number }> {
+  const now = new Date();
   const due = await database
-    .select()
+    .select({ id: crmleadOutbox.id })
     .from(crmleadOutbox)
     .where(
       and(
-        eq(crmleadOutbox.status, "pending"),
-        lte(crmleadOutbox.nextAttemptAt, new Date()),
+        inArray(crmleadOutbox.status, ["pending", "sending"]),
+        lte(crmleadOutbox.nextAttemptAt, now),
         ...(opts.organizationId ? [eq(crmleadOutbox.organizationId, opts.organizationId)] : []),
       ),
     )
@@ -113,7 +123,19 @@ export async function deliverCrmlead(
     .limit(opts.limit ?? 20);
   let delivered = 0;
   let failed = 0;
-  for (const row of due) {
+  for (const { id } of due) {
+    const [row] = await database
+      .update(crmleadOutbox)
+      .set({ status: "sending", nextAttemptAt: new Date(Date.now() + CLAIM_MINUTES * 60_000) })
+      .where(
+        and(
+          eq(crmleadOutbox.id, id),
+          inArray(crmleadOutbox.status, ["pending", "sending"]),
+          lte(crmleadOutbox.nextAttemptAt, now),
+        ),
+      )
+      .returning();
+    if (!row) continue;
     const e = row.envelope as Parameters<typeof send>[1];
     try {
       await send({ app: "crmlead", url: env().LEAD_ID_ISSUER }, e);
@@ -134,15 +156,24 @@ export async function deliverCrmlead(
       const final =
         status === 404 || status === 409 || status === 402 || status === 400 || status === 422;
       const wait = RETRY_MINUTES[row.attempts];
-      await database
-        .update(crmleadOutbox)
-        .set({
-          status: final || wait === undefined ? "failed" : "pending",
-          attempts: row.attempts + 1,
-          lastError: message,
-          nextAttemptAt: new Date(Date.now() + (wait ?? 0) * 60_000),
-        })
-        .where(eq(crmleadOutbox.id, row.id));
+      const retry = !final && wait !== undefined;
+      try {
+        await database
+          .update(crmleadOutbox)
+          .set({
+            status: retry ? "pending" : "failed",
+            attempts: row.attempts + 1,
+            lastError: message,
+            nextAttemptAt: new Date(Date.now() + (wait ?? 0) * 60_000),
+          })
+          .where(eq(crmleadOutbox.id, row.id));
+      } catch {
+        // Un état plus récent attend déjà pour la même pièce : celui-ci est dépassé.
+        await database
+          .update(crmleadOutbox)
+          .set({ status: "superseded", attempts: row.attempts + 1, lastError: message })
+          .where(eq(crmleadOutbox.id, row.id));
+      }
       failed++;
     }
   }
