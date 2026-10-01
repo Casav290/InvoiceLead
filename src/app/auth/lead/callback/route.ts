@@ -2,7 +2,12 @@ import { cookies } from "next/headers";
 import { type NextRequest, NextResponse } from "next/server";
 import { LOGIN_COOKIE, LOGIN_COOKIE_PATH, loginCookieName, SESSION_COOKIE } from "@/lib/cookies";
 import { attachLeadIdentity } from "@/server/auth/attach";
-import { describeLoginError, localeFromRequest, openLogin } from "@/server/auth/login-cookie";
+import {
+  describeLoginError,
+  localeFromRequest,
+  openLogin,
+  safeNext,
+} from "@/server/auth/login-cookie";
 import { cookieOptions, createSession, SESSION_HOURS } from "@/server/auth/session";
 import { db } from "@/server/db";
 import { env } from "@/server/env";
@@ -42,6 +47,10 @@ export async function GET(request: NextRequest) {
     response.cookies.set(RETRY_COOKIE, "1", { ...cookieOptions(120), path: LOGIN_COOKIE_PATH });
     return response;
   };
+  // Même demande déjà menée à bout dans un autre onglet (lien d'email, onglet resté ouvert) :
+  // la session est ouverte, on va tout droit à la page qu'elle demandait.
+  const finished = safeNext(store.get(`${cookieName}_ok`)?.value);
+  if (!saved && finished && store.get(SESSION_COOKIE)?.value) return done(`${APP_URL}${finished}`);
   if (!saved) return retried ? done(`${APP_URL}/${locale}/login?erreur=session`) : restart();
 
   try {
@@ -67,6 +76,12 @@ export async function GET(request: NextRequest) {
     const response = done(`${APP_URL}${next}`);
     response.cookies.set(SESSION_COOKIE, session.token, cookieOptions(SESSION_HOURS * 3600));
     response.cookies.set(RETRY_COOKIE, "", { ...cookieOptions(0), path: LOGIN_COOKIE_PATH });
+    // Trace de la demande aboutie (sa page seulement, rien de secret), pour un second onglet.
+    if (cookieName !== LOGIN_COOKIE)
+      response.cookies.set(`${cookieName}_ok`, next, {
+        ...cookieOptions(600),
+        path: LOGIN_COOKIE_PATH,
+      });
     return response;
   } catch (error) {
     console.error("[lead-id] callback", describeLoginError(error));
