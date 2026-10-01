@@ -35,7 +35,8 @@ export const LIMITS: Record<Tier, Limits> = {
   free: {
     invoicesPerMonth: 10,
     contacts: 50,
-    receiptsPerMonth: 0,
+    // Tickets de notes de frais lus par l'IA ; la boîte des justificatifs reste dans Pro.
+    receiptsPerMonth: 5,
     seats: 1,
     features: [],
     poweredBy: true,

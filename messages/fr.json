@@ -1793,7 +1793,19 @@
         "size": "Justificatif trop volumineux (10 Mo au plus).",
         "duplicate": "Ce justificatif a déjà été envoyé.",
         "role": "Votre rôle ne permet pas de saisir des notes de frais.",
-        "invalid": "Saisie invalide."
+        "invalid": "Saisie invalide.",
+        "quota": "Vous avez utilisé les 5 lectures de tickets du mois de la formule gratuite. Passez à Pro pour en lire 50 par mois, ou saisissez la dépense à la main."
+      },
+      "scan": {
+        "title": "Scanner un ticket",
+        "subtitle": "Prenez le ticket en photo : l'IA remplit la note de frais (date, objet, montant, TVA, catégorie). Vous vérifiez, puis vous envoyez.",
+        "button": "Scanner un ticket",
+        "reading": "Lecture du ticket…",
+        "hint": "Photo ou PDF. Sur un téléphone, l'appareil photo s'ouvre directement.",
+        "read": "Ticket lu par l'IA. Vérifiez les champs ci-dessous, puis envoyez.",
+        "unread": "Le ticket est joint, mais l'IA n'a pas pu le lire. Complétez les champs ci-dessous.",
+        "currency": "Ticket en {currency} : indiquez le montant payé en {home}.",
+        "preview": "Ticket scanné"
       }
     },
     "cashflow": {

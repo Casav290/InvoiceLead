@@ -106,13 +106,29 @@ function toCents(v: unknown): number | null {
   return Number.isFinite(n) && n >= 0 && n < 100_000_000 ? Math.round(n * 100) : null;
 }
 
-/** Lit un justificatif avec l'assistant : texte pour un PDF natif, image sinon. */
+/** Lit un justificatif avec l'assistant, puis le rattache au mouvement bancaire qui le paie. */
 export async function readReceipt(
   database: Db,
   who: Who,
   id: string,
   language: "de" | "fr" | "en",
 ): Promise<"read" | "notFound" | "unreadable" | "failed"> {
+  const result = await extractReceipt(database, who, id, language);
+  if (typeof result === "string") return result;
+  await matchReceipts(database, who, language);
+  return "read";
+}
+
+/**
+ * Lit un justificatif avec l'assistant (texte pour un PDF natif, image sinon) et garde ce qui a été
+ * lu. Sans rapprochement bancaire : un ticket de note de frais a été payé de la poche de quelqu'un.
+ */
+export async function extractReceipt(
+  database: Db,
+  who: Who,
+  id: string,
+  language: "de" | "fr" | "en",
+): Promise<ReceiptExtraction | "notFound" | "unreadable" | "failed"> {
   if (!UUID.test(id)) return "notFound";
   const [row] = await database
     .select()
@@ -222,8 +238,7 @@ export async function readReceipt(
     paymentReference: str(r.payment_reference, 40),
   };
   await database.update(receipts).set({ extraction, status: "read" }).where(eq(receipts.id, id));
-  await matchReceipts(database, who, language);
-  return "read";
+  return extraction;
 }
 
 /**

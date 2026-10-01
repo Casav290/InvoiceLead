@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { samplePdf } from "../support/pdf";
 import { login, setupBilling } from "./helpers";
 
 test("notes de frais : kilomètres et dépense, visibles par la comptabilité", async ({ page }) => {
@@ -61,4 +62,36 @@ test("trésorerie : la note de frais à rembourser creuse les liquidités", asyn
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Trésorerie");
   await expect(page.getByTestId("cash-weeks")).toContainText("70.00");
   await expect(page.getByTestId("cash-verdict")).toContainText("Découvert prévu");
+});
+
+test("scanner un ticket : l'IA remplit la note de frais, même en formule gratuite", async ({
+  page,
+}) => {
+  const run = Date.now();
+  const today = new Date().toISOString().slice(0, 10);
+  await login(page, "fr", {
+    sub: `sub-scan-${run}`,
+    email: `scan-${run}@atelier.test`,
+    org: `org-scan-${run}`,
+    org_name: "Ticket Sàrl",
+  });
+  await setupBilling(page);
+  await page.goto("/fr/app/expenses");
+  await page.getByTestId("scan-ticket-input").setInputFiles({
+    name: "ticket.pdf",
+    mimeType: "application/pdf",
+    buffer: await samplePdf(["Papeterie Muster", `Date ${today}`, "Total CHF 24.90"]),
+  });
+  await expect(page.getByTestId("scan-result")).toContainText("Ticket lu par l'IA");
+  const expense = page.getByTestId("claim-expense");
+  await expect(expense.getByLabel("Montant payé (CHF)")).toHaveValue("24.90");
+  await expect(expense.getByLabel("Objet")).toHaveValue(/Papeterie Muster/);
+  await expect(expense.getByLabel("Date")).toHaveValue(today);
+  // Le ticket est déjà joint : pas de second envoi de fichier.
+  await expect(expense.getByLabel("Justificatif (photo ou PDF)")).toHaveCount(0);
+  await expense.getByLabel("À rembourser à").fill("Eva Muster");
+  await page.getByTestId("claim-expense-save").click();
+  await expect(page.getByText("Note de frais envoyée à la comptabilité.")).toBeVisible();
+  await expect(page.getByTestId("claim-row")).toContainText("24.90");
+  await expect(page.getByTestId("claim-row")).toContainText("Papeterie Muster");
 });

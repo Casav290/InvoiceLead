@@ -1793,7 +1793,19 @@
         "size": "Receipt too large (10 MB at most).",
         "duplicate": "This receipt was already sent.",
         "role": "Your role does not allow expense claims.",
-        "invalid": "Invalid input."
+        "invalid": "Invalid input.",
+        "quota": "You have used this month's 5 receipt reads on the free plan. Upgrade to Pro for 50 a month, or enter the expense by hand."
+      },
+      "scan": {
+        "title": "Scan a receipt",
+        "subtitle": "Take a photo of the receipt: AI fills in the expense claim (date, purpose, amount, VAT, category). You check it, then submit.",
+        "button": "Scan a receipt",
+        "reading": "Reading the receipt…",
+        "hint": "Photo or PDF. On a phone, the camera opens directly.",
+        "read": "Receipt read by AI. Check the fields below, then submit.",
+        "unread": "The receipt is attached, but AI could not read it. Fill in the fields below.",
+        "currency": "Receipt in {currency}: enter the amount paid in {home}.",
+        "preview": "Scanned receipt"
       }
     },
     "cashflow": {

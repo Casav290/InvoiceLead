@@ -244,3 +244,22 @@ export async function deleteClaim(database: Db, who: Who, id: string): Promise<b
       .where(and(eq(receipts.id, row.receiptId), eq(receipts.status, "billed")));
   return !!row;
 }
+
+/**
+ * Le ticket scanné par cette personne et pas encore rattaché à une note de frais, avec ce que l'IA
+ * en a lu. Rien pour un justificatif d'une autre personne ou déjà utilisé.
+ */
+export async function scannedTicket(database: Db, who: Who, id: string) {
+  if (!UUID.test(id)) return null;
+  const [row] = await database
+    .select()
+    .from(receipts)
+    .where(
+      and(
+        eq(receipts.id, id),
+        eq(receipts.organizationId, who.organizationId),
+        eq(receipts.uploadedBy, who.userId),
+      ),
+    );
+  return row && row.status !== "billed" && row.status !== "posted" ? row : null;
+}
