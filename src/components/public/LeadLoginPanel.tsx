@@ -8,6 +8,7 @@ export function LeadLoginPanel({
   error,
   next,
   invite,
+  fresh = false,
 }: {
   mode: "login" | "signup";
   locale: string;
@@ -16,9 +17,17 @@ export function LeadLoginPanel({
   next?: string;
   /** Invitation de fiduciaire en cours : « Réessayer » y ramène, avant toute autre page. */
   invite?: string;
+  /**
+   * Échec d'une entrée fraîche que ce navigateur ne peut pas prouver sienne (callback) : « Réessayer »
+   * repasse par le Compte Lead au lieu de reprendre la session restée dans ce navigateur.
+   */
+  fresh?: boolean;
 }) {
   const t = useTranslations("auth");
-  const back: Record<string, string> = invite ? { invite } : next ? { next } : {};
+  const back: Record<string, string> = {
+    ...(invite ? { invite } : next ? { next } : {}),
+    ...(fresh ? { fresh: "1" } : {}),
+  };
   return (
     <div className="mx-auto w-full max-w-[440px] border border-line-strong bg-panel">
       <div className="border-b border-line px-6 py-5">

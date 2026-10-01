@@ -709,6 +709,92 @@ test("poste partagé : un retour sans sa demande ne reprend jamais la session d'
   await expect(page.getByTestId("user-menu")).toHaveAttribute("aria-label", "Personne A");
 });
 
+test("un lien vers le retour posé par un autre site ne déconnecte jamais", async ({
+  browser,
+  page,
+  context,
+}) => {
+  const run = Date.now();
+  await login(page, "fr", {
+    sub: `sub-csrf-${run}`,
+    email: `csrf-${run}@atelier.test`,
+    name: "Personne Visée",
+    org: `org-csrf-${run}`,
+    org_name: "Visée Sàrl",
+  });
+  const session = (await context.cookies()).find((c) => c.name === "il_session")?.value ?? "";
+  expect(session).not.toBe("");
+  // L'autre site obtient, sans aucun cookie, un `state` scellé par ce serveur : départ frais, déjà relancé.
+  const elsewhere = await browser.newContext();
+  const { state } = await startState(
+    elsewhere,
+    "locale=fr&fresh=1&retry=1&next=%2Ffr%2Fapp%2Finvoices",
+  );
+  await elsewhere.close();
+  const target = `${APP}/fr/login?erreur=session&next=%2Ffr%2Fapp%2Finvoices&fresh=1`;
+  const alive = async () => {
+    expect((await context.cookies()).find((c) => c.name === "il_session")?.value).toBe(session);
+    const probe = await browser.newContext();
+    await probe.addCookies([{ name: "il_session", value: session, url: `${APP}/` }]);
+    const app = await probe.request.get("/fr/app", { maxRedirects: 0 });
+    expect(app.status()).toBe(200);
+    await probe.close();
+  };
+
+  // La personne connectée suit le lien, avec ou sans code : l'écran d'erreur, sa session intacte.
+  for (const query of [`state=${state}`, `code=x&state=${state}`]) {
+    const back = await context.request.get(`/auth/lead/callback?${query}`, { maxRedirects: 0 });
+    expect(back.headers().location).toBe(target);
+    expect(back.headers()["set-cookie"] ?? "").not.toContain("il_session=");
+    await page.goto(`/auth/lead/callback?${query}`);
+    await expect(page).toHaveURL(target);
+    await expect(page.getByText("La demande de connexion a expiré")).toBeVisible();
+    // Le retour n'est pas prouvé : la session restée là ne prend pas le relais derrière l'écran, et
+    // « Réessayer » repasse par le Compte Lead.
+    await expect(page.getByTestId("lead-login")).toHaveAttribute(
+      "href",
+      "/auth/lead/start?locale=fr&next=%2Ffr%2Fapp%2Finvoices&fresh=1",
+    );
+    await expect(
+      page.locator("header").getByRole("link", { name: "de", exact: true }),
+    ).toHaveAttribute("href", "/de/login?erreur=session&next=%2Fde%2Fapp%2Finvoices&fresh=1");
+    await alive();
+  }
+
+  // Ancien cookie commun d'une autre demande resté dans ce navigateur (refus du `state`) : pareil.
+  // (`fresh` : session ouverte, un départ ordinaire irait tout droit à la page, sans demande.)
+  const own = await startState(context, "locale=fr&fresh=1&next=%2Ffr%2Fapp%2Fquotes");
+  const pending = (await context.cookies()).find(
+    (c) => c.name === `il_lead_login_${own.state.slice(0, 16)}`,
+  );
+  expect(pending).toBeDefined();
+  await dropCookies(context, (name) => name.startsWith("il_lead_login_"));
+  await context.addCookies([
+    { name: "il_lead_login", value: pending?.value ?? "", domain: "localhost", path: "/auth/lead" },
+  ]);
+  await page.goto(`/auth/lead/callback?code=x&state=${state}`);
+  await expect(page).toHaveURL(`${APP}/fr/login?erreur=lead&next=%2Ffr%2Fapp%2Finvoices&fresh=1`);
+  await alive();
+
+  // Un écran d'erreur ordinaire (sans `fresh`) mène toujours tout droit dans l'application.
+  await page.goto("/fr/login?erreur=session&next=%2Ffr%2Fapp%2Finvoices");
+  await expect(page).toHaveURL(`${APP}/fr/app/invoices`);
+  // « Réessayer » d'un écran `fresh` : de nouveau la personne connectée au Compte Lead, sur sa page.
+  await page.request.post(`${LEAD}/test/next-user`, {
+    data: {
+      sub: `sub-csrf-${run}`,
+      email: `csrf-${run}@atelier.test`,
+      name: "Personne Visée",
+      org: `org-csrf-${run}`,
+      org_name: "Visée Sàrl",
+    },
+  });
+  await page.goto(target);
+  await page.getByTestId("lead-login").click();
+  await expect(page).toHaveURL(`${APP}/fr/app/invoices`);
+  await expect(page.getByTestId("user-menu")).toHaveAttribute("aria-label", "Personne Visée");
+});
+
 test("retour rejoué après une réponse perdue : relance silencieuse, jamais l'écran d'erreur", async ({
   page,
   context,

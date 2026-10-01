@@ -88,7 +88,8 @@ export async function GET(request: NextRequest) {
   // être vérifié ici (demande introuvable, code refusé) : on ne sait pas qui. La session InvoiceLead
   // de ce navigateur peut être celle d'une autre personne : lien « mot de passe oublié » ouvert sur un
   // poste partagé, écran resté ouvert plus de trois heures pendant qu'une autre personne se connectait
-  // dans un autre onglet. La relance ne la reprend donc jamais telle quelle (voir `fresh`).
+  // dans un autre onglet. La relance ne la reprend donc jamais telle quelle (voir `fresh`). Elle n'est
+  // pas effacée pour autant : un code ou un `state` peuvent venir de n'importe quel site (`failed`).
   const unverified = Boolean(previous && q.get("code"));
 
   // Demande de connexion introuvable (plus de trois heures, cookie effacé, autre navigateur) : on la
@@ -107,13 +108,22 @@ export async function GET(request: NextRequest) {
       `${APP_URL}/auth/lead/start?${new URLSearchParams({ locale, ...back, ...fresh, retry: "1" })}`,
     );
   const failed = async (reason: "lead" | "session") => {
+    // Entrée fraîche (ou retour invérifiable) qui n'aboutit pas : l'identité du Compte Lead n'est pas
+    // confirmée, la session InvoiceLead restée dans ce navigateur (peut-être celle d'une autre
+    // personne) ne doit pas prendre le relais derrière l'écran d'erreur.
+    // Elle n'est effacée que si ce retour est celui d'une demande de CE navigateur : son cookie, nommé
+    // d'après ce `state`, que seul /auth/lead/start pose ici. Un `state` scellé prouve que ce serveur
+    // l'a émis, pas que ce navigateur l'a demandé : le départ en remet un à n'importe qui, et un code
+    // se fabrique. Un lien vers ce retour, posé par un autre site, ne déconnecte donc jamais personne.
+    const erase = Boolean(asked?.fresh && previous && own);
+    // Sans cette preuve, rien n'est effacé : l'écran d'erreur porte `fresh`. Il ne laisse pas entrer la
+    // session restée là (login/page.tsx), et « Réessayer » repasse par le Compte Lead, dont l'identité
+    // remplace alors la session (succès ci-dessous).
+    const shield = Boolean(previous && !own && (asked?.fresh || unverified));
     const response = done(
-      `${APP_URL}/${locale}/login?${new URLSearchParams({ erreur: reason, ...back })}`,
+      `${APP_URL}/${locale}/login?${new URLSearchParams({ erreur: reason, ...back, ...(shield ? { fresh: "1" } : {}) })}`,
     );
-    // Entrée fraîche qui n'aboutit pas : l'identité du Compte Lead n'est pas confirmée, la session
-    // InvoiceLead restée dans ce navigateur (peut-être celle d'une autre personne) ne doit pas
-    // prendre le relais derrière l'écran d'erreur. Seul un `state` scellé par ce serveur le dit.
-    if (asked?.fresh && previous) {
+    if (erase && previous) {
       await destroySession(db(), previous).catch(() => null);
       response.cookies.set(SESSION_COOKIE, "", cookieOptions(0));
     }
