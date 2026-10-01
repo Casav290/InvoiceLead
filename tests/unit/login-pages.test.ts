@@ -50,6 +50,13 @@ describe("pages longues gardées pour une connexion", () => {
     expect(await loadPage(db, pageRef(link(700), SECRET), SECRET)).toBeUndefined();
   });
 
+  it("au-delà du plafond horaire, la demande part sans référence", async () => {
+    expect(await savePage(db, link(500), SECRET, 2)).toBeDefined();
+    expect(await savePage(db, link(501), SECRET, 2)).toBeDefined();
+    expect(await savePage(db, link(502), SECRET, 2)).toBeUndefined();
+    expect(await db.select().from(loginPages)).toHaveLength(2);
+  });
+
   it("le ménage efface les pages plus vieilles qu'un state", async () => {
     await savePage(db, link(600), SECRET);
     expect(await purgePages(db)).toBe(0);

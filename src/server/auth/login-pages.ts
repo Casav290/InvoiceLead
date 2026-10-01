@@ -18,7 +18,12 @@ import { PAGE_REF, STATE_MAX_AGE_SECONDS, STATE_NEXT_MAX } from "./login-state";
  * que dans le `state` chiffré : le Compte Lead ne la voit pas. Une page retrouvée ne donne jamais de
  * session, elle n'indique que la page où revenir après une connexion complète. Durée : celle d'un
  * `state` (30 jours), puis la tâche quotidienne l'efface.
+ *
+ * L'écriture se fait avant toute connexion (n'importe qui peut ouvrir /auth/lead/start) : au plus
+ * PAGES_PER_HOUR nouvelles pages par heure, au-delà la demande part sans référence, comme avant (le
+ * cookie de la demande garde la page entière). Un usage normal en reste très loin.
  */
+export const PAGES_PER_HOUR = 1000;
 
 function key(secret: string): Buffer {
   return Buffer.from(hkdfSync("sha256", secret, "", "il-lead-login-page", 32));
@@ -37,11 +42,17 @@ export async function savePage(
   database: Db,
   next: string | undefined,
   secret: string,
+  perHour = PAGES_PER_HOUR,
 ): Promise<string | undefined> {
   const page = safeNext(next);
   if (!page || page.length <= STATE_NEXT_MAX) return undefined;
   const id = pageRef(page, secret);
   try {
+    const [recent] = await database
+      .select({ count: sql<number>`count(*)::int` })
+      .from(loginPages)
+      .where(gt(loginPages.createdAt, new Date(Date.now() - 3600_000)));
+    if ((recent?.count ?? 0) >= perHour) return undefined;
     await database
       .insert(loginPages)
       .values({ id, next: page })
