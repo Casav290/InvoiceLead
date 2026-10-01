@@ -87,8 +87,8 @@ describe("factures d'acompte", () => {
     expect(
       found?.lines.map((l) => [l.description, l.unitPriceCents, l.vatCode, l.vatRateBp]),
     ).toEqual([
-      ["Acompte de 30 % selon l’offre O-2026-0001", 11_250, "normal", 810],
-      ["Acompte de 30 % selon l’offre O-2026-0001", 1_215, "exempt", 0],
+      ["Acompte de 30\u202f% selon l’offre O-2026-0001", 11_250, "normal", 810],
+      ["Acompte de 30\u202f% selon l’offre O-2026-0001", 1_215, "exempt", 0],
     ]);
     expect(deposit.netCents).toBe(12_465);
     // Plus de 100 % au total : refusé, brouillons compris.

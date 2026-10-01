@@ -770,7 +770,7 @@ const DEPOSIT_TEXT = {
     less: (invoice: string) => `Abzüglich Anzahlungsrechnung ${invoice}`,
   },
   fr: {
-    line: (percent: string, quote: string) => `Acompte de ${percent} % selon l’offre ${quote}`,
+    line: (percent: string, quote: string) => `Acompte de ${percent}\u202f% selon l’offre ${quote}`,
     less: (invoice: string) => `Moins facture d’acompte ${invoice}`,
   },
   en: {

@@ -620,7 +620,7 @@
       "deliveryPdf": "Bon de livraison (PDF)",
       "deposit": {
         "title": "Acomptes",
-        "percent": "Acompte en %",
+        "percent": "Acompte en %",
         "create": "Créer une facture d'acompte",
         "hint": "Pourcentage du montant hors TVA, une ligne par taux. La facture finale tirée du devis déduira les acomptes émis.",
         "draft": "Brouillon"
@@ -739,7 +739,7 @@
         "deliveryPrefix": "BL",
         "fromQuote": "Selon notre offre {number}",
         "fromInvoice": "Concerne la facture {number}",
-        "deliveryReceived": "Marchandise reçue en bon état (date, nom et signature) :",
+        "deliveryReceived": "Marchandise reçue en bon état (date, nom et signature) :",
         "relatedLine": "Concerne la facture {number}",
         "poweredBy": "Créé avec InvoiceLead · invoicelead.io",
         "smallBusinessDe": "Conformément au § 19 UStG, aucune taxe sur le chiffre d'affaires n'est facturée (petite entreprise).",
