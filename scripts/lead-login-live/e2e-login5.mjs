@@ -82,6 +82,13 @@
  * exige l'arrivée directe dans InvoiceLead (et le code d'abord avec la 2FA), CRM-RESET-UNCONFIRMED-OWN et
  * CRM-RESET-FRESH-DIRECT ne cochent plus rien d'office, CRM-TEAM-INVITE-EMAIL et CRM-LEAD-EMAILS-HTML refusent ou
  * neutralisent un nom sur plusieurs lignes, CRM-GOOGLE-INVITED montre l'écran du choix (rejoindre ou son propre compte).
+ *
+ * Intégration r8 ter (pile reconstruite) : le lien « nouveau mot de passe » d'une adresse jamais confirmée ne coche plus
+ * rien d'office, la titulaire choisit son compte (openOwnReset, dans IL-EXPIRED-REQUEST, IL-SECOND-TAB-10MIN,
+ * IL-NEXT-LONG-NO-COOKIE, IL-RESET-SHARED-DEVICE et CRM-RESET-2FA) ; CRM-RESET-2FA part d'adresses confirmées (sinon
+ * la 2FA tombe au lien, R8-G2FA) ; le sélecteur de l'écran « accès suspendu » s'ouvre avant le choix ; l'email
+ * d'invitation garde son second lien « Ou copiez ce lien » ; le cookie du choix (« __Host-… ») se rejoue par l'en-tête.
+ * Les deux défauts du lot 8 propres au Compte Lead sont rejoués dans e2e-login6 (LOGOUT, OPENLINK).
  */
 import { execFileSync } from "node:child_process";
 import { createHash, createHmac, hkdfSync, randomBytes, randomUUID } from "node:crypto";
@@ -324,6 +331,25 @@ async function idTokenOf(ctx, base = CRM) {
   const out = await t.json().catch(() => ({}));
   if (!out.id_token) throw new Error(`jeton d'identité : ${t.status()}`);
   return out.id_token;
+}
+/**
+ * Lien « Nouveau mot de passe » ouvert par la titulaire. Sur une adresse jamais confirmée (inscription par mot de
+ * passe), l'écran demande à qui est le compte, rien de coché d'office (CRMlead c1600ab, R8-SEC-2) : elle choisit le sien.
+ */
+async function openOwnReset(page, link) {
+  const info = page
+    .waitForResponse((r) => r.url().endsWith("/api/auth/reset/info"), { timeout: 15000 })
+    .catch(() => null);
+  await page.goto(link);
+  const r = await info;
+  const out = r ? await r.json().catch(() => ({})) : {};
+  await page.waitForSelector("#auth-password");
+  if (out.unconfirmed) {
+    const mine = page.locator('[data-testid="reset-whose-mine"]');
+    await mine.waitFor();
+    expect(!(await mine.isChecked()), "« c'est mon compte » coché d'office");
+    await mine.check();
+  }
 }
 function resetLink(email, next) {
   const token = randomBytes(32).toString("base64url");
@@ -774,7 +800,7 @@ await step(
     const link = resetLink(email, new URL(p.url()).searchParams.get("next"));
     const other = await newCtx(browser, "en-US", "exp");
     const q = await other.newPage();
-    await q.goto(link);
+    await openOwnReset(q, link);
     await q.fill("#auth-password", `${PASS}-2`);
     await q.locator("form button").last().click();
     await waitAt(q, `${IL}/de/app/invoices?status=open`, "S2 arrivée");
@@ -1047,7 +1073,7 @@ await step(
       await origin.locator("form button").last().click();
       await origin.getByText(/Si un compte existe/).waitFor();
       const mailTab = await ctx.newPage();
-      await mailTab.goto(resetLink(email, new URL(origin.url()).searchParams.get("next")));
+      await openOwnReset(mailTab, resetLink(email, new URL(origin.url()).searchParams.get("next")));
       await mailTab.fill("#auth-password", PASS);
       await mailTab.locator("form button").last().click();
       await waitAt(mailTab, `${IL}${landing}`, "onglet de l'email");
@@ -1379,10 +1405,15 @@ else
       const mi = await mailTo(inj);
       leadMail("invitation au nom injecté", mi, labels.fr);
       const hrefs = [...mi.html.matchAll(/href="([^"]*)"/g)].map((x) => x[1]);
+      // Le gabarit met le lien deux fois (le bouton, puis « Ou copiez ce lien ») : un seul bouton, et chaque lien est
+      // celui de l'invitation.
+      const invites = hrefs.filter((h) => /\/invitation\?jeton=/.test(h));
       expect(
         !hrefs.some((h) => /x\.example/.test(h)) &&
           !/<b>INJECTE|<img[^>]*x\.example/i.test(mi.html) &&
-          hrefs.filter((h) => /\/invitation\?jeton=/.test(h)).length === 1,
+          invites.length > 0 &&
+          new Set(invites).size === 1 &&
+          mi.html.split(labels.fr).length === 2,
         `invitation au nom injecté : ${hrefs.join(" ")}`,
       );
       // Mot de passe oublié depuis l'écran du Compte Lead d'InvoiceLead.
@@ -1911,7 +1942,7 @@ await step(
       await waitAt(p, `${CRM}/login?next=`, "écran");
       const other = await newCtx(browser, "fr-CH", "imp2");
       const q = await other.newPage();
-      await q.goto(resetLink(email, new URL(p.url()).searchParams.get("next")));
+      await openOwnReset(q, resetLink(email, new URL(p.url()).searchParams.get("next")));
       await q.fill("#auth-password", PASS);
       await q.locator("form button").last().click();
       await arrived(q, link, `${link.length} car., autre navigateur`);
@@ -2118,7 +2149,7 @@ await step(
     await away.close();
     const tokenB = await ilToken(shared);
     expect((await ilAndLead(shared)) === `${B} / ${B}`, `S1 avant : ${await ilAndLead(shared)}`);
-    await sp.goto(resetLink(A, next));
+    await openOwnReset(sp, resetLink(A, next));
     await sp.fill("#auth-password", PASS);
     await sp.locator("form button").last().click();
     await waitAt(sp, target, "S1 arrivée");
@@ -3342,6 +3373,9 @@ await step(
     // Compte ouvert depuis InvoiceLead, double authentification allumée.
     const own = await browser.newContext({ locale: "fr-CH" });
     const who = await signupFromIl(await own.newPage(), "fr", "reset2fa");
+    // Adresse confirmée : sur une adresse jamais prouvée, le lien « nouveau mot de passe » fait tomber la 2FA
+    // (CRMlead a7d73ce, R8-G2FA, rejoué par CRM-RESET-PREOPEN-2FA). Ici, la titulaire a confirmé la sienne.
+    crmq(`select auth_email_verify((select id from users where email = '${who}'))`);
     const secret = await enable2fa(own);
     await own.close();
     // Quelqu'un qui a la boîte mail, pas l'authentificateur : InvoiceLead, « Mot de passe oublié ? ».
@@ -3372,7 +3406,7 @@ await step(
     p.on("response", (r) => {
       if (r.url() === `${CRM}/api/auth/reset`) answers.push(r.status());
     });
-    await p.goto(resetLink(who, next));
+    await openOwnReset(p, resetLink(who, next));
     await p.fill("#auth-password", `${PASS}-n`);
     await p.locator("form button").last().click();
     await p
@@ -3418,11 +3452,12 @@ await step(
       headers: { origin: CRM },
     });
     expect(s.ok(), `inscription directe : ${s.status()}`);
+    crmq(`select auth_email_verify((select id from users where email = '${direct}'))`);
     const dSecret = await enable2fa(dOwn);
     await dOwn.close();
     const dctx = await browser.newContext({ locale: "fr-CH" });
     const dp = await dctx.newPage();
-    await dp.goto(resetLinkAt(CRM, direct));
+    await openOwnReset(dp, resetLinkAt(CRM, direct));
     await dp.fill("#auth-password", `${PASS}-n`);
     await dp.locator("form button").last().click();
     await dp
@@ -3447,7 +3482,7 @@ await step(
     const plain = await signupFromIl(pp, "fr", "reset-plain");
     await pctx.clearCookies();
     const { next: n2 } = await ilAuthorize(pctx, "locale=fr&next=%2Ffr%2Fapp%2Fquotes");
-    await pp.goto(resetLink(plain, n2));
+    await openOwnReset(pp, resetLink(plain, n2));
     await pp.fill("#auth-password", `${PASS}-n`);
     await pp.locator("form button").last().click();
     await waitAt(pp, `${IL}/fr/app/quotes`, "sans 2FA : arrivée");
@@ -4244,6 +4279,8 @@ await step(
         na.searchParams.get("next") === "/fr/app/contacts?q=x",
       `accès suspendu : ${p.url()}`,
     );
+    // Le sélecteur est un menu déroulant : la personne l'ouvre, puis choisit son entreprise.
+    await p.locator('[data-testid="no-access"] [data-testid="org-switcher"] summary').click();
     await p.locator("form button", { hasText: own }).click();
     await waitAt(p, `${IL}/fr/app/contacts?q=x`, "sélecteur : retour sur la page");
     expect((await orgName(p)) === own, `sélecteur : entreprise ${await orgName(p)}`);
@@ -6302,11 +6339,11 @@ else {
         gq({ choice: "join" }),
       );
       expect(forged.status() === 401, `choix sans cookie : ${forged.status()}`);
-      await other.addCookies([{ name: kept.name, value: kept.value, url: CRM_G }]);
-      const replay = await other.request.post(
-        `${CRM_G}/api/auth/sso/invite-choice`,
-        gq({ choice: "own", accountName: "Rejeu SA" }),
-      );
+      // Le cookie du choix rejoué tel quel (en production, « __Host-… » : Secure, refusé par addCookies sur http).
+      const replay = await other.request.post(`${CRM_G}/api/auth/sso/invite-choice`, {
+        data: { choice: "own", accountName: "Rejeu SA" },
+        headers: { origin: CRM_G, cookie: `${kept.name}=${kept.value}` },
+      });
       expect(replay.status() === 401, `choix rejoué : ${replay.status()}`);
       await other.close();
       // Inscription, « Victime SA » tapée : « Créer mon propre compte » reprend l'entreprise, l'invitation est déclinée.

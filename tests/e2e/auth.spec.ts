@@ -160,9 +160,11 @@ test("une application retirée montre l'écran sans accès", async ({ page }) =>
       org_name: "Retraite Sàrl",
       status: "retired",
     },
-    "**/fr/no-access",
+    // La page demandée suit (PD-R8-1) : « Changer d'entreprise » y ramène.
+    "**/fr/no-access?**",
   );
   await expect(page.getByTestId("no-access")).toBeVisible();
+  expect(new URL(page.url()).searchParams.get("next")).toBe("/fr/app");
 
   // La page de l'application n'est ni exécutée ni envoyée à une organisation sans accès.
   const direct = await page.request.get("/fr/app", { maxRedirects: 0 });

@@ -79,7 +79,16 @@ await step("nouveau mot de passe dans un autre onglet, l'onglet d'origine repart
     `select * from auth_token_issue('reset', '${email}', '${createHash("sha256").update(token).digest("hex")}', '1 hour'::interval)`,
   );
   const mail = await ctx.newPage();
+  // Adresse jamais confirmée (inscription par mot de passe) : rien n'est coché d'office, la personne choisit
+  // « c'est mon compte » (CRMlead c1600ab, R8-SEC-2).
+  const info = mail.waitForResponse((r) => r.url().endsWith("/api/auth/reset/info"));
   await mail.goto(`${CRM}/mot-de-passe?jeton=${token}&next=${encodeURIComponent(next)}`);
+  if ((await (await info).json()).unconfirmed) {
+    const mine = mail.locator('[data-testid="reset-whose-mine"]');
+    await mine.waitFor();
+    if (await mine.isChecked()) throw new Error("« c'est mon compte » coché d'office");
+    await mine.check();
+  }
   await mail.fill("#auth-password", pass + "x");
   await mail.locator("form button").last().click();
   await mail.waitForURL(`${IL}/fr/app/quotes`, { timeout: 20000 }).catch(async (e) => {

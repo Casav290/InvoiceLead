@@ -130,7 +130,7 @@ for (const size of WIDTHS) {
           org_name: "Libre Sàrl",
           status: "retired",
         },
-        "**/fr/no-access",
+        "**/fr/no-access?**",
       );
       expect(await traitNetIssues(page)).toEqual([]);
     });

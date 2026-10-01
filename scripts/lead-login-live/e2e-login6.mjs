@@ -8,7 +8,8 @@
  * base crmlead_e2e, et GOOGLE_CLIENT_ID=x GOOGLE_CLIENT_SECRET=y GOOGLE_AUTH_URL=http://127.0.0.1:<GOOGLE_PORT>/auth
  * GOOGLE_TOKEN_URL=http://127.0.0.1:<GOOGLE_PORT>/token GOOGLE_USERINFO_URL=http://127.0.0.1:<GOOGLE_PORT>/userinfo
  * (GOOGLE_PORT : 8942 par défaut). L'application InvoiceLead n'est pas appelée : ses adresses sont interceptées.
- * ONLY=<motif> : seulement les étapes dont le nom correspond (REPLAY, TOTP, THEME, SWOFF, HOST, QUIET).
+ * ONLY=<motif> : seulement les étapes dont le nom correspond (REPLAY, TOTP, THEME, SWOFF, HOST, QUIET, LOGOUT,
+ * OPENLINK).
  *
  * - REPLAY : un retour de Google sans son départ ne prend jamais la demande d'InvoiceLead d'un autre onglet ;
  * - TOTP : deux onglets revenus de Google avec la double authentification gardent chacun défi et destination ;
@@ -16,6 +17,10 @@
  * - SWOFF : hors connexion au second saut d'un retour sans trace, la page neutre, puis la demande retrouvée ;
  * - HOST : une connexion Google commencée sur un autre nom du serveur aboutit ;
  * - QUIET : une inscription depuis InvoiceLead porte le repère du rattrapage de 113.
+ * - LOGOUT (lot 8, R8-SEC-3) : un lien vers /oauth/logout posé sur un autre site ne ferme la session qu'avec le jeton
+ *   d'identité de la personne (comme InvoiceLead), jamais sans, avec celui d'un autre ou un faux ; une adresse tapée,
+ *   oui ;
+ * - OPENLINK (lot 8, PD-R8-3) : le lien « Ouvrir dans InvoiceLead » d'une pièce suit la langue de l'écran CRMlead.
  *
  * Comptes : eve+e2e6-<étape>-<horodatage>@example.test. Un compte ouvert par mot de passe confirme son adresse (son
  * lien de confirmation) avant de passer par Google : depuis le lot 8, Google ne se rattache plus à une adresse jamais
@@ -637,6 +642,214 @@ if (step("QUIET")) {
     .toString()
     .trim();
   check("inscription depuis InvoiceLead : silence et repère de 113", row === "f|t|off|f", row);
+}
+
+// =============================================================== 7 et 8 : lot 8 r8 (déconnexion, lien d'une pièce)
+const crmSql = (q) =>
+  execFileSync("psql", ["-U", "postgres", "-h", "localhost", "-d", "crmlead_e2e", "-tA", "-c", q])
+    .toString()
+    .trim();
+/** Ouvre un compte CRMlead direct dans ce contexte (cookie de session posé), rend son adresse. */
+async function signupIn(request, label, locale = "fr") {
+  const email = mail(label);
+  const s = await request.post(`${CRM}/api/auth/signup`, {
+    data: { accountName: `R8 ${label}`, name: "R8", email, password: PASS, locale },
+  });
+  if (s.status() !== 200) throw new Error(`signup ${label} : ${s.status()} ${await s.text()}`);
+  return email;
+}
+/** Les jetons qu'InvoiceLead reçoit pour la session de ce contexte (code + PKCE, avec offline_access). */
+async function ilTokens(request) {
+  const verifier = randomBytes(32).toString("base64url");
+  const redirect = "http://localhost:3300/auth/lead/callback";
+  const q = new URLSearchParams({
+    response_type: "code",
+    client_id: "invoicelead",
+    redirect_uri: redirect,
+    scope: "openid email profile lead offline_access",
+    state: randomBytes(12).toString("base64url"),
+    nonce: randomBytes(12).toString("base64url"),
+    code_challenge: createHash("sha256").update(verifier).digest("base64url"),
+    code_challenge_method: "S256",
+  });
+  const a = await request.get(`${CRM}/oauth/authorize?${q}`, { maxRedirects: 0 });
+  const code = new URL(a.headers().location ?? "/", CRM).searchParams.get("code");
+  if (!code) throw new Error(`autorisation : ${a.status()} ${a.headers().location}`);
+  const t = await request.post(`${CRM}/oauth/token`, {
+    form: {
+      grant_type: "authorization_code",
+      code,
+      redirect_uri: redirect,
+      code_verifier: verifier,
+      client_id: "invoicelead",
+      client_secret: process.env.LEAD_ID_CLIENT_SECRET ?? "lid_test_e2e_secret",
+    },
+  });
+  const out = await t.json().catch(() => ({}));
+  if (!out.id_token || !out.refresh_token) throw new Error(`jetons : ${t.status()}`);
+  return out;
+}
+
+if (step("LOGOUT")) {
+  console.log(
+    "LOGOUT (R8-SEC-3) : un autre site ne ferme la session du Compte Lead qu'avec le jeton de la personne",
+  );
+  const ctx = await browser.newContext({ locale: "fr-CH" });
+  // InvoiceLead n'est pas appelé (retour de la déconnexion servi ici) ; evil.test est la page d'un autre site.
+  await ctx.route("http://localhost:3300/**", (r) =>
+    r.fulfill({
+      status: 200,
+      contentType: "text/html",
+      body: "<!doctype html><title>IL</title>InvoiceLead",
+    }),
+  );
+  await ctx.route(/^https:\/\/invoicelead\.io\//, (r) => r.abort());
+  let evil = "";
+  await ctx.route("http://evil.test/**", (r) =>
+    r.fulfill({ status: 200, contentType: "text/html", body: evil }),
+  );
+  const a = await signupIn(ctx.request, "logout-a");
+  const tokA = await ilTokens(ctx.request);
+  const other = await browser.newContext();
+  await signupIn(other.request, "logout-b");
+  const tokB = await ilTokens(other.request);
+  await other.close();
+  const me = async () =>
+    (await (await ctx.request.get(`${CRM}/api/auth/me`)).json()).user?.email ?? null;
+  const page = await ctx.newPage();
+  /** Lien de déconnexion suivi depuis l'autre site ; rend la page d'où part la navigation (Referer). */
+  const fromEvil = async (hint) => {
+    const q = new URLSearchParams({
+      client_id: "invoicelead",
+      post_logout_redirect_uri: "http://localhost:3300/",
+    });
+    if (hint) q.set("id_token_hint", hint);
+    evil = `<!doctype html><title>Autre site</title><a id="go" href="${CRM}/oauth/logout?${q}">Voir</a>`;
+    await page.goto("http://evil.test/");
+    const req = page.waitForRequest((r) => r.url().includes("/oauth/logout"));
+    await page.click("#go");
+    const from = (await (await req).allHeaders()).referer ?? "";
+    await page.waitForURL(
+      (u) => !u.href.includes("/oauth/logout") && !u.href.startsWith("http://evil.test"),
+    );
+    return from;
+  };
+  const s1 = await fromEvil(null);
+  check("le lien part bien d'un autre site (evil.test)", s1.startsWith("http://evil.test/"), s1);
+  check(
+    "autre site, sans jeton : la session reste ouverte",
+    (await me()) === a,
+    String(await me()),
+  );
+  await fromEvil(tokB.id_token);
+  check(
+    "autre site, jeton d'une autre personne : la session reste",
+    (await me()) === a,
+    String(await me()),
+  );
+  await fromEvil(`${tokA.id_token.slice(0, -4)}AAAA`);
+  check("autre site, jeton falsifié : la session reste", (await me()) === a, String(await me()));
+  const stillRefresh = await ctx.request.post(`${CRM}/oauth/token`, {
+    form: {
+      grant_type: "refresh_token",
+      refresh_token: tokA.refresh_token,
+      client_id: "invoicelead",
+      client_secret: process.env.LEAD_ID_CLIENT_SECRET ?? "lid_test_e2e_secret",
+    },
+  });
+  const rotated = (await stillRefresh.json().catch(() => ({}))).refresh_token;
+  check(
+    "les jetons de rafraîchissement d'InvoiceLead restent valables",
+    !!rotated,
+    String(stillRefresh.status()),
+  );
+  // InvoiceLead (crmlead.io et invoicelead.io sont deux sites) : son propre jeton, même vieux, ferme tout.
+  await fromEvil(tokA.id_token);
+  check(
+    "jeton de la personne (comme InvoiceLead) : la session est fermée",
+    (await me()) === null,
+    String(await me()),
+  );
+  const dead = await ctx.request.post(`${CRM}/oauth/token`, {
+    form: {
+      grant_type: "refresh_token",
+      refresh_token: rotated ?? tokA.refresh_token,
+      client_id: "invoicelead",
+      client_secret: process.env.LEAD_ID_CLIENT_SECRET ?? "lid_test_e2e_secret",
+    },
+  });
+  check(
+    "et ses jetons de rafraîchissement sont révoqués",
+    dead.status() >= 400,
+    String(dead.status()),
+  );
+  check(
+    "l'onglet revient sur InvoiceLead, jamais l'écran de CRMlead",
+    page.url().startsWith("http://localhost:3300/"),
+    page.url(),
+  );
+  // CRMlead direct : une adresse tapée (aucun autre site) déconnecte toujours, sans jeton.
+  const back = await ctx.request.post(`${CRM}/api/auth/login`, {
+    data: { email: a, password: PASS },
+  });
+  check(
+    "reconnexion par mot de passe",
+    back.status() === 200 && (await me()) === a,
+    String(back.status()),
+  );
+  await page.goto(`${CRM}/oauth/logout?client_id=invoicelead`);
+  check(
+    "adresse tapée, sans jeton : la session est fermée",
+    (await me()) === null,
+    String(await me()),
+  );
+  await ctx.close();
+}
+
+if (step("OPENLINK")) {
+  console.log(
+    "OPENLINK (PD-R8-3) : « Ouvrir dans InvoiceLead » dans la langue de la personne, pas celle du client",
+  );
+  const ctx = await browser.newContext({ locale: "de-CH" });
+  await ctx.route(/^https:\/\/(invoicelead\.io|example\.test)\//, (r) => r.abort());
+  const email = await signupIn(ctx.request, "openlink", "de");
+  const lead = crmSql(
+    `insert into leads (account_id, pipeline_id, step_id, title, next_action_at)
+     select u.account_id, p.id, st.id, 'Devis pour un client romand', now() + interval '1 day'
+       from users u join pipelines p on p.account_id = u.account_id join pipeline_steps st on st.pipeline_id = p.id
+      where u.email = '${email}' order by st.position limit 1 returning id`,
+  ).split("\n")[0];
+  const ext = randomBytes(8).toString("hex");
+  // L'adresse qu'InvoiceLead envoie : dans la langue du document (celle du client, ici le français).
+  crmSql(
+    `insert into lead_documents (account_id, lead_id, app, external_id, kind, number, status, total_cents, currency, issue_date, url)
+     select account_id, id, 'invoicelead', '${ext}', 'quote', 'D-R8-1', 'sent', 120000, 'CHF', current_date,
+            'https://invoicelead.io/fr/app/quotes/${ext}?from=crm#lignes'
+       from leads where id = '${lead}';
+     insert into lead_documents (account_id, lead_id, app, external_id, kind, number, status, total_cents, currency, issue_date, url)
+     select account_id, id, 'other', '${ext}-x', 'invoice', 'F-R8-2', 'sent', 5000, 'CHF', current_date,
+            'https://example.test/fr/app/invoices/${ext}'
+       from leads where id = '${lead}'`,
+  );
+  const page = await ctx.newPage();
+  await page.goto(`${CRM}/leads/${lead}`);
+  await page.waitForSelector('[data-testid="lead-invoices"] li a');
+  const hrefs = await page.$$eval('[data-testid="lead-invoices"] li a', (as) =>
+    as.map((x) => x.getAttribute("href")),
+  );
+  const lang = await page.evaluate(() => document.documentElement.lang);
+  check("écran CRMlead en allemand", /^de/.test(lang), lang);
+  check(
+    "pièce d'InvoiceLead en français : le lien s'ouvre en allemand, recherche et ancre gardées",
+    hrefs.includes(`https://invoicelead.io/de/app/quotes/${ext}?from=crm#lignes`),
+    hrefs.join(" "),
+  );
+  check(
+    "une autre adresse passe telle quelle",
+    hrefs.includes(`https://example.test/fr/app/invoices/${ext}`),
+    hrefs.join(" "),
+  );
+  await ctx.close();
 }
 
 await browser.close();
