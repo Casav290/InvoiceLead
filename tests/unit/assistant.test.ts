@@ -113,7 +113,7 @@ describe("serveur MCP", () => {
     const { who, contact } = await setup();
     const key = await createApiKey(db, who, "Claude");
     if (typeof key === "string") throw new Error(key);
-    const caller = await apiCaller(db, `Bearer ${key.key}`);
+    const caller = await apiCaller(db, `Bearer ${key.key}`, "mcp");
     if (typeof caller === "string") throw new Error(caller);
     const rpc = (method: string, params?: object, id: number | undefined = 1) =>
       handleMcp(caller, { jsonrpc: "2.0", id, method, params });

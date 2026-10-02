@@ -55,7 +55,7 @@ async function freeCompany() {
     .from(organizations)
     .where(eq(organizations.id, a.organization.id));
   if (!row) throw new Error("organisation");
-  caller.current = { organization: row, userId: a.user.id, keyId: "k" };
+  caller.current = { organization: row, userId: a.user.id, keyId: "k", scope: "full" };
   return { organizationId: row.id, userId: a.user.id };
 }
 

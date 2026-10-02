@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 /** Émet un brouillon : numéro définitif, pièce figée, écritures et événement « invoice.issued ». */
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  return withApi(request, async ({ organization, userId }) => {
+  return withApi(request, "invoices.issue", async ({ organization, userId }) => {
     const result = await issueInvoice(
       db(),
       { organizationId: organization.id, userId },

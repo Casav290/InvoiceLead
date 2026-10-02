@@ -462,7 +462,8 @@
       "fiscalYears": "Exercices",
       "team": "Équipe",
       "payments": "Paiement en ligne",
-      "api": "API"
+      "api": "API",
+      "projectlead": "ProjectLead"
     },
     "accounts": {
       "title": "Plan comptable",
@@ -1572,7 +1573,36 @@
         "url": "Adresse invalide : https vers un serveur public, sans identifiants.",
         "events": "Choisissez au moins un événement."
       },
-      "mcp": "Serveur MCP pour Claude, ChatGPT ou un autre assistant : {url}, avec une clé d'API dans l'en-tête Authorization."
+      "mcp": "Serveur MCP pour Claude, ChatGPT ou un autre assistant : {url}, avec une clé d'API dans l'en-tête Authorization.",
+      "projectLead": "ProjectLead se relie avec sa propre clé, dans toutes les formules.",
+      "projectLeadLink": "Relier ProjectLead"
+    },
+    "projectLead": {
+      "title": "Relier ProjectLead",
+      "subtitle": "ProjectLead gère vos projets, le planning et le temps de l'équipe. Chaque mois, il crée ici les brouillons de factures de vos projets. Vous les relisez, puis vous les émettez dans InvoiceLead.",
+      "open": "Ouvrir ProjectLead",
+      "steps": {
+        "create": "Créez la clé ci-dessous et copiez-la.",
+        "open": "Dans ProjectLead, ouvrez Réglages, Intégrations, InvoiceLead.",
+        "paste": "Collez l'adresse {url} et la clé, puis enregistrez."
+      },
+      "drafts": "Les brouillons sont gratuits. En formule gratuite, une facture compte dans vos {limit} factures du mois seulement quand vous l'émettez.",
+      "key": {
+        "title": "Clé ProjectLead",
+        "scope": "Cette clé sert seulement à ProjectLead, dans toutes les formules. Elle lit et crée vos contacts clients, et crée des brouillons de factures. Elle ne peut ni émettre une facture, ni lire vos factures, ni servir à autre chose.",
+        "empty": "Aucune clé ProjectLead.",
+        "create": "Créer la clé ProjectLead",
+        "created": "Copiez cette clé maintenant : elle ne sera plus affichée. Collez-la dans ProjectLead.",
+        "meta": "créée le {created}, utilisée : {used}",
+        "never": "jamais",
+        "revoke": "Révoquer",
+        "revoked": "Clé révoquée. ProjectLead ne peut plus créer de brouillons.",
+        "adminOnly": "Un administrateur ou un responsable de l'entreprise crée la clé.",
+        "errors": {
+          "tooMany": "Trois clés ProjectLead au plus. Révoquez-en une pour en créer une nouvelle.",
+          "invalid": "La clé n'a pas pu être créée. Réessayez."
+        }
+      }
     },
     "review": {
       "title": "À vérifier",
@@ -1615,8 +1645,8 @@
       "title": "Factures fournisseurs",
       "new": "Nouvelle facture fournisseur",
       "back": "Toutes les factures fournisseurs",
-      "subtitle": "Les factures reçues, lues par l'IA ou importées en e-facture, à approuver puis payer en un fichier pour votre e-banking. Le relevé bancaire les solde ensuite tout seul.",
-      "empty": "Aucune facture fournisseur. Importez une e-facture, créez-en une depuis un justificatif ou saisissez-la.",
+      "subtitle": "Les factures reçues, prises en photo et lues par l'IA ou importées en e-facture, à approuver puis payer en un fichier pour votre e-banking. Le relevé bancaire les solde ensuite tout seul.",
+      "empty": "Aucune facture fournisseur. Prenez-en une en photo, importez une e-facture ou saisissez-la.",
       "importLabel": "E-factures reçues (XRechnung, ZUGFeRD, Factur-X, UBL)",
       "importHint": "Fichiers XML, ou PDF avec le XML joint. Lus sans IA, au centime.",
       "import": "Importer",
@@ -1714,7 +1744,22 @@
       },
       "claim": "Note de frais",
       "currencyPlan": "Les autres devises font partie de la formule Pro.",
-      "approveCurrencyPlan": "Facture en {currency} : l'approuver et la comptabiliser au cours du jour fait partie de la multidevise, formule Pro."
+      "approveCurrencyPlan": "Facture en {currency} : l'approuver et la comptabiliser au cours du jour fait partie de la multidevise, formule Pro.",
+      "photo": {
+        "title": "Prendre en photo",
+        "subtitle": "Photographiez la facture reçue : l'IA remplit le fournisseur, le montant, l'échéance, l'IBAN et la référence. Vous vérifiez, puis vous approuvez.",
+        "button": "Prendre en photo",
+        "reading": "Lecture de la facture…",
+        "hint": "Photo ou PDF. Sur un téléphone, l'appareil photo s'ouvre directement.",
+        "manual": "Vous pouvez saisir la facture à la main avec « Nouvelle facture fournisseur ».",
+        "read": "Facture lue par l'IA. Vérifiez les champs, puis approuvez.",
+        "errors": {
+          "type": "Format non reconnu. Envoyez une photo (JPEG, PNG, WebP) ou un PDF.",
+          "size": "Fichier vide ou trop lourd (10 Mo au plus).",
+          "duplicate": "Cette pièce est déjà dans les justificatifs.",
+          "unread": "L'IA n'a pas pu lire cette facture. La photo est gardée dans les justificatifs. Saisissez la facture avec « Nouvelle facture fournisseur »."
+        }
+      }
     },
     "time": {
       "title": "Temps",
@@ -1778,6 +1823,12 @@
         "contact": "Client introuvable.",
         "nothing": "Aucune heure facturable à facturer.",
         "invalid": "Saisie invalide."
+      },
+      "projectLead": {
+        "title": "Projets d'équipe avec ProjectLead",
+        "text": "ProjectLead gère les projets, le planning et le temps de toute l'équipe. Chaque mois, il crée ici les brouillons de factures, que vous relisez et émettez. Pour un suivi simple, saisissez le temps ici.",
+        "open": "Ouvrir ProjectLead",
+        "connect": "Relier ProjectLead à InvoiceLead"
       }
     },
     "capture": {

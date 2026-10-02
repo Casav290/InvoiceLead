@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 /** Paiement reçu sur une facture émise (`amount` en unités, `paidOn`, `method`, `note`, `fxRate`). */
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  return withApi(request, async ({ organization, userId }) => {
+  return withApi(request, "invoices.pay", async ({ organization, userId }) => {
     const body = await jsonBody(request);
     if (!body) return apiError(400, "json");
     const parsed = parsePaymentForm(

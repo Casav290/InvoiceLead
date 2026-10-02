@@ -195,7 +195,11 @@ test("formule gratuite : chaque fonction Pro reste visible, grisée, avec sa mar
   await page.goto("/fr/app/accounting/bills");
   await expect(page.getByTestId("einvoice-import")).toBeEnabled();
   await expect(page.getByTestId("accounting-tab-bills").getByTestId("pro-badge")).toHaveCount(0);
-  await expect(page.getByText(/Pièces lues par l'IA/)).toHaveCount(0);
+  // Le compteur des lectures n'appartient qu'à « Prendre en photo », ouvert avec ses 20 lectures.
+  await expect(page.getByText(/Pièces lues par l'IA/)).toHaveCount(1);
+  await expect(page.getByTestId("bill-photo-quota")).toContainText(/0 sur 20/);
+  await expect(page.getByTestId("bill-photo-lock")).toHaveCount(0);
+  await expect(page.getByTestId("bill-photo-input")).toHaveCount(1);
 
   // Facture émise : le panneau « facture récurrente » est là, la première est permise.
   await page.goto("/fr/app/invoices/new");
@@ -406,6 +410,19 @@ test("formule gratuite : allocations du mois utilisées, chaque commande grisée
 
   await page.goto("/fr/app/accounting/receipts/capture");
   await expectLocked(page.getByTestId("capture-lock"), "Pro", aiReads);
+
+  // Factures fournisseurs : « Prendre en photo » grisé, la saisie à la main reste ouverte.
+  await page.goto("/fr/app/accounting/bills");
+  await expectLocked(page.getByTestId("bill-photo-lock"), "Pro", aiReads);
+  await expect(page.getByTestId("bill-photo-quota")).toContainText(/20 sur 20/);
+  await expect(page.getByTestId("bill-photo-disabled")).toHaveText("Prendre en photo");
+  await expect(page.getByTestId("bill-photo-input")).toHaveCount(0);
+  await expect(page.getByTestId("bill-photo-lock")).toContainText(
+    "Vous pouvez saisir la facture à la main avec «\u202fNouvelle facture fournisseur\u202f».",
+  );
+  await page.getByTestId("bill-new").click();
+  await expect(page).toHaveURL(/\/fr\/app\/accounting\/bills\/new$/);
+  await expect(page.getByTestId("bill-form")).toBeVisible();
 
   // Relances : la phrase du mois, la marque, le lien ; la relance due reste visible, grisée.
   await page.goto("/fr/app/invoices/reminders");

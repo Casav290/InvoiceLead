@@ -3,18 +3,25 @@
 import { useRef, useState } from "react";
 
 /**
- * « Scanner un ticket » : sur un téléphone, ouvre l'appareil photo ; ailleurs, le choix d'un fichier.
- * La photo part dès qu'elle est prise, sans second bouton, et l'écran dit qu'elle est en lecture.
+ * « Scanner un ticket » (notes de frais) ou « Prendre en photo » (factures fournisseurs) : sur un
+ * téléphone, ouvre l'appareil photo ; ailleurs, le choix d'un fichier. La photo part dès qu'elle est
+ * prise, sans second bouton, et l'écran dit qu'elle est en lecture.
  */
 export function ScanTicket({
   label,
   reading,
   hint,
+  name = "ticket",
+  testId = "scan-ticket",
   disabled = false,
 }: {
   label: string;
   reading: string;
   hint: string;
+  /** Nom du champ fichier envoyé à l'action. */
+  name?: string;
+  /** Préfixe des data-testid : `<testId>-input`, `<testId>-disabled`. */
+  testId?: string;
   /**
    * Lectures du mois utilisées : le bouton reste visible, grisé, sans choix de fichier ; `hint` dit
    * alors comment saisir la dépense sans lecture.
@@ -29,7 +36,7 @@ export function ScanTicket({
         <span
           className="inline-flex min-h-12 items-center justify-center border border-line-strong bg-muted px-6 text-[15px] font-bold text-ink-muted"
           aria-disabled="true"
-          data-testid="scan-ticket-disabled"
+          data-testid={`${testId}-disabled`}
         >
           {label}
         </span>
@@ -45,11 +52,11 @@ export function ScanTicket({
         <input
           ref={input}
           type="file"
-          name="ticket"
+          name={name}
           accept="image/jpeg,image/png,image/webp,application/pdf"
           capture="environment"
           className="sr-only"
-          data-testid="scan-ticket-input"
+          data-testid={`${testId}-input`}
           onChange={(e) => {
             if (!e.currentTarget.files?.length) return;
             setBusy(true);

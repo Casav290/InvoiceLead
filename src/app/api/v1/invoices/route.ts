@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { apiError, invoiceJson, jsonBody, toForm, withApi } from "@/server/api";
+import { scopeAllows } from "@/server/api-keys";
 import { db } from "@/server/db";
 import {
   createInvoice,
@@ -22,7 +23,7 @@ const kindOf = (v: unknown): DocumentKind | null =>
 
 /** Factures (ou devis avec `?kind=quote`, avoirs avec `?kind=credit_note`), les plus récentes d'abord. */
 export async function GET(request: Request) {
-  return withApi(request, async ({ organization }) => {
+  return withApi(request, "invoices.list", async ({ organization }) => {
     const k = new URL(request.url).searchParams.get("kind") ?? "invoice";
     if (!(DOCUMENT_KINDS as readonly string[]).includes(k)) return apiError(400, "kind");
     const rows = await listInvoices(db(), organization.id, k as DocumentKind);
@@ -44,14 +45,18 @@ export async function GET(request: Request) {
 
 /**
  * Brouillon de facture ou de devis (`kind: "quote"`). Montants en unités (« 150.00 »), comme dans le
- * formulaire ; la TVA est calculée ici, au taux en vigueur à la date de prestation.
+ * formulaire ; la TVA est calculée ici, au taux en vigueur à la date de prestation. Un brouillon ne
+ * compte pas dans les factures du mois : seule l'émission compte.
  */
 export async function POST(request: Request) {
-  return withApi(request, async ({ organization, userId }) => {
+  return withApi(request, "invoices.createDraft", async ({ organization, userId, scope }) => {
     const body = await jsonBody(request);
     if (!body) return apiError(400, "json");
     const kind = kindOf(body.kind);
     if (!kind) return apiError(422, "invalid", { kind: "required" });
+    // Un devis est un autre point d'accès : la clé ProjectLead ne crée que des brouillons de factures.
+    if (kind === "quote" && !scopeAllows(scope, "quotes.createDraft"))
+      return apiError(403, "forbidden");
     const { kind: _kind, ...rest } = body;
     const today = new Date().toISOString().slice(0, 10);
     const form = toForm({ issueDate: today, language: organization.defaultLocale, ...rest });

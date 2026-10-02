@@ -114,7 +114,12 @@ test("le sélecteur d'applications ouvre <app>/login", async ({ page }) => {
     "href",
     "https://scanlead.io/login",
   );
-  await expect(page.getByRole("menuitem", { name: /ProjectLead/ })).toContainText("Demnächst");
+  // ProjectLead est en ligne : ouvert, même si le Compte Lead le dit encore « Bientôt ».
+  await expect(page.getByTestId("application-switcher-projectlead")).toHaveAttribute(
+    "href",
+    "https://projectlead.io/login",
+  );
+  await expect(page.getByRole("menuitem", { name: /ProjectLead/ })).toContainText("Öffnen");
   await expect(page.getByRole("menuitem", { name: /InvoiceLead/ })).toContainText("Hier");
 });
 

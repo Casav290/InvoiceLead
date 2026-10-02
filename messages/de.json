@@ -462,7 +462,8 @@
       "fiscalYears": "Geschäftsjahre",
       "team": "Team",
       "payments": "Online-Zahlung",
-      "api": "API"
+      "api": "API",
+      "projectlead": "ProjectLead"
     },
     "accounts": {
       "title": "Kontenplan",
@@ -1572,7 +1573,36 @@
         "url": "Ungültige Adresse: https zu einem öffentlichen Server, ohne Zugangsdaten.",
         "events": "Wählen Sie mindestens ein Ereignis."
       },
-      "mcp": "MCP-Server für Claude, ChatGPT oder einen anderen Assistenten: {url}, mit einem API-Schlüssel im Header Authorization."
+      "mcp": "MCP-Server für Claude, ChatGPT oder einen anderen Assistenten: {url}, mit einem API-Schlüssel im Header Authorization.",
+      "projectLead": "ProjectLead wird mit einem eigenen Schlüssel verbunden, in jedem Abo.",
+      "projectLeadLink": "ProjectLead verbinden"
+    },
+    "projectLead": {
+      "title": "ProjectLead verbinden",
+      "subtitle": "ProjectLead verwaltet Ihre Projekte, die Planung und die Zeit des Teams. Jeden Monat erstellt es hier die Rechnungsentwürfe Ihrer Projekte. Sie prüfen sie und stellen sie in InvoiceLead aus.",
+      "open": "ProjectLead öffnen",
+      "steps": {
+        "create": "Erstellen Sie unten den Schlüssel und kopieren Sie ihn.",
+        "open": "Öffnen Sie in ProjectLead Réglages, Intégrations, InvoiceLead.",
+        "paste": "Fügen Sie die Adresse {url} und den Schlüssel ein und speichern Sie."
+      },
+      "drafts": "Entwürfe sind kostenlos. Im Gratis-Abo zählt eine Rechnung erst bei der Ausstellung zu Ihren {limit} Rechnungen des Monats.",
+      "key": {
+        "title": "ProjectLead-Schlüssel",
+        "scope": "Dieser Schlüssel dient nur ProjectLead, in jedem Abo. Er liest und erstellt Ihre Kundenkontakte und erstellt Rechnungsentwürfe. Er kann keine Rechnung ausstellen, Ihre Rechnungen nicht lesen und sonst nichts tun.",
+        "empty": "Kein ProjectLead-Schlüssel.",
+        "create": "ProjectLead-Schlüssel erstellen",
+        "created": "Kopieren Sie diesen Schlüssel jetzt: Er wird nicht mehr angezeigt. Fügen Sie ihn in ProjectLead ein.",
+        "meta": "erstellt am {created}, verwendet: {used}",
+        "never": "nie",
+        "revoke": "Widerrufen",
+        "revoked": "Schlüssel widerrufen. ProjectLead kann keine Entwürfe mehr erstellen.",
+        "adminOnly": "Den Schlüssel erstellt eine Administratorin, ein Administrator oder eine verantwortliche Person des Unternehmens.",
+        "errors": {
+          "tooMany": "Höchstens drei ProjectLead-Schlüssel. Widerrufen Sie einen, um einen neuen zu erstellen.",
+          "invalid": "Der Schlüssel konnte nicht erstellt werden. Versuchen Sie es noch einmal."
+        }
+      }
     },
     "review": {
       "title": "Zu prüfen",
@@ -1615,8 +1645,8 @@
       "title": "Lieferantenrechnungen",
       "new": "Neue Lieferantenrechnung",
       "back": "Alle Lieferantenrechnungen",
-      "subtitle": "Erhaltene Rechnungen, von der KI gelesen oder als E-Rechnung importiert: genehmigen und mit einer Datei fürs E-Banking bezahlen. Der Kontoauszug gleicht sie danach selbst aus.",
-      "empty": "Keine Lieferantenrechnungen. Importieren Sie eine E-Rechnung, erfassen Sie eine aus einem Beleg oder von Hand.",
+      "subtitle": "Erhaltene Rechnungen, fotografiert und von der KI gelesen oder als E-Rechnung importiert: genehmigen und mit einer Datei fürs E-Banking bezahlen. Der Kontoauszug gleicht sie danach selbst aus.",
+      "empty": "Keine Lieferantenrechnungen. Fotografieren Sie eine, importieren Sie eine E-Rechnung oder erfassen Sie sie von Hand.",
       "importLabel": "Erhaltene E-Rechnungen (XRechnung, ZUGFeRD, Factur-X, UBL)",
       "importHint": "XML-Dateien oder PDF mit eingebettetem XML. Ohne KI gelesen, auf den Rappen genau.",
       "import": "Importieren",
@@ -1714,7 +1744,22 @@
       },
       "claim": "Spesen",
       "currencyPlan": "Weitere Währungen sind Teil des Pro-Abos.",
-      "approveCurrencyPlan": "Rechnung in {currency}: Freigabe und Verbuchung zum Tageskurs sind Teil des Pro-Abos (Fremdwährungen)."
+      "approveCurrencyPlan": "Rechnung in {currency}: Freigabe und Verbuchung zum Tageskurs sind Teil des Pro-Abos (Fremdwährungen).",
+      "photo": {
+        "title": "Foto aufnehmen",
+        "subtitle": "Fotografieren Sie die erhaltene Rechnung: Die KI füllt Lieferant, Betrag, Fälligkeit, IBAN und Referenz aus. Sie prüfen und genehmigen.",
+        "button": "Foto aufnehmen",
+        "reading": "Rechnung wird gelesen…",
+        "hint": "Foto oder PDF. Auf dem Handy öffnet sich direkt die Kamera.",
+        "manual": "Sie können die Rechnung mit «Neue Lieferantenrechnung» von Hand erfassen.",
+        "read": "Rechnung von der KI gelesen. Prüfen Sie die Felder und genehmigen Sie sie.",
+        "errors": {
+          "type": "Format nicht erkannt. Senden Sie ein Foto (JPEG, PNG, WebP) oder ein PDF.",
+          "size": "Datei leer oder zu gross (höchstens 10 MB).",
+          "duplicate": "Dieser Beleg ist bereits erfasst.",
+          "unread": "Die KI konnte diese Rechnung nicht lesen. Das Foto bleibt bei den Belegen. Erfassen Sie die Rechnung mit «Neue Lieferantenrechnung»."
+        }
+      }
     },
     "time": {
       "title": "Zeit",
@@ -1778,6 +1823,12 @@
         "contact": "Kunde nicht gefunden.",
         "nothing": "Keine verrechenbaren Stunden offen.",
         "invalid": "Ungültige Eingabe."
+      },
+      "projectLead": {
+        "title": "Teamprojekte mit ProjectLead",
+        "text": "ProjectLead verwaltet Projekte, Planung und die Zeit des ganzen Teams. Jeden Monat erstellt es hier die Rechnungsentwürfe, die Sie prüfen und ausstellen. Für eine einfache Erfassung genügt die Zeiterfassung hier.",
+        "open": "ProjectLead öffnen",
+        "connect": "ProjectLead mit InvoiceLead verbinden"
       }
     },
     "capture": {

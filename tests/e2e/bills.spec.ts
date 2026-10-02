@@ -1,7 +1,8 @@
 import { readFile } from "node:fs/promises";
 import { expect, test } from "@playwright/test";
 import { camt053 } from "../support/camt";
-import { login, setupBilling } from "./helpers";
+import { samplePdf } from "../support/pdf";
+import { login, setupBilling, traitNetIssues } from "./helpers";
 
 const UBL = `<?xml version="1.0" encoding="UTF-8"?>
 <Invoice xmlns="urn:oasis:names:specification:ubl:schema:xsd:Invoice-2" xmlns:cac="urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2" xmlns:cbc="urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2">
@@ -95,4 +96,67 @@ test("factures fournisseurs : e-facture importée, approuvée, payée par pain.0
   await expect(page.getByText("1 écriture validée.")).toBeVisible();
   await page.goto("/fr/app/accounting/bills");
   await expect(page.getByTestId("bills-paid")).toContainText("Druckerei Muster AG");
+});
+
+test("factures fournisseurs : « Prendre en photo », l'IA remplit le brouillon à approuver, même en formule gratuite", async ({
+  page,
+}) => {
+  const run = Date.now();
+  const today = new Date().toISOString().slice(0, 10);
+  await login(page, "fr", {
+    sub: `sub-bill-photo-${run}`,
+    email: `bill-photo-${run}@atelier.test`,
+    org: `org-bill-photo-${run}`,
+    org_name: "Photo Sàrl",
+  });
+  await setupBilling(page);
+  await page.goto("/fr/app/settings/accounts");
+  await page.getByTestId("chart-install").click();
+  await page.goto("/fr/app/settings/fiscal-years");
+  await page.getByTestId("fiscal-year-first").click();
+  await expect(page.getByText("Exercice ouvert.")).toBeVisible();
+
+  await page.goto("/fr/app/accounting/bills");
+  const block = page.getByTestId("bill-photo");
+  await expect(block.getByRole("heading", { name: "Prendre en photo" })).toBeVisible();
+  await expect(page.getByTestId("bill-photo-quota")).toContainText("0 sur 20");
+  // Téléphone : l'appareil photo s'ouvre ; ordinateur : le choix d'une photo ou d'un PDF.
+  const input = page.getByTestId("bill-photo-input");
+  await expect(input).toHaveAttribute("capture", "environment");
+  await expect(input).toHaveAttribute("accept", /image\/jpeg.*application\/pdf/);
+  await input.setInputFiles({
+    name: "facture.pdf",
+    mimeType: "application/pdf",
+    buffer: await samplePdf(["Imprimerie Muster SA", `Date ${today}`, "Total CHF 432.40"]),
+  });
+
+  // Le brouillon s'ouvre, rempli par l'IA : la personne vérifie, corrige au besoin, approuve.
+  await expect(page).toHaveURL(/\/fr\/app\/accounting\/bills\/[0-9a-f-]{36}\?photo=1$/);
+  await expect(
+    page.getByText("Facture lue par l'IA. Vérifiez les champs, puis approuvez."),
+  ).toBeVisible();
+  await expect(page.getByTestId("bill-status")).toContainText("Brouillon");
+  const form = page.getByTestId("bill-form");
+  await expect(form.getByLabel("Fournisseur", { exact: true })).toHaveValue("Imprimerie Muster SA");
+  await expect(form.getByLabel("Montant à payer, TVA comprise")).toHaveValue("432.40");
+  await expect(form.getByLabel("Date de facture")).toHaveValue(today);
+  await expect(page.getByRole("link", { name: "Voir le justificatif" })).toBeVisible();
+  await form
+    .getByLabel("Compte de charge")
+    .selectOption({ label: "6500 Charges d'administration" });
+  await page.getByTestId("bill-save").click();
+  await expect(page.getByText("Facture enregistrée.")).toBeVisible();
+  await page.getByTestId("bill-approve").click();
+  await expect(page.getByText("Facture approuvée et comptabilisée.")).toBeVisible();
+
+  // Une lecture du mois de comptée ; la facture attend son paiement.
+  await page.goto("/fr/app/accounting/bills");
+  await expect(page.getByTestId("bill-photo-quota")).toContainText("1 sur 20");
+  await expect(page.getByTestId("bills-approved")).toContainText("Imprimerie Muster SA");
+
+  // Téléphone (390 px) : le bouton tient dans la largeur, sans débordement.
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/fr/app/accounting/bills");
+  await expect(page.getByTestId("bill-photo")).toBeVisible();
+  expect(await traitNetIssues(page)).toEqual([]);
 });

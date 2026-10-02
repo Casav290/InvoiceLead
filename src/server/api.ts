@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { type ApiCaller, apiCaller } from "./api-keys";
+import { type ApiCaller, type ApiEndpoint, apiCaller } from "./api-keys";
 import { db } from "./db";
 import type { Contact, Invoice, InvoiceLine } from "./db/schema";
 import { postPending } from "./ledger";
@@ -12,14 +12,17 @@ export function apiError(status: number, error: string, fields?: Record<string, 
 }
 
 /**
- * Exécute une requête d'API authentifiée par clé. Après l'action : comptabilisation de ce qui peut
- * l'être, puis envoi des webhooks de l'entreprise.
+ * Exécute une requête d'API authentifiée par clé, pour ce point d'accès : une clé dont la portée ne
+ * l'ouvre pas (clé ProjectLead hors contacts et brouillons de factures) reçoit 403 avant toute
+ * lecture. Après l'action : comptabilisation de ce qui peut l'être, puis envoi des webhooks de
+ * l'entreprise.
  */
 export async function withApi(
   request: Request,
+  endpoint: ApiEndpoint,
   handler: (caller: ApiCaller) => Promise<Response>,
 ): Promise<Response> {
-  const caller = await apiCaller(db(), request.headers.get("authorization"));
+  const caller = await apiCaller(db(), request.headers.get("authorization"), endpoint);
   if (caller === "unauthorized") return apiError(401, "unauthorized");
   if (caller === "forbidden") return apiError(403, "forbidden");
   const response = await handler(caller);

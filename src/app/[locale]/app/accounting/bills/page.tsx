@@ -1,16 +1,21 @@
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { AccountingNav } from "@/components/accounting/AccountingNav";
+import { ProLock } from "@/components/app/ProLock";
+import { ScanTicket } from "@/components/app/ScanTicket";
 import { Button } from "@/components/ui/button";
 import { countryPack } from "@/countries";
 import { Link } from "@/i18n/navigation";
 import { formatDate } from "@/lib/fiscal-year";
 import { formatAmount } from "@/lib/money";
+import { aiConfigured } from "@/server/ai";
 import { requireAppSession } from "@/server/auth/guard";
 import { listBills } from "@/server/bills";
 import { db } from "@/server/db";
+import { lockFor } from "@/server/plan-lock";
+import { quotaAccess } from "@/server/plans";
 import { can } from "@/server/roles";
-import { dualApprovalAction, importEInvoicesAction } from "./actions";
+import { billFromPhotoAction, dualApprovalAction, importEInvoicesAction } from "./actions";
 
 type Props = {
   params: Promise<{ locale: string }>;
@@ -30,8 +35,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 const GROUPS = ["draft", "approved", "scheduled", "paid"] as const;
+/** Photo refusée ou pas lue (billFromPhoto) : la raison s'affiche dans le bloc de la photo. */
+const PHOTO_ERRORS = ["quota", "type", "size", "duplicate", "unread"];
 
-/** Factures fournisseurs : à approuver, à payer (fichier pain.001), transmises, payées. */
+/**
+ * Factures fournisseurs : prises en photo et lues par l'IA, importées en e-facture ou saisies ; à
+ * approuver, à payer (fichier pain.001), transmises, payées.
+ */
 export default async function BillsPage({ params, searchParams }: Props) {
   const { locale } = await params;
   const { organization, membership } = await requireAppSession(locale);
@@ -42,6 +52,12 @@ export default async function BillsPage({ params, searchParams }: Props) {
   const bills = await listBills(db(), organization.id);
   const toPay = bills.filter((b) => b.status === "approved");
   const hidden = <input type="hidden" name="locale" value={locale} />;
+  // Photo lue par l'IA : même compteur que les justificatifs et les tickets (Gratuit 20 par mois).
+  const tp = await getTranslations({ locale, namespace: "app.plan" });
+  const reads = await quotaAccess(db(), organization, "aiReads");
+  const usedUp = tp("used.aiReads", { limit: reads.limit, plan: reads.tier });
+  const photoLock = await lockFor(locale, organization, reads, usedUp);
+  const photoError = q.error && PHOTO_ERRORS.includes(q.error) ? q.error : null;
   const notice =
     q.imported !== undefined
       ? t("imported", { count: Number(q.imported) || 0, rejected: Number(q.rejected) || 0 })
@@ -78,6 +94,55 @@ export default async function BillsPage({ params, searchParams }: Props) {
         >
           {t(`errors.${q.error}`)}
         </p>
+      ) : null}
+
+      {aiConfigured() ? (
+        <section
+          id="photo"
+          className="mt-6 border border-accent bg-accent-veil px-5 py-5"
+          data-testid="bill-photo"
+        >
+          <h2 className="text-[18px]">{t("photo.title")}</h2>
+          <p className="mt-1 mb-4 text-[14px] text-ink-2">{t("photo.subtitle")}</p>
+          {photoError ? (
+            <p
+              role="alert"
+              className="mb-4 border border-hot-fg bg-hot-bg px-4 py-3 text-[13px] text-hot-fg"
+              data-testid="bill-photo-error"
+            >
+              {photoError === "quota"
+                ? `${usedUp} ${t("photo.manual")}`
+                : t(`photo.errors.${photoError}`)}
+            </p>
+          ) : null}
+          {photoLock ? (
+            <ProLock lock={photoLock} testId="bill-photo-lock">
+              <div className="px-5 py-4">
+                <ScanTicket
+                  label={t("photo.button")}
+                  reading={t("photo.reading")}
+                  hint={t("photo.manual")}
+                  testId="bill-photo"
+                  disabled
+                />
+              </div>
+            </ProLock>
+          ) : (
+            <form action={billFromPhotoAction}>
+              {hidden}
+              <ScanTicket
+                label={t("photo.button")}
+                reading={t("photo.reading")}
+                hint={t("photo.hint")}
+                name="photo"
+                testId="bill-photo"
+              />
+            </form>
+          )}
+          <p className="mt-3 text-[12px] text-ink-2" data-testid="bill-photo-quota">
+            {tp("quota.aiReads", { used: reads.used, limit: reads.limit })}
+          </p>
+        </section>
       ) : null}
 
       {/* E-factures lues sans IA : ouvertes à toutes les formules, hors compteur. */}

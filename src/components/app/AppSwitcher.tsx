@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 const MARK_COLORS: Record<string, string> = {
   scanlead: "bg-scanlead",
   crmlead: "bg-crmlead",
+  projectlead: "bg-projectlead",
   invoicelead: "bg-accent",
 };
 

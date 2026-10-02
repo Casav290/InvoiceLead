@@ -179,7 +179,7 @@ Décidé par Ève le 1er octobre 2026 (sa demande : « il faut les griser pour q
 | QR-facture, documents DE/FR/IT/EN, logo | oui | oui | oui |
 | Mention « Créé avec InvoiceLead » | oui | non | non |
 | Comptabilité (écritures automatiques, bilan, résultat, clôture) | oui | oui | oui |
-| Lecture des pièces par l'IA (tickets de notes de frais, justificatifs déposés ou relus ; un seul compteur) | 20 par mois | 50 par mois | 300 par mois |
+| Lecture des pièces par l'IA (tickets de notes de frais, justificatifs déposés ou relus, factures fournisseurs prises en photo ; un seul compteur) | 20 par mois | 50 par mois | 300 par mois |
 | E-factures reçues (XRechnung, ZUGFeRD, Factur-X, UBL), lues sans IA | sans limite | sans limite | sans limite |
 | Assistant (questions sur les livres) | 10 questions par mois | sans limite | sans limite |
 | Relances | 1re relance à la main, 5 par mois ; 2e et 3e, envoi automatique, frais, intérêts et relances intelligentes visibles, grisés | 3 niveaux, envoi automatique, frais, intérêts, relances intelligentes | idem |
@@ -191,6 +191,7 @@ Décidé par Ève le 1er octobre 2026 (sa demande : « il faut les griser pour q
 | Accès fiduciaire | non, grisé ; l'accès d'une fiduciaire déjà invitée est suspendu, rendu au retour à Pro | oui | oui |
 | Sociétés | 1 | 1 | jusqu'à 3 |
 | API, serveur MCP, webhooks | non, grisé (marque Pro+) | non, grisé (marque Pro+) | oui |
+| Liaison ProjectLead (clé limitée aux contacts et aux brouillons de factures, docs/API.md) | oui | oui | oui |
 | eBill | non | non | oui |
 
 Règle d'affichage : rien n'est caché à une formule. Une fonction d'une formule supérieure reste à sa place (onglet, bouton, option, formulaire, réglage), grisée, avec la marque « Pro » ou « Pro+ », une raison écrite et un lien de mise à niveau atteignable au clavier. Une allocation épuisée grise la commande avec la même marque et une phrase du type « Vos 20 lectures gratuites de ce mois sont utilisées. ».

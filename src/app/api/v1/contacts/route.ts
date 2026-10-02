@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 /** Contacts de l'entreprise (recherche par `?q=`). */
 export async function GET(request: Request) {
-  return withApi(request, async ({ organization }) => {
+  return withApi(request, "contacts.list", async ({ organization }) => {
     const q = new URL(request.url).searchParams.get("q") ?? "";
     const rows = await listContacts(db(), organization.id, q.slice(0, 100));
     return NextResponse.json({ data: rows.map(contactJson) });
@@ -16,7 +16,7 @@ export async function GET(request: Request) {
 
 /** Nouveau contact, client par défaut ; mêmes champs et contrôles que le formulaire. */
 export async function POST(request: Request) {
-  return withApi(request, async ({ organization, userId }) => {
+  return withApi(request, "contacts.create", async ({ organization, userId }) => {
     const body = await jsonBody(request);
     if (!body) return apiError(400, "json");
     const form = toForm({ kind: "company", isCustomer: true, ...body }, [

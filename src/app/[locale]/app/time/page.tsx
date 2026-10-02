@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
+import { AppMark } from "@/components/brand/AppMark";
 import { Elapsed } from "@/components/time/Elapsed";
 import { Button } from "@/components/ui/button";
 import { Link } from "@/i18n/navigation";
 import { addDays, formatDate } from "@/lib/fiscal-year";
+import { PROJECTLEAD_URL } from "@/lib/lead-apps";
 import { requireAppSession } from "@/server/auth/guard";
 import { db } from "@/server/db";
 import { formatMinutes, listEntries, listProjects, runningTimer } from "@/server/time";
@@ -51,6 +53,32 @@ export default async function TimePage({ params, searchParams }: Props) {
         </Link>
       </div>
       <p className="mt-2 text-[15px] text-ink-muted">{t("subtitle")}</p>
+
+      {/* Projets d'équipe : ProjectLead, qui crée ici les brouillons de factures du mois. */}
+      <section
+        className="mt-6 flex flex-wrap items-start gap-4 border border-line-strong bg-panel px-5 py-4"
+        data-testid="projectlead-block"
+      >
+        <AppMark label="PL" className="h-9 w-9 bg-projectlead text-[12px]" />
+        <div className="min-w-0 flex-1 basis-60">
+          <h2 className="text-[16px] font-bold">{t("projectLead.title")}</h2>
+          <p className="mt-1 text-[14px] text-ink-2">{t("projectLead.text")}</p>
+          <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2">
+            <Button asChild variant="secondary" size="sm">
+              <a href={PROJECTLEAD_URL} rel="noopener" data-testid="projectlead-open">
+                {t("projectLead.open")}
+              </a>
+            </Button>
+            <Link
+              href="/app/settings/projectlead"
+              className="text-[13px] font-semibold text-accent-dark underline"
+              data-testid="projectlead-connect"
+            >
+              {t("projectLead.connect")}
+            </Link>
+          </div>
+        </div>
+      </section>
       {q.error ? (
         <p
           role="alert"

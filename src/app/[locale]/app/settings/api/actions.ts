@@ -31,7 +31,7 @@ export async function createApiKeyAction(prev: SecretState, form: FormData): Pro
 
 export async function revokeApiKeyAction(form: FormData) {
   const { locale, who } = await guard(form);
-  await revokeApiKey(db(), who, String(form.get("id") ?? ""));
+  await revokeApiKey(db(), who, String(form.get("id") ?? ""), "full");
   revalidatePath(`/${locale}/app/settings/api`);
   redirect(`/${locale}/app/settings/api?revoked=1`);
 }
