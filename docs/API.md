@@ -14,6 +14,20 @@ Réponses d'erreur : `401 {"error":"unauthorized"}` (clé absente, inconnue ou r
 
 Les montants saisis sont en unités (`"150.00"`), les montants rendus en centimes (`totalCents`), les dates au format `AAAA-MM-JJ`.
 
+## Clé ProjectLead (toutes les formules)
+
+ProjectLead crée chaque mois les brouillons de factures de ses projets dans InvoiceLead. Sa clé se crée dans Réglages, ProjectLead, dans toutes les formules, gratuite comprise, par un administrateur ou un responsable. Elle commence aussi par `il_live_`, n'est affichée qu'une fois, se révoque au même endroit (trois clés actives au plus) et porte le nom « ProjectLead ».
+
+Sa portée (`scope = 'projectlead'` dans `api_keys`) n'ouvre que ce que ProjectLead appelle (`server/lib/invoicelead.ts` de ProjectLead) :
+
+| Méthode | Chemin | |
+|---|---|---|
+| GET | `/api/v1/contacts?q=` | Recherche d'un client, et essai de la clé à l'enregistrement |
+| POST | `/api/v1/contacts` | Client absent d'InvoiceLead |
+| POST | `/api/v1/invoices` | Brouillon de facture seulement (`"kind":"quote"` refusé) |
+
+Tout le reste répond `403 {"error":"forbidden"}` avant toute lecture : liste et lecture des pièces, émission, paiements, PDF, devis, serveur MCP. Elle n'enregistre pas de webhooks (Pro+) et ne fait partir aucun événement en dessous de Pro+. Les brouillons sont gratuits : en formule gratuite, une facture compte dans les 10 du mois seulement à son émission, dans InvoiceLead. Les contacts restent dans la limite de la formule (`403 {"error":"plan_limit"}` au-delà).
+
 ## Points d'accès
 
 | Méthode | Chemin | Rôle |

@@ -4,6 +4,7 @@ import { ProLock } from "@/components/app/ProLock";
 import { ApiKeyForm, WebhookForm } from "@/components/settings/ApiForms";
 import { SettingsNav } from "@/components/settings/SettingsNav";
 import { Button } from "@/components/ui/button";
+import { Link } from "@/i18n/navigation";
 import { formatDate } from "@/lib/fiscal-year";
 import { listApiKeys } from "@/server/api-keys";
 import { requireAppSession } from "@/server/auth/guard";
@@ -40,7 +41,7 @@ export default async function ApiSettingsPage({ params, searchParams }: Props) {
   const t = await getTranslations({ locale, namespace: "app.apiSettings" });
   const lock = await lockFor(locale, organization, featureAccess(organization, "api"), t("plan"));
   const editable = can(membership, "company");
-  const keys = await listApiKeys(db(), organization.id);
+  const keys = await listApiKeys(db(), organization.id, "full");
   const endpoints = await listEndpoints(db(), organization.id);
   const hidden = <input type="hidden" name="locale" value={locale} />;
   const section = "border border-line-strong bg-panel";
@@ -56,6 +57,16 @@ export default async function ApiSettingsPage({ params, searchParams }: Props) {
       </p>
       <p className="mt-2 text-[13px] text-ink-2" data-testid="mcp-url">
         {t("mcp", { url: `${env().APP_URL}/api/mcp` })}
+      </p>
+      <p className="mt-2 text-[13px] text-ink-2">
+        {t("projectLead")}{" "}
+        <Link
+          href="/app/settings/projectlead"
+          className="font-semibold text-accent-dark underline"
+          data-testid="api-projectlead-link"
+        >
+          {t("projectLeadLink")}
+        </Link>
       </p>
       {q.revoked || q.disabled ? (
         <p

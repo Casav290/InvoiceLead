@@ -855,6 +855,12 @@ export const apiKeys = pgTable(
     /** Début de la clé (« il_live_ab12 »), pour la reconnaître dans la liste. */
     prefix: text("prefix").notNull(),
     keyHash: text("key_hash").notNull().unique(),
+    /**
+     * Portée (api-keys.ts) : « full » ouvre l'API et le serveur MCP (formule Pro+) ; « projectlead »
+     * seulement ce dont ProjectLead a besoin (contacts, brouillons de factures), dans toutes les
+     * formules.
+     */
+    scope: text("scope").notNull().default("full"),
     createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
     createdAt: createdAt(),
     lastUsedAt: timestamp("last_used_at", { withTimezone: true }),

@@ -191,6 +191,7 @@ Décidé par Ève le 1er octobre 2026 (sa demande : « il faut les griser pour q
 | Accès fiduciaire | non, grisé ; l'accès d'une fiduciaire déjà invitée est suspendu, rendu au retour à Pro | oui | oui |
 | Sociétés | 1 | 1 | jusqu'à 3 |
 | API, serveur MCP, webhooks | non, grisé (marque Pro+) | non, grisé (marque Pro+) | oui |
+| Liaison ProjectLead (clé limitée aux contacts et aux brouillons de factures, docs/API.md) | oui | oui | oui |
 | eBill | non | non | oui |
 
 Règle d'affichage : rien n'est caché à une formule. Une fonction d'une formule supérieure reste à sa place (onglet, bouton, option, formulaire, réglage), grisée, avec la marque « Pro » ou « Pro+ », une raison écrite et un lien de mise à niveau atteignable au clavier. Une allocation épuisée grise la commande avec la même marque et une phrase du type « Vos 20 lectures gratuites de ce mois sont utilisées. ».

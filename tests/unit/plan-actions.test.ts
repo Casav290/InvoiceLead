@@ -9,6 +9,10 @@ import { billFromPhotoAction, saveBillAction } from "@/app/[locale]/app/accounti
 import { scanTicketAction } from "@/app/[locale]/app/expenses/actions";
 import { saveReminderSettingsAction } from "@/app/[locale]/app/invoices/reminders/actions";
 import { createApiKeyAction, createWebhookAction } from "@/app/[locale]/app/settings/api/actions";
+import {
+  createProjectLeadKeyAction,
+  revokeProjectLeadKeyAction,
+} from "@/app/[locale]/app/settings/projectlead/actions";
 import { inviteFiduciaryAction } from "@/app/[locale]/app/settings/team/actions";
 import { GET as dailyCron } from "@/app/api/cron/daily/route";
 import { createFirstFiscalYear, installChart } from "@/server/accounting";
@@ -466,6 +470,34 @@ describe("API et webhooks (Pro+)", () => {
     });
     expect(await keys()).toHaveLength(1);
     expect(await hooks()).toHaveLength(1);
+  });
+});
+
+describe("liaison ProjectLead (toutes les formules)", () => {
+  it("la clé ProjectLead se crée en formule gratuite, l'API complète reste refusée", async () => {
+    const who = await signedIn(0);
+    const keys = () =>
+      db.select().from(apiKeys).where(eq(apiKeys.organizationId, who.organizationId));
+    const created = await createProjectLeadKeyAction({ round: 0 }, form({ locale: "fr" }));
+    expect(created).toMatchObject({ round: 1, secret: expect.stringMatching(/^il_live_/) });
+    expect(await createApiKeyAction({ round: 0 }, form({ locale: "fr", name: "Compta" }))).toEqual({
+      round: 1,
+      error: "plan",
+    });
+    const rows = await keys();
+    expect(rows.map((k) => [k.name, k.scope])).toEqual([["ProjectLead", "projectlead"]]);
+
+    // La révocation d'ici ne touche qu'une clé ProjectLead.
+    await setRank(who.organizationId, 2);
+    const full = await createApiKeyAction({ round: 0 }, form({ locale: "fr", name: "Compta" }));
+    const fullRow = (await keys()).find((k) => k.scope === "full");
+    expect(full.secret).toMatch(/^il_live_/);
+    expect(
+      await redirected(revokeProjectLeadKeyAction(form({ locale: "fr", id: fullRow?.id ?? "" }))),
+    ).toBe("/fr/app/settings/projectlead?revoked=1");
+    expect((await keys()).filter((k) => k.revokedAt)).toHaveLength(0);
+    await redirected(revokeProjectLeadKeyAction(form({ locale: "fr", id: rows[0]?.id ?? "" })));
+    expect((await keys()).filter((k) => k.revokedAt).map((k) => k.scope)).toEqual(["projectlead"]);
   });
 });
 

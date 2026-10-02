@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { login, setupBilling } from "./helpers";
+import { login, setupBilling, traitNetIssues } from "./helpers";
 
 test("temps : projet, saisie, chrono, puis facture des heures", async ({ page }) => {
   const run = Date.now();
@@ -50,4 +50,63 @@ test("temps : projet, saisie, chrono, puis facture des heures", async ({ page })
   await page.goto("/fr/app/time/projects");
   await page.getByTestId("project-row").getByRole("link", { name: "Site web" }).click();
   await expect(page.getByTestId("project-unbilled")).toHaveText("0.00");
+});
+
+test("temps : bloc ProjectLead, puis clé de liaison créée en formule gratuite, limitée à ProjectLead", async ({
+  page,
+}) => {
+  const run = Date.now();
+  await login(page, "fr", {
+    sub: `sub-pl-${run}`,
+    email: `pl-${run}@atelier.test`,
+    org: `org-pl-${run}`,
+    org_name: "Projets Sàrl",
+  });
+  await page.goto("/fr/app/time");
+  const block = page.getByTestId("projectlead-block");
+  await expect(block).toContainText("Projets d'équipe avec ProjectLead");
+  await expect(block).toContainText("ProjectLead gère les projets, le planning et le temps");
+  await expect(block).toContainText("brouillons de factures");
+  await expect(block.getByTestId("projectlead-open")).toHaveText("Ouvrir ProjectLead");
+  await expect(block.getByTestId("projectlead-open")).toHaveAttribute(
+    "href",
+    "https://projectlead.io",
+  );
+  // Le suivi du temps d'InvoiceLead reste là, sous le bloc.
+  await expect(page.getByText("Créez d'abord un projet pour un client.")).toBeVisible();
+
+  await block.getByTestId("projectlead-connect").click();
+  await expect(page).toHaveURL(/\/fr\/app\/settings\/projectlead$/);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Relier ProjectLead");
+  // Onglet ouvert à toutes les formules : pas de marque ; l'API complète reste Pro+.
+  await expect(page.getByTestId("settings-tab-projectlead").getByTestId("pro-badge")).toHaveCount(
+    0,
+  );
+  await expect(page.getByTestId("settings-tab-api").getByTestId("pro-badge")).toHaveText("Pro+");
+  await expect(page.getByTestId("projectlead-drafts")).toContainText(
+    "une facture compte dans vos 10 factures du mois seulement quand vous l'émettez",
+  );
+  await page.getByTestId("projectlead-key-create").click();
+  const key = (await page.getByTestId("projectlead-key-secret").textContent())?.trim() ?? "";
+  expect(key).toMatch(/^il_live_/);
+  await expect(page.getByTestId("projectlead-key-row")).toContainText("ProjectLead");
+
+  // Ce que ProjectLead appelle passe ; le reste de l'API est refusé à cette clé.
+  const headers = { Authorization: `Bearer ${key}` };
+  expect((await page.request.get("/api/v1/contacts?q=", { headers })).status()).toBe(200);
+  expect((await page.request.get("/api/v1/invoices", { headers })).status()).toBe(403);
+  expect(
+    (await page.request.post("/api/mcp", { headers, data: { jsonrpc: "2.0", id: 1 } })).status(),
+  ).toBe(403);
+
+  // Révoquée : ProjectLead ne passe plus.
+  await page.getByTestId("projectlead-key-row").getByRole("button", { name: "Révoquer" }).click();
+  await expect(page.getByText("Clé révoquée.")).toBeVisible();
+  expect((await page.request.get("/api/v1/contacts?q=", { headers })).status()).toBe(401);
+
+  // Téléphone : le bloc de la page Temps tient sans débordement, au visuel Trait net.
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/fr/app/time");
+  await expect(page.getByTestId("projectlead-block")).toBeVisible();
+  expect(await traitNetIssues(page)).toEqual([]);
 });

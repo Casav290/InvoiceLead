@@ -52,6 +52,7 @@
   --color-lead-dark: #0b5a5c;
   --color-scanlead: #2563eb;
   --color-crmlead: #0f6e70;
+  --color-projectlead: #9a6a00;
 
   /* Statuts : le rouge dit l'urgence, jamais l'issue */
   --color-hot: #dc2626;

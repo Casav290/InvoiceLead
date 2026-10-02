@@ -13,7 +13,15 @@ const fieldClass =
   "h-10 w-full border border-line-strong bg-panel px-3 text-[14px] text-ink aria-[invalid=true]:border-hot-fg";
 
 /** Secret montré une seule fois après sa création. */
-function Revealed({ label, value, testId }: { label: string; value: string; testId: string }) {
+export function Revealed({
+  label,
+  value,
+  testId,
+}: {
+  label: string;
+  value: string;
+  testId: string;
+}) {
   return (
     <div
       role="status"

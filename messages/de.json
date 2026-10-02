@@ -462,7 +462,8 @@
       "fiscalYears": "Geschäftsjahre",
       "team": "Team",
       "payments": "Online-Zahlung",
-      "api": "API"
+      "api": "API",
+      "projectlead": "ProjectLead"
     },
     "accounts": {
       "title": "Kontenplan",
@@ -1572,7 +1573,36 @@
         "url": "Ungültige Adresse: https zu einem öffentlichen Server, ohne Zugangsdaten.",
         "events": "Wählen Sie mindestens ein Ereignis."
       },
-      "mcp": "MCP-Server für Claude, ChatGPT oder einen anderen Assistenten: {url}, mit einem API-Schlüssel im Header Authorization."
+      "mcp": "MCP-Server für Claude, ChatGPT oder einen anderen Assistenten: {url}, mit einem API-Schlüssel im Header Authorization.",
+      "projectLead": "ProjectLead wird mit einem eigenen Schlüssel verbunden, in jedem Abo.",
+      "projectLeadLink": "ProjectLead verbinden"
+    },
+    "projectLead": {
+      "title": "ProjectLead verbinden",
+      "subtitle": "ProjectLead verwaltet Ihre Projekte, die Planung und die Zeit des Teams. Jeden Monat erstellt es hier die Rechnungsentwürfe Ihrer Projekte. Sie prüfen sie und stellen sie in InvoiceLead aus.",
+      "open": "ProjectLead öffnen",
+      "steps": {
+        "create": "Erstellen Sie unten den Schlüssel und kopieren Sie ihn.",
+        "open": "Öffnen Sie in ProjectLead Réglages, Intégrations, InvoiceLead.",
+        "paste": "Fügen Sie die Adresse {url} und den Schlüssel ein und speichern Sie."
+      },
+      "drafts": "Entwürfe sind kostenlos. Im Gratis-Abo zählt eine Rechnung erst bei der Ausstellung zu Ihren {limit} Rechnungen des Monats.",
+      "key": {
+        "title": "ProjectLead-Schlüssel",
+        "scope": "Dieser Schlüssel dient nur ProjectLead, in jedem Abo. Er liest und erstellt Ihre Kundenkontakte und erstellt Rechnungsentwürfe. Er kann keine Rechnung ausstellen, Ihre Rechnungen nicht lesen und sonst nichts tun.",
+        "empty": "Kein ProjectLead-Schlüssel.",
+        "create": "ProjectLead-Schlüssel erstellen",
+        "created": "Kopieren Sie diesen Schlüssel jetzt: Er wird nicht mehr angezeigt. Fügen Sie ihn in ProjectLead ein.",
+        "meta": "erstellt am {created}, verwendet: {used}",
+        "never": "nie",
+        "revoke": "Widerrufen",
+        "revoked": "Schlüssel widerrufen. ProjectLead kann keine Entwürfe mehr erstellen.",
+        "adminOnly": "Den Schlüssel erstellt eine Administratorin, ein Administrator oder eine verantwortliche Person des Unternehmens.",
+        "errors": {
+          "tooMany": "Höchstens drei ProjectLead-Schlüssel. Widerrufen Sie einen, um einen neuen zu erstellen.",
+          "invalid": "Der Schlüssel konnte nicht erstellt werden. Versuchen Sie es noch einmal."
+        }
+      }
     },
     "review": {
       "title": "Zu prüfen",
@@ -1793,6 +1823,12 @@
         "contact": "Kunde nicht gefunden.",
         "nothing": "Keine verrechenbaren Stunden offen.",
         "invalid": "Ungültige Eingabe."
+      },
+      "projectLead": {
+        "title": "Teamprojekte mit ProjectLead",
+        "text": "ProjectLead verwaltet Projekte, Planung und die Zeit des ganzen Teams. Jeden Monat erstellt es hier die Rechnungsentwürfe, die Sie prüfen und ausstellen. Für eine einfache Erfassung genügt die Zeiterfassung hier.",
+        "open": "ProjectLead öffnen",
+        "connect": "ProjectLead mit InvoiceLead verbinden"
       }
     },
     "capture": {

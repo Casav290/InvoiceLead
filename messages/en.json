@@ -462,7 +462,8 @@
       "fiscalYears": "Fiscal years",
       "team": "Team",
       "payments": "Online payments",
-      "api": "API"
+      "api": "API",
+      "projectlead": "ProjectLead"
     },
     "accounts": {
       "title": "Chart of accounts",
@@ -1572,7 +1573,36 @@
         "url": "Invalid URL: https to a public server, without credentials.",
         "events": "Choose at least one event."
       },
-      "mcp": "MCP server for Claude, ChatGPT or another assistant: {url}, with an API key in the Authorization header."
+      "mcp": "MCP server for Claude, ChatGPT or another assistant: {url}, with an API key in the Authorization header.",
+      "projectLead": "ProjectLead connects with its own key, on every plan.",
+      "projectLeadLink": "Connect ProjectLead"
+    },
+    "projectLead": {
+      "title": "Connect ProjectLead",
+      "subtitle": "ProjectLead manages your projects, planning and team time. Each month it creates the invoice drafts for your projects here. You review them, then issue them in InvoiceLead.",
+      "open": "Open ProjectLead",
+      "steps": {
+        "create": "Create the key below and copy it.",
+        "open": "In ProjectLead, open Réglages, Intégrations, InvoiceLead.",
+        "paste": "Paste the address {url} and the key, then save."
+      },
+      "drafts": "Drafts are free. On the free plan, an invoice counts toward your {limit} invoices of the month only when you issue it.",
+      "key": {
+        "title": "ProjectLead key",
+        "scope": "This key only serves ProjectLead, on every plan. It reads and creates your customer contacts and creates invoice drafts. It cannot issue an invoice, read your invoices or do anything else.",
+        "empty": "No ProjectLead key.",
+        "create": "Create the ProjectLead key",
+        "created": "Copy this key now: it will not be shown again. Paste it into ProjectLead.",
+        "meta": "created {created}, used: {used}",
+        "never": "never",
+        "revoke": "Revoke",
+        "revoked": "Key revoked. ProjectLead can no longer create drafts.",
+        "adminOnly": "An admin or a manager of the company creates the key.",
+        "errors": {
+          "tooMany": "Three ProjectLead keys at most. Revoke one to create a new one.",
+          "invalid": "The key could not be created. Try again."
+        }
+      }
     },
     "review": {
       "title": "To review",
@@ -1793,6 +1823,12 @@
         "contact": "Customer not found.",
         "nothing": "No billable hours to invoice.",
         "invalid": "Invalid entry."
+      },
+      "projectLead": {
+        "title": "Team projects with ProjectLead",
+        "text": "ProjectLead manages projects, planning and the whole team's time. Each month it creates the invoice drafts here, for you to review and issue. For simple tracking, log your time right here.",
+        "open": "Open ProjectLead",
+        "connect": "Connect ProjectLead to InvoiceLead"
       }
     },
     "capture": {

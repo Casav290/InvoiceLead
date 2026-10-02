@@ -706,7 +706,7 @@ describe("serveur MCP au-delà des allocations", () => {
     const [row] = await db.select().from(organizations).where(eq(organizations.id, org.id));
     if (!row) throw new Error("organisation");
     // Appelant fabriqué : une entreprise revenue en formule gratuite après le contrôle de la clé.
-    const caller: ApiCaller = { organization: row, userId: who.userId, keyId: "k" };
+    const caller: ApiCaller = { organization: row, userId: who.userId, keyId: "k", scope: "full" };
     const call = (name: string, args: object) =>
       handleMcp(caller, {
         jsonrpc: "2.0",
@@ -1063,7 +1063,7 @@ describe("formule relue au Compte Lead", () => {
     await aged(org.id, 13);
     // Le Compte Lead dit : formule gratuite. La formule est réécrite et l'API refusée.
     vi.stubGlobal("fetch", leadAnswers(0));
-    expect(await apiCaller(db, `Bearer ${key.key}`)).toBe("forbidden");
+    expect(await apiCaller(db, `Bearer ${key.key}`, "contacts.list")).toBe("forbidden");
     const [row] = await db.select().from(organizations).where(eq(organizations.id, org.id));
     expect(row && tierOf(row)).toBe("free");
     expect(row?.leadPlan).toBe("free");
@@ -1071,7 +1071,9 @@ describe("formule relue au Compte Lead", () => {
     await aged(org.id, 13);
     forgetRefreshAttempts();
     vi.stubGlobal("fetch", leadAnswers(2));
-    expect(await apiCaller(db, `Bearer ${key.key}`)).toMatchObject({ keyId: key.row.id });
+    expect(await apiCaller(db, `Bearer ${key.key}`, "contacts.list")).toMatchObject({
+      keyId: key.row.id,
+    });
   });
 
   it("Compte Lead muet : la formule vaut encore jusqu'à 72 h, puis la clé est refusée", async () => {
@@ -1081,14 +1083,18 @@ describe("formule relue au Compte Lead", () => {
     const lead = leadAnswers(null);
     vi.stubGlobal("fetch", lead);
     await aged(org.id, 20);
-    expect(await apiCaller(db, `Bearer ${key.key}`)).toMatchObject({ keyId: key.row.id });
+    expect(await apiCaller(db, `Bearer ${key.key}`, "contacts.list")).toMatchObject({
+      keyId: key.row.id,
+    });
     expect(lead).toHaveBeenCalled();
     // Pas de nouvelle tentative avant 10 minutes.
     lead.mockClear();
-    expect(await apiCaller(db, `Bearer ${key.key}`)).toMatchObject({ keyId: key.row.id });
+    expect(await apiCaller(db, `Bearer ${key.key}`, "contacts.list")).toMatchObject({
+      keyId: key.row.id,
+    });
     expect(lead).not.toHaveBeenCalled();
     await aged(org.id, 80);
-    expect(await apiCaller(db, `Bearer ${key.key}`)).toBe("forbidden");
+    expect(await apiCaller(db, `Bearer ${key.key}`, "contacts.list")).toBe("forbidden");
   });
 
   it("la tâche quotidienne relit les formules payantes anciennes avant les relances", async () => {

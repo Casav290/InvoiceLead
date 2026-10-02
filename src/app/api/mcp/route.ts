@@ -9,7 +9,8 @@ export const dynamic = "force-dynamic";
 
 /** Serveur MCP d'InvoiceLead (Pro+), authentifié par une clé d'API : https://invoicelead.io/api/mcp */
 export async function POST(request: Request) {
-  const caller = await apiCaller(db(), request.headers.get("authorization"));
+  // Le serveur MCP est un point d'accès à part : la clé ProjectLead n'y entre pas.
+  const caller = await apiCaller(db(), request.headers.get("authorization"), "mcp");
   if (caller === "unauthorized")
     return NextResponse.json(
       { jsonrpc: "2.0", id: null, error: { code: -32001, message: "unauthorized" } },

@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 /** Une pièce avec ses lignes et, pour une facture émise, son solde. */
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  return withApi(request, async ({ organization }) => {
+  return withApi(request, "invoices.get", async ({ organization }) => {
     const found = await getInvoice(db(), organization.id, (await params).id);
     if (!found) return apiError(404, "not_found");
     const { invoice, lines } = found;

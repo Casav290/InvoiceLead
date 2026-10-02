@@ -52,18 +52,20 @@ describe("clés d'API", () => {
     expect(created.row.prefix).toBe(created.key.slice(0, 12));
     expect(created.row.keyHash).not.toContain(created.key.slice(8));
 
-    const caller = await apiCaller(db, `Bearer ${created.key}`);
+    const caller = await apiCaller(db, `Bearer ${created.key}`, "contacts.list");
     if (typeof caller === "string") throw new Error(caller);
     expect(caller.organization.id).toBe(a.organization.id);
-    expect(await apiCaller(db, "Bearer il_live_nimportequoi_nimportequoi")).toBe("unauthorized");
-    expect(await apiCaller(db, created.key)).toBe("unauthorized");
+    expect(await apiCaller(db, "Bearer il_live_nimportequoi_nimportequoi", "contacts.list")).toBe(
+      "unauthorized",
+    );
+    expect(await apiCaller(db, created.key, "contacts.list")).toBe("unauthorized");
 
     // Formule Pro : l'API n'en fait pas partie.
     await db
       .update(organizations)
       .set({ entitlements: { plan: { rank: 1 } } })
       .where(eq(organizations.id, a.organization.id));
-    expect(await apiCaller(db, `Bearer ${created.key}`)).toBe("forbidden");
+    expect(await apiCaller(db, `Bearer ${created.key}`, "contacts.list")).toBe("forbidden");
     await db
       .update(organizations)
       .set({ entitlements: { plan: { rank: 2 } } })
@@ -74,14 +76,14 @@ describe("clés d'API", () => {
       .update(memberships)
       .set({ role: "user", appRole: "readonly" })
       .where(eq(memberships.userId, a.user.id));
-    expect(await apiCaller(db, `Bearer ${created.key}`)).toBe("forbidden");
+    expect(await apiCaller(db, `Bearer ${created.key}`, "contacts.list")).toBe("forbidden");
     await db
       .update(memberships)
       .set({ role: "admin", appRole: null })
       .where(eq(memberships.userId, a.user.id));
 
     expect(await revokeApiKey(db, who, created.row.id)).toBe(true);
-    expect(await apiCaller(db, `Bearer ${created.key}`)).toBe("unauthorized");
+    expect(await apiCaller(db, `Bearer ${created.key}`, "contacts.list")).toBe("unauthorized");
     expect(await createApiKey(db, who, " ")).toBe("invalid");
   });
 

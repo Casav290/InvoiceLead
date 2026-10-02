@@ -17,10 +17,18 @@ type EntitlementApp = {
   upgrade_url?: string | null;
 };
 
+/** Adresse de ProjectLead : sélecteur d'applications, page Temps, réglage de la liaison. */
+export const PROJECTLEAD_URL = "https://projectlead.io";
+
+/**
+ * Applications connues. `url` : l'application est en ligne à cette adresse. Une application sœur en
+ * ligne s'ouvre même si le Compte Lead la dit encore « Bientôt » ou ne donne pas son adresse : sa
+ * fiche peut y être en retard sur le lancement (ProjectLead).
+ */
 const KNOWN: { code: string; name: string; mark: string; url: string | null }[] = [
   { code: "scanlead", name: "Scanlead", mark: "SL", url: "https://scanlead.io" },
   { code: "crmlead", name: "CRMlead", mark: "CL", url: "https://crmlead.io" },
-  { code: "projectlead", name: "ProjectLead", mark: "PL", url: null },
+  { code: "projectlead", name: "ProjectLead", mark: "PL", url: PROJECTLEAD_URL },
   { code: "invoicelead", name: "InvoiceLead", mark: "IL", url: null },
 ];
 
@@ -30,7 +38,8 @@ function loginUrl(base: string): string {
 
 /**
  * Construit la liste à partir des droits du Compte Lead (`claims.lead.apps`). Sans droits connus,
- * les applications sœurs s'ouvrent sur leur écran de connexion, les autres restent « Bientôt ».
+ * les applications sœurs s'ouvrent sur leur écran de connexion, les autres restent « Bientôt ». Une
+ * application que le Compte Lead réserve à une autre formule (`access: false`) mène à la mise à niveau.
  */
 export function leadAppItems(
   current: string,
@@ -46,7 +55,8 @@ export function leadAppItems(
     const mark = known?.mark ?? name.slice(0, 2).toUpperCase();
     const url = app?.url ?? known?.url ?? null;
     if (code === current) return { code, name, mark, href: null, state: "current" };
-    if (app?.status === "soon" || !url) return { code, name, mark, href: null, state: "soon" };
+    if ((app?.status === "soon" && !known?.url) || !url)
+      return { code, name, mark, href: null, state: "soon" };
     if (app && app.access === false) {
       return { code, name, mark, href: app.upgrade_url ?? null, state: "upgrade" };
     }
