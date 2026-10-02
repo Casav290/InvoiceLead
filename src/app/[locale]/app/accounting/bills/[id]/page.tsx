@@ -23,6 +23,7 @@ type Props = {
   params: Promise<{ locale: string; id: string }>;
   searchParams: Promise<{
     saved?: string;
+    photo?: string;
     approved?: string;
     firstApproval?: string;
     paid?: string;
@@ -74,15 +75,18 @@ export default async function BillPage({ params, searchParams }: Props) {
       <input type="hidden" name="id" value={bill.id} />
     </>
   );
-  const notice = q.saved
-    ? t("saved")
-    : q.approved
-      ? t("approvedNotice")
-      : q.firstApproval
-        ? t("firstApprovalNotice")
-        : q.paid
-          ? t("paidNotice")
-          : null;
+  // Prise en photo : l'IA a rempli le brouillon, la personne vérifie puis approuve.
+  const notice = q.photo
+    ? t("photo.read")
+    : q.saved
+      ? t("saved")
+      : q.approved
+        ? t("approvedNotice")
+        : q.firstApproval
+          ? t("firstApprovalNotice")
+          : q.paid
+            ? t("paidNotice")
+            : null;
   const today = new Date().toISOString().slice(0, 10);
   const draft = bill.status === "draft";
   const multiCurrency = featureAccess(organization, "multiCurrency");

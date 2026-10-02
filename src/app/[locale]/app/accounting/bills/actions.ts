@@ -7,6 +7,7 @@ import { requirePermission } from "@/server/auth/guard";
 import { pickLocale } from "@/server/auth/login-cookie";
 import {
   approveBill,
+  billFromPhoto,
   billFromReceipt,
   createBill,
   deleteBill,
@@ -120,6 +121,27 @@ export async function billFromReceiptAction(form: FormData) {
   revalidatePath(`/${locale}/app/accounting`, "layout");
   if (typeof result === "string") redirect(`/${locale}/app/accounting/receipts?error=${result}`);
   redirect(`${path}/${result.id}?saved=1`);
+}
+
+/**
+ * « Prendre en photo » : la facture photographiée (ou un PDF choisi sur l'ordinateur) devient un
+ * brouillon rempli par l'IA, qui s'ouvre pour être vérifié puis approuvé. Une lecture du mois ; au-delà,
+ * la photo est refusée sans être enregistrée, et « Nouvelle facture fournisseur » reste la voie à la
+ * main.
+ */
+export async function billFromPhotoAction(form: FormData) {
+  const { locale, who, path } = await guard(form);
+  const file = form.get("photo");
+  if (!(file instanceof File) || file.size === 0) redirect(`${path}?error=type#photo`);
+  const result = await billFromPhoto(
+    db(),
+    who,
+    { name: file.name, type: file.type, bytes: Buffer.from(await file.arrayBuffer()) },
+    locale,
+  );
+  revalidatePath(`/${locale}/app/accounting`, "layout");
+  if (typeof result === "string") redirect(`${path}?error=${result}#photo`);
+  redirect(`${path}/${result.id}?photo=1`);
 }
 
 export async function dualApprovalAction(form: FormData) {

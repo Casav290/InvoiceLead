@@ -1615,8 +1615,8 @@
       "title": "Supplier bills",
       "new": "New supplier bill",
       "back": "All supplier bills",
-      "subtitle": "Bills received, read by AI or imported as e-invoices, to approve and then pay with one file for your online banking. The bank statement settles them on its own afterwards.",
-      "empty": "No supplier bill. Import an e-invoice, create one from a receipt or enter it by hand.",
+      "subtitle": "Bills received, photographed and read by AI or imported as e-invoices, to approve and then pay with one file for your online banking. The bank statement settles them on its own afterwards.",
+      "empty": "No supplier bill. Take a photo of one, import an e-invoice or enter it by hand.",
       "importLabel": "E-invoices received (XRechnung, ZUGFeRD, Factur-X, UBL)",
       "importHint": "XML files, or PDFs with the XML attached. Read without AI, to the cent.",
       "import": "Import",
@@ -1714,7 +1714,22 @@
       },
       "claim": "Expense claim",
       "currencyPlan": "Other currencies are part of the Pro plan.",
-      "approveCurrencyPlan": "Bill in {currency}: approving and booking it at the day's rate is part of multi-currency, in the Pro plan."
+      "approveCurrencyPlan": "Bill in {currency}: approving and booking it at the day's rate is part of multi-currency, in the Pro plan.",
+      "photo": {
+        "title": "Take a photo",
+        "subtitle": "Take a photo of the bill you received: AI fills in the supplier, amount, due date, IBAN and reference. You check it, then approve it.",
+        "button": "Take a photo",
+        "reading": "Reading the bill…",
+        "hint": "Photo or PDF. On a phone, the camera opens directly.",
+        "manual": "You can still enter the bill by hand with “New supplier bill”.",
+        "read": "Bill read by AI. Check the fields, then approve it.",
+        "errors": {
+          "type": "Format not recognised. Send a photo (JPEG, PNG, WebP) or a PDF.",
+          "size": "File empty or too large (10 MB at most).",
+          "duplicate": "This document is already in your receipts.",
+          "unread": "AI could not read this bill. The photo is kept with your receipts. Enter the bill with “New supplier bill”."
+        }
+      }
     },
     "time": {
       "title": "Time",

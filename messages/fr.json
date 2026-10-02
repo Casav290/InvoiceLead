@@ -1615,8 +1615,8 @@
       "title": "Factures fournisseurs",
       "new": "Nouvelle facture fournisseur",
       "back": "Toutes les factures fournisseurs",
-      "subtitle": "Les factures reçues, lues par l'IA ou importées en e-facture, à approuver puis payer en un fichier pour votre e-banking. Le relevé bancaire les solde ensuite tout seul.",
-      "empty": "Aucune facture fournisseur. Importez une e-facture, créez-en une depuis un justificatif ou saisissez-la.",
+      "subtitle": "Les factures reçues, prises en photo et lues par l'IA ou importées en e-facture, à approuver puis payer en un fichier pour votre e-banking. Le relevé bancaire les solde ensuite tout seul.",
+      "empty": "Aucune facture fournisseur. Prenez-en une en photo, importez une e-facture ou saisissez-la.",
       "importLabel": "E-factures reçues (XRechnung, ZUGFeRD, Factur-X, UBL)",
       "importHint": "Fichiers XML, ou PDF avec le XML joint. Lus sans IA, au centime.",
       "import": "Importer",
@@ -1714,7 +1714,22 @@
       },
       "claim": "Note de frais",
       "currencyPlan": "Les autres devises font partie de la formule Pro.",
-      "approveCurrencyPlan": "Facture en {currency} : l'approuver et la comptabiliser au cours du jour fait partie de la multidevise, formule Pro."
+      "approveCurrencyPlan": "Facture en {currency} : l'approuver et la comptabiliser au cours du jour fait partie de la multidevise, formule Pro.",
+      "photo": {
+        "title": "Prendre en photo",
+        "subtitle": "Photographiez la facture reçue : l'IA remplit le fournisseur, le montant, l'échéance, l'IBAN et la référence. Vous vérifiez, puis vous approuvez.",
+        "button": "Prendre en photo",
+        "reading": "Lecture de la facture…",
+        "hint": "Photo ou PDF. Sur un téléphone, l'appareil photo s'ouvre directement.",
+        "manual": "Vous pouvez saisir la facture à la main avec « Nouvelle facture fournisseur ».",
+        "read": "Facture lue par l'IA. Vérifiez les champs, puis approuvez.",
+        "errors": {
+          "type": "Format non reconnu. Envoyez une photo (JPEG, PNG, WebP) ou un PDF.",
+          "size": "Fichier vide ou trop lourd (10 Mo au plus).",
+          "duplicate": "Cette pièce est déjà dans les justificatifs.",
+          "unread": "L'IA n'a pas pu lire cette facture. La photo est gardée dans les justificatifs. Saisissez la facture avec « Nouvelle facture fournisseur »."
+        }
+      }
     },
     "time": {
       "title": "Temps",

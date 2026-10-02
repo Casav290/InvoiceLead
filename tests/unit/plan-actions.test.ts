@@ -5,7 +5,7 @@ import {
   uploadReceiptsAction,
   validateVatAction,
 } from "@/app/[locale]/app/accounting/actions";
-import { saveBillAction } from "@/app/[locale]/app/accounting/bills/actions";
+import { billFromPhotoAction, saveBillAction } from "@/app/[locale]/app/accounting/bills/actions";
 import { scanTicketAction } from "@/app/[locale]/app/expenses/actions";
 import { saveReminderSettingsAction } from "@/app/[locale]/app/invoices/reminders/actions";
 import { createApiKeyAction, createWebhookAction } from "@/app/[locale]/app/settings/api/actions";
@@ -241,6 +241,141 @@ describe("lectures de pièces par l'IA (20 par mois en formule gratuite)", () =>
       expect(await redirected(scanTicketAction(scan))).toBe("/fr/app/expenses?error=quota");
       expect(await stored(who.organizationId)).toHaveLength(0);
       expect(ai).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+});
+
+describe("factures fournisseurs prises en photo (une lecture du mois)", () => {
+  const period = () => new Date().toISOString().slice(0, 7);
+  async function readsUsed(organizationId: string, used: number) {
+    await db.insert(planUsage).values({ organizationId, period: period(), key: "aiReads", used });
+  }
+  async function readsNow(organizationId: string) {
+    const [row] = await db
+      .select({ used: planUsage.used })
+      .from(planUsage)
+      .where(and(eq(planUsage.organizationId, organizationId), eq(planUsage.key, "aiReads")));
+    return row?.used ?? 0;
+  }
+  const photo = (seed: string) =>
+    new File([Buffer.from(`photo de facture ${seed}`)], "facture.jpg", { type: "image/jpeg" });
+  const send = (seed: string) => {
+    const f = form({ locale: "fr" });
+    f.append("photo", photo(seed));
+    return billFromPhotoAction(f);
+  };
+  const bills = (organizationId: string) =>
+    db.select().from(supplierBills).where(eq(supplierBills.organizationId, organizationId));
+  const stored = (organizationId: string) =>
+    db.select().from(receipts).where(eq(receipts.organizationId, organizationId));
+  /** Le modèle de vision lit la facture : fournisseur, montant, échéance, IBAN, référence, compte. */
+  const reader = () =>
+    vi.fn(async (_url: string, init: { body: string }) => {
+      const body = JSON.parse(init.body) as { messages: { content: unknown }[] };
+      expect(JSON.stringify(body.messages[1]?.content)).toContain("data:image/jpeg;base64,");
+      const answer = {
+        supplier: "Druckerei Muster AG",
+        date: "2026-03-10",
+        total: "432.40",
+        currency: "CHF",
+        vat: "32.40",
+        vat_code: "normal",
+        invoice_number: "R-2026-117",
+        description: "Flyers A5",
+        account: "6500",
+        due_date: "2026-04-09",
+        iban: "CH93 0076 2011 6238 5295 7",
+        payment_reference: "RF18539007547034",
+        confidence: 0.94,
+      };
+      return Response.json({ choices: [{ message: { content: JSON.stringify(answer) } }] });
+    });
+
+  it("une photo devient un brouillon rempli par l'IA, à vérifier puis approuver, et compte une lecture", async () => {
+    const who = await signedIn(0);
+    const ai = reader();
+    vi.stubGlobal("fetch", ai);
+    try {
+      const url = await redirected(send("a"));
+      expect(url).toMatch(/^\/fr\/app\/accounting\/bills\/[0-9a-f-]{36}\?photo=1$/);
+      expect(ai).toHaveBeenCalledTimes(1);
+      const [bill] = await bills(who.organizationId);
+      expect(url).toContain(bill?.id ?? "?");
+      expect(bill).toMatchObject({
+        status: "draft",
+        source: "receipt",
+        supplierName: "Druckerei Muster AG",
+        number: "R-2026-117",
+        issueDate: "2026-03-10",
+        dueDate: "2026-04-09",
+        totalCents: 43_240,
+        currency: "CHF",
+        vatCode: "normal",
+        iban: "CH9300762011623852957",
+        paymentReference: "RF18539007547034",
+      });
+      expect(bill?.accountId).toBeTruthy();
+      const [receipt] = await stored(who.organizationId);
+      expect(receipt).toMatchObject({ id: bill?.receiptId, status: "billed" });
+      expect(await readsNow(who.organizationId)).toBe(1);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("la 20e lecture passe, la 21e photo est refusée sans être enregistrée ni lue", async () => {
+    const who = await signedIn(0);
+    await readsUsed(who.organizationId, 19);
+    const ai = reader();
+    vi.stubGlobal("fetch", ai);
+    try {
+      expect(await redirected(send("vingtième"))).toMatch(/\?photo=1$/);
+      expect(await readsNow(who.organizationId)).toBe(20);
+      expect(await redirected(send("de trop"))).toBe("/fr/app/accounting/bills?error=quota#photo");
+      expect(ai).toHaveBeenCalledTimes(1);
+      expect(await readsNow(who.organizationId)).toBe(20);
+      expect(await bills(who.organizationId)).toHaveLength(1);
+      expect(await stored(who.organizationId)).toHaveLength(1);
+      // Pro : 50 lectures, la même photo passe.
+      await setRank(who.organizationId, 1);
+      expect(await redirected(send("de trop"))).toMatch(/\?photo=1$/);
+      expect(await bills(who.organizationId)).toHaveLength(2);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("IA muette : la lecture est rendue, la photo reste dans les justificatifs, sans brouillon", async () => {
+    const who = await signedIn(0);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response("panne", { status: 500 })),
+    );
+    try {
+      expect(await redirected(send("b"))).toBe("/fr/app/accounting/bills?error=unread#photo");
+      expect(await readsNow(who.organizationId)).toBe(0);
+      expect(await bills(who.organizationId)).toHaveLength(0);
+      expect(await stored(who.organizationId)).toHaveLength(1);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("refuse un fichier qui n'est ni une photo ni un PDF, avant toute lecture", async () => {
+    const who = await signedIn(0);
+    const ai = reader();
+    vi.stubGlobal("fetch", ai);
+    try {
+      const f = form({ locale: "fr" });
+      f.append("photo", new File(["<Invoice/>"], "facture.xml", { type: "application/xml" }));
+      expect(await redirected(billFromPhotoAction(f))).toBe(
+        "/fr/app/accounting/bills?error=type#photo",
+      );
+      expect(ai).not.toHaveBeenCalled();
+      expect(await stored(who.organizationId)).toHaveLength(0);
+      expect(await readsNow(who.organizationId)).toBe(0);
     } finally {
       vi.unstubAllGlobals();
     }

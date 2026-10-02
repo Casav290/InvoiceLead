@@ -23,8 +23,8 @@ import {
 } from "./db/schema";
 import { fetchFxRate } from "./fx";
 import { appendEntry, LedgerError, type Posting, roleAccounts } from "./ledger";
-import { featureAccess } from "./plans";
-import { uploadReceipt } from "./receipts";
+import { featureAccess, organizationPlan, quotaAccess } from "./plans";
+import { extractReceipt, uploadReceipt } from "./receipts";
 
 type Who = { organizationId: string; userId: string };
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -284,6 +284,46 @@ export async function billFromReceipt(
     .set({ status: "billed", bankTransactionId: null })
     .where(eq(receipts.id, receiptId));
   return bill;
+}
+
+/** Formats d'une photo de facture : images du téléphone, ou PDF choisi sur l'ordinateur. */
+const PHOTO_TYPES = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
+
+/**
+ * Photo refusée ou pas transformée en facture : lectures du mois utilisées (« quota »), format ou
+ * taille, pièce déjà déposée, ou photo que l'IA n'a pas pu lire (« unread » : elle reste dans les
+ * justificatifs, la facture se saisit à la main).
+ */
+export type PhotoFailure = "quota" | "type" | "size" | "duplicate" | "unread";
+
+/**
+ * « Prendre en photo » une facture fournisseur : la photo est gardée comme justificatif, lue par
+ * l'IA (extractReceipt), et devient un brouillon de facture fournisseur rempli (billFromReceipt :
+ * fournisseur, montant, dates, IBAN, référence, compte, TVA), que la personne vérifie puis approuve.
+ *
+ * Une lecture du mois de la formule, sur le même compteur que les justificatifs et les tickets
+ * (Gratuit 20, Pro 50, Pro+ 300) : au-delà, la photo est refusée avant d'être enregistrée, sans
+ * appel à l'IA. La lecture est rendue si l'IA ne répond pas (extractReceipt).
+ */
+export async function billFromPhoto(
+  database: Db,
+  who: Who,
+  file: { name: string; type: string; bytes: Buffer },
+  language: "de" | "fr" | "en",
+  today = new Date().toISOString().slice(0, 10),
+): Promise<SupplierBill | PhotoFailure> {
+  const org = await organizationPlan(database, who.organizationId);
+  if (!org) return "unread";
+  if (!(await quotaAccess(database, org, "aiReads", today)).allowed) return "quota";
+  if (!PHOTO_TYPES.includes(file.type)) return "type";
+  const receipt = await uploadReceipt(database, who, file);
+  if (typeof receipt === "string") return receipt;
+  const read = await extractReceipt(database, who, receipt.id, language, today);
+  // Lectures épuisées entre-temps (autre onglet) : la photo reste dans les justificatifs.
+  if (read === "quota") return "quota";
+  if (typeof read === "string") return "unread";
+  const bill = await billFromReceipt(database, who, receipt.id);
+  return typeof bill === "string" ? "unread" : bill;
 }
 
 /** Code TVA du pays de l'entreprise dont le taux, à cette date, est celui de la facture reçue. */

@@ -179,7 +179,7 @@ Décidé par Ève le 1er octobre 2026 (sa demande : « il faut les griser pour q
 | QR-facture, documents DE/FR/IT/EN, logo | oui | oui | oui |
 | Mention « Créé avec InvoiceLead » | oui | non | non |
 | Comptabilité (écritures automatiques, bilan, résultat, clôture) | oui | oui | oui |
-| Lecture des pièces par l'IA (tickets de notes de frais, justificatifs déposés ou relus ; un seul compteur) | 20 par mois | 50 par mois | 300 par mois |
+| Lecture des pièces par l'IA (tickets de notes de frais, justificatifs déposés ou relus, factures fournisseurs prises en photo ; un seul compteur) | 20 par mois | 50 par mois | 300 par mois |
 | E-factures reçues (XRechnung, ZUGFeRD, Factur-X, UBL), lues sans IA | sans limite | sans limite | sans limite |
 | Assistant (questions sur les livres) | 10 questions par mois | sans limite | sans limite |
 | Relances | 1re relance à la main, 5 par mois ; 2e et 3e, envoi automatique, frais, intérêts et relances intelligentes visibles, grisés | 3 niveaux, envoi automatique, frais, intérêts, relances intelligentes | idem |

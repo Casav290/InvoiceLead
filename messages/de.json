@@ -1615,8 +1615,8 @@
       "title": "Lieferantenrechnungen",
       "new": "Neue Lieferantenrechnung",
       "back": "Alle Lieferantenrechnungen",
-      "subtitle": "Erhaltene Rechnungen, von der KI gelesen oder als E-Rechnung importiert: genehmigen und mit einer Datei fürs E-Banking bezahlen. Der Kontoauszug gleicht sie danach selbst aus.",
-      "empty": "Keine Lieferantenrechnungen. Importieren Sie eine E-Rechnung, erfassen Sie eine aus einem Beleg oder von Hand.",
+      "subtitle": "Erhaltene Rechnungen, fotografiert und von der KI gelesen oder als E-Rechnung importiert: genehmigen und mit einer Datei fürs E-Banking bezahlen. Der Kontoauszug gleicht sie danach selbst aus.",
+      "empty": "Keine Lieferantenrechnungen. Fotografieren Sie eine, importieren Sie eine E-Rechnung oder erfassen Sie sie von Hand.",
       "importLabel": "Erhaltene E-Rechnungen (XRechnung, ZUGFeRD, Factur-X, UBL)",
       "importHint": "XML-Dateien oder PDF mit eingebettetem XML. Ohne KI gelesen, auf den Rappen genau.",
       "import": "Importieren",
@@ -1714,7 +1714,22 @@
       },
       "claim": "Spesen",
       "currencyPlan": "Weitere Währungen sind Teil des Pro-Abos.",
-      "approveCurrencyPlan": "Rechnung in {currency}: Freigabe und Verbuchung zum Tageskurs sind Teil des Pro-Abos (Fremdwährungen)."
+      "approveCurrencyPlan": "Rechnung in {currency}: Freigabe und Verbuchung zum Tageskurs sind Teil des Pro-Abos (Fremdwährungen).",
+      "photo": {
+        "title": "Foto aufnehmen",
+        "subtitle": "Fotografieren Sie die erhaltene Rechnung: Die KI füllt Lieferant, Betrag, Fälligkeit, IBAN und Referenz aus. Sie prüfen und genehmigen.",
+        "button": "Foto aufnehmen",
+        "reading": "Rechnung wird gelesen…",
+        "hint": "Foto oder PDF. Auf dem Handy öffnet sich direkt die Kamera.",
+        "manual": "Sie können die Rechnung mit «Neue Lieferantenrechnung» von Hand erfassen.",
+        "read": "Rechnung von der KI gelesen. Prüfen Sie die Felder und genehmigen Sie sie.",
+        "errors": {
+          "type": "Format nicht erkannt. Senden Sie ein Foto (JPEG, PNG, WebP) oder ein PDF.",
+          "size": "Datei leer oder zu gross (höchstens 10 MB).",
+          "duplicate": "Dieser Beleg ist bereits erfasst.",
+          "unread": "Die KI konnte diese Rechnung nicht lesen. Das Foto bleibt bei den Belegen. Erfassen Sie die Rechnung mit «Neue Lieferantenrechnung»."
+        }
+      }
     },
     "time": {
       "title": "Zeit",
