@@ -12,7 +12,8 @@ import {
   users,
 } from "./db/schema";
 import { env } from "./env";
-import { hasFeature } from "./plans";
+import { refreshPlan } from "./plan-refresh";
+import { featureAccess } from "./plans";
 import { can } from "./roles";
 
 type Who = { organizationId: string; userId: string };
@@ -107,8 +108,9 @@ export async function apiCaller(
     .where(and(eq(apiKeys.keyHash, sha256Hex(m[1])), isNull(apiKeys.revokedAt)))
     .limit(1);
   if (!row?.key.createdBy) return "unauthorized";
-  const org = row.organization;
-  if (!org.hasAccess || !hasFeature(org, "api")) return "forbidden";
+  // Une entreprise qui n'utilise que l'API ne se connecte plus : sa formule est relue au Compte Lead.
+  const org = await refreshPlan(database, row.organization);
+  if (!org.hasAccess || !featureAccess(org, "api").allowed) return "forbidden";
   const [creator] = await database
     .select({ email: users.email })
     .from(users)

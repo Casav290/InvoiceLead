@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { AccountingNav } from "@/components/accounting/AccountingNav";
+import { ProLock } from "@/components/app/ProLock";
+import { recordElsewhere } from "@/components/app/RecordElsewhere";
 import { BillForm } from "@/components/bills/BillForm";
 import { Button } from "@/components/ui/button";
 import { countryPack } from "@/countries";
@@ -13,6 +15,8 @@ import { listAccounts } from "@/server/accounting";
 import { requireAppSession } from "@/server/auth/guard";
 import { getBill } from "@/server/bills";
 import { db } from "@/server/db";
+import { lockFor } from "@/server/plan-lock";
+import { featureAccess } from "@/server/plans";
 import { approveBillAction, deleteBillAction, markBillPaidAction } from "../actions";
 
 type Props = {
@@ -40,6 +44,7 @@ const ERRORS = [
   "noFiscalYear",
   "vatPeriodClosed",
   "notFound",
+  "plan",
 ];
 
 export default async function BillPage({ params, searchParams }: Props) {
@@ -47,7 +52,18 @@ export default async function BillPage({ params, searchParams }: Props) {
   const { organization, user } = await requireAppSession(locale);
   const q = await searchParams;
   const bill = await getBill(db(), organization.id, id);
-  if (!bill) notFound();
+  if (!bill) {
+    const elsewhere = await recordElsewhere({
+      locale,
+      userId: user.id,
+      organizationId: organization.id,
+      kind: "bill",
+      id,
+      next: `/${locale}/app/accounting/bills/${id}`,
+    });
+    if (elsewhere) return elsewhere;
+    notFound();
+  }
   const t = await getTranslations({ locale, namespace: "app.bills" });
   const style = countryPack(organization.country).amounts;
   const chart = await listAccounts(db(), organization.id);
@@ -69,6 +85,34 @@ export default async function BillPage({ params, searchParams }: Props) {
           : null;
   const today = new Date().toISOString().slice(0, 10);
   const draft = bill.status === "draft";
+  const multiCurrency = featureAccess(organization, "multiCurrency");
+  // Facture en devise étrangère, formule gratuite : l'approbation reste visible, grisée (Pro).
+  const approveLock =
+    draft && bill.currency !== organization.currency
+      ? await lockFor(
+          locale,
+          organization,
+          multiCurrency,
+          t("approveCurrencyPlan", { currency: bill.currency }),
+        )
+      : null;
+  const approveBox = (
+    <div className="flex flex-wrap items-center gap-3 border border-line-strong bg-panel px-5 py-4">
+      <form action={approveBillAction}>
+        {hidden}
+        <Button type="submit" data-testid="bill-approve">
+          {bill.firstApprovedBy ? t("approveSecond") : t("approve")}
+        </Button>
+      </form>
+      <p className="min-w-[min(100%,14rem)] flex-1 text-[13px] text-ink-muted">
+        {bill.firstApprovedBy
+          ? bill.firstApprovedBy === user.id
+            ? t("waitingSecond")
+            : t("secondNeeded")
+          : t("approveHint")}
+      </p>
+    </div>
+  );
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-10 sm:px-8">
@@ -102,7 +146,9 @@ export default async function BillPage({ params, searchParams }: Props) {
           role="alert"
           className="mt-6 border border-hot-fg bg-hot-bg px-4 py-3 text-[13px] text-hot-fg"
         >
-          {t(`errors.${q.error}`)}
+          {q.error === "plan"
+            ? t("approveCurrencyPlan", { currency: bill.currency })
+            : t(`errors.${q.error}`)}
         </p>
       ) : null}
       {bill.receiptId ? (
@@ -120,25 +166,19 @@ export default async function BillPage({ params, searchParams }: Props) {
 
       {draft ? (
         <>
-          <div className="mt-6 flex flex-wrap items-center gap-3 border border-line-strong bg-panel px-5 py-4">
-            <form action={approveBillAction}>
-              {hidden}
-              <Button type="submit" data-testid="bill-approve">
-                {bill.firstApprovedBy ? t("approveSecond") : t("approve")}
-              </Button>
-            </form>
-            <p className="min-w-0 flex-1 text-[13px] text-ink-muted">
-              {bill.firstApprovedBy
-                ? bill.firstApprovedBy === user.id
-                  ? t("waitingSecond")
-                  : t("secondNeeded")
-                : t("approveHint")}
-            </p>
-          </div>
+          {approveLock ? (
+            <ProLock lock={approveLock} testId="bill-approve-lock" className="mt-6">
+              {approveBox}
+            </ProLock>
+          ) : (
+            <div className="mt-6">{approveBox}</div>
+          )}
           <BillForm
             locale={locale}
             id={bill.id}
             vatRegistered={organization.vatRegistered}
+            homeCurrency={organization.currency}
+            currencyLock={await lockFor(locale, organization, multiCurrency, t("currencyPlan"))}
             accounts={chart
               .filter((a) => a.active && (a.type === "expense" || a.type === "asset") && !a.role)
               .map((a) => ({ id: a.id, label: `${a.number} ${accountName(a, locale)}` }))}

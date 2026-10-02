@@ -71,7 +71,7 @@ export default async function BillsPage({ params, searchParams }: Props) {
           {notice}
         </p>
       ) : null}
-      {q.error === "none" || q.error === "noIban" || q.error === "plan" ? (
+      {q.error === "none" || q.error === "noIban" ? (
         <p
           role="alert"
           className="mt-6 border border-hot-fg bg-hot-bg px-4 py-3 text-[13px] text-hot-fg"
@@ -80,6 +80,7 @@ export default async function BillsPage({ params, searchParams }: Props) {
         </p>
       ) : null}
 
+      {/* E-factures lues sans IA : ouvertes à toutes les formules, hors compteur. */}
       <form
         action={importEInvoicesAction}
         className="mt-6 flex flex-wrap items-end gap-3 border border-line-strong bg-panel px-5 py-4"

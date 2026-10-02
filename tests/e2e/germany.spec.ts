@@ -10,6 +10,8 @@ test("entreprise allemande : facture en euros à 19 %, GiroCode, SKR04 et UStVA"
     email: `de-${run}@werkstatt.test`,
     org: `org-de-${run}`,
     org_name: "Werkstatt Müller GmbH",
+    // Le décompte de TVA (montants calculés) fait partie de la formule Pro.
+    plan: "pro",
   });
 
   await page.goto("/fr/app/settings/company");
@@ -71,6 +73,7 @@ test("entreprise allemande : facture en euros à 19 %, GiroCode, SKR04 et UStVA"
   await expect(page.locator("body")).toContainText("Produits soumis à 19");
   await page.goto("/fr/app/settings/fiscal-years");
   await page.getByTestId("fiscal-year-first").click();
+  await expect(page).toHaveURL(/opened=1/);
   await page.goto("/fr/app/accounting");
   await page.getByTestId("post-pending").click();
   const journal = page.getByTestId("journal");

@@ -4,15 +4,29 @@ import { useTranslations } from "next-intl";
 import { useActionState } from "react";
 import { type ReviewState, reviewVatAction } from "@/app/[locale]/app/accounting/actions";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 /** Relecture du décompte par l'assistant, à la demande. */
-export function VatReview({ locale, start, end }: { locale: string; start: string; end: string }) {
+export function VatReview({
+  locale,
+  start,
+  end,
+  className = "mt-6",
+}: {
+  locale: string;
+  start: string;
+  end: string;
+  className?: string;
+}) {
   const t = useTranslations("app.vat");
   const [state, action, pending] = useActionState<ReviewState, FormData>(reviewVatAction, {
     round: 0,
   });
   return (
-    <section className="mt-6 border border-line-strong bg-panel px-5 py-4" data-testid="vat-review">
+    <section
+      className={cn("border border-line-strong bg-panel px-5 py-4", className)}
+      data-testid="vat-review"
+    >
       <form action={action} className="flex flex-wrap items-center gap-3">
         <input type="hidden" name="locale" value={locale} />
         <input type="hidden" name="start" value={start} />
@@ -29,6 +43,7 @@ export function VatReview({ locale, start, end }: { locale: string; start: strin
         </Button>
       </form>
       {state.failed ? <p className="mt-3 text-[13px] text-hot-fg">{t("reviewFailed")}</p> : null}
+      {state.plan ? <p className="mt-3 text-[13px] text-hot-fg">{t("errors.plan")}</p> : null}
       {state.points ? (
         state.points.length === 0 ? (
           <p className="mt-3 text-[13px] text-ok-fg" data-testid="vat-review-result">

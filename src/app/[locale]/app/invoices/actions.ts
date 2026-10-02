@@ -14,6 +14,7 @@ import {
   type DocumentKind,
   deleteDraft,
   documentLanguage,
+  getInvoice,
   type InvoiceErrors,
   issueInvoice,
   isVatRegistered,
@@ -23,7 +24,7 @@ import {
 } from "@/server/invoices";
 import { postPending } from "@/server/ledger";
 import { addPayment, deletePayment, parsePaymentForm } from "@/server/payments";
-import { hasFeature, limitReached } from "@/server/plans";
+import { featureAccess } from "@/server/plans";
 import { flushWebhooks } from "@/server/webhooks";
 
 /** Comptabilise ce qui peut l'être ; une panne ici ne doit jamais bloquer la facturation. */
@@ -75,13 +76,17 @@ export async function saveInvoice(
     country: session.organization.country,
   });
   if (!parsed.ok) return { status: "invalid", errors: parsed.errors, values, round };
-  // Facturer dans une autre devise que celle de l'entreprise fait partie de la formule Pro.
+  // Facturer dans une autre devise que celle de l'entreprise fait partie de la formule Pro. Un
+  // brouillon déjà en devise (créé en Pro, ou avoir d'une facture en devise) garde la sienne.
   if (
     parsed.data.currency &&
     parsed.data.currency !== session.organization.currency &&
-    !hasFeature(session.organization, "multiCurrency")
-  )
-    return { status: "invalid", errors: { currency: "plan" }, values, round };
+    !featureAccess(session.organization, "multiCurrency").allowed
+  ) {
+    const stored = id ? await getInvoice(db(), who.organizationId, id) : null;
+    if (stored?.invoice.currency !== parsed.data.currency)
+      return { status: "invalid", errors: { currency: "plan" }, values, round };
+  }
   const result = id
     ? await updateInvoice(db(), who, id, parsed.data, kind)
     : await createInvoice(db(), who, parsed.data, kind);
@@ -97,8 +102,8 @@ export async function issueInvoiceAction(form: FormData) {
   const session = await requirePermission(locale, "billing");
   const id = String(form.get("id") ?? "");
   const path = `/${locale}/app/${section(kindOf(form))}`;
-  if (kindOf(form) === "invoice" && (await limitReached(db(), session.organization, "invoice")))
-    redirect(`${path}/${id}?error=planLimit`);
+  // Les 10 factures du mois de la formule gratuite se comptent dans issueInvoice, d'après le type
+  // du brouillon en base (« planLimit ») : le champ « kind » du formulaire ne sert qu'à l'adresse.
   const result = await issueInvoice(
     db(),
     { organizationId: session.organization.id, userId: session.user.id },

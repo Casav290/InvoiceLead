@@ -30,6 +30,13 @@ export const users = pgTable(
     email: text("email").notNull(),
     name: text("name").notNull().default(""),
     locale: text("locale").notNull().default("de"),
+    /**
+     * Dernière entreprise choisie dans InvoiceLead (fiduciaire passée chez un client). Reprise à la
+     * reconnexion, tant que l'accès de la fiduciaire y tient (team.ts, resumeOrganization).
+     */
+    lastOrganizationId: uuid("last_organization_id").references(() => organizations.id, {
+      onDelete: "set null",
+    }),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -140,8 +147,15 @@ export const sessions = pgTable(
       .notNull()
       .references(() => organizations.id, { onDelete: "cascade" }),
     idToken: text("id_token"),
+    /**
+     * Jeton de rafraîchissement du Compte Lead de cette connexion, chiffré (session.ts). Il prouve,
+     * relu toutes les quelques minutes, que l'accès tient encore : un mot de passe réinitialisé, une
+     * déconnexion de partout ou un compte fermé au Compte Lead le révoquent, et la session tombe.
+     */
+    refreshTokenEnc: text("refresh_token_enc"),
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
     createdAt: createdAt(),
+    /** Dernière vérification auprès du Compte Lead (revalidateSession). */
     lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index("sessions_user_idx").on(t.userId), index("sessions_expires_idx").on(t.expiresAt)],
@@ -1048,5 +1062,49 @@ export const crmleadOutbox = pgTable(
     uniqueIndex("crmlead_outbox_one_pending_idx")
       .on(t.invoiceId)
       .where(sql`${t.status} = 'pending'`),
+  ],
+);
+
+/**
+ * Compteurs des petites allocations mensuelles (lectures de pièces par l'IA, questions à
+ * l'assistant, relances, imports de relevés) : une unité est réservée avant l'action, d'un seul
+ * ordre SQL qui refuse au-delà de la limite, et rendue si l'action échoue. Mois civil UTC.
+ */
+export const planUsage = pgTable(
+  "plan_usage",
+  {
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    /** Mois « AAAA-MM ». */
+    period: text("period").notNull(),
+    key: text("key").notNull(), // aiReads | assistant | reminders | bankImports
+    used: integer("used").notNull().default(0),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.organizationId, t.period, t.key] }),
+    check("plan_usage_used_check", sql`${t.used} >= 0`),
+  ],
+);
+
+/**
+ * Page à rouvrir après une connexion, trop longue pour voyager dans le `state` (lien d'import de
+ * CRMlead) : le `state` n'en porte que la référence (login-pages.ts). Elle revient ainsi même sans le
+ * cookie de la demande (lien de l'email ouvert sur un autre appareil, écran resté ouvert). La
+ * référence dépend du contenu : un même lien ne fait qu'une ligne. Effacée après huit jours.
+ */
+export const loginPages = pgTable(
+  "login_pages",
+  {
+    id: text("id").primaryKey(),
+    next: text("next").notNull(),
+    /** Réseau qui l'a demandée (HMAC, jamais l'adresse IP) : plafond horaire par client. */
+    client: text("client"),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    index("login_pages_created_idx").on(t.createdAt),
+    index("login_pages_client_idx").on(t.client, t.createdAt),
   ],
 );

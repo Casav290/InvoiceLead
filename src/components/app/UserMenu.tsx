@@ -11,11 +11,13 @@ export function UserMenu({
   email,
   planLabel,
   locale,
+  upgrade = null,
 }: {
   name: string;
   email: string;
   planLabel: string;
   locale: string;
+  upgrade?: { href: string; label: string } | null;
 }) {
   const t = useTranslations("app.user");
   // Le formulaire reste hors du menu : le contenu du menu disparaît à sa fermeture.
@@ -61,6 +63,16 @@ export function UserMenu({
               </span>
             </DropdownMenu.Label>
             <DropdownMenu.Separator className="my-1 h-px bg-line" />
+            {upgrade ? (
+              <DropdownMenu.Item
+                asChild
+                className="cursor-pointer px-2 py-2 font-semibold text-accent-dark outline-hidden data-[highlighted]:bg-accent-veil data-[highlighted]:outline-2 data-[highlighted]:outline-accent data-[highlighted]:-outline-offset-2"
+              >
+                <a href={upgrade.href} rel="noopener" className="block" data-testid="menu-upgrade">
+                  {upgrade.label}
+                </a>
+              </DropdownMenu.Item>
+            ) : null}
             <DropdownMenu.Item
               asChild
               className="cursor-pointer px-2 py-2 font-semibold outline-hidden data-[highlighted]:bg-accent-veil data-[highlighted]:outline-2 data-[highlighted]:outline-accent data-[highlighted]:-outline-offset-2"

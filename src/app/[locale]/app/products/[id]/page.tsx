@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
+import { recordElsewhere } from "@/components/app/RecordElsewhere";
 import { ProductForm } from "@/components/products/ProductForm";
 import { Button } from "@/components/ui/button";
 import { formatAmount } from "@/lib/money";
@@ -19,8 +20,19 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function ProductPage({ params }: Props) {
   const { locale, id } = await params;
-  const { organization } = await requireAppSession(locale);
+  const { organization, user } = await requireAppSession(locale);
   const product = await getProduct(db(), organization.id, id);
+  if (!product) {
+    const elsewhere = await recordElsewhere({
+      locale,
+      userId: user.id,
+      organizationId: organization.id,
+      kind: "product",
+      id,
+      next: `/${locale}/app/products/${id}`,
+    });
+    if (elsewhere) return elsewhere;
+  }
   if (!product || product.archivedAt) notFound();
   const t = await getTranslations({ locale, namespace: "app.products" });
   return (

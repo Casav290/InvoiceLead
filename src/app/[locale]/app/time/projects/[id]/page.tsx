@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
+import { recordElsewhere } from "@/components/app/RecordElsewhere";
 import { ProjectFields } from "@/components/time/ProjectFields";
 import { Button } from "@/components/ui/button";
 import { countryPack } from "@/countries";
@@ -31,10 +32,21 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function ProjectPage({ params, searchParams }: Props) {
   const { locale, id } = await params;
-  const { organization } = await requireAppSession(locale);
+  const { organization, user } = await requireAppSession(locale);
   const q = await searchParams;
   const found = await getProject(db(), organization.id, id);
-  if (!found) notFound();
+  if (!found) {
+    const elsewhere = await recordElsewhere({
+      locale,
+      userId: user.id,
+      organizationId: organization.id,
+      kind: "project",
+      id,
+      next: `/${locale}/app/time/projects/${id}`,
+    });
+    if (elsewhere) return elsewhere;
+    notFound();
+  }
   const { project, customer } = found;
   const t = await getTranslations({ locale, namespace: "app.time" });
   const style = countryPack(organization.country).amounts;

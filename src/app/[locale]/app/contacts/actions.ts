@@ -7,15 +7,17 @@ import { pickLocale } from "@/server/auth/login-cookie";
 import {
   archiveContact,
   type ContactErrors,
-  createContact,
+  createContactWithinPlan,
   parseContactForm,
   updateContact,
 } from "@/server/contacts";
 import { db } from "@/server/db";
-import { limitReached } from "@/server/plans";
+import { PLANS, tierOf } from "@/server/plans";
 
 export type ContactFormState = {
   status: "idle" | "invalid" | "notFound" | "planLimit";
+  /** Contacts de la formule, pour le message « planLimit ». */
+  limit?: number;
   errors?: ContactErrors;
   values?: Record<string, string>;
   round: number;
@@ -38,9 +40,13 @@ export async function saveContact(
   if (id) {
     if (!(await updateContact(db(), who, id, parsed.data))) return { status: "notFound", round };
   } else {
-    if (await limitReached(db(), session.organization, "contact"))
-      return { status: "planLimit", values, round };
-    await createContact(db(), who, parsed.data);
+    if ((await createContactWithinPlan(db(), who, parsed.data)) === "planLimit")
+      return {
+        status: "planLimit",
+        limit: PLANS[tierOf(session.organization)].quotas.contacts,
+        values,
+        round,
+      };
   }
   revalidatePath(`/${locale}/app/contacts`);
   redirect(`/${locale}/app/contacts?saved=1`);

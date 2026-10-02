@@ -3,7 +3,8 @@ import { AppMark } from "@/components/brand/AppMark";
 import { Link } from "@/i18n/navigation";
 import { leadLoginHref } from "@/lib/lead-login";
 
-export function PublicFooter() {
+/** Pied de page public. `back` : comme dans l'en-tête, la page ou l'invitation de l'écran d'erreur. */
+export function PublicFooter({ back = {} }: { back?: Record<string, string> } = {}) {
   const t = useTranslations("footer");
   const locale = useLocale();
   const columns = [
@@ -35,8 +36,8 @@ export function PublicFooter() {
     {
       heading: t("account"),
       links: [
-        { href: leadLoginHref(locale), label: t("login"), internal: false },
-        { href: leadLoginHref(locale, true), label: t("signup"), internal: false },
+        { href: leadLoginHref(locale, false, back), label: t("login"), internal: false },
+        { href: leadLoginHref(locale, true, back), label: t("signup"), internal: false },
       ],
     },
   ];

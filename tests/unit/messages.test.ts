@@ -1,5 +1,6 @@
 import { type MessageFormatElement, parse, TYPE } from "@formatjs/icu-messageformat-parser";
 import { describe, expect, it } from "vitest";
+import { PLANS } from "@/server/plans";
 import de from "../../messages/de.json";
 import en from "../../messages/en.json";
 import fr from "../../messages/fr.json";
@@ -55,8 +56,67 @@ describe("messages", () => {
     expect(entries(de as Tree).filter(([, v]) => v.includes("ß"))).toEqual([]);
   });
 
+  it("n'ont ni tiret cadratin ni tiret demi-cadratin (consigne d'écriture d'Ève)", () => {
+    for (const t of [de, fr, en])
+      expect(entries(t as Tree).filter(([, v]) => /[\u2013\u2014]/.test(v))).toEqual([]);
+  });
+
   it("gardent la ponctuation française collée à son mot (espaces insécables)", () => {
     const bad = entries(fr as Tree).filter(([, v]) => / [?!;:%»]/.test(v) || /« /.test(v));
     expect(bad).toEqual([]);
   });
+
+  it("entourent les guillemets français d'espaces fines insécables, partout les mêmes", () => {
+    const bad = entries(fr as Tree).filter(([, v]) => /«(?!\u202f)|(?<!\u202f)»/.test(v));
+    expect(bad).toEqual([]);
+  });
+});
+
+/**
+ * Tarifs et FAQ écrivent les allocations en toutes lettres : chaque chiffre doit rester celui de
+ * PLANS (src/server/plans.ts), dans les trois langues. L'ordre des lignes est celui de la page
+ * Tarifs (et de ses étiquettes « Bientôt »).
+ */
+describe("tarifs et FAQ face aux formules", () => {
+  type Copy = {
+    pricing: { plans: Record<"free" | "pro" | "proPlus", { features: string[] }> };
+    faq: { items: { q: string; a: string }[] };
+  };
+  const numbers = (text: string) => (text.match(/\d+/g) ?? []).map(Number);
+  const free = PLANS.free.quotas;
+
+  for (const [lang, copy] of [
+    ["de", de],
+    ["fr", fr],
+    ["en", en],
+  ] as [string, Copy][]) {
+    it(`reprennent les chiffres de PLANS (${lang})`, () => {
+      const plans = copy.pricing.plans;
+      const lines: [string | undefined, number][] = [
+        [plans.free.features[0], PLANS.free.seats],
+        [plans.free.features[1], free.invoices],
+        [plans.free.features[2], free.contacts],
+        [plans.free.features[5], free.aiReads],
+        [plans.free.features[6], free.assistant],
+        [plans.free.features[7], free.reminders],
+        [plans.free.features[8], free.recurring],
+        [plans.free.features[9], free.bankImports],
+        [plans.pro.features[1], PLANS.pro.seats],
+        [plans.pro.features[2], PLANS.pro.quotas.aiReads],
+        [plans.proPlus.features[0], PLANS.proplus.seats],
+        [plans.proPlus.features[1], PLANS.proplus.quotas.aiReads],
+      ];
+      for (const [line, expected] of lines) expect(numbers(line ?? "")[0]).toBe(expected);
+      // « Que comprend la formule gratuite ? » : dans l'ordre de la réponse.
+      expect(numbers(copy.faq.items[7]?.a ?? "")).toEqual([
+        free.invoices,
+        free.aiReads,
+        free.assistant,
+        free.reminders,
+        free.bankImports,
+        free.contacts,
+        free.recurring,
+      ]);
+    });
+  }
 });

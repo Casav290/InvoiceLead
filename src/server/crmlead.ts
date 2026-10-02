@@ -1,7 +1,12 @@
 import { and, eq, isNull, sql } from "drizzle-orm";
 import { z } from "zod";
 import { VAT_CODES } from "@/countries/ch/vat";
-import { CONTACT_COUNTRIES, CONTACT_KINDS, createContact, DOCUMENT_LANGUAGES } from "./contacts";
+import {
+  CONTACT_COUNTRIES,
+  CONTACT_KINDS,
+  createContactWithinPlan,
+  DOCUMENT_LANGUAGES,
+} from "./contacts";
 import type { Db } from "./db";
 import { contacts, invoices } from "./db/schema";
 import { createInvoice, deleteDraft, INVOICE_LANGUAGES, MAX_LINES } from "./invoices";
@@ -124,7 +129,7 @@ export async function importHandoff(
   if (!contact) {
     if (!opts.canCreateContact) return { status: "contactLimit" };
     const c = h.contact;
-    contact = await createContact(database, who, {
+    const saved = await createContactWithinPlan(database, who, {
       kind: c.kind,
       isCustomer: true,
       isSupplier: false,
@@ -142,6 +147,8 @@ export async function importHandoff(
       paymentTermDays: 30,
       notes: null,
     });
+    if (saved === "planLimit") return { status: "contactLimit" };
+    contact = saved;
     if (c.id) {
       await database
         .update(contacts)

@@ -10,6 +10,8 @@ test("entreprise américaine : facture en dollars à 8,875 %, EIN, format Letter
     email: `us-${run}@lonestar.test`,
     org: `org-us-${run}`,
     org_name: "Lone Star Design LLC",
+    // Le décompte de TVA (montants calculés) fait partie de la formule Pro.
+    plan: "pro",
   });
 
   await page.goto("/en/app/settings/company");
@@ -66,6 +68,7 @@ test("entreprise américaine : facture en dollars à 8,875 %, EIN, format Letter
   await expect(page.locator("body")).toContainText("Sales tax payable");
   await page.goto("/en/app/settings/fiscal-years");
   await page.getByTestId("fiscal-year-first").click();
+  await expect(page).toHaveURL(/opened=1/);
   await page.goto("/en/app/accounting");
   await page.getByTestId("post-pending").click();
   await expect(page.getByTestId("journal")).toContainText("2200");

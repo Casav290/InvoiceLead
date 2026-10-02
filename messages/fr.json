@@ -88,7 +88,7 @@
       "current": "Ici",
       "openLink": "Ouvrir",
       "soon": "Bientôt",
-      "upgrade": "Mettre à niveau"
+      "upgrade": "Changer de formule"
     },
     "user": {
       "logout": "Se déconnecter",
@@ -145,12 +145,14 @@
     "noAccess": {
       "title": "Votre formule n'inclut pas InvoiceLead",
       "body": "Votre organisation {org} n'a pas encore accès à InvoiceLead. Passez à une formule qui l'inclut pour continuer.",
-      "upgrade": "Mettre à niveau",
+      "upgrade": "Changer de formule",
       "logout": "Se déconnecter",
       "blockedTitle": "Accès à InvoiceLead retiré",
       "blockedBody": "Un responsable de {org} a retiré votre accès à InvoiceLead. Demandez-lui de le rétablir dans les réglages de l'équipe.",
       "seatTitle": "Toutes les places sont prises",
       "seatBody": "La formule de {org} compte {seats, plural, one {# utilisateur} other {# utilisateurs}}, déjà tous occupés. Un responsable peut passer à une formule supérieure ou libérer une place.",
+      "fiduciaryTitle": "Accès fiduciaire suspendu",
+      "fiduciaryBody": "{org} est en formule gratuite. L'accès fiduciaire fait partie de la formule Pro : il revient dès que {org} repasse à Pro.",
       "otherOrgs": "Travailler dans une autre entreprise",
       "betaTitle": "InvoiceLead est en bêta privée",
       "betaBody": "{org} n'est pas encore sur la liste de la bêta. Nous ouvrons les accès par petits groupes ; écrivez-nous à hello@invoicelead.io pour y figurer."
@@ -275,6 +277,7 @@
         "netTaxRate": "Indiquez le taux accordé par l'AFC (entre 0,1 et 15 %).",
         "ustId": "USt-IdNr. invalide (DE suivi de 9 chiffres, clé de contrôle).",
         "countryLocked": "Le pays ne change plus une fois une pièce émise.",
+        "countryDrafts": "Des brouillons sont dans une autre devise que celle du nouveau pays. Supprimez-les avant de changer de pays, ou passez à Pro pour facturer en devise étrangère.",
         "taxNumber": "Steuernummer invalide (10 à 13 chiffres).",
         "taxIdRequired": "Indiquez l'USt-IdNr. ou la Steuernummer : l'un des deux figure sur chaque facture.",
         "frVatId": "Numéro de TVA invalide (FR, clé à 2 chiffres, SIREN).",
@@ -394,7 +397,7 @@
         "role": "Cochez client, fournisseur ou les deux.",
         "usState": "Indiquez le code de l'État (deux lettres, par exemple TX)."
       },
-      "planLimit": "La formule gratuite compte 50 contacts au plus. Passez à Pro pour en ajouter d'autres."
+      "planLimit": "La formule gratuite compte {limit} contacts au plus. Passez à Pro pour en ajouter d'autres."
     },
     "products": {
       "title": "Articles",
@@ -678,10 +681,13 @@
         "contact": "Le client de ce devis a été archivé.",
         "creditTooHigh": "L'avoir dépasse le montant qui reste à créditer sur la facture.",
         "closed": "Ce paiement est déjà comptabilisé dans un exercice fermé : il ne peut plus être supprimé.",
-        "planLimit": "Vous avez atteint les 10 factures du mois de la formule gratuite. Passez à Pro pour facturer sans limite.",
+        "planLimit": "Vous avez atteint les {limit} factures du mois de la formule gratuite. Passez à Pro pour facturer sans limite.",
         "recurring": "La récurrence n'a pas pu être enregistrée.",
         "fxRate": "Le cours du jour n'a pas pu être obtenu. Saisissez le cours dans le brouillon, puis émettez à nouveau.",
-        "depositDraft": "Une facture d'acompte de ce devis est encore en brouillon : émettez-la ou supprimez-la avant de créer la facture finale."
+        "depositDraft": "Une facture d'acompte de ce devis est encore en brouillon : émettez-la ou supprimez-la avant de créer la facture finale.",
+        "recurringLimit": "La formule gratuite compte {limit, plural, one {une facture récurrente active} other {# factures récurrentes actives}}. Mettez-en une en pause ou passez à Pro pour en ajouter.",
+        "recurringCurrency": "Une facture en devise étrangère ne devient récurrente qu'avec Pro, qui comprend la multidevise.",
+        "plan": "Document en {currency} : l'émettre ou le facturer fait partie de la multidevise, formule Pro."
       },
       "addLine": "Ajouter une ligne",
       "removeLine": "Retirer",
@@ -895,7 +901,10 @@
         "every": "{months, plural, one {Chaque mois} other {Tous les # mois}}",
         "next": "Prochaine facture le",
         "autoSend": "Émettre et envoyer automatiquement (sinon : brouillon à vérifier)",
-        "create": "Enregistrer la récurrence"
+        "create": "Enregistrer la récurrence",
+        "currencyPlan": "Facture en {currency} : la rendre récurrente fait partie de la multidevise, formule Pro.",
+        "already": "Cette facture se répète déjà. Prochaine facture le {date}.",
+        "manage": "Voir les factures récurrentes"
       },
       "einvoice": {
         "download": "XRechnung (XML)",
@@ -921,7 +930,10 @@
         "exempt": "Exonéré",
         "export": "Non taxable (hors de l'État)"
       },
-      "totalWithVatUs": "Total taxe comprise"
+      "totalWithVatUs": "Total taxe comprise",
+      "issueCurrencyPlan": "Ce document est en {currency}. L'émettre dans une autre devise fait partie de la formule Pro. Repassez-le en {home} pour l'émettre maintenant.",
+      "quoteCurrencyPlan": "Ce devis est en {currency}. Le facturer dans une autre devise fait partie de la formule Pro.",
+      "currencyPlan": "Les autres devises font partie de la formule Pro."
     },
     "quotes": {
       "title": "Devis",
@@ -1033,7 +1045,7 @@
         "noProposal": "Choisissez d'abord un compte.",
         "notFound": "Mouvement introuvable ou déjà traité.",
         "vatPeriodClosed": "Cette date tombe dans une période TVA déjà validée : l'écriture ne peut plus y entrer.",
-        "plan": "L'import des relevés est réservé à la formule Pro."
+        "scope": "En formule gratuite, un import couvre un seul compte et un mois au plus. Exportez un relevé mensuel, ou passez à Pro pour importer davantage."
       },
       "aiError": "L'assistant n'a pas pu répondre. Les mouvements restent à proposer ; réessayez plus tard.",
       "aiOff": "L'assistant comptable n'est pas encore activé : seuls les paiements de factures reconnus par leur référence QR sont proposés automatiquement.",
@@ -1042,7 +1054,7 @@
       "import": "Importer",
       "toReview": "{count, plural, =0 {Rien à valider} one {# mouvement à valider} other {# mouvements à valider}}",
       "propose": "Proposer les écritures",
-      "validateConfident": "Valider les {count} propositions sûres",
+      "validateConfident": "{count, plural, one {Valider la proposition sûre} other {Valider les # propositions sûres}}",
       "nothing": "Tous les mouvements sont traités.",
       "noSuggestion": "Aucune proposition : choisissez le compte.",
       "paysInvoice": "Paiement de la facture {invoice}",
@@ -1078,22 +1090,20 @@
         "hits": "{count, plural, one {validée # fois} other {validée # fois}}",
         "delete": "Oublier"
       },
-      "planOnly": "L'import des relevés bancaires et les propositions de l'assistant sont compris dans la formule Pro.",
       "autoPosted": "{count, plural, one {# mouvement comptabilisé} other {# mouvements comptabilisés}} par le pilote automatique.",
       "autoReview": "Les revoir",
       "paysBill": "Paiement d’une facture fournisseur"
     },
     "receipts": {
       "title": "Justificatifs",
-      "subtitle": "Déposez vos factures fournisseurs et tickets (PDF ou photo). L'assistant les lit et les rattache au paiement correspondant du relevé bancaire.",
-      "added": "{count, plural, =0 {Aucun justificatif ajouté} one {# justificatif ajouté} other {# justificatifs ajoutés}}{rejected, plural, =0 {.} one { (# refusé : doublon, format ou taille).} other { (# refusés : doublons, format ou taille).}}",
+      "subtitle": "Déposez vos factures fournisseurs et tickets (PDF ou photo). L'IA les lit et les rattache au paiement correspondant du relevé bancaire.",
+      "added": "{count, plural, =0 {Aucun justificatif ajouté} one {# justificatif ajouté} other {# justificatifs ajoutés}}.{rejected, plural, =0 {} one { # refusé : doublon, format ou taille.} other { # refusés : doublons, format ou taille.}}{quota, plural, =0 {} one { # pas déposé : les lectures du mois sont utilisées.} other { # pas déposés : les lectures du mois sont utilisées.}}",
       "errors": {
         "unreadable": "Ce PDF est une image scannée : déposez plutôt une photo nette du document.",
-        "failed": "L'assistant n'a pas pu lire ce justificatif. Réessayez plus tard.",
-        "notFound": "Justificatif introuvable.",
-        "plan": "La lecture des justificatifs est réservée aux formules Pro et Pro+."
+        "failed": "L'IA n'a pas pu lire ce justificatif. Réessayez plus tard.",
+        "notFound": "Justificatif introuvable."
       },
-      "aiOff": "L'assistant n'est pas encore activé : les justificatifs sont conservés, et seront lus une fois l'assistant configuré.",
+      "aiOff": "La lecture par l'IA n'est pas encore activée : les justificatifs sont conservés, et seront lus dès qu'elle le sera.",
       "files": "Factures ou tickets",
       "filesHint": "PDF, JPEG, PNG ou WebP, 10 Mo au plus par fichier, 20 fichiers à la fois.",
       "upload": "Déposer",
@@ -1112,7 +1122,6 @@
         "posted": "Comptabilisé",
         "billed": "Facture fournisseur"
       },
-      "planOnly": "La lecture automatique des justificatifs est comprise dans la formule Pro (50 par mois) et Pro+ (300 par mois).",
       "toBill": "Créer la facture à payer",
       "captureLink": "Photographier avec le téléphone"
     },
@@ -1164,7 +1173,7 @@
         "blocked": "Le décompte ne peut pas être validé tant que des points bloquants subsistent.",
         "noFiscalYear": "Aucun exercice ouvert ne couvre la fin de cette période.",
         "noChart": "Le plan comptable n'a pas les comptes TVA nécessaires.",
-        "plan": "La validation du décompte TVA est réservée à la formule Pro."
+        "plan": "Le décompte TVA fait partie de la formule Pro."
       },
       "periods": "Périodes",
       "quarter": "T{q} {year}",
@@ -1220,7 +1229,7 @@
       "validate": "Valider le décompte",
       "semester": "S{q} {year}",
       "tax": "Impôt",
-      "planOnly": "Le décompte TVA préparé et validé dans InvoiceLead est compris dans la formule Pro. Vous pouvez consulter les chiffres ci-dessous.",
+      "planOnly": "Le décompte TVA, calculé et validé dans InvoiceLead, fait partie de la formule Pro. En formule gratuite, vous voyez sa structure et ses contrôles ; les montants s'affichent avec Pro.",
       "figuresDe": {
         "81": "Kz 81 · Prestations imposables à 19 %",
         "86": "Kz 86 · Prestations imposables à 7 %",
@@ -1263,7 +1272,12 @@
       },
       "titleUs": "Relevé de sales tax",
       "xmlDownload": "Télécharger le décompte au format eCH-0217, à déposer sur le portail de l'AFC",
-      "xmlNoUid": "Le fichier eCH-0217 demande le numéro IDE de l'entreprise (réglages)."
+      "xmlNoUid": "Le fichier eCH-0217 demande le numéro IDE de l'entreprise (réglages).",
+      "validatePlan": "Fonction Pro. Passez à Pro pour valider et déposer votre décompte.",
+      "planOnlyUs": "Le relevé de sales tax, calculé et validé dans InvoiceLead, fait partie de la formule Pro. En formule gratuite, vous voyez sa structure et ses contrôles ; les montants s'affichent avec Pro.",
+      "figuresPlan": "Fonction Pro. Les montants du décompte s'affichent avec Pro.",
+      "figuresPlanUs": "Fonction Pro. Les montants du relevé s'affichent avec Pro.",
+      "amountHidden": "Montant affiché avec Pro"
     },
     "reminders": {
       "title": "Relances",
@@ -1276,7 +1290,8 @@
         "recorded": "Relance notée comme envoyée.",
         "notDue": "Cette relance n'est plus due.",
         "noEmail": "Pas d'adresse e-mail pour ce client, ou envoi non configuré.",
-        "failed": "L'envoi a échoué. Réessayez plus tard."
+        "failed": "L'envoi a échoué. Réessayez plus tard.",
+        "plan": "Cette relance fait partie de la formule Pro."
       },
       "empty": "Aucune relance à faire aujourd'hui.",
       "line": "{level, select, 0 {Rappel courtois} 1 {1re relance} 2 {2e relance} other {Dernière relance}} · {days, plural, =0 {échue aujourd'hui} other {{days} jours de retard}} · échue le {due}",
@@ -1311,7 +1326,10 @@
           "US": "Vide : aucun intérêt. Le taux maximal dépend de l’État et du contrat."
         },
         "save": "Enregistrer les réglages",
-        "plan": "Les 2e et 3e relances, l'envoi automatique, les frais de rappel et les intérêts moratoires font partie de la formule Pro.",
+        "smartTitle": "Relances intelligentes",
+        "smartCourtesy": "Rappel courtois {days} jours avant l'échéance aux clients qui paient souvent en retard.",
+        "smartRhythm": "Rythme adapté aux paiements de chaque client : première relance après {reliable} jours pour les bons payeurs, après {late} jours pour les retardataires.",
+        "plan": "Les 2e et 3e relances, l'envoi automatique, les frais de rappel, les intérêts moratoires et les relances intelligentes font partie de la formule Pro.",
         "results": {
           "saved": "Réglages des relances enregistrés.",
           "plan": "Ces réglages font partie de la formule Pro.",
@@ -1329,7 +1347,8 @@
       "forecastHint": "Factures ouvertes, à la date où chaque client paie d'habitude.",
       "week": "Semaine du {date}",
       "later": "Plus tard",
-      "forecastEmpty": "Aucune facture ouverte."
+      "forecastEmpty": "Aucune facture ouverte.",
+      "levelPlan": "Fonction Pro. En formule gratuite, vous envoyez vous-même la première relance ; les suivantes font partie de Pro."
     },
     "recurring": {
       "title": "Factures récurrentes",
@@ -1345,19 +1364,44 @@
       "model": "Voir le modèle",
       "pause": "Mettre en pause",
       "resume": "Reprendre",
-      "delete": "Supprimer"
+      "delete": "Supprimer",
+      "held": "En attente : la formule gratuite fait tourner {limit, plural, one {une seule facture récurrente} other {# factures récurrentes}}.",
+      "heldCurrency": "Facture en {currency} : sa récurrence tourne avec Pro, qui comprend la multidevise.",
+      "currencyPlan": "Une facture en devise étrangère se répète avec Pro, qui comprend la multidevise."
     },
     "plan": {
       "upgrade": "Passer à Pro",
       "free": "Gratuit",
       "pro": "Pro",
       "proplus": "Pro+",
-      "usage": "Formule {plan}{hasLimit, select, yes { : {invoices} factures sur {invoiceLimit} ce mois-ci, {contacts} contacts sur {contactLimit}} other {}}."
+      "usage": "{tier, select, free {Formule gratuite : {invoices, plural, one {# facture} other {# factures}} sur {invoiceLimit} ce mois-ci, {contacts, plural, one {# contact} other {# contacts}} sur {contactLimit}.} pro {Formule Pro.} other {Formule Pro+.}}",
+      "upgradePlus": "Passer à Pro+",
+      "locked": "Fonction Pro. Passez à Pro pour l'utiliser.",
+      "lockedPlus": "Fonction Pro+. Passez à Pro+ pour l'utiliser.",
+      "quota": {
+        "aiReads": "Pièces lues par l'IA : {used} sur {limit} ce mois-ci",
+        "assistant": "Questions à l'assistant : {used} sur {limit} ce mois-ci",
+        "reminders": "Relances : {used} sur {limit} ce mois-ci",
+        "bankImports": "Relevés bancaires importés : {used} sur {limit} ce mois-ci",
+        "recurring": "Factures récurrentes actives : {used} sur {limit}"
+      },
+      "used": {
+        "aiReads": "{plan, select, free {Vos {limit} lectures gratuites de ce mois sont utilisées.} other {Vos {limit} lectures de ce mois sont utilisées.}}",
+        "assistant": "{plan, select, free {Vous avez posé vos {limit} questions gratuites de ce mois.} other {Vous avez posé vos {limit} questions de ce mois.}}",
+        "reminders": "{plan, select, free {Vos {limit} relances gratuites de ce mois sont envoyées.} other {Vos {limit} relances de ce mois sont envoyées.}}",
+        "bankImports": "{limit, plural, one {Votre relevé gratuit de ce mois est importé.} other {Vos # relevés gratuits de ce mois sont importés.}}",
+        "recurring": "{limit, plural, one {La formule gratuite compte une facture récurrente active.} other {La formule gratuite compte # factures récurrentes actives.}} Mettez-en une en pause ou passez à Pro pour en ajouter.",
+        "invoices": "Vos {limit} factures gratuites de ce mois sont émises. Le brouillon reste enregistré."
+      }
     },
     "orgSwitch": {
       "label": "Entreprise",
       "switch": "Changer d'entreprise",
-      "client": "client"
+      "client": "client",
+      "goTo": "Passer dans {org}",
+      "documentElsewhere": "Cette pièce appartient à l'entreprise {org}. Passez-y pour l'ouvrir.",
+      "recordElsewhere": "Cette fiche appartient à l'entreprise {org}. Passez-y pour l'ouvrir.",
+      "pageElsewhere": "Cette page concerne l'entreprise {org}. Passez-y pour l'ouvrir."
     },
     "team": {
       "title": "Équipe",
@@ -1382,9 +1426,29 @@
       },
       "managerRole": "Tout, réglages compris",
       "noSeat": "sans place",
+      "moreSeats": "{tier, select, pro {Pro compte {pro} places et Pro+ en compte {plus}.} other {Pro+ compte {plus} places.}}",
       "save": "Enregistrer",
       "saved": "Rôle enregistré.",
-      "addHint": "Pour ajouter une personne, invitez-la dans votre organisation depuis le Compte Lead. Elle apparaît ici après sa première connexion.",
+      "addHint": "Seul l'administrateur de l'organisation ajoute de nouvelles personnes. Elles reçoivent un e-mail et arrivent directement dans InvoiceLead.",
+      "memberInvite": {
+        "title": "Ajouter une personne",
+        "hint": "Elle reçoit un e-mail d'invitation et arrive directement dans InvoiceLead une fois son accès activé.",
+        "name": "Nom",
+        "email": "Adresse e-mail",
+        "submit": "Inviter",
+        "sent": "Invitation envoyée à {email}.",
+        "resent": "Invitation renvoyée à {email}.",
+        "upgrade": "Passer à une formule avec plus de places",
+        "errors": {
+          "invalid": "Indiquez un nom et une adresse e-mail valide.",
+          "adminOnly": "Seul l'administrateur de l'organisation ajoute de nouvelles personnes.",
+          "seatLimit": "Toutes les places de votre formule sont prises.",
+          "alreadyMember": "Cette adresse a déjà un accès Lead, dans votre organisation ou dans une autre.",
+          "failed": "L'invitation n'a pas pu partir. Réessayez dans un instant.",
+          "notSent": "L'invitation est enregistrée, mais l'e-mail n'a pas pu partir. Réessayez : il sera renvoyé.",
+          "tooMany": "Trop d'invitations en une heure. Réessayez plus tard."
+        }
+      },
       "fiduciaryTitle": "Fiduciaire",
       "fiduciaryHint": "Votre fiduciaire accède gratuitement à la comptabilité (banque, justificatifs, journal, TVA, clôture) avec son propre Compte Lead. Elle voit les factures sans pouvoir les modifier.",
       "fiduciaryEmail": "Adresse e-mail de la fiduciaire",
@@ -1397,6 +1461,7 @@
       "removed": "Accès retiré.",
       "noFiduciary": "Aucune fiduciaire n'a accès pour l'instant.",
       "planOnly": "L'accès fiduciaire est compris dans les formules Pro et Pro+.",
+      "suspended": "Accès suspendu : l'accès fiduciaire fait partie de la formule Pro.",
       "managersOnly": "Seuls les responsables de l'entreprise modifient l'équipe.",
       "errors": {
         "invalid": "Adresse e-mail invalide.",
@@ -1417,7 +1482,8 @@
       "expired": "Ce lien d'invitation a expiré. Demandez-en un nouveau.",
       "wrongEmail": "Cette invitation a été envoyée à une autre adresse que {email}. Connectez-vous avec le bon Compte Lead.",
       "logout": "Changer de compte",
-      "accept": "Accepter l'invitation"
+      "accept": "Accepter l'invitation",
+      "plan": "Cette entreprise n'a plus la formule Pro, qui comprend l'accès fiduciaire. Demandez-lui de passer à Pro, puis rouvrez le lien."
     },
     "crmImport": {
       "title": "Lead gagné dans CRMlead",
@@ -1431,7 +1497,9 @@
       "forbidden": "Votre rôle ne permet pas de créer des factures.",
       "createQuote": "Créer le devis",
       "createInvoice": "Créer la facture",
-      "fromCrm": "Brouillon créé depuis CRMlead. Vérifiez-le, puis émettez-le."
+      "fromCrm": "Brouillon créé depuis CRMlead. Vérifiez-le, puis émettez-le.",
+      "switchHint": "Ce lead vient de votre CRMlead : créez la pièce dans une entreprise où vous facturez. Vous revenez ensuite sur cette page.",
+      "switchTo": "Passer dans {org}"
     },
     "feedback": {
       "title": "Donner mon avis",
@@ -1467,7 +1535,7 @@
     "apiSettings": {
       "title": "API et webhooks",
       "subtitle": "Reliez InvoiceLead à vos outils : l'API REST ({base}) crée contacts, devis, factures et paiements ; les webhooks préviennent vos outils quand une facture est émise ou payée.",
-      "plan": "L'API et les webhooks font partie de la formule Pro+.",
+      "plan": "L'API, le serveur MCP et les webhooks font partie de la formule Pro+.",
       "keys": {
         "title": "Clés d'API",
         "empty": "Aucune clé.",
@@ -1490,6 +1558,7 @@
         "disable": "Supprimer",
         "disabled": "Webhook supprimé.",
         "delivery": "{event} : {status} ({code}), {date}",
+        "noCode": "sans réponse",
         "status": {
           "pending": "en attente",
           "delivered": "livré",
@@ -1497,7 +1566,7 @@
         }
       },
       "errors": {
-        "plan": "L'API et les webhooks font partie de la formule Pro+.",
+        "plan": "L'API, le serveur MCP et les webhooks font partie de la formule Pro+.",
         "invalid": "Nom obligatoire (60 caractères au plus).",
         "tooMany": "Nombre maximal atteint.",
         "url": "Adresse invalide : https vers un serveur public, sans identifiants.",
@@ -1511,7 +1580,6 @@
       "autopilot": "Pilote automatique",
       "autopilotHint": "Comptabilise sans clic les paiements reconnus par leur référence, les mouvements couverts par une règle confirmée au moins trois fois et les propositions de l'IA sûres à 97 %. Un doublon possible ou un montant inhabituel attend toujours une personne.",
       "save": "Enregistrer",
-      "planOnly": "Le pilote automatique fait partie de la formule Pro, avec l'import bancaire.",
       "enabled": "Pilote automatique activé : {count, plural, =0 {rien à comptabiliser pour le moment} one {# mouvement comptabilisé} other {# mouvements comptabilisés}}.",
       "disabled": "Pilote automatique coupé. Les propositions attendent votre validation.",
       "approved": "{count, plural, =0 {Rien à approuver.} one {# écriture approuvée.} other {# écritures approuvées.}}",
@@ -1533,13 +1601,15 @@
       "openBank": "Voir dans Banque",
       "errors": {
         "closed": "Cette écriture est dans un exercice ou une période TVA fermés : elle ne peut plus être annulée.",
-        "notFound": "Écriture introuvable ou déjà traitée.",
-        "plan": "Le pilote automatique fait partie de la formule Pro."
+        "notFound": "Écriture introuvable ou déjà traitée."
       },
       "digest": {
         "subject": "InvoiceLead : votre comptabilité de la semaine, {company}",
         "body": "Bonjour,\n\nCette semaine, le pilote automatique a comptabilisé {auto, plural, =0 {aucun mouvement} one {# mouvement} other {# mouvements}} pour {company}.\n\nÀ approuver : {approve}\nÀ relire dans Banque : {review}\nPoints à regarder : {anomalies}\n\nTout voir et approuver en un clic : {link}\n\nInvoiceLead"
-      }
+      },
+      "digestTitle": "Récapitulatif par e-mail le lundi",
+      "digestHint": "Chaque lundi, les administrateurs reçoivent ce que le pilote a comptabilisé seul pendant la semaine et ce qui attend une personne.",
+      "digestPlan": "Le récapitulatif du lundi par e-mail fait partie de la formule Pro. Le pilote automatique, lui, est compris dans votre formule."
     },
     "bills": {
       "title": "Factures fournisseurs",
@@ -1640,9 +1710,11 @@
         "notFound": "Facture introuvable ou déjà traitée.",
         "none": "Aucune facture approuvée avec un IBAN à payer.",
         "noIban": "Saisissez d'abord l'IBAN de l'entreprise dans les réglages.",
-        "plan": "L'import des e-factures fait partie de la formule Pro."
+        "plan": "Saisir une facture en devise étrangère fait partie de la formule Pro."
       },
-      "claim": "Note de frais"
+      "claim": "Note de frais",
+      "currencyPlan": "Les autres devises font partie de la formule Pro.",
+      "approveCurrencyPlan": "Facture en {currency} : l'approuver et la comptabiliser au cours du jour fait partie de la multidevise, formule Pro."
     },
     "time": {
       "title": "Temps",
@@ -1717,8 +1789,7 @@
       "saved": "Justificatif enregistré.",
       "rejected": "La photo n'a pas pu être enregistrée (format, taille ou limite de la formule).",
       "recent": "Derniers justificatifs",
-      "all": "Tous les justificatifs",
-      "planOnly": "La lecture des justificatifs fait partie de la formule Pro."
+      "all": "Tous les justificatifs"
     },
     "assistant": {
       "title": "Assistant",
@@ -1744,10 +1815,10 @@
         "time": "Projets"
       },
       "errors": {
-        "plan": "L'assistant fait partie de la formule Pro.",
         "off": "L'assistant IA n'est pas encore configuré.",
         "empty": "Posez une question.",
-        "failed": "L'assistant n'a pas pu répondre. Réessayez dans un instant."
+        "failed": "L'assistant n'a pas pu répondre. Réessayez dans un instant.",
+        "quota": "Question non envoyée. Avec Pro, l'assistant répond sans limite."
       }
     },
     "expenses": {
@@ -1793,8 +1864,7 @@
         "size": "Justificatif trop volumineux (10 Mo au plus).",
         "duplicate": "Ce justificatif a déjà été envoyé.",
         "role": "Votre rôle ne permet pas de saisir des notes de frais.",
-        "invalid": "Saisie invalide.",
-        "quota": "Vous avez utilisé les 5 lectures de tickets du mois de la formule gratuite. Passez à Pro pour en lire 50 par mois, ou saisissez la dépense à la main."
+        "invalid": "Saisie invalide."
       },
       "scan": {
         "title": "Scanner un ticket",
@@ -1805,7 +1875,8 @@
         "read": "Ticket lu par l'IA. Vérifiez les champs ci-dessous, puis envoyez.",
         "unread": "Le ticket est joint, mais l'IA n'a pas pu le lire. Complétez les champs ci-dessous.",
         "currency": "Ticket en {currency} : indiquez le montant payé en {home}.",
-        "preview": "Ticket scanné"
+        "preview": "Ticket scanné",
+        "manual": "Vous pouvez saisir la dépense à la main ci-dessous."
       }
     },
     "cashflow": {
@@ -1877,6 +1948,11 @@
           "50 contacts",
           "QR-facture, documents en DE, FR, IT, EN",
           "Comptabilité alimentée par vos factures",
+          "20 pièces lues par l'IA chaque mois (tickets, justificatifs), e-factures reçues sans limite",
+          "Assistant : 10 questions par mois",
+          "Première relance à la main, 5 par mois",
+          "1 facture récurrente active",
+          "1 relevé bancaire par mois (un compte, un mois au plus), pilote automatique compris",
           "Mention « Créé avec InvoiceLead »"
         ]
       },
@@ -1886,10 +1962,12 @@
         "features": [
           "Factures et contacts illimités",
           "2 utilisateurs et accès fiduciaire gratuit",
-          "Relances automatiques sur 3 niveaux",
-          "Décompte TVA (effective et TDFN)",
-          "Import bancaire camt et lettrage",
-          "Factures récurrentes, multidevise"
+          "50 pièces lues par l'IA chaque mois",
+          "Assistant sans limite",
+          "Relances automatiques sur 3 niveaux, frais, intérêts et relances intelligentes",
+          "Déclarations de TVA : Suisse (effective et TDFN), UStVA, CA3, MTD et sales tax américaine",
+          "Import bancaire camt sans limite, récapitulatif du pilote le lundi",
+          "Factures récurrentes sans limite, multidevise"
         ]
       },
       "proPlus": {
@@ -1897,9 +1975,11 @@
         "tagline": "Pour les équipes et plusieurs sociétés",
         "features": [
           "5 utilisateurs avec rôles",
+          "300 pièces lues par l'IA chaque mois",
+          "API, serveur MCP et webhooks",
           "Jusqu'à 3 sociétés",
           "Connexion bancaire directe",
-          "eBill, API et webhooks",
+          "eBill",
           "Archivage conforme GeBüV",
           "Support prioritaire"
         ]
@@ -1916,11 +1996,11 @@
       },
       {
         "q": "Puis-je tenir toute ma comptabilité dans InvoiceLead ?",
-        "a": "C'est l'objectif : comptabilité en partie double sur le plan comptable PME, écritures créées par vos factures et paiements, bilan, compte de résultat et décompte TVA. Ces fonctions ouvrent progressivement."
+        "a": "Oui. Comptabilité en partie double sur le plan comptable PME, écritures créées par vos factures et paiements, bilan et compte de résultat, dès la formule gratuite. Le décompte TVA s'ajoute avec la formule Pro."
       },
       {
-        "q": "Quelles méthodes de TVA sont prévues ?",
-        "a": "La méthode effective et celle du taux de la dette fiscale nette, sur contre-prestations convenues ou reçues. Le décompte sera exporté au format XML eCH-0217, accepté par le portail de l'AFC."
+        "q": "Quelles déclarations de TVA sont prises en charge ?",
+        "a": "En Suisse : la méthode effective et celle du taux de la dette fiscale nette, sur contre-prestations convenues ou reçues. Le décompte s'exporte au format XML eCH-0217, accepté par le portail de l'AFC. Ailleurs : UStVA en Allemagne, CA3 en France, MTD au Royaume-Uni et sales tax aux États-Unis. Les déclarations de TVA font partie de la formule Pro."
       },
       {
         "q": "Qu'est-ce que le Compte Lead ?",
@@ -1928,7 +2008,7 @@
       },
       {
         "q": "Ma fiduciaire peut-elle accéder à ma comptabilité ?",
-        "a": "Oui, un accès fiduciaire gratuit est prévu dès la formule Pro."
+        "a": "Oui, dès la formule Pro, votre fiduciaire accède gratuitement à votre comptabilité."
       },
       {
         "q": "Où sont hébergées mes données ?",
@@ -1939,8 +2019,12 @@
         "a": "Oui, à tout moment, et pendant 30 jours après une résiliation. Vos livres doivent être conservés dix ans : l'export est prévu pour cela."
       },
       {
+        "q": "Que comprend la formule gratuite ?",
+        "a": "Chaque mois : 10 factures, 20 pièces lues par l'IA, 10 questions à l'assistant, 5 relances de premier niveau et 1 relevé bancaire (un compte, un mois au plus) avec le pilote automatique. Elle compte aussi 50 contacts et 1 facture récurrente active, et vous recevez les e-factures sans limite. Un seul utilisateur, et vos documents portent la mention « Créé avec InvoiceLead ». Les fonctions Pro et Pro+ restent visibles dans l'application, en gris avec la marque Pro ou Pro+, pour que vous sachiez qu'elles existent."
+      },
+      {
         "q": "Faut-il une carte bancaire pour commencer ?",
-        "a": "Non. La formule Gratuite ne demande aucune carte et n'a pas de limite de durée."
+        "a": "Non. La formule gratuite ne demande aucune carte et n'a pas de limite de durée."
       }
     ]
   },

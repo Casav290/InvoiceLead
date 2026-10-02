@@ -16,6 +16,7 @@ export function AppHeader({
   planCode,
   planName,
   apps,
+  upgrade = null,
 }: {
   locale: string;
   orgId: string;
@@ -25,6 +26,8 @@ export function AppHeader({
   planCode: string;
   planName: string;
   apps: LeadAppItem[];
+  /** « Passer à Pro » (ou à Pro+) dans le menu de la personne ; absent en Pro+. */
+  upgrade?: { href: string; label: string } | null;
 }) {
   const tPlans = useTranslations("app.user.plans");
   const planLabel = tPlans.has(planCode) ? tPlans(planCode) : planName;
@@ -54,7 +57,13 @@ export function AppHeader({
             </span>
           )}
           <AppSwitcher items={apps} />
-          <UserMenu name={user.name} email={user.email} planLabel={planLabel} locale={locale} />
+          <UserMenu
+            name={user.name}
+            email={user.email}
+            planLabel={planLabel}
+            locale={locale}
+            upgrade={upgrade}
+          />
         </div>
       </div>
     </header>

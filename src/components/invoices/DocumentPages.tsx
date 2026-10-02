@@ -12,6 +12,8 @@ import {
 } from "@/app/[locale]/app/invoices/actions";
 import { createRecurringAction } from "@/app/[locale]/app/invoices/recurring/actions";
 import { waiveChargesAction } from "@/app/[locale]/app/invoices/reminders/actions";
+import { type Lock, ProBadge, ProLock } from "@/components/app/ProLock";
+import { RecordElsewhere } from "@/components/app/RecordElsewhere";
 import { fieldClass } from "@/components/forms/fields";
 import { InvoiceDocument } from "@/components/invoices/InvoiceDocument";
 import { InvoiceForm } from "@/components/invoices/InvoiceForm";
@@ -30,9 +32,11 @@ import { emailConfigured } from "@/server/email";
 import { invoiceOptions } from "@/server/invoice-options";
 import { type DocumentKind, depositInvoices, getInvoice, listInvoices } from "@/server/invoices";
 import { invoiceBalance, listPayments, paymentState } from "@/server/payments";
-import { hasFeature } from "@/server/plans";
-import { addMonths } from "@/server/recurring";
+import { lockFor } from "@/server/plan-lock";
+import { featureAccess, type OrgPlan, PLANS, quotaAccess, tierOf } from "@/server/plans";
+import { addMonths, runningRecurringOfInvoice } from "@/server/recurring";
 import { listReminders } from "@/server/reminders";
+import { documentOrganization } from "@/server/team";
 
 /**
  * Pages partagées des factures et des devis : même liste, même formulaire, même aperçu. Seuls les
@@ -54,10 +58,27 @@ const ERRORS = [
   "closed",
   "planLimit",
   "recurring",
+  "recurringLimit",
+  "recurringCurrency",
   "percent",
   "tooHigh",
   "depositDraft",
+  "plan",
 ];
+
+/**
+ * Devise étrangère en formule gratuite : les autres devises sont proposées, grisées, avec la marque
+ * Pro ; le serveur refuse aussi une demande forgée.
+ */
+async function currencyLock(locale: string, organization: OrgPlan): Promise<Lock | null> {
+  const t = await getTranslations({ locale, namespace: "app.invoices" });
+  return lockFor(
+    locale,
+    organization,
+    featureAccess(organization, "multiCurrency"),
+    t("currencyPlan"),
+  );
+}
 
 /** Objet et message proposés, dans la langue de la pièce. */
 async function emailDefaults(
@@ -251,6 +272,7 @@ export async function NewDocumentPage({
           vatRegistered={organization.vatRegistered}
           country={organization.country}
           localRateBp={organization.salesTaxRateBp}
+          currencyLock={await currencyLock(locale, organization)}
           initial={{
             contactId: chosen?.id ?? "",
             language:
@@ -284,8 +306,24 @@ export async function DocumentDetailPage({
     from?: string;
   };
 }) {
-  const { organization } = await requireAppSession(locale);
+  const { organization, user } = await requireAppSession(locale);
   const found = await getInvoice(db(), organization.id, id);
+  if (!found) {
+    // Pièce d'une autre entreprise de la personne (lien de CRMlead ouvert pendant qu'elle travaille
+    // chez un client, ou l'inverse) : on propose d'y passer, et la même page revient ensuite. Rien de
+    // la pièce n'est montré avant le changement.
+    const owner = await documentOrganization(db(), user.id, id);
+    if (owner && owner.id !== organization.id)
+      return (
+        <RecordElsewhere
+          locale={locale}
+          organization={owner}
+          next={`/${locale}/app/${sectionOf(kind)}/${id}`}
+          message="documentElsewhere"
+          testId="document-elsewhere"
+        />
+      );
+  }
   if (found?.invoice.kind !== kind) notFound();
   const { invoice, lines, related } = found;
   const t = await getTranslations({ locale, namespace: "app.invoices" });
@@ -311,6 +349,136 @@ export async function DocumentDetailPage({
       <input type="hidden" name="id" value={invoice.id} />
       <input type="hidden" name="kind" value={kind} />
     </>
+  );
+  const tp = await getTranslations({ locale, namespace: "app.plan" });
+  // Brouillon en devise étrangère sans la multidevise (créé en Pro) : « Émettre » est grisé, le
+  // brouillon reste modifiable et s'émet une fois repassé dans la monnaie de l'entreprise.
+  const foreign = invoice.currency !== organization.currency && kind !== "credit_note";
+  const issueCurrencyLock =
+    draft && foreign
+      ? await lockFor(
+          locale,
+          organization,
+          featureAccess(organization, "multiCurrency"),
+          t("issueCurrencyPlan", { currency: invoice.currency, home: organization.currency }),
+        )
+      : null;
+  // Formule gratuite : 10 factures émises par mois ; au-delà, « Émettre » est grisé (le brouillon
+  // reste modifiable).
+  const issued =
+    draft && kind === "invoice" ? await quotaAccess(db(), organization, "invoices") : null;
+  const issueLock =
+    issueCurrencyLock ??
+    (issued
+      ? await lockFor(
+          locale,
+          organization,
+          issued,
+          tp("used.invoices", { limit: issued.limit, plan: issued.tier }),
+        )
+      : null);
+  // Devis en devise étrangère sans la multidevise : le facturer ou en tirer un acompte créerait
+  // une nouvelle facture en devise. Les deux commandes restent visibles, grisées.
+  const quoteLock =
+    kind === "quote" && foreign && ["issued", "accepted"].includes(invoice.status)
+      ? await lockFor(
+          locale,
+          organization,
+          featureAccess(organization, "multiCurrency"),
+          t("quoteCurrencyPlan", { currency: invoice.currency }),
+        )
+      : null;
+  const issueBox = (
+    <div className="flex flex-wrap items-center gap-3 border border-line-strong bg-panel px-5 py-4">
+      <form action={issueInvoiceAction}>
+        {hidden}
+        <Button type="submit" data-testid="document-issue">
+          {tk("issue")}
+        </Button>
+      </form>
+      <p className="flex-1 text-[13px] text-ink-muted">{tk("issueHint")}</p>
+    </div>
+  );
+  // Factures récurrentes : formule gratuite, une active ; au-delà, le panneau reste là, grisé.
+  const recurringSlots =
+    kind === "invoice" && !draft ? await quotaAccess(db(), organization, "recurring") : null;
+  // Facture en devise étrangère sans la multidevise : la répéter fait partie de la formule Pro.
+  const recurringCurrency =
+    recurringSlots && invoice.currency !== organization.currency
+      ? await lockFor(
+          locale,
+          organization,
+          featureAccess(organization, "multiCurrency"),
+          t("recurring.currencyPlan", { currency: invoice.currency }),
+        )
+      : null;
+  // Cette facture est déjà le modèle d'une récurrence qui tourne : le panneau le dit, sans verrou.
+  const model = recurringSlots
+    ? await runningRecurringOfInvoice(db(), organization, invoice.id)
+    : null;
+  const recurringLock = model
+    ? null
+    : (recurringCurrency ??
+      (recurringSlots
+        ? await lockFor(
+            locale,
+            organization,
+            recurringSlots,
+            tp("used.recurring", { limit: recurringSlots.limit, plan: recurringSlots.tier }),
+          )
+        : null));
+  const recurringForm = (
+    <form action={createRecurringAction} className="mt-3 grid gap-3 sm:grid-cols-3">
+      {hidden}
+      <label className="text-[12px] font-semibold">
+        {t("recurring.interval")}
+        <select name="intervalMonths" defaultValue="1" className={`${fieldClass} mt-1`}>
+          {[1, 3, 6, 12].map((m) => (
+            <option key={m} value={m}>
+              {t("recurring.every", { months: m })}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="text-[12px] font-semibold">
+        {t("recurring.next")}
+        <input
+          type="date"
+          name="nextDate"
+          required
+          defaultValue={addMonths(invoice.issueDate, 1)}
+          className={`${fieldClass} mt-1`}
+        />
+      </label>
+      <label className="flex items-start gap-2 self-end pb-2 text-[12px]">
+        <input type="checkbox" name="autoSend" className="mt-0.5 h-4 w-4 shrink-0 accent-accent" />
+        <span>{t("recurring.autoSend")}</span>
+      </label>
+      <div className="sm:col-span-3">
+        <Button type="submit" variant="secondary" size="sm" data-testid="recurring-create">
+          {t("recurring.create")}
+        </Button>
+      </div>
+    </form>
+  );
+  const depositForm = (
+    <form action={depositInvoiceAction} className="flex flex-wrap items-end gap-3 p-5">
+      {hidden}
+      <label className="block">
+        <span className="mb-1 block text-[13px] font-semibold">{t("deposit.percent")}</span>
+        <input
+          name="percent"
+          defaultValue="30"
+          inputMode="decimal"
+          required
+          className="h-10 w-24 border border-line-strong bg-panel px-3 text-[14px]"
+        />
+      </label>
+      <Button type="submit" variant="secondary" data-testid="deposit-create">
+        {t("deposit.create")}
+      </Button>
+      <p className="w-full text-[12px] text-ink-muted">{t("deposit.hint")}</p>
+    </form>
   );
   const tc = await getTranslations({ locale, namespace: "app.crmImport" });
   const notice = query.paid
@@ -358,7 +526,13 @@ export async function DocumentDetailPage({
           role="alert"
           className="mt-6 border border-hot-fg bg-hot-bg px-4 py-3 text-[13px] text-hot-fg"
         >
-          {t(`issueErrors.${query.error}`)}
+          {t(`issueErrors.${query.error}`, {
+            limit:
+              PLANS[tierOf(organization)].quotas[
+                query.error === "recurringLimit" ? "recurring" : "invoices"
+              ],
+            currency: invoice.currency,
+          })}
           {query.error === "companyIncomplete" ? (
             <>
               {" "}
@@ -382,15 +556,13 @@ export async function DocumentDetailPage({
       ) : null}
       {draft ? (
         <>
-          <div className="mt-6 flex flex-wrap items-center gap-3 border border-line-strong bg-panel px-5 py-4">
-            <form action={issueInvoiceAction}>
-              {hidden}
-              <Button type="submit" data-testid="document-issue">
-                {tk("issue")}
-              </Button>
-            </form>
-            <p className="flex-1 text-[13px] text-ink-muted">{tk("issueHint")}</p>
-          </div>
+          {issueLock ? (
+            <ProLock lock={issueLock} testId="issue-lock" className="mt-6">
+              {issueBox}
+            </ProLock>
+          ) : (
+            <div className="mt-6">{issueBox}</div>
+          )}
           <InvoiceForm
             locale={locale}
             kind={kind}
@@ -398,6 +570,8 @@ export async function DocumentDetailPage({
             vatRegistered={organization.vatRegistered}
             country={organization.country}
             localRateBp={organization.salesTaxRateBp}
+            currencyLock={await currencyLock(locale, organization)}
+            storedCurrency={invoice.currency}
             {...(await invoiceOptions(db(), organization.id))}
             initial={{
               contactId: invoice.contactId,
@@ -483,12 +657,27 @@ export async function DocumentDetailPage({
               </form>
             ) : null}
             {kind === "quote" && ["issued", "accepted"].includes(invoice.status) ? (
-              <form action={convertQuoteAction}>
-                {hidden}
-                <Button type="submit" data-testid="quote-convert">
-                  {tk("convert")}
-                </Button>
-              </form>
+              quoteLock ? (
+                <span className="inline-flex items-center gap-2">
+                  <Button
+                    type="button"
+                    disabled
+                    aria-disabled
+                    aria-describedby="quote-currency-lock-reason"
+                    data-testid="quote-convert"
+                  >
+                    {tk("convert")}
+                  </Button>
+                  {quoteLock.tier ? <ProBadge tier={quoteLock.tier} /> : null}
+                </span>
+              ) : (
+                <form action={convertQuoteAction}>
+                  {hidden}
+                  <Button type="submit" data-testid="quote-convert">
+                    {tk("convert")}
+                  </Button>
+                </form>
+              )
             ) : null}
             {kind === "quote" && ["issued", "declined"].includes(invoice.status) ? (
               <form action={quoteOutcomeAction}>
@@ -532,26 +721,16 @@ export async function DocumentDetailPage({
                   ))}
                 </ul>
               ) : null}
-              {["issued", "accepted"].includes(invoice.status) ? (
-                <form action={depositInvoiceAction} className="flex flex-wrap items-end gap-3 p-5">
-                  {hidden}
-                  <label className="block">
-                    <span className="mb-1 block text-[13px] font-semibold">
-                      {t("deposit.percent")}
-                    </span>
-                    <input
-                      name="percent"
-                      defaultValue="30"
-                      inputMode="decimal"
-                      required
-                      className="h-10 w-24 border border-line-strong bg-panel px-3 text-[14px]"
-                    />
-                  </label>
-                  <Button type="submit" variant="secondary" data-testid="deposit-create">
-                    {t("deposit.create")}
-                  </Button>
-                  <p className="w-full text-[12px] text-ink-muted">{t("deposit.hint")}</p>
-                </form>
+              {quoteLock ? (
+                <ProLock
+                  lock={quoteLock}
+                  testId="quote-currency-lock"
+                  className="border-x-0 border-b-0"
+                >
+                  {depositForm}
+                </ProLock>
+              ) : ["issued", "accepted"].includes(invoice.status) ? (
+                depositForm
               ) : null}
             </section>
           ) : null}
@@ -671,55 +850,44 @@ export async function DocumentDetailPage({
               ) : null}
             </section>
           ) : null}
-          {kind === "invoice" && hasFeature(organization, "recurring") ? (
+          {kind === "invoice" ? (
             <details
               className="mb-6 border border-line-strong bg-panel px-5 py-3"
               data-testid="recurring-panel"
             >
+              {/* Fermé d'office : grisé ou non, le panneau ne repousse pas l'aperçu de la pièce. */}
               <summary className="cursor-pointer text-[13px] font-semibold text-accent-dark">
                 {t("recurring.title")}
+                {recurringLock?.tier ? (
+                  <ProBadge tier={recurringLock.tier} className="ml-2 align-middle" />
+                ) : null}
               </summary>
-              <form action={createRecurringAction} className="mt-3 grid gap-3 sm:grid-cols-3">
-                {hidden}
-                <label className="text-[12px] font-semibold">
-                  {t("recurring.interval")}
-                  <select name="intervalMonths" defaultValue="1" className={`${fieldClass} mt-1`}>
-                    {[1, 3, 6, 12].map((m) => (
-                      <option key={m} value={m}>
-                        {t("recurring.every", { months: m })}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="text-[12px] font-semibold">
-                  {t("recurring.next")}
-                  <input
-                    type="date"
-                    name="nextDate"
-                    required
-                    defaultValue={addMonths(invoice.issueDate, 1)}
-                    className={`${fieldClass} mt-1`}
-                  />
-                </label>
-                <label className="flex items-start gap-2 self-end pb-2 text-[12px]">
-                  <input
-                    type="checkbox"
-                    name="autoSend"
-                    className="mt-0.5 h-4 w-4 shrink-0 accent-accent"
-                  />
-                  <span>{t("recurring.autoSend")}</span>
-                </label>
-                <div className="sm:col-span-3">
-                  <Button
-                    type="submit"
-                    variant="secondary"
-                    size="sm"
-                    data-testid="recurring-create"
+              {model ? (
+                <p className="mt-3 text-[13px] text-ink-2" data-testid="recurring-model">
+                  {t("recurring.already", { date: formatDate(model.nextDate) })}{" "}
+                  <Link
+                    href="/app/invoices/recurring"
+                    className="font-semibold text-accent-dark underline"
                   >
-                    {t("recurring.create")}
-                  </Button>
-                </div>
-              </form>
+                    {t("recurring.manage")}
+                  </Link>
+                </p>
+              ) : null}
+              {recurringLock ? (
+                <ProLock lock={recurringLock} testId="recurring-panel-lock" className="mt-3">
+                  <div className="px-3 pb-3">{recurringForm}</div>
+                </ProLock>
+              ) : model && recurringSlots && Number.isFinite(recurringSlots.limit) ? null : (
+                recurringForm
+              )}
+              {recurringSlots && Number.isFinite(recurringSlots.limit) ? (
+                <p className="mt-2 text-[12px] text-ink-muted" data-testid="recurring-panel-quota">
+                  {tp("quota.recurring", {
+                    used: recurringSlots.used,
+                    limit: recurringSlots.limit,
+                  })}
+                </p>
+              ) : null}
             </details>
           ) : null}
           {invoice.sourceQuoteId ? (

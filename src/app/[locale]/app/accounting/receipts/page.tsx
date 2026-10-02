@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { AccountingNav } from "@/components/accounting/AccountingNav";
-import { PlanNotice } from "@/components/app/PlanNotice";
+import { ProBadge, ProLock } from "@/components/app/ProLock";
 import { Button } from "@/components/ui/button";
 import { countryPack } from "@/countries";
 import { Link } from "@/i18n/navigation";
@@ -10,14 +10,21 @@ import { formatAmount } from "@/lib/money";
 import { aiConfigured } from "@/server/ai";
 import { requireAppSession } from "@/server/auth/guard";
 import { db } from "@/server/db";
-import { hasFeature, upgradeUrl } from "@/server/plans";
+import { lockFor } from "@/server/plan-lock";
+import { quotaAccess } from "@/server/plans";
 import { listReceipts } from "@/server/receipts";
 import { readReceiptAction, uploadReceiptsAction } from "../actions";
 import { billFromReceiptAction } from "../bills/actions";
 
 type Props = {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ added?: string; rejected?: string; error?: string }>;
+  searchParams: Promise<{
+    added?: string;
+    rejected?: string;
+    refused?: string;
+    error?: string;
+    quota?: string;
+  }>;
 };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -26,7 +33,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return { title: t("title"), robots: { index: false } };
 }
 
-const ERRORS = ["unreadable", "failed", "notFound", "plan"];
+const ERRORS = ["unreadable", "failed", "notFound", "quota"];
 
 export default async function ReceiptsPage({ params, searchParams }: Props) {
   const { locale } = await params;
@@ -34,8 +41,46 @@ export default async function ReceiptsPage({ params, searchParams }: Props) {
   const style = countryPack(organization.country).amounts;
   const q = await searchParams;
   const t = await getTranslations({ locale, namespace: "app.receipts" });
+  const tp = await getTranslations({ locale, namespace: "app.plan" });
   const rows = await listReceipts(db(), organization.id);
   const hidden = <input type="hidden" name="locale" value={locale} />;
+  // Lectures du mois par l'IA (tickets, justificatifs) : une fois utilisées, dépôt et relecture
+  // restent visibles mais grisés.
+  const reads = await quotaAccess(db(), organization, "aiReads");
+  const usedUp = tp("used.aiReads", { limit: reads.limit, plan: reads.tier });
+  const readLock = aiConfigured() ? await lockFor(locale, organization, reads, usedUp) : null;
+  const uploadForm = (
+    <form
+      action={uploadReceiptsAction}
+      className="flex flex-wrap items-end gap-3 border border-line-strong bg-panel px-5 py-4"
+    >
+      {hidden}
+      <div className="min-w-0 flex-1">
+        <label htmlFor="receipt-files" className="mb-1 block text-[13px] font-semibold">
+          {t("files")}
+        </label>
+        <input
+          id="receipt-files"
+          name="files"
+          type="file"
+          multiple
+          required
+          accept="application/pdf,image/jpeg,image/png,image/webp"
+          aria-describedby="receipt-files-hint"
+          className="block w-full text-[13px]"
+        />
+        <span id="receipt-files-hint" className="mt-1 block text-[12px] text-ink-muted">
+          {t("filesHint")}
+        </span>
+        <span className="mt-1 block text-[12px] text-ink-2" data-testid="receipts-quota">
+          {tp("quota.aiReads", { used: reads.used, limit: reads.limit })}
+        </span>
+      </div>
+      <Button type="submit" data-testid="receipts-upload">
+        {t("upload")}
+      </Button>
+    </form>
+  );
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-10 sm:px-8">
@@ -57,7 +102,11 @@ export default async function ReceiptsPage({ params, searchParams }: Props) {
           role="status"
           className="mt-6 border border-ok-fg bg-ok-bg px-4 py-3 text-[13px] text-ok-fg"
         >
-          {t("added", { count: Number(q.added) || 0, rejected: Number(q.rejected) || 0 })}
+          {t("added", {
+            count: Number(q.added) || 0,
+            rejected: Number(q.rejected) || 0,
+            quota: Number(q.refused) || 0,
+          })}
         </p>
       ) : null}
       {q.error && ERRORS.includes(q.error) ? (
@@ -65,7 +114,7 @@ export default async function ReceiptsPage({ params, searchParams }: Props) {
           role="alert"
           className="mt-6 border border-hot-fg bg-hot-bg px-4 py-3 text-[13px] text-hot-fg"
         >
-          {t(`errors.${q.error}`)}
+          {q.error === "quota" ? usedUp : t(`errors.${q.error}`)}
         </p>
       ) : null}
       {aiConfigured() ? null : (
@@ -74,36 +123,21 @@ export default async function ReceiptsPage({ params, searchParams }: Props) {
         </p>
       )}
 
-      {hasFeature(organization, "receipts") ? null : (
-        <PlanNotice locale={locale} message={t("planOnly")} href={upgradeUrl(organization)} />
+      {q.quota ? (
+        <p
+          role="alert"
+          className="mt-6 border border-hot-fg bg-hot-bg px-4 py-3 text-[13px] text-hot-fg"
+        >
+          {usedUp}
+        </p>
+      ) : null}
+      {readLock ? (
+        <ProLock lock={readLock} testId="receipts-lock" className="mt-6">
+          {uploadForm}
+        </ProLock>
+      ) : (
+        <div className="mt-6">{uploadForm}</div>
       )}
-      <form
-        action={uploadReceiptsAction}
-        className="mt-6 flex flex-wrap items-end gap-3 border border-line-strong bg-panel px-5 py-4"
-      >
-        {hidden}
-        <div className="min-w-0 flex-1">
-          <label htmlFor="receipt-files" className="mb-1 block text-[13px] font-semibold">
-            {t("files")}
-          </label>
-          <input
-            id="receipt-files"
-            name="files"
-            type="file"
-            multiple
-            required
-            accept="application/pdf,image/jpeg,image/png,image/webp"
-            aria-describedby="receipt-files-hint"
-            className="block w-full text-[13px]"
-          />
-          <span id="receipt-files-hint" className="mt-1 block text-[12px] text-ink-muted">
-            {t("filesHint")}
-          </span>
-        </div>
-        <Button type="submit" data-testid="receipts-upload">
-          {t("upload")}
-        </Button>
-      </form>
 
       {rows.length === 0 ? (
         <p className="mt-8 border border-line-strong bg-panel px-5 py-8 text-center text-[14px] text-ink-muted">
@@ -120,7 +154,12 @@ export default async function ReceiptsPage({ params, searchParams }: Props) {
                 data-testid="receipt-row"
               >
                 <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
-                  <span className="min-w-0 flex-1 font-semibold [overflow-wrap:anywhere]">
+                  {/* Au moins 10rem pour le nom : sur téléphone, montant et état passent dessous
+                      au lieu d'écraser le nom à une lettre par ligne. */}
+                  <span
+                    className="min-w-[min(100%,10rem)] flex-1 font-semibold [overflow-wrap:anywhere]"
+                    data-testid="receipt-supplier"
+                  >
                     {x?.supplier ?? r.filename}
                   </span>
                   {x?.totalCents ? (
@@ -171,12 +210,21 @@ export default async function ReceiptsPage({ params, searchParams }: Props) {
                   ) : null}
                   {(r.status === "new" || r.status === "error" || r.status === "read") &&
                   aiConfigured() ? (
-                    <form action={readReceiptAction}>
+                    <form action={readReceiptAction} className="inline-flex items-center gap-2">
                       {hidden}
                       <input type="hidden" name="id" value={r.id} />
-                      <Button type="submit" variant="ghost" size="sm">
+                      <Button
+                        type="submit"
+                        variant="ghost"
+                        size="sm"
+                        disabled={!!readLock}
+                        aria-disabled={readLock ? true : undefined}
+                        aria-describedby={readLock ? "receipts-lock-reason" : undefined}
+                        data-testid="receipt-read"
+                      >
                         {r.status === "new" ? t("read") : t("reread")}
                       </Button>
+                      {readLock?.tier ? <ProBadge tier={readLock.tier} /> : null}
                     </form>
                   ) : null}
                 </div>

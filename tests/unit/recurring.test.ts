@@ -97,12 +97,14 @@ describe("factures récurrentes", () => {
       issued: 0,
       sent: 0,
       failed: 0,
+      held: 0,
     });
     expect(await runRecurring(db, "2026-02-28", send)).toEqual({
       created: 1,
       issued: 1,
       sent: 1,
       failed: 0,
+      held: 0,
     });
     expect(send).toHaveBeenCalledOnce();
     const [after] = await db.select().from(recurringInvoices);

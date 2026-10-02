@@ -16,7 +16,6 @@ import {
 } from "./db/schema";
 import { LedgerError, reverseEntry } from "./ledger";
 import { deletePayment } from "./payments";
-import { hasFeature } from "./plans";
 
 type Who = { organizationId: string; userId: string };
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -208,14 +207,15 @@ export async function findAnomalies(
 
 /**
  * Pilote automatique : comptabilise sans clic les propositions sûres, sauf un mouvement signalé
- * comme anomalie (doublon possible, montant inhabituel), qui attend toujours une personne.
+ * comme anomalie (doublon possible, montant inhabituel), qui attend toujours une personne. Ouvert à
+ * toutes les formules : en formule gratuite, il travaille sur les lignes du relevé importé du mois.
  */
 export async function runAutopilot(database: Db, who: Who): Promise<number> {
   const [org] = await database
     .select()
     .from(organizations)
     .where(eq(organizations.id, who.organizationId));
-  if (!org?.autopilot || !hasFeature(org, "bankImport")) return 0;
+  if (!org?.autopilot) return 0;
   const flagged = new Set(
     (await findAnomalies(database, who.organizationId))
       .filter((a) => a.kind !== "missingReceipt")

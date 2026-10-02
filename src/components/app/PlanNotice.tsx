@@ -1,15 +1,22 @@
 import { getTranslations } from "next-intl/server";
+import { ProBadge } from "@/components/app/ProLock";
 import { Button } from "@/components/ui/button";
 
-/** Encart « réservé à Pro » : ce que la formule gratuite ne permet pas, et le lien pour passer à Pro. */
+/**
+ * Encart d'une page réservée à une formule : ce que la formule actuelle ne permet pas, la marque de
+ * la formule qui l'ouvre, et le lien pour y passer. Les commandes elles-mêmes restent visibles,
+ * grisées (ProLock).
+ */
 export async function PlanNotice({
   locale,
   message,
   href,
+  tier = "pro",
 }: {
   locale: string;
   message: string;
   href: string;
+  tier?: "pro" | "proplus";
 }) {
   const t = await getTranslations({ locale, namespace: "app.plan" });
   return (
@@ -17,10 +24,12 @@ export async function PlanNotice({
       className="mt-6 flex flex-wrap items-center gap-3 border border-accent bg-accent-veil px-5 py-4"
       data-testid="plan-notice"
     >
-      <p className="min-w-0 flex-1 text-[14px] text-ink">{message}</p>
+      <ProBadge tier={tier} />
+      {/* 16rem au moins pour le texte : sur téléphone, le bouton passe à la ligne. */}
+      <p className="min-w-[min(100%,16rem)] flex-1 text-[14px] text-ink">{message}</p>
       <Button asChild size="sm">
         <a href={href} rel="noopener">
-          {t("upgrade")}
+          {t(tier === "proplus" ? "upgradePlus" : "upgrade")}
         </a>
       </Button>
     </div>

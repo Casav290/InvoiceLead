@@ -13,6 +13,7 @@ import {
   type ReceiptExtraction,
   receipts,
 } from "./db/schema";
+import { consumeQuota, refundQuota } from "./plans";
 import { getFile, putFile } from "./storage";
 
 type Who = { organizationId: string; userId: string };
@@ -112,23 +113,31 @@ export async function readReceipt(
   who: Who,
   id: string,
   language: "de" | "fr" | "en",
-): Promise<"read" | "notFound" | "unreadable" | "failed"> {
+): Promise<"read" | ReadFailure> {
   const result = await extractReceipt(database, who, id, language);
   if (typeof result === "string") return result;
   await matchReceipts(database, who, language);
   return "read";
 }
 
+/** Lecture impossible : pièce introuvable, illisible, panne de l'IA, ou lectures du mois épuisées. */
+export type ReadFailure = "notFound" | "unreadable" | "failed" | "quota";
+
 /**
  * Lit un justificatif avec l'assistant (texte pour un PDF natif, image sinon) et garde ce qui a été
  * lu. Sans rapprochement bancaire : un ticket de note de frais a été payé de la poche de quelqu'un.
+ *
+ * Chaque lecture par l'IA compte dans les lectures du mois de la formule (Gratuit 20, Pro 50, Pro+
+ * 300), qu'elle vienne d'un ticket, de la boîte des justificatifs ou d'une relecture. L'unité est
+ * réservée juste avant l'appel à l'IA et rendue si l'IA ne répond pas.
  */
 export async function extractReceipt(
   database: Db,
   who: Who,
   id: string,
   language: "de" | "fr" | "en",
-): Promise<ReceiptExtraction | "notFound" | "unreadable" | "failed"> {
+  today = new Date().toISOString().slice(0, 10),
+): Promise<ReceiptExtraction | ReadFailure> {
   if (!UUID.test(id)) return "notFound";
   const [row] = await database
     .select()
@@ -139,12 +148,19 @@ export async function extractReceipt(
   const file = await getFile(database, who.organizationId, row.fileKey);
   if (!file) return "notFound";
   const [org] = await database
-    .select({ country: organizations.country })
+    .select({
+      id: organizations.id,
+      country: organizations.country,
+      leadPlan: organizations.leadPlan,
+      entitlements: organizations.entitlements,
+      entitlementsAt: organizations.entitlementsAt,
+    })
     .from(organizations)
     .where(eq(organizations.id, who.organizationId));
-  const germany = org?.country === "DE";
-  const france = org?.country === "FR";
-  const uk = org?.country === "GB";
+  if (!org) return "notFound";
+  const germany = org.country === "DE";
+  const france = org.country === "FR";
+  const uk = org.country === "GB";
   const chart = await database
     .select({
       number: accounts.number,
@@ -175,40 +191,49 @@ export async function extractReceipt(
     "confidence: your probability (0 to 1) that total, date and account are right.",
   ].join("\n");
 
-  let raw: unknown;
-  try {
-    if (file.contentType === "application/pdf") {
-      const text = await pdfText(file.bytes);
-      if (text.length < 20) {
-        await database.update(receipts).set({ status: "error" }).where(eq(receipts.id, id));
-        return "unreadable";
-      }
-      raw = await chatJson([
-        { role: "system", content: instructions },
-        { role: "user", content: text.slice(0, 12_000) },
-      ]);
-    } else {
-      raw = await chatJson(
-        [
-          { role: "system", content: instructions },
+  let messages: Parameters<typeof chatJson>[0];
+  const vision = file.contentType !== "application/pdf";
+  if (!vision) {
+    let text = "";
+    try {
+      text = await pdfText(file.bytes);
+    } catch (e) {
+      console.error("[receipt] PDF illisible", e instanceof Error ? e.message : "inconnu");
+    }
+    if (text.length < 20) {
+      await database.update(receipts).set({ status: "error" }).where(eq(receipts.id, id));
+      return "unreadable";
+    }
+    messages = [
+      { role: "system", content: instructions },
+      { role: "user", content: text.slice(0, 12_000) },
+    ];
+  } else {
+    messages = [
+      { role: "system", content: instructions },
+      {
+        role: "user",
+        content: [
+          { type: "text", text: "Read this receipt." },
           {
-            role: "user",
-            content: [
-              { type: "text", text: "Read this receipt." },
-              {
-                type: "image_url",
-                image_url: {
-                  url: `data:${file.contentType};base64,${file.bytes.toString("base64")}`,
-                },
-              },
-            ],
+            type: "image_url",
+            image_url: {
+              url: `data:${file.contentType};base64,${file.bytes.toString("base64")}`,
+            },
           },
         ],
-        { vision: true },
-      );
-    }
+      },
+    ];
+  }
+  // Lecture comptée avant l'appel ; refusée au-delà de l'allocation du mois. Réservation et
+  // remboursement tombent sur le même mois, même si l'IA répond après minuit.
+  if (!(await consumeQuota(database, org, "aiReads", today)).allowed) return "quota";
+  let raw: unknown;
+  try {
+    raw = await chatJson(messages, vision ? { vision: true } : undefined);
   } catch (e) {
     console.error("[receipt] lecture impossible", e instanceof Error ? e.message : "inconnu");
+    await refundQuota(database, org.id, "aiReads", today);
     await database.update(receipts).set({ status: "error" }).where(eq(receipts.id, id));
     return "failed";
   }

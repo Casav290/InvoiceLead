@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { AccountingNav } from "@/components/accounting/AccountingNav";
 import { YearPicker } from "@/components/accounting/YearPicker";
+import { recordElsewhere } from "@/components/app/RecordElsewhere";
 import { countryPack } from "@/countries";
 import { Link } from "@/i18n/navigation";
 import { accountName } from "@/lib/account-name";
@@ -26,15 +27,26 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function LedgerPage({ params, searchParams }: Props) {
   const { locale, accountId } = await params;
-  const { organization } = await requireAppSession(locale);
+  const { organization, user } = await requireAppSession(locale);
   const style = countryPack(organization.country).amounts;
   const q = await searchParams;
   const t = await getTranslations({ locale, namespace: "app.reports" });
   const years = await listFiscalYears(db(), organization.id);
   const year = years.find((y) => y.id === q.year) ?? years[0];
-  if (!year) notFound();
-  const ledger = await accountLedger(db(), organization.id, year.id, accountId);
-  if (!ledger) notFound();
+  const ledger = year ? await accountLedger(db(), organization.id, year.id, accountId) : null;
+  if (!year || !ledger) {
+    // Compte d'une autre entreprise de la personne : l'exercice de l'adresse est le sien, il ne suit pas.
+    const elsewhere = await recordElsewhere({
+      locale,
+      userId: user.id,
+      organizationId: organization.id,
+      kind: "account",
+      id: accountId,
+      next: `/${locale}/app/accounting/ledger/${accountId}`,
+    });
+    if (elsewhere) return elsewhere;
+    notFound();
+  }
   const { account, lines } = ledger;
   const th =
     "border-b border-line-strong bg-head px-3 py-2 text-[10.5px] font-extrabold tracking-[0.09em] text-ink-muted uppercase";

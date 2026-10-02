@@ -10,7 +10,7 @@ import { db } from "./db";
 import { type Invoice, type InvoiceLine, organizations } from "./db/schema";
 import { renderInvoicePdf } from "./invoice-pdf";
 import { organizationLogo } from "./logo";
-import { LIMITS, tierOf } from "./plans";
+import { poweredBy } from "./plans";
 
 export const kindNamespace = (kind: string) =>
   kind === "quote" ? "app.quotes" : kind === "credit_note" ? "app.creditNotes" : "app.invoices";
@@ -60,10 +60,14 @@ export async function buildDocumentPdf(
     ["hour", "day", "piece", "flat", "km", "month"].map((u) => [u, tu(u)]),
   );
   const [org] = await db()
-    .select({ leadPlan: organizations.leadPlan, entitlements: organizations.entitlements })
+    .select({
+      leadPlan: organizations.leadPlan,
+      entitlements: organizations.entitlements,
+      entitlementsAt: organizations.entitlementsAt,
+    })
     .from(organizations)
     .where(eq(organizations.id, invoice.organizationId));
-  const poweredBy = org && LIMITS[tierOf(org)].poweredBy ? t("poweredBy") : undefined;
+  const mention = org && poweredBy(org) ? t("poweredBy") : undefined;
   const country = invoice.sender?.country;
   // États-Unis : sales tax, pas de TVA, dans les libellés.
   const us = country === "US";
@@ -131,7 +135,7 @@ export async function buildDocumentPdf(
       relatedLine,
       hideDueDate: !!variant,
       deliveryNote: variant === "delivery" ? { received: t("deliveryReceived") } : undefined,
-      poweredBy,
+      poweredBy: mention,
       taxNote,
       scanToPay: t("scanToPay"),
       fxLine,

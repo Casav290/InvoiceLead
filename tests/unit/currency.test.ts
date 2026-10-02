@@ -103,12 +103,14 @@ describe("conversion", () => {
   });
 });
 
+/** Facture en EUR d'une entreprise suisse en formule Pro (la multidevise en fait partie). */
 async function euroInvoice(extra: Record<string, string> = {}) {
   const a = await attachLeadIdentity(db, claims());
   const who = { organizationId: a.organization.id, userId: a.user.id };
   await db
     .update(organizations)
     .set({
+      entitlements: { plan: { rank: 1 } },
       vatRegistered: true,
       vatMethod: "effective",
       vatSettlement: "agreed",

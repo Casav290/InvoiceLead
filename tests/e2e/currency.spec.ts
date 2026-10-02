@@ -20,6 +20,18 @@ test("devise : réservée à Pro, cours BCE figé à l'émission, différence de
   await page.goto("/fr/app/invoices/new");
   const free = page.getByTestId("invoice-form");
   await free.getByLabel("Client", { exact: true }).selectOption({ label: "Client SA" });
+  // Formule gratuite : les autres devises sont visibles, grisées, avec la marque Pro.
+  const eur = free.getByLabel("Devise").locator('option[value="EUR"]');
+  await expect(eur).toBeDisabled();
+  await expect(eur).toHaveText("EUR (Pro)");
+  await expect(free.getByTestId("currency-lock")).toContainText(
+    "Les autres devises font partie de la formule Pro.",
+  );
+  await expect(
+    free.getByTestId("currency-lock").getByRole("link", { name: "Passer à Pro" }),
+  ).toHaveAttribute("href", /^https:\/\//);
+  // Demande forgée (option réactivée dans la page) : le serveur refuse.
+  await eur.evaluate((o) => o.removeAttribute("disabled"));
   await free.getByLabel("Devise").selectOption("EUR");
   await page.getByTestId("invoice-line-0").getByLabel("Article").selectOption({ label: "Conseil" });
   await page.getByTestId("invoice-save").click();

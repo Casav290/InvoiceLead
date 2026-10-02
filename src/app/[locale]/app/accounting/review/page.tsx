@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { AccountingNav } from "@/components/accounting/AccountingNav";
-import { PlanNotice } from "@/components/app/PlanNotice";
+import { ProLock } from "@/components/app/ProLock";
+import { RecordElsewhere } from "@/components/app/RecordElsewhere";
 import { Button } from "@/components/ui/button";
 import { countryPack } from "@/countries";
 import { Link } from "@/i18n/navigation";
@@ -12,8 +13,10 @@ import { listAccounts } from "@/server/accounting";
 import { requireAppSession } from "@/server/auth/guard";
 import { findAnomalies, reviewQueue } from "@/server/autopilot";
 import { db } from "@/server/db";
-import { hasFeature, upgradeUrl } from "@/server/plans";
+import { lockFor } from "@/server/plan-lock";
+import { featureAccess } from "@/server/plans";
 import { can } from "@/server/roles";
+import { organizationAccess } from "@/server/team";
 import { approveReviewAction, autopilotAction, undoAutoAction } from "../actions";
 
 type Props = {
@@ -25,6 +28,8 @@ type Props = {
     approved?: string;
     undone?: string;
     error?: string;
+    /** Entreprise dont parle le lien (récapitulatif du lundi). */
+    org?: string;
   }>;
 };
 
@@ -40,8 +45,23 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
  */
 export default async function ReviewPage({ params, searchParams }: Props) {
   const { locale } = await params;
-  const { organization, membership } = await requireAppSession(locale);
+  const { organization, membership, user } = await requireAppSession(locale);
   const q = await searchParams;
+  // Lien du récapitulatif du lundi : il parle d'une entreprise précise. Session ouverte dans une autre
+  // de ses entreprises : proposer d'y passer, puis la même page. Une entreprise où la personne n'entre
+  // pas n'est ni nommée ni ouverte : la file de la session s'affiche.
+  if (q.org && q.org !== organization.id) {
+    const named = await organizationAccess(db(), user.id, q.org);
+    if (named)
+      return (
+        <RecordElsewhere
+          locale={locale}
+          organization={named}
+          next={`/${locale}/app/accounting/review?org=${named.id}`}
+          message="pageElsewhere"
+        />
+      );
+  }
   const t = await getTranslations({ locale, namespace: "app.review" });
   const style = countryPack(organization.country).amounts;
   const [queue, anomalies, chart] = await Promise.all([
@@ -50,7 +70,13 @@ export default async function ReviewPage({ params, searchParams }: Props) {
     listAccounts(db(), organization.id),
   ]);
   const accountLabel = new Map(chart.map((a) => [a.id, `${a.number} ${accountName(a, locale)}`]));
-  const allowed = hasFeature(organization, "bankImport");
+  // Le pilote est ouvert à toutes les formules ; son récapitulatif du lundi fait partie de Pro.
+  const digestLock = await lockFor(
+    locale,
+    organization,
+    featureAccess(organization, "autopilotDigest"),
+    t("digestPlan"),
+  );
   const canSetup = can(membership, "setup");
   const hidden = <input type="hidden" name="locale" value={locale} />;
   const notice = q.enabled
@@ -79,7 +105,7 @@ export default async function ReviewPage({ params, searchParams }: Props) {
           {notice}
         </p>
       ) : null}
-      {q.error === "closed" || q.error === "notFound" || q.error === "plan" ? (
+      {q.error === "closed" || q.error === "notFound" ? (
         <p
           role="alert"
           className="mt-6 border border-hot-fg bg-hot-bg px-4 py-3 text-[13px] text-hot-fg"
@@ -88,34 +114,48 @@ export default async function ReviewPage({ params, searchParams }: Props) {
         </p>
       ) : null}
 
-      {allowed ? (
-        <form
-          action={autopilotAction}
-          className={`${panel} mt-6 flex flex-wrap items-center gap-4 px-5 py-4`}
-          data-testid="autopilot-form"
-        >
-          {hidden}
-          <label className="flex min-w-0 flex-1 items-start gap-3">
-            <input
-              type="checkbox"
-              name="autopilot"
-              defaultChecked={organization.autopilot}
-              disabled={!canSetup}
-              className="mt-1 h-4 w-4 accent-accent"
-            />
+      <form
+        action={autopilotAction}
+        className={`${panel} mt-6 flex flex-wrap items-center gap-4 px-5 py-4`}
+        data-testid="autopilot-form"
+      >
+        {hidden}
+        <label className="flex min-w-0 flex-1 items-start gap-3">
+          <input
+            type="checkbox"
+            name="autopilot"
+            defaultChecked={organization.autopilot}
+            disabled={!canSetup}
+            className="mt-1 h-4 w-4 accent-accent"
+          />
+          <span>
+            <span className="block text-[14px] font-semibold">{t("autopilot")}</span>
+            <span className="block text-[12px] text-ink-muted">{t("autopilotHint")}</span>
+          </span>
+        </label>
+        {canSetup ? (
+          <Button type="submit" variant="secondary" size="sm" data-testid="autopilot-save">
+            {t("save")}
+          </Button>
+        ) : null}
+      </form>
+      {digestLock ? (
+        <ProLock lock={digestLock} testId="autopilot-digest-lock" className="border-t-0">
+          <label className="flex items-start gap-3 px-5 py-3">
+            <input type="checkbox" className="mt-1 h-4 w-4" />
             <span>
-              <span className="block text-[14px] font-semibold">{t("autopilot")}</span>
-              <span className="block text-[12px] text-ink-muted">{t("autopilotHint")}</span>
+              <span className="block text-[14px] font-semibold">{t("digestTitle")}</span>
+              <span className="block text-[12px]">{t("digestHint")}</span>
             </span>
           </label>
-          {canSetup ? (
-            <Button type="submit" variant="secondary" size="sm" data-testid="autopilot-save">
-              {t("save")}
-            </Button>
-          ) : null}
-        </form>
+        </ProLock>
       ) : (
-        <PlanNotice locale={locale} message={t("planOnly")} href={upgradeUrl(organization)} />
+        <p
+          className="border border-t-0 border-line-strong bg-panel px-5 py-3 text-[12px] text-ink-muted"
+          data-testid="autopilot-digest"
+        >
+          {t("digestHint")}
+        </p>
       )}
 
       <section className={`${panel} mt-6`} data-testid="review-queue">

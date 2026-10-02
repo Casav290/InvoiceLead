@@ -3,15 +3,20 @@ import { switchOrgAction } from "@/app/[locale]/app/org-actions";
 
 export type OrgItem = { id: string; name: string; role: string };
 
-/** Choix de l'entreprise, affiché seulement quand la personne en a plusieurs (fiduciaire). */
+/**
+ * Choix de l'entreprise, affiché seulement quand la personne en a plusieurs (fiduciaire). Avec `next`
+ * (écran « sans accès » arrivé d'une page demandée), le changement ramène sur cette page.
+ */
 export function OrgSwitcher({
   locale,
   current,
   orgs,
+  next,
 }: {
   locale: string;
   current: { id: string; name: string };
   orgs: OrgItem[];
+  next?: string;
 }) {
   const t = useTranslations("app.orgSwitch");
   return (
@@ -33,6 +38,7 @@ export function OrgSwitcher({
           <form key={o.id} action={switchOrgAction}>
             <input type="hidden" name="locale" value={locale} />
             <input type="hidden" name="organizationId" value={o.id} />
+            {next ? <input type="hidden" name="next" value={next} /> : null}
             <button
               type="submit"
               disabled={o.id === current.id}

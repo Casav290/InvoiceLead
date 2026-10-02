@@ -10,6 +10,8 @@ test("interface en anglais et entreprise britannique : facture en livres à 20 %
     email: `gb-${run}@studio.test`,
     org: `org-gb-${run}`,
     org_name: "Harper Studio Ltd",
+    // Le décompte de TVA (montants calculés) fait partie de la formule Pro.
+    plan: "pro",
   });
 
   await page.goto("/en/app/settings/company");
@@ -59,6 +61,7 @@ test("interface en anglais et entreprise britannique : facture en livres à 20 %
   await expect(page.locator("body")).toContainText("Trade debtors");
   await page.goto("/en/app/settings/fiscal-years");
   await page.getByTestId("fiscal-year-first").click();
+  await expect(page).toHaveURL(/opened=1/);
   await page.goto("/en/app/accounting");
   await page.getByTestId("post-pending").click();
   const journal = page.getByTestId("journal");

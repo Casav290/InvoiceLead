@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { AccountForm } from "@/components/accounting/AccountForm";
+import { recordElsewhere } from "@/components/app/RecordElsewhere";
 import { SettingsNav } from "@/components/settings/SettingsNav";
 import { accountName } from "@/lib/account-name";
 import { getAccount } from "@/server/accounting";
@@ -23,7 +24,18 @@ export default async function AccountPage({ params }: Props) {
   if (!(await canSetUpAccounting(db(), organization.id, user.id)))
     redirect(`/${locale}/app/settings/accounts`);
   const account = await getAccount(db(), organization.id, id);
-  if (!account) notFound();
+  if (!account) {
+    const elsewhere = await recordElsewhere({
+      locale,
+      userId: user.id,
+      organizationId: organization.id,
+      kind: "account",
+      id,
+      next: `/${locale}/app/settings/accounts/${id}`,
+    });
+    if (elsewhere) return elsewhere;
+    notFound();
+  }
   return (
     <div className="mx-auto max-w-3xl px-4 py-10 sm:px-8">
       <SettingsNav />

@@ -7,7 +7,7 @@ import { requireAppSession } from "@/server/auth/guard";
 import { pickLocale } from "@/server/auth/login-cookie";
 import { db } from "@/server/db";
 import { createClaim, deleteClaim, parseClaimForm, scannedTicket } from "@/server/expenses";
-import { limitReached } from "@/server/plans";
+import { quotaAccess } from "@/server/plans";
 import { extractReceipt, uploadReceipt } from "@/server/receipts";
 import { appRoleOf } from "@/server/roles";
 
@@ -25,13 +25,14 @@ async function guard(form: FormData) {
 
 /**
  * « Scanner un ticket » : la photo est gardée comme justificatif, lue par l'IA, et la note de frais
- * s'ouvre remplie (date, objet, montant, TVA, catégorie). La personne vérifie et envoie.
+ * s'ouvre remplie (date, objet, montant, TVA, catégorie). La personne vérifie et envoie. Chaque
+ * ticket lu compte dans les lectures du mois de la formule (Gratuit 20, Pro 50, Pro+ 300).
  */
 export async function scanTicketAction(form: FormData) {
   const { locale, session, who } = await guard(form);
   const file = form.get("ticket");
   if (!(file instanceof File) || file.size === 0) redirect(`/${locale}/app/expenses?error=type`);
-  if (await limitReached(db(), session.organization, "receipt"))
+  if (!(await quotaAccess(db(), session.organization, "aiReads")).allowed)
     redirect(`/${locale}/app/expenses?error=quota`);
   const receipt = await uploadReceipt(db(), who, {
     name: file.name,
@@ -40,9 +41,9 @@ export async function scanTicketAction(form: FormData) {
   });
   if (typeof receipt === "string") redirect(`/${locale}/app/expenses?error=${receipt}`);
   const read = aiConfigured() ? await extractReceipt(db(), who, receipt.id, locale) : "failed";
-  redirect(
-    `/${locale}/app/expenses?scan=${receipt.id}${typeof read === "string" ? "&unread=1" : ""}#ticket`,
-  );
+  // Lectures épuisées entre-temps (autre onglet) : le ticket est gardé, la note se remplit à la main.
+  const unread = read === "quota" ? "&error=quota" : typeof read === "string" ? "&unread=1" : "";
+  redirect(`/${locale}/app/expenses?scan=${receipt.id}${unread}#ticket`);
 }
 
 export async function createClaimAction(form: FormData) {

@@ -4,6 +4,7 @@ import { isUsState, isValidZip } from "@/countries/us/tax";
 import { normalizeVatId } from "@/countries/vat-ids";
 import type { Db } from "./db";
 import { auditLog, type Contact, contacts } from "./db/schema";
+import { lockQuota, organizationPlan, quotaAccess } from "./plans";
 
 export const CONTACT_KINDS = ["company", "person"] as const;
 export const DOCUMENT_LANGUAGES = ["de", "fr", "it", "en"] as const;
@@ -162,25 +163,52 @@ export async function getContact(
   return row ?? null;
 }
 
+async function insertContact(
+  tx: Db,
+  who: { organizationId: string; userId: string },
+  data: ContactInput,
+): Promise<Contact> {
+  const [row] = await tx
+    .insert(contacts)
+    .values({ ...data, organizationId: who.organizationId })
+    .returning();
+  if (!row) throw new Error("contact_not_saved");
+  await tx.insert(auditLog).values({
+    organizationId: who.organizationId,
+    userId: who.userId,
+    action: "contact.create",
+    entity: "contact",
+    entityId: row.id,
+  });
+  return row;
+}
+
+/** Crée un contact sans regarder la formule (données reprises, jeux d'essai). */
 export async function createContact(
   database: Db,
   who: { organizationId: string; userId: string },
   data: ContactInput,
 ): Promise<Contact> {
+  return database.transaction((tx) => insertContact(tx as unknown as Db, who, data));
+}
+
+/**
+ * Nouveau contact dans la limite de la formule (gratuite : 50 contacts actifs), compté puis créé
+ * sous un verrou de l'entreprise : deux créations simultanées ne dépassent pas la limite. Le
+ * formulaire, l'API, le serveur MCP et l'import depuis CRMlead passent tous par ici.
+ */
+export async function createContactWithinPlan(
+  database: Db,
+  who: { organizationId: string; userId: string },
+  data: ContactInput,
+): Promise<Contact | "planLimit"> {
+  const plan = await organizationPlan(database, who.organizationId);
+  if (!plan) return "planLimit";
   return database.transaction(async (tx) => {
-    const [row] = await tx
-      .insert(contacts)
-      .values({ ...data, organizationId: who.organizationId })
-      .returning();
-    if (!row) throw new Error("contact_not_saved");
-    await tx.insert(auditLog).values({
-      organizationId: who.organizationId,
-      userId: who.userId,
-      action: "contact.create",
-      entity: "contact",
-      entityId: row.id,
-    });
-    return row;
+    const t = tx as unknown as Db;
+    await lockQuota(t, who.organizationId, "contacts");
+    if (!(await quotaAccess(t, plan, "contacts")).allowed) return "planLimit" as const;
+    return insertContact(t, who, data);
   });
 }
 

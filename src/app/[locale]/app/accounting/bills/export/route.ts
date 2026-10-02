@@ -8,7 +8,11 @@ export const dynamic = "force-dynamic";
 /** Produit le fichier pain.001 des factures approuvées et le télécharge. */
 export async function POST(request: Request, { params }: { params: Promise<{ locale: string }> }) {
   const locale = pickLocale((await params).locale);
-  const session = await requirePermission(locale, "accounting");
+  // Session expirée : retour, après la reconnexion, sur la page des factures d'où part l'export
+  // (cette adresse n'existe qu'en POST).
+  const session = await requirePermission(locale, "accounting", {
+    next: `/${locale}/app/accounting/bills`,
+  });
   const form = await request.formData();
   const ids = form.getAll("id").map(String);
   const result = await exportPayments(

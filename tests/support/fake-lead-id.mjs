@@ -6,9 +6,20 @@
  *   node tests/support/fake-lead-id.mjs            (port 4010)
  *   POST /test/next-user  {sub,email,name,org,org_name,org_role,access,plan,status}  choisit la prochaine personne
  *   POST /resend/emails   imite l'API d'envoi de Resend (clé « re_test ») ; GET /test/emails les relit
+ *   POST /api/lead-id/v1/members/invite  invitation dans l'organisation ; GET /test/member-invites les relit
+ *     (comme le Compte Lead : jeton d'identité de l'administrateur dans X-Lead-Id-Token, sinon 403)
  *   POST /ai/chat/completions  faux assistant comptable : chaque sortie d'argent va en frais bancaires
+ *   POST /oauth/token (refresh_token)  le jeton de rafraîchissement tourne, comme au Compte Lead (un jeton
+ *     déjà tourné ou révoqué : invalid_grant) ; POST /test/revoke-refresh {sub} révoque tous ceux d'une
+ *     personne (mot de passe réinitialisé, déconnexion de partout), GET /test/refreshes compte les échanges
  */
-import { createHash, createSign, generateKeyPairSync, randomBytes } from "node:crypto";
+import {
+  createHash,
+  createSign,
+  createVerify,
+  generateKeyPairSync,
+  randomBytes,
+} from "node:crypto";
 import { createServer } from "node:http";
 
 const PORT = Number(process.env.FAKE_LEAD_ID_PORT ?? 4010);
@@ -33,7 +44,13 @@ const defaultUser = {
 };
 let nextUser = { ...defaultUser };
 const codes = new Map();
+/** Jetons de rafraîchissement valables : jeton → personne (claims de sa connexion). */
+const refreshTokens = new Map();
+let refreshes = 0;
 const logouts = [];
+const memberInvites = [];
+const memberResends = [];
+const MEMBERS_TOKEN = "members-token";
 
 const b64url = (v) =>
   Buffer.from(typeof v === "string" ? v : JSON.stringify(v)).toString("base64url");
@@ -46,6 +63,92 @@ function jwt(claims) {
     .sign(privateKey)
     .toString("base64url");
   return `${head}.${body}.${sig}`;
+}
+
+function idTokenFor(u, nonce) {
+  const now = Math.floor(Date.now() / 1000);
+  return jwt({
+    iss: ISSUER,
+    aud: CLIENT_ID,
+    sub: u.sub,
+    iat: now,
+    exp: now + 600,
+    auth_time: now,
+    ...(nonce ? { nonce } : {}),
+    email: u.email,
+    email_verified: true,
+    name: u.name,
+    locale: "fr",
+    zoneinfo: "Europe/Zurich",
+    org: u.org,
+    org_name: u.org_name,
+    org_role: u.org_role,
+    lead: {
+      plan:
+        u.plan === "proplus"
+          ? { code: "pro_plus", name: "Pro+", rank: 2, seats: 5 }
+          : u.plan === "pro"
+            ? { code: "pro", name: "Pro", rank: 1, seats: 2 }
+            : { code: "free", name: "Gratuit", rank: 0, seats: 1 },
+      apps: {
+        scanlead: {
+          access: true,
+          name: "Scanlead",
+          url: "https://scanlead.io",
+          status: "live",
+          upgrade_url: "https://scanlead.io/billing",
+        },
+        crmlead: {
+          access: true,
+          name: "CRMlead",
+          url: "https://crmlead.io",
+          status: "live",
+          upgrade_url: "https://scanlead.io/billing",
+        },
+        projectlead: {
+          access: true,
+          name: "ProjectLead",
+          url: null,
+          status: "soon",
+          upgrade_url: null,
+        },
+        invoicelead: {
+          access: u.access,
+          name: "InvoiceLead",
+          url: "http://localhost:3100",
+          status: u.status ?? "live",
+          upgrade_url: "https://scanlead.io/billing",
+        },
+      },
+      subscriptions: [],
+    },
+  });
+}
+
+/**
+ * Preuve que l'administrateur agit (membres) : son jeton d'identité, signé ici, émis pour cette
+ * application, de moins de douze heures, au nom de `inviter` dans `org`. Même règle que le Compte Lead.
+ */
+function inviterProven(req, body) {
+  const token = req.headers["x-lead-id-token"];
+  if (typeof token !== "string") return false;
+  const [head, payload, sig] = token.split(".");
+  if (!head || !payload || !sig) return false;
+  const signed = createVerify("RSA-SHA256")
+    .update(`${head}.${payload}`)
+    .verify(publicKey, Buffer.from(sig, "base64url"));
+  if (!signed) return false;
+  const c = JSON.parse(Buffer.from(payload, "base64url").toString("utf8"));
+  const aud = Array.isArray(c.aud) ? c.aud : [c.aud];
+  const age = Math.floor(Date.now() / 1000) - Number(c.iat);
+  return (
+    c.iss === ISSUER &&
+    aud.includes(CLIENT_ID) &&
+    age >= -60 &&
+    age <= 12 * 3600 &&
+    c.sub === body.inviter &&
+    c.org === body.org
+  );
 }
 
 function send(res, status, body, headers = {}) {
@@ -101,6 +204,34 @@ createServer(async (req, res) => {
       return send(res, 401, { error: "invalid_client" });
     }
     const form = new URLSearchParams(await readBody(req));
+    // Jeton d'application (portée « members » : invitations dans l'organisation).
+    if (form.get("grant_type") === "client_credentials") {
+      if (!(form.get("scope") ?? "").split(" ").includes("members"))
+        return send(res, 400, { error: "invalid_scope" });
+      return send(res, 200, {
+        access_token: MEMBERS_TOKEN,
+        token_type: "Bearer",
+        expires_in: 600,
+        scope: "members",
+      });
+    }
+    if (form.get("grant_type") === "refresh_token") {
+      const token = form.get("refresh_token") ?? "";
+      const u = refreshTokens.get(token);
+      refreshTokens.delete(token);
+      refreshes += 1;
+      if (!u) return send(res, 400, { error: "invalid_grant" });
+      const next = randomBytes(16).toString("hex");
+      refreshTokens.set(next, u);
+      return send(res, 200, {
+        access_token: randomBytes(16).toString("hex"),
+        id_token: idTokenFor(u, null),
+        refresh_token: next,
+        expires_in: 600,
+        scope: "openid email profile lead offline_access",
+        token_type: "Bearer",
+      });
+    }
     const entry = codes.get(form.get("code"));
     codes.delete(form.get("code"));
     if (!entry || Date.now() - entry.at > 120_000)
@@ -112,68 +243,13 @@ createServer(async (req, res) => {
       .digest("base64url");
     if (challenge !== entry.challenge) return send(res, 400, { error: "invalid_grant" });
 
-    const u = entry.user;
-    const now = Math.floor(Date.now() / 1000);
-    const idToken = jwt({
-      iss: ISSUER,
-      aud: CLIENT_ID,
-      sub: u.sub,
-      iat: now,
-      exp: now + 600,
-      auth_time: now,
-      nonce: entry.nonce,
-      email: u.email,
-      email_verified: true,
-      name: u.name,
-      locale: "fr",
-      zoneinfo: "Europe/Zurich",
-      org: u.org,
-      org_name: u.org_name,
-      org_role: u.org_role,
-      lead: {
-        plan:
-          u.plan === "proplus"
-            ? { code: "pro_plus", name: "Pro+", rank: 2, seats: 5 }
-            : u.plan === "pro"
-              ? { code: "pro", name: "Pro", rank: 1, seats: 2 }
-              : { code: "free", name: "Gratuit", rank: 0, seats: 1 },
-        apps: {
-          scanlead: {
-            access: true,
-            name: "Scanlead",
-            url: "https://scanlead.io",
-            status: "live",
-            upgrade_url: "https://scanlead.io/billing",
-          },
-          crmlead: {
-            access: true,
-            name: "CRMlead",
-            url: "https://crmlead.io",
-            status: "live",
-            upgrade_url: "https://scanlead.io/billing",
-          },
-          projectlead: {
-            access: true,
-            name: "ProjectLead",
-            url: null,
-            status: "soon",
-            upgrade_url: null,
-          },
-          invoicelead: {
-            access: u.access,
-            name: "InvoiceLead",
-            url: "http://localhost:3100",
-            status: u.status ?? "live",
-            upgrade_url: "https://scanlead.io/billing",
-          },
-        },
-        subscriptions: [],
-      },
-    });
+    const idToken = idTokenFor(entry.user, entry.nonce);
+    const refreshToken = randomBytes(16).toString("hex");
+    refreshTokens.set(refreshToken, entry.user);
     return send(res, 200, {
       access_token: randomBytes(16).toString("hex"),
       id_token: idToken,
-      refresh_token: randomBytes(16).toString("hex"),
+      refresh_token: refreshToken,
       expires_in: 600,
       scope: "openid email profile lead offline_access",
       token_type: "Bearer",
@@ -185,6 +261,47 @@ createServer(async (req, res) => {
     res.writeHead(302, { Location: q.get("post_logout_redirect_uri") ?? "/" });
     return res.end();
   }
+
+  // Invitation d'une personne dans l'organisation (mêmes réponses que le Compte Lead) : places pleines
+  // si l'adresse commence par « plein », compte actif si elle commence par « actif », invitation
+  // renvoyée si elle a déjà été invitée.
+  if (url.pathname === "/api/lead-id/v1/members/invite" && req.method === "POST") {
+    if (req.headers.authorization !== `Bearer ${MEMBERS_TOKEN}`)
+      return send(res, 401, { error: "invalid_token" });
+    const body = JSON.parse((await readBody(req)) || "{}");
+    if (!inviterProven(req, body)) return send(res, 403, { error: "inviter_proof" });
+    if (String(body.email).startsWith("plein"))
+      return send(res, 402, { error: "seat_limit", max: 5 });
+    if (String(body.email).startsWith("actif"))
+      return send(res, 409, { error: "already_member", id: "usr_actif", active: true });
+    const known = memberInvites.findIndex((i) => i.email === body.email && i.org === body.org);
+    if (known >= 0)
+      return send(res, 409, { error: "already_member", id: `usr_${known + 1}`, active: false });
+    memberInvites.push(body);
+    return send(res, 201, {
+      id: `usr_${memberInvites.length}`,
+      email: body.email,
+      emailSent: true,
+    });
+  }
+  const resend = /^\/api\/lead-id\/v1\/members\/([^/]+)\/invite$/.exec(url.pathname);
+  if (resend && req.method === "POST") {
+    if (req.headers.authorization !== `Bearer ${MEMBERS_TOKEN}`)
+      return send(res, 401, { error: "invalid_token" });
+    const body = JSON.parse((await readBody(req)) || "{}");
+    if (!inviterProven(req, body)) return send(res, 403, { error: "inviter_proof" });
+    memberResends.push({ id: decodeURIComponent(resend[1]), ...body });
+    return send(res, 200, { ok: true });
+  }
+  if (url.pathname === "/test/member-invites")
+    return send(res, 200, { invites: memberInvites, resends: memberResends });
+
+  if (url.pathname === "/test/revoke-refresh" && req.method === "POST") {
+    const { sub } = JSON.parse((await readBody(req)) || "{}");
+    for (const [token, u] of refreshTokens) if (u.sub === sub) refreshTokens.delete(token);
+    return send(res, 200, { ok: true });
+  }
+  if (url.pathname === "/test/refreshes") return send(res, 200, { refreshes });
 
   if (url.pathname === "/test/next-user" && req.method === "POST") {
     nextUser = { ...defaultUser, ...JSON.parse((await readBody(req)) || "{}") };

@@ -4,8 +4,10 @@ import { isIP } from "node:net";
 import { and, asc, desc, eq, inArray, isNull, lte } from "drizzle-orm";
 import { decrypt, encrypt, randomToken } from "./auth/crypto";
 import type { Db } from "./db";
-import { auditLog, webhookDeliveries, webhookEndpoints } from "./db/schema";
+import { anyUuid } from "./db/any";
+import { auditLog, organizations, webhookDeliveries, webhookEndpoints } from "./db/schema";
 import { env } from "./env";
+import { featureAccess, organizationPlan } from "./plans";
 
 type Who = { organizationId: string; userId: string };
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -172,6 +174,9 @@ export async function emitEvent(
   event: WebhookEvent,
   data: Record<string, unknown>,
 ): Promise<number> {
+  // Webhooks : formule Pro+. Les adresses d'une entreprise revenue en dessous restent enregistrées.
+  const plan = await organizationPlan(database, organizationId);
+  if (!plan || !featureAccess(plan, "api").allowed) return 0;
   const endpoints = await database
     .select({ id: webhookEndpoints.id, events: webhookEndpoints.events })
     .from(webhookEndpoints)
@@ -210,28 +215,47 @@ async function resolvesPublic(url: URL): Promise<boolean> {
   }
 }
 
-/** Envoie les événements en attente (d'une entreprise, ou tous), au plus `limit` à la fois. */
+/**
+ * Envoie les événements en attente (d'une entreprise, ou tous), au plus `limit` à la fois.
+ *
+ * Entreprise sortie de Pro+ : ses livraisons attendent telles quelles, sans tentative comptée, et
+ * repartent au premier passage après son retour à Pro+. Elles sont écartées de la requête
+ * elle-même : sinon les plus anciennes occuperaient toute la fenêtre de la tâche quotidienne, et les
+ * reprises des entreprises encore en Pro+ ne partiraient plus.
+ */
 export async function deliverPending(
   database: Db,
   options: { organizationId?: string; now?: Date; limit?: number; fetcher?: typeof fetch } = {},
 ): Promise<{ delivered: number; failed: number }> {
   const now = options.now ?? new Date();
   const fetcher = options.fetcher ?? fetch;
+  const waiting = and(
+    eq(webhookDeliveries.status, "pending"),
+    lte(webhookDeliveries.nextAttemptAt, now),
+    isNull(webhookEndpoints.disabledAt),
+    ...(options.organizationId
+      ? [eq(webhookDeliveries.organizationId, options.organizationId)]
+      : []),
+  );
+  const plans = await database
+    .selectDistinct({
+      id: organizations.id,
+      leadPlan: organizations.leadPlan,
+      entitlements: organizations.entitlements,
+      entitlementsAt: organizations.entitlementsAt,
+    })
+    .from(webhookDeliveries)
+    .innerJoin(webhookEndpoints, eq(webhookEndpoints.id, webhookDeliveries.endpointId))
+    .innerJoin(organizations, eq(organizations.id, webhookDeliveries.organizationId))
+    .where(waiting);
+  const allowed = plans.filter((p) => featureAccess(p, "api").allowed).map((p) => p.id);
+  if (allowed.length === 0) return { delivered: 0, failed: 0 };
   const rows = await database
     .select({ delivery: webhookDeliveries, endpoint: webhookEndpoints })
     .from(webhookDeliveries)
     .innerJoin(webhookEndpoints, eq(webhookEndpoints.id, webhookDeliveries.endpointId))
-    .where(
-      and(
-        eq(webhookDeliveries.status, "pending"),
-        lte(webhookDeliveries.nextAttemptAt, now),
-        isNull(webhookEndpoints.disabledAt),
-        ...(options.organizationId
-          ? [eq(webhookDeliveries.organizationId, options.organizationId)]
-          : []),
-      ),
-    )
-    .orderBy(asc(webhookDeliveries.createdAt))
+    .where(and(waiting, anyUuid(webhookDeliveries.organizationId, allowed)))
+    .orderBy(asc(webhookDeliveries.createdAt), asc(webhookDeliveries.id))
     .limit(options.limit ?? 50);
   let delivered = 0;
   let failed = 0;

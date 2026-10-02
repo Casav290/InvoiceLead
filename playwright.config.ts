@@ -4,6 +4,10 @@ const APP_PORT = 3100;
 const LEAD_PORT = 4010;
 const DATABASE_URL =
   process.env.E2E_DATABASE_URL ?? "postgres://postgres@localhost:5432/invoicelead_test";
+// Les tests qui préparent un état en base (tests/e2e/db.ts) passent par la même adresse.
+process.env.E2E_DATABASE_URL = DATABASE_URL;
+// Les tests joignent InvoiceLead par cette adresse (tests/e2e/helpers.ts).
+process.env.E2E_APP_URL = `http://localhost:${APP_PORT}`;
 
 const appEnv = {
   DATABASE_URL,

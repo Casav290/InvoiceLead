@@ -1,6 +1,6 @@
 import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import { countryPack } from "@/countries";
-import type { BankEntry } from "@/countries/ch/camt";
+import { type BankEntry, type BankStatement, parseCamt } from "@/countries/ch/camt";
 import { VAT_CODES, type VatCode } from "@/countries/ch/vat";
 import { chartPack } from "@/countries/charts";
 import { roundHalfAwayFromZero } from "@/lib/money";
@@ -22,6 +22,7 @@ import {
 } from "./db/schema";
 import { appendEntry, LedgerError, type Posting, postPending, roleAccounts } from "./ledger";
 import { addPayment, invoiceBalance } from "./payments";
+import { consumeQuota, organizationPlan, PLANS, refundQuota, tierOf } from "./plans";
 
 type Who = { organizationId: string; userId: string };
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -44,6 +45,56 @@ export async function importEntries(database: Db, who: Who, entries: BankEntry[]
     data: { imported: rows.length, total: entries.length },
   });
   return { imported: rows.length, duplicates: entries.length - rows.length };
+}
+
+/** Formule gratuite : un relevé, c'est un compte et au plus un mois de dates de comptabilisation. */
+export const FREE_STATEMENT_DAYS = 31;
+
+/**
+ * Le fichier tient-il dans un seul relevé mensuel (un compte, 31 jours au plus) ? Un relevé qui ne
+ * dit pas son compte compte pour un compte de plus : sinon, un fichier dont seul le premier relevé
+ * porte un IBAN regrouperait plusieurs comptes.
+ */
+export function singleStatement(
+  statement: Pick<BankStatement, "accounts" | "unnamed" | "entries">,
+): boolean {
+  if (statement.accounts.length + statement.unnamed > 1) return false;
+  const days = statement.entries.map((e) => Date.parse(`${e.bookingDate}T00:00:00Z`));
+  if (days.some((d) => Number.isNaN(d))) return false;
+  if (days.length === 0) return true;
+  return (Math.max(...days) - Math.min(...days)) / 86_400_000 <= FREE_STATEMENT_DAYS - 1;
+}
+
+/**
+ * Import d'un relevé camt depuis l'écran de la banque. Une unité de l'allocation du mois (formule
+ * gratuite : 1 relevé) est réservée avant l'import, et rendue si le fichier n'apporte aucune ligne
+ * nouvelle : seul un relevé réellement importé compte. En formule gratuite, le fichier doit tenir
+ * dans un relevé (un compte, un mois de dates) : sinon « scope », pour qu'un seul fichier ne fasse
+ * pas entrer une année ou plusieurs comptes.
+ */
+export async function importStatement(
+  database: Db,
+  who: Who,
+  xml: string,
+  today = new Date().toISOString().slice(0, 10),
+): Promise<{ imported: number; duplicates: number } | "format" | "quota" | "scope"> {
+  const plan = await organizationPlan(database, who.organizationId);
+  if (!plan) return "quota";
+  let statement: BankStatement;
+  try {
+    statement = parseCamt(xml);
+  } catch {
+    return "format";
+  }
+  const limited = Number.isFinite(PLANS[tierOf(plan)].quotas.bankImports);
+  if (limited && !singleStatement(statement)) return "scope";
+  if (!(await consumeQuota(database, plan, "bankImports", today)).allowed) return "quota";
+  const result = await importEntries(database, who, statement.entries).catch(async (e: unknown) => {
+    await refundQuota(database, plan.id, "bankImports", today);
+    throw e;
+  });
+  if (result.imported === 0) await refundQuota(database, plan.id, "bankImports", today);
+  return result;
 }
 
 export async function listBankTransactions(database: Db, organizationId: string) {

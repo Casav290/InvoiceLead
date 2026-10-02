@@ -2,7 +2,7 @@ import { contactJson, invoiceJson, toForm } from "./api";
 import type { ApiCaller } from "./api-keys";
 import { bookFacts } from "./assistant";
 import { listBills } from "./bills";
-import { createContact, listContacts, parseContactForm } from "./contacts";
+import { createContactWithinPlan, listContacts, parseContactForm } from "./contacts";
 import { db } from "./db";
 import {
   createInvoice,
@@ -119,7 +119,9 @@ const TOOLS: Tool[] = [
         toForm({ kind: "company", isCustomer: true, ...a }, ["isCustomer", "isSupplier"]),
       );
       if (!parsed.ok) throw new ToolError(`invalid: ${JSON.stringify(parsed.errors)}`);
-      return contactJson(await createContact(db(), who(c), parsed.data));
+      const contact = await createContactWithinPlan(db(), who(c), parsed.data);
+      if (contact === "planLimit") throw new ToolError("plan_limit");
+      return contactJson(contact);
     },
   },
   {
@@ -177,6 +179,7 @@ const TOOLS: Tool[] = [
     write: true,
     run: async (c, a) => {
       const result = await issueInvoice(db(), who(c), str(a.id));
+      if (result === "planLimit") throw new ToolError("plan_limit");
       if (typeof result === "string") throw new ToolError(result);
       return invoiceJson(result);
     },

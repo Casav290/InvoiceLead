@@ -10,7 +10,12 @@ export const dynamic = "force-dynamic";
 /** Départ vers Stripe Connect pour relier le compte Stripe de l'entreprise. */
 export async function GET(request: NextRequest) {
   const locale = pickLocale(request.nextUrl.searchParams.get("locale"));
-  const session = await requirePermission(locale, "company");
+  // /api/* échappe au proxy (pas de page de retour en en-tête) : session expirée, retour après la
+  // reconnexion sur la page Paiements d'où part le bouton, pour cliquer à nouveau. Jamais ce départ
+  // vers Stripe lui-même, qui partirait sans un nouveau clic.
+  const session = await requirePermission(locale, "company", {
+    next: `/${locale}/app/settings/payments`,
+  });
   const { APP_URL, SESSION_SECRET } = env();
   if (!stripeConfigured())
     return NextResponse.redirect(`${APP_URL}/${locale}/app/settings/payments`, 303);

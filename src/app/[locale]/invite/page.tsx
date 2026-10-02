@@ -16,7 +16,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return { title: t("title"), robots: { index: false } };
 }
 
-const ERRORS = ["invalid", "expired", "wrongEmail"];
+const ERRORS = ["invalid", "expired", "wrongEmail", "plan"];
 
 /** Invitation de fiduciaire : connexion avec son propre Compte Lead, puis acceptation. */
 export default async function InvitePage({ params, searchParams }: Props) {
@@ -41,14 +41,19 @@ export default async function InvitePage({ params, searchParams }: Props) {
           ) : null}
         </div>
         <div className="flex flex-wrap gap-3 px-6 py-5">
-          {!token || error === "invalid" || error === "expired" ? null : !session ? (
+          {!token ||
+          error === "invalid" ||
+          error === "expired" ||
+          error === "plan" ? null : !session ? (
             <Button asChild>
               <a href={`/auth/lead/start?locale=${locale}&invite=${token}`}>{t("login")}</a>
             </Button>
           ) : error ? (
             <form action="/auth/lead/logout" method="post">
               <input type="hidden" name="locale" value={locale} />
-              <Button type="submit" variant="secondary">
+              {/* Après la déconnexion, retour sur cette invitation pour la reprendre avec le bon compte. */}
+              <input type="hidden" name="invite" value={token} />
+              <Button type="submit" variant="secondary" data-testid="invite-switch">
                 {t("logout")}
               </Button>
             </form>

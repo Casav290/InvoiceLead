@@ -22,6 +22,7 @@ import {
   type PartySnapshot,
 } from "./db/schema";
 import { fetchFxRate } from "./fx";
+import { foreignWithoutPro, foreignWithoutProFor, lockQuota, quotaAccess } from "./plans";
 import { PRODUCT_UNITS } from "./products";
 import { emitEvent, invoiceSummary } from "./webhooks";
 
@@ -509,11 +510,17 @@ export type IssueResult =
   | "companyIncomplete"
   | "vatChanged"
   | "creditTooHigh"
-  | "fxRate";
+  | "fxRate"
+  | "planLimit"
+  | "plan";
 
 /**
  * Émet un brouillon : numéro définitif, expéditeur et destinataire figés. Le numéro est pris dans la
  * même transaction que le changement d'état, si bien qu'un échec ne laisse aucun trou.
+ *
+ * Les factures émises du mois (formule gratuite : 10) se comptent ici, d'après le type lu en base
+ * et sous un verrou de l'entreprise : ni un type forgé dans le formulaire, ni deux émissions
+ * simultanées, ni la tâche des récurrences ne passent au-delà. Devis et avoirs ne comptent pas.
  */
 export async function issueInvoice(
   database: Db,
@@ -529,14 +536,30 @@ export async function issueInvoice(
       currency: invoices.currency,
       fxRate: invoices.fxRate,
       issueDate: invoices.issueDate,
-      home: organizations.currency,
+      plan: {
+        leadPlan: organizations.leadPlan,
+        entitlements: organizations.entitlements,
+        entitlementsAt: organizations.entitlementsAt,
+        currency: organizations.currency,
+      },
     })
     .from(invoices)
     .innerJoin(organizations, eq(organizations.id, invoices.organizationId))
     .where(and(eq(invoices.id, id), eq(invoices.organizationId, who.organizationId)));
+  // Nouvelle facture ou nouveau devis en devise sans la multidevise (formule Pro) : refusé avant de
+  // chercher un cours. Un avoir reste permis : il corrige une facture émise, dans sa devise.
+  if (draft && draft.kind !== "credit_note" && foreignWithoutPro(draft.plan, draft.currency))
+    return "plan";
   let fetchedRate: number | null = null;
-  if (draft && draft.kind === "invoice" && draft.currency !== draft.home && draft.fxRate === null) {
-    fetchedRate = await fetchFxRate(draft.currency, draft.home, draft.issueDate, fetcher);
+  const home = draft?.plan.currency;
+  if (
+    draft &&
+    home &&
+    draft.kind === "invoice" &&
+    draft.currency !== home &&
+    draft.fxRate === null
+  ) {
+    fetchedRate = await fetchFxRate(draft.currency, home, draft.issueDate, fetcher);
     if (fetchedRate === null) return "fxRate";
   }
   const result = await database.transaction(async (tx): Promise<IssueResult> => {
@@ -555,9 +578,16 @@ export async function issueInvoice(
       .where(eq(organizations.id, who.organizationId));
     if (!org?.settingsCompletedAt) return "companyIncomplete";
     if (org.vatRegistered !== row.invoice.vatRegistered) return "vatChanged";
+    if (row.invoice.kind !== "credit_note" && foreignWithoutPro(org, row.invoice.currency))
+      return "plan";
     let fxRate = row.invoice.currency === org.currency ? null : (row.invoice.fxRate ?? fetchedRate);
 
     const kind = row.invoice.kind as DocumentKind;
+    if (kind === "invoice") {
+      const t = tx as unknown as Db;
+      await lockQuota(t, org.id, "invoices");
+      if (!(await quotaAccess(t, org, "invoices")).allowed) return "planLimit";
+    }
     if (kind === "credit_note") {
       // L'avoir ne peut dépasser ce qui reste à créditer sur sa facture, ni changer de client.
       const relatedId = row.invoice.relatedInvoiceId;
@@ -699,10 +729,11 @@ export async function convertQuoteToInvoice(
   who: Who,
   quoteId: string,
   today: string,
-): Promise<Invoice | "notConvertible" | "contact" | "depositDraft"> {
+): Promise<Invoice | "notConvertible" | "contact" | "depositDraft" | "plan"> {
   const found = await getInvoice(database, who.organizationId, quoteId);
   if (found?.invoice.kind !== "quote") return "notConvertible";
   const { invoice: quote, lines } = found;
+  if (await foreignWithoutProFor(database, who.organizationId, quote.currency)) return "plan";
   // Un acompte encore en brouillon ne serait pas déduit : il faut l'émettre ou le supprimer avant.
   const [pendingDeposit] = await database
     .select({ id: invoices.id })
@@ -856,7 +887,7 @@ async function depositDeductions(
     }));
 }
 
-export type DepositResult = Invoice | "notConvertible" | "percent" | "tooHigh" | "contact";
+export type DepositResult = Invoice | "notConvertible" | "percent" | "tooHigh" | "contact" | "plan";
 
 /**
  * Facture d'acompte sur un devis émis ou accepté : un pourcentage du montant hors TVA, une ligne par
@@ -875,6 +906,7 @@ export async function createDepositInvoice(
   if (found?.invoice.kind !== "quote" || !["issued", "accepted"].includes(found.invoice.status))
     return "notConvertible";
   const { invoice: quote, lines } = found;
+  if (await foreignWithoutProFor(database, who.organizationId, quote.currency)) return "plan";
   const groups = new Map<string, number>();
   for (const l of lines) {
     const code = l.vatCode ?? "normal";

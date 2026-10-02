@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { buildCii } from "@/countries/de/cii";
+import { returnPage } from "@/lib/return-page";
 import { requireAppSession } from "@/server/auth/guard";
 import { db } from "@/server/db";
 import { getInvoice } from "@/server/invoices";
@@ -12,12 +13,14 @@ export async function GET(
   { params }: { params: Promise<{ locale: string; id: string }> },
 ) {
   const { locale, id } = await params;
-  const { organization } = await requireAppSession(locale);
+  const url = new URL(request.url);
+  // Session expirée : retour sur la page de la pièce, jamais sur ce fichier (return-page.ts).
+  const { organization } = await requireAppSession(locale, {
+    next: returnPage(url.pathname, url.search),
+  });
   if (organization.country !== "DE") notFound();
   const found = await getInvoice(db(), organization.id, id);
-  const kind = new URL(request.url).pathname.includes("/app/credit-notes/")
-    ? "credit_note"
-    : "invoice";
+  const kind = url.pathname.includes("/app/credit-notes/") ? "credit_note" : "invoice";
   if (!found || found.invoice.kind !== kind || found.invoice.status === "draft") notFound();
   const result = buildCii(found.invoice, found.lines, "xrechnung", found.related);
   if ("missing" in result)

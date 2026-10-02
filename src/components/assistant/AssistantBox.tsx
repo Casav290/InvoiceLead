@@ -3,6 +3,7 @@
 import { useTranslations } from "next-intl";
 import { useActionState, useRef } from "react";
 import { type AssistantState, askAction } from "@/app/[locale]/app/assistant/actions";
+import { type Lock, ProLock } from "@/components/app/ProLock";
 import { Button } from "@/components/ui/button";
 import { Link } from "@/i18n/navigation";
 
@@ -17,52 +18,83 @@ const LINKS: Record<string, string> = {
   time: "/app/time/projects",
 };
 
-/** Question en langage naturel sur sa comptabilité, réponse tirée des chiffres des livres. */
-export function AssistantBox({ locale, suggestions }: { locale: string; suggestions: string[] }) {
+/**
+ * Question en langage naturel sur sa comptabilité, réponse tirée des chiffres des livres. Avec une
+ * allocation (formule gratuite), le compteur du mois est affiché ; une fois les questions du mois
+ * posées, la boîte reste visible mais grisée, avec la marque Pro et le lien de mise à niveau.
+ */
+export function AssistantBox({
+  locale,
+  suggestions,
+  quota,
+  lock,
+}: {
+  locale: string;
+  suggestions: string[];
+  quota: { used: number; limit: number } | null;
+  lock: Lock | null;
+}) {
   const t = useTranslations("app.assistant");
+  const tp = useTranslations("app.plan");
   const [state, action, pending] = useActionState<AssistantState, FormData>(askAction, {
     round: 0,
   });
   const input = useRef<HTMLTextAreaElement>(null);
+  const used = state.used ?? quota?.used ?? 0;
+  const exhausted = quota !== null && used >= quota.limit;
+  const form = (
+    <form
+      action={action}
+      className="border border-line-strong bg-panel p-5"
+      data-testid="assistant-form"
+    >
+      <input type="hidden" name="locale" value={locale} />
+      <label htmlFor="assistant-question" className="mb-1 block text-[13px] font-semibold">
+        {t("question")}
+      </label>
+      <textarea
+        ref={input}
+        id="assistant-question"
+        name="question"
+        rows={2}
+        maxLength={500}
+        required
+        defaultValue={state.question}
+        className="w-full border border-line-strong bg-panel px-3 py-2 text-[14px] disabled:bg-muted disabled:text-ink-muted"
+      />
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <Button type="submit" disabled={pending} data-testid="assistant-ask">
+          {pending ? t("thinking") : t("ask")}
+        </Button>
+        {suggestions.map((s) => (
+          <button
+            key={s}
+            type="button"
+            className="border border-line-strong px-2.5 py-1 text-[12px] text-ink-2 hover:bg-rowhover disabled:border-line disabled:bg-muted disabled:text-ink-muted disabled:hover:bg-muted"
+            onClick={() => {
+              if (input.current) input.current.value = s;
+            }}
+          >
+            {s}
+          </button>
+        ))}
+      </div>
+      {quota ? (
+        <p className="mt-3 text-[12px] text-ink-muted" data-testid="assistant-quota">
+          {tp("quota.assistant", { used, limit: quota.limit })}
+        </p>
+      ) : null}
+    </form>
+  );
   return (
     <div className="mt-6 space-y-4">
-      <form
-        action={action}
-        className="border border-line-strong bg-panel p-5"
-        data-testid="assistant-form"
-      >
-        <input type="hidden" name="locale" value={locale} />
-        <label htmlFor="assistant-question" className="mb-1 block text-[13px] font-semibold">
-          {t("question")}
-        </label>
-        <textarea
-          ref={input}
-          id="assistant-question"
-          name="question"
-          rows={2}
-          maxLength={500}
-          required
-          defaultValue={state.question}
-          className="w-full border border-line-strong bg-panel px-3 py-2 text-[14px]"
-        />
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          <Button type="submit" disabled={pending} data-testid="assistant-ask">
-            {pending ? t("thinking") : t("ask")}
-          </Button>
-          {suggestions.map((s) => (
-            <button
-              key={s}
-              type="button"
-              className="border border-line-strong px-2.5 py-1 text-[12px] text-ink-2 hover:bg-rowhover"
-              onClick={() => {
-                if (input.current) input.current.value = s;
-              }}
-            >
-              {s}
-            </button>
-          ))}
-        </div>
-      </form>
+      {exhausted && lock ? (
+        <ProLock lock={lock} testId="assistant-lock">
+          {form}
+        </ProLock>
+      ) : (
+        form
+      )}
       {state.error ? (
         <p
           role="alert"

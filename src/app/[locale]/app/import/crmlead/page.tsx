@@ -6,9 +6,13 @@ import { countryPack } from "@/countries";
 import { formatQuantity } from "@/lib/invoice-math";
 import { formatAmount } from "@/lib/money";
 import { requireAppSession } from "@/server/auth/guard";
+import { safeNext } from "@/server/auth/login-cookie";
 import { decodeHandoff, handoffTotalCents } from "@/server/crmlead";
+import { db } from "@/server/db";
 import { upgradeUrl } from "@/server/plans";
 import { can } from "@/server/roles";
+import { listUserOrganizations } from "@/server/team";
+import { switchOrgAction } from "../../org-actions";
 import { importCrmleadAction } from "./actions";
 
 type Props = {
@@ -25,12 +29,22 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 /** Relecture d'un lead gagné transmis par CRMlead, avant création du brouillon. */
 export default async function CrmImportPage({ params, searchParams }: Props) {
   const { locale } = await params;
-  const { organization, membership } = await requireAppSession(locale);
+  const { organization, membership, user } = await requireAppSession(locale);
   const q = await searchParams;
   const t = await getTranslations({ locale, namespace: "app.crmImport" });
   const tu = await getTranslations({ locale, namespace: "app.invoices.units" });
   const handoff = decodeHandoff(q.d);
   const allowed = can(membership, "billing");
+  // Session dans une entreprise où la personne ne facture pas (fiduciaire passée chez un client) : le
+  // lead vient de son propre CRMlead. On propose les entreprises où elle facture ; le changement ramène
+  // sur ce même lien (switchOrgAction), le lead n'est pas perdu.
+  const here = safeNext(`/${locale}/app/import/crmlead?d=${q.d ?? ""}`);
+  const elsewhere =
+    handoff && !allowed && here
+      ? (await listUserOrganizations(db(), user.id)).filter(
+          (o) => o.id !== organization.id && can(o, "billing"),
+        )
+      : [];
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-10 sm:px-8">
@@ -113,6 +127,24 @@ export default async function CrmImportPage({ params, searchParams }: Props) {
                 {t(handoff.kind === "quote" ? "createQuote" : "createInvoice")}
               </Button>
             </form>
+            {elsewhere.length > 0 && here ? (
+              <div
+                className="flex flex-wrap items-center gap-3 border-t border-line px-5 py-4"
+                data-testid="crm-import-switch"
+              >
+                <p className="min-w-0 flex-1 text-[13px] text-ink-2">{t("switchHint")}</p>
+                {elsewhere.map((o) => (
+                  <form key={o.id} action={switchOrgAction}>
+                    <input type="hidden" name="locale" value={locale} />
+                    <input type="hidden" name="organizationId" value={o.id} />
+                    <input type="hidden" name="next" value={here} />
+                    <Button type="submit" variant="secondary">
+                      {t("switchTo", { org: o.name })}
+                    </Button>
+                  </form>
+                ))}
+              </div>
+            ) : null}
           </section>
         </>
       )}

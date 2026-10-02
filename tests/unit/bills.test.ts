@@ -25,6 +25,7 @@ import {
   receipts,
   supplierBills,
 } from "@/server/db/schema";
+import { consumeQuota, organizationPlan, quotaAccess } from "@/server/plans";
 import { camt053 } from "../support/camt";
 import { claims } from "../support/claims";
 import { testDb } from "../support/db";
@@ -314,5 +315,22 @@ describe("factures fournisseurs", () => {
         bytes: Buffer.from("<a/>"),
       }),
     ).toBe("notEInvoice");
+
+    // Lue sans IA, une e-facture ne compte pas dans les pièces lues du mois : la formule gratuite
+    // en reçoit autant qu'elle veut, même une fois ses 20 lectures par l'IA utilisées.
+    const plan = await organizationPlan(db, who.organizationId);
+    if (!plan) throw new Error("organisation");
+    expect((await quotaAccess(db, plan, "aiReads")).used).toBe(0);
+    const again = { name: "rechnung.xml", type: "application/xml", bytes: Buffer.from(UBL) };
+    expect(await importEInvoice(db, who, again)).toBe("duplicate");
+    for (let i = 0; i < 20; i++) await consumeQuota(db, plan, "aiReads");
+    expect((await quotaAccess(db, plan, "aiReads")).allowed).toBe(false);
+    const next = await importEInvoice(db, who, {
+      name: "rechnung-118.xml",
+      type: "application/xml",
+      bytes: Buffer.from(UBL.replace("R-2026-117", "R-2026-118")),
+    });
+    expect(next).toMatchObject({ number: "R-2026-118", source: "einvoice" });
+    expect((await quotaAccess(db, plan, "aiReads")).used).toBe(20);
   });
 });

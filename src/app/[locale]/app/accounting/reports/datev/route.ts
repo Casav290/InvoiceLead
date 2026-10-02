@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { buildDatev } from "@/lib/ledger-export";
+import { returnPage } from "@/lib/return-page";
 import { listFiscalYears } from "@/server/accounting";
 import { requirePermission } from "@/server/auth/guard";
 import { db } from "@/server/db";
@@ -10,9 +11,13 @@ export const runtime = "nodejs";
 /** Buchungsstapel DATEV d'un exercice (entreprises allemandes), pour le Steuerberater. */
 export async function GET(request: Request, { params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
-  const { organization } = await requirePermission(locale, "accounting");
+  const url = new URL(request.url);
+  // Session expirée : retour sur la page des rapports, jamais sur ce fichier (return-page.ts).
+  const { organization } = await requirePermission(locale, "accounting", {
+    next: returnPage(url.pathname, url.search),
+  });
   if (organization.country !== "DE") notFound();
-  const q = new URL(request.url).searchParams;
+  const q = url.searchParams;
   const years = await listFiscalYears(db(), organization.id);
   const year = years.find((y) => y.id === q.get("year")) ?? years[0];
   if (!year) notFound();

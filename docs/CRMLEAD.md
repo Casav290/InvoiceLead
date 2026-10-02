@@ -8,7 +8,9 @@ Quand un lead passe à « gagné » dans CRMlead, un bouton « Créer le devis �
 https://invoicelead.io/{locale}/app/import/crmlead?d={données}
 ```
 
-`locale` vaut `de` ou `fr`. `d` est le JSON ci-dessous, encodé en base64url (sans remplissage), 60 000 caractères au plus.
+`locale` vaut `de`, `fr` ou `en`. `d` est le JSON ci-dessous, encodé en base64url (sans remplissage).
+
+Longueur : le chemin complet `/{locale}/app/import/crmlead?d=…` reste à 2 400 caractères au plus. C'est la plus longue page qu'InvoiceLead sait rouvrir après une reconnexion par le Compte Lead (session de 12 h échue) : au-delà, la personne arriverait sur le tableau de bord et le lead serait perdu. CRMlead le garantit en raccourcissant, si besoin, les textes les plus longs (description de la ligne, titre du lead, noms). La page entière revient même si la reconnexion finit ailleurs (lien « mot de passe oublié » ouvert sur un autre appareil, écran resté ouvert plus de trois heures) : InvoiceLead la garde huit jours côté serveur (table `login_pages`) et n'en confie qu'une référence chiffrée au Compte Lead. Seul un lien d'import lisible (`d` seul, que le décodage du lead accepte) y entre, au plus vingt nouveaux par heure et par réseau, vingt mille en tout : au-delà, la page entière ne revient que par le cookie de la demande, dans le même navigateur. InvoiceLead lit encore un `d` plus long quand la session est ouverte (60 000 caractères au plus), mais un tel lien ne survit pas à une reconnexion.
 
 ```json
 {
@@ -67,5 +69,7 @@ Dès qu'une pièce tirée d'un lead change d'état, InvoiceLead le dépose dans 
             "net_cents": 430000, "total_cents": 464830, "currency": "CHF",
             "issue_date": "2026-10-01", "lead_id": "uuid du lead CRMlead" } }
 ```
+
+La langue de `source.url` (`/fr/`, celle de la pièce, donc de son client) n'est qu'une valeur par défaut : InvoiceLead ne sait pas quel membre cliquera. CRMlead réécrit ce premier segment dans la langue de la personne qui regarde la fiche (de ou fr, sinon en, comme le lien d'import), pour que l'interface et l'écran du Compte Lead s'ouvrent dans sa langue.
 
 CRMlead montre ces pièces sur la fiche du lead ; un devis accepté y fait passer le lead en « gagné », au montant hors taxes du devis. Les envois passent par une file (`crmlead_outbox`) : un nouvel état remplace l'envoi pas encore parti, une panne de CRMlead est reprise après 1 min, 5 min, 30 min, 2 h puis 12 h (et par la tâche quotidienne), un lead introuvable ou à la corbeille n'est pas réessayé.

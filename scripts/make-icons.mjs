@@ -5,7 +5,7 @@ const svg = (
   size,
   pad,
 ) => `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
-  <rect width="${size}" height="${size}" fill="#2563eb"/>
+  <rect width="${size}" height="${size}" fill="#7a2e67"/>
   <text x="50%" y="50%" dy="0.35em" text-anchor="middle" font-family="DejaVu Sans, Arial, sans-serif" font-weight="800" font-size="${Math.round((size - 2 * pad) * 0.5)}" fill="#ffffff">IL</text>
 </svg>`;
 

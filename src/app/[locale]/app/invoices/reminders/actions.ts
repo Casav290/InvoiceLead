@@ -8,7 +8,7 @@ import { requirePermission } from "@/server/auth/guard";
 import { pickLocale } from "@/server/auth/login-cookie";
 import { db } from "@/server/db";
 import { auditLog, organizations } from "@/server/db/schema";
-import { hasFeature } from "@/server/plans";
+import { featureAccess } from "@/server/plans";
 import { sendAllReminders, sendReminder, waiveCharges } from "@/server/reminders";
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -30,21 +30,28 @@ export async function sendReminderAction(form: FormData) {
 export async function sendAllRemindersAction(form: FormData) {
   const locale = pickLocale(form.get("locale"));
   const session = await requirePermission(locale, "billing");
-  const { sent } = await sendAllReminders(
+  const { sent, quotaReached } = await sendAllReminders(
     db(),
     { organizationId: session.organization.id, userId: session.user.id },
     today(),
   );
   revalidatePath(`/${locale}/app/invoices`, "layout");
-  redirect(`/${locale}/app/invoices/reminders?sent=${sent}`);
+  redirect(`/${locale}/app/invoices/reminders?sent=${sent}${quotaReached ? "&result=quota" : ""}`);
 }
 
-/** Réglages des relances : envoi automatique, frais dès la deuxième relance, intérêt moratoire. */
+/**
+ * Réglages des relances : envoi automatique, frais dès la deuxième relance, intérêt moratoire.
+ * Formule Pro : en formule gratuite, ils restent visibles mais grisés, et le serveur refuse.
+ */
 export async function saveReminderSettingsAction(form: FormData) {
   const locale = pickLocale(form.get("locale"));
   const session = await requirePermission(locale, "company");
   const path = `/${locale}/app/invoices/reminders`;
-  if (!hasFeature(session.organization, "reminders")) redirect(`${path}?settings=plan`);
+  if (
+    !featureAccess(session.organization, "reminderAuto").allowed ||
+    !featureAccess(session.organization, "reminderCharges").allowed
+  )
+    redirect(`${path}?settings=plan`);
   const fee = String(form.get("fee") ?? "").trim();
   const feeCents = fee === "" ? 0 : parseAmountToCents(fee);
   const rate = String(form.get("interest") ?? "")
