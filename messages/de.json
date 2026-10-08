@@ -1,7 +1,7 @@
 {
   "meta": {
     "title": "InvoiceLead, Offerten, QR-Rechnungen und Schweizer Buchhaltung",
-    "description": "Offerten, konforme QR-Rechnungen, automatische Mahnungen und doppelte Buchhaltung für Selbständige und KMU in der Schweiz. Kostenlos starten."
+    "description": "Offerten, konforme QR-Rechnungen, Mahnungen, Quittungen per Foto und doppelte Buchhaltung für Selbständige und KMU in der Schweiz. Kostenlos starten, ohne Kreditkarte."
   },
   "nav": {
     "features": "Funktionen",
@@ -13,49 +13,308 @@
     "faq": "FAQ"
   },
   "home": {
-    "kicker": "Neu in der Lead-Familie",
-    "title": "Offerten, Rechnungen und Buchhaltung, erledigt vor Feierabend.",
-    "subtitle": "InvoiceLead erstellt Ihre Offerten, verschickt konforme QR-Rechnungen, mahnt offene Beträge und führt Ihre Schweizer Buchhaltung. Für Selbständige wie für KMU, kostenlos starten.",
+    "news": "Neu",
+    "newsText": "Lieferantenrechnungen per Foto erfassen",
+    "title1": "Von der Offerte bis zum Zahlungs­eingang.",
+    "title2": "Ohne doppelte Erfassung.",
+    "lede": "InvoiceLead erstellt Ihre Offerten, verschickt konforme QR-Rechnungen, mahnt säumige Kunden und liest Ihre Quittungen per Foto. Die Buchhaltung entsteht nebenbei, bereit für Ihre Treuhand.",
     "ctaPrimary": "Kostenlos starten",
-    "ctaSecondary": "Funktionen ansehen",
-    "featuresTitle": "Alles, was Sie brauchen, um bezahlt zu werden, und nicht mehr",
-    "features": {
-      "quotes": {
-        "title": "Von der Offerte zur Rechnung mit einem Klick",
-        "body": "Eine angenommene Offerte wird zur Auftragsbestätigung und dann zur Rechnung, ohne erneute Eingabe."
-      },
-      "qr": {
-        "title": "QR-Rechnungen nach Schweizer Standard",
-        "body": "QR-Zahlteil nach SIX-Norm, strukturierte Adressen, QR- oder SCOR-Referenz."
-      },
-      "reminders": {
-        "title": "Automatische Mahnungen",
-        "body": "Drei Mahnstufen mit eigenen Gebühren und Fristen, zum richtigen Zeitpunkt verschickt."
-      },
-      "accounting": {
-        "title": "Doppelte Buchhaltung",
-        "body": "KMU-Kontenrahmen, Buchungen direkt aus Rechnungen und Zahlungen, Bilanz und Erfolgsrechnung."
-      },
-      "vat": {
-        "title": "Schweizer MWST im Griff",
-        "body": "Sätze 8,1 %, 2,6 % und 3,8 %, effektive Methode oder Saldosteuersatz, Abrechnung vorbereitet."
-      },
-      "team": {
-        "title": "Das ganze Team, inklusive Treuhand",
-        "body": "Mehrere Benutzer pro Firma, mit einem einzigen Konto für alle Lead-Anwendungen."
-      }
-    },
-    "familyTitle": "Ein Konto, alle Ihre Lead-Anwendungen",
-    "familyBody": "Scanlead erfasst Ihre Messekontakte, CRMlead begleitet sie bis zum Abschluss, InvoiceLead verrechnet und kassiert. Ein einziges Lead-Konto für den Wechsel zwischen ihnen.",
-    "preview": {
-      "position": "Position",
+    "ctaSecondary": "Die App ansehen",
+    "fine": "Ohne Kreditkarte. Gratis-Abo ohne Zeitlimit. Anmeldung mit Ihrem ERPlead-Konto.",
+    "sample": "Beispieldaten einer erfundenen Firma.",
+    "doc": {
+      "kind": "Rechnung",
+      "number": "Nr. 2026-0040",
+      "date": "08.10.2026",
+      "client": "Hôtel du Lac Vert SA",
+      "clientAddress": "Quai des Saules 12, 2000 Neuchâtel",
+      "item": "Bezeichnung",
       "qty": "Menge",
+      "rows": [
+        {
+          "label": "Treppe aus massiver Esche, 14 Stufen",
+          "unit": "pauschal"
+        },
+        {
+          "label": "Montage und Ölbehandlung",
+          "unit": "16 Std."
+        },
+        {
+          "label": "Handlauf aus Messing",
+          "unit": "1 Stk."
+        },
+        {
+          "label": "Fahrspesen",
+          "unit": "2 Tage"
+        }
+      ],
       "subtotal": "Zwischentotal",
       "vat": "MWST 8,1 %",
       "total": "Total",
+      "receipt": "Empfangsschein",
       "payment": "Zahlteil",
-      "rows": ["Beratung, September", "Lancierungs-Workshop", "Reisespesen"],
-      "hours": "Std."
+      "account": "Konto / Zahlbar an",
+      "reference": "Referenz",
+      "amount": "Betrag",
+      "draft": "Entwurf",
+      "sent": "Versendet",
+      "paid": "Bezahlt",
+      "bank": "Zahlung eingegangen, mit dem Kontoauszug abgeglichen"
+    },
+    "stats": {
+      "label": "Das Gratis-Abo in Zahlen",
+      "invoices": "Rechnungen pro Monat im Gratis-Abo",
+      "aiReads": "Quittungen und Belege pro Monat von der KI gelesen, ebenfalls gratis",
+      "reminders": "Mahnstufen, mit Gebühren und Verzugszins",
+      "languages": "Sprachen für Offerten und Rechnungen"
+    },
+    "overview": {
+      "title": "Was verrechnet, bezahlt oder überfällig ist. Auf einen Blick.",
+      "body": "Die Übersicht zeigt den Umsatz des Monats, die offenen Posten und die Zahlungsrückstände, dazu Ihre letzten zwölf Monate als Grafik. Sie wissen, wen Sie mahnen müssen, bevor Sie eine Liste öffnen.",
+      "legend": [
+        "Umsatz des Monats und des Jahres",
+        "Offene Posten und überfällige Rechnungen",
+        "Zwölf Monate in einer Grafik"
+      ],
+      "alt": "Übersicht von InvoiceLead: Umsatz, offene Posten, Rückstände und Grafik über zwölf Monate",
+      "mobileAlt": "Die Übersicht auf dem Handy"
+    },
+    "features": {
+      "title": "Jeder Schritt, von der Offerte bis zur Zahlung.",
+      "body": "Wählen Sie einen Schritt, um die passende Ansicht zu sehen.",
+      "tablist": "Funktionen von InvoiceLead",
+      "pro": "Pro-Abo",
+      "tabs": {
+        "quotes": {
+          "label": "Offerten",
+          "title": "Aus der angenommenen Offerte wird mit einem Klick die Rechnung.",
+          "points": [
+            "Nummerierte Offerten, 30 Tage gültig",
+            "Angenommen oder abgelehnt, mit Datum",
+            "In eine Rechnung umgewandelt, ohne Neueingabe"
+          ],
+          "alt": "Offene Offerte für einen Kunden"
+        },
+        "qr": {
+          "label": "QR-Rechnung",
+          "title": "QR-Rechnungen, die jede Bank auf Anhieb liest.",
+          "points": [
+            "Zahlteil nach SIX-Norm, strukturierte Adressen",
+            "QR- oder SCOR-Referenz, je nach Konto",
+            "Versand per E-Mail, mit PDF und Ansichtslink"
+          ],
+          "alt": "QR-Rechnung als PDF, mit Zahlteil"
+        },
+        "reminders": {
+          "label": "Mahnungen",
+          "title": "Überfällige Rechnungen, zur richtigen Zeit gemahnt.",
+          "points": [
+            "Fällige Rechnungen nach Mahnstufe geordnet",
+            "Drei Stufen, Gebühren und Verzugszins",
+            "Automatischer Versand jeden Morgen mit Pro"
+          ],
+          "alt": "Mahnwesen mit den überfälligen Rechnungen"
+        },
+        "receipts": {
+          "label": "Spesen",
+          "title": "Quittung fotografiert, Spesen erfasst.",
+          "points": [
+            "Betrag, Datum und MWST von der KI gelesen",
+            "Der Beleg bleibt an der Buchung",
+            "{n} Erkennungen pro Monat im Gratis-Abo"
+          ],
+          "alt": "Spesenabrechnung, ausgefüllt aus der von der KI gelesenen Quittung"
+        },
+        "bills": {
+          "label": "Kreditoren",
+          "title": "Lieferantenrechnungen gelesen, geprüft, zahlungsbereit.",
+          "points": [
+            "Per Foto, als PDF oder als E-Rechnung",
+            "Fälligkeiten im Blick, bevor sie verstreichen",
+            "Zahlungsauftrag pain.001 für Ihre Bank"
+          ],
+          "alt": "Lieferantenrechnungen mit ihren Fälligkeiten"
+        },
+        "bank": {
+          "label": "Bank",
+          "title": "Kontoauszug importiert, jede Zahlung zugeordnet.",
+          "points": [
+            "camt.053-Auszüge aller Schweizer Banken",
+            "Jede Gutschrift der richtigen Rechnung zugeordnet",
+            "Der Autopilot bucht die sicheren Fälle"
+          ],
+          "alt": "Importierter Kontoauszug mit vorgeschlagenen Zuordnungen"
+        },
+        "vat": {
+          "label": "MWST",
+          "title": "Die MWST-Abrechnung, vorbereitet für die ESTV.",
+          "points": [
+            "Effektive Methode oder Saldosteuersatz",
+            "Nach vereinbartem oder vereinnahmtem Entgelt",
+            "XML-Export eCH-0217 für das ESTV-Portal"
+          ],
+          "alt": "MWST-Abrechnung des Quartals"
+        },
+        "time": {
+          "label": "Zeit",
+          "title": "Projektstunden landen direkt auf der Rechnung.",
+          "points": [
+            "Stoppuhr oder schnelle Erfassung, pro Projekt",
+            "Verrechenbare Stunden mit einem Klick verrechnet",
+            "Mit ProjectLead verbunden, wenn Sie es nutzen"
+          ],
+          "alt": "Zeiterfassung pro Projekt"
+        }
+      }
+    },
+    "photo": {
+      "title": "Eine Quittung. Ein Foto. Schon verbucht.",
+      "body": "Auf der Baustelle oder im Restaurant: Öffnen Sie InvoiceLead auf dem Handy und fotografieren Sie die Quittung. Die KI liest Betrag, Datum und MWST und schlägt das Konto vor. Sie bestätigen mit einem Fingertipp.",
+      "steps": [
+        {
+          "title": "Fotografieren",
+          "body": "Direkt vom Startbildschirm des Handys, ohne App-Installation."
+        },
+        {
+          "title": "Die KI liest",
+          "body": "Betrag, MWST-Satz, Datum und Lieferant, in wenigen Sekunden."
+        },
+        {
+          "title": "Bestätigen",
+          "body": "Die Ausgabe ist verbucht, das Foto bleibt als Beleg angehängt."
+        }
+      ],
+      "ticket": {
+        "items": [
+          "Inox-Schrauben 4x40, 200 Stk.",
+          "Holzleim D3, 750 g",
+          "Schleifpapier P120",
+          "Hartöl farblos, 1 l"
+        ],
+        "total": "Total CHF",
+        "vatIncl": "inkl. MWST 8,1 %",
+        "card": "Bezahlt mit Karte",
+        "thanks": "Danke für Ihren Besuch"
+      },
+      "read": {
+        "title": "Von der KI gelesen",
+        "supplier": "Lieferant",
+        "date": "Datum",
+        "amount": "Betrag",
+        "vat": "MWST",
+        "account": "Vorgeschlagenes Konto",
+        "accountValue": "4000 Materialaufwand"
+      },
+      "alt": "Beleg mit dem Handy fotografieren: Die KI liest die Quittung"
+    },
+    "swiss": {
+      "title": "Für die Schweiz gemacht. Bereit für Kunden im Ausland.",
+      "items": [
+        {
+          "title": "QR-Rechnung SIX 2.3",
+          "body": "Konformer Zahlteil, strukturierte Adressen, QR- oder SCOR-Referenz."
+        },
+        {
+          "title": "MWST 8,1 %, 2,6 % und 3,8 %",
+          "body": "Effektive Methode oder Saldosteuersatz, Abrechnung vorbereitet."
+        },
+        {
+          "title": "eCH-0217",
+          "body": "Die MWST-Abrechnung als XML, vom ESTV-Portal akzeptiert."
+        },
+        {
+          "title": "camt.053 und pain.001",
+          "body": "Kontoauszüge importiert, Lieferantenzahlungen exportiert."
+        },
+        {
+          "title": "KMU-Kontenrahmen",
+          "body": "Buchungen direkt aus Ihren Rechnungen, Bilanz, Erfolgsrechnung und Hauptbuch."
+        },
+        {
+          "title": "Dokumente in 4 Sprachen",
+          "body": "Deutsch, Französisch, Italienisch und Englisch, pro Kunde gewählt."
+        },
+        {
+          "title": "Fremdwährungen",
+          "body": "Offerten und Rechnungen in EUR, USD oder GBP, zum Tageskurs."
+        },
+        {
+          "title": "Über die Schweiz hinaus",
+          "body": "UStVA in Deutschland, CA3 in Frankreich, MTD in Grossbritannien, Sales Tax in den USA."
+        }
+      ]
+    },
+    "pricing": {
+      "title": "Gratis starten. Pro, wenn Sie wachsen.",
+      "body": "Pro-Funktionen bleiben in der App sichtbar, grau und mit Pro-Zeichen: Sie wissen, was sie können, bevor Sie zahlen.",
+      "what": "Was enthalten ist",
+      "free": "Gratis",
+      "pro": "Pro",
+      "freePrice": "0 €",
+      "proPrice": "19 € pro Monat",
+      "unlimited": "Unbegrenzt",
+      "rows": {
+        "invoices": {
+          "label": "Rechnungen",
+          "free": "{n} pro Monat"
+        },
+        "aiReads": {
+          "label": "Quittungen und Belege, von der KI gelesen",
+          "free": "{n} pro Monat",
+          "pro": "{n} pro Monat"
+        },
+        "assistant": {
+          "label": "Fragen an den Buchhaltungs­assistenten",
+          "free": "{n} pro Monat"
+        },
+        "reminders": {
+          "label": "Mahnungen",
+          "free": "Erste Erinnerung von Hand, {n} pro Monat",
+          "pro": "3 Stufen, Gebühren, automatischer Versand"
+        },
+        "bank": {
+          "label": "Importierte Kontoauszüge",
+          "free": "{n} pro Monat"
+        },
+        "recurring": {
+          "label": "Wieder­kehrende Rechnungen",
+          "free": "{n} aktiv"
+        },
+        "vat": {
+          "label": "MWST-Abrechnung, Fremd­währungen, Treuhand­zugang",
+          "free": "Grau sichtbar",
+          "pro": "Inbegriffen"
+        },
+        "seats": {
+          "label": "Benutzer",
+          "free": "{n}",
+          "pro": "{n}, plus Ihre Treuhand"
+        }
+      },
+      "note": "Preise exkl. MWST. Pro+ für 39 € pro Monat: 5 Benutzer, API, MCP-Server und Webhooks.",
+      "more": "Alle Preise ansehen"
+    },
+    "family": {
+      "title": "Ein ERPlead-Konto für die ganze Lead-Familie.",
+      "body": "Melden Sie sich mit Google, Apple, Microsoft oder Ihrer E-Mail-Adresse an. Dasselbe Konto öffnet Scanlead, CRMlead, ProjectLead und Greetlead, und die Apps arbeiten einander zu.",
+      "here": "Sie sind hier",
+      "apps": {
+        "scanlead": "Erfasst Ihre Messekontakte",
+        "crmlead": "Begleitet sie bis zum Abschluss",
+        "projectlead": "Führt das Projekt, zählt die Stunden",
+        "invoicelead": "Verrechnet und kassiert",
+        "greetlead": "Die Karte, die das ganze Team unterschreibt"
+      }
+    },
+    "faq": {
+      "title": "Häufige Fragen",
+      "more": "Alle Fragen"
+    },
+    "final": {
+      "title": "Ihre nächste Rechnung kann heute noch raus.",
+      "body": "Ihr Konto ist in einer Minute bereit. Das Gratis-Abo bleibt gratis, ohne Zeitlimit.",
+      "cta": "Kostenlos starten",
+      "secondary": "Preise ansehen"
     }
   },
   "auth": {

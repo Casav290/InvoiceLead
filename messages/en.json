@@ -1,7 +1,7 @@
 {
   "meta": {
     "title": "InvoiceLead, quotes, QR-bills and Swiss accounting",
-    "description": "Quotes, compliant QR-bills, automatic payment reminders and double-entry accounting for Swiss freelancers and SMEs. Free to start."
+    "description": "Quotes, compliant QR-bills, payment reminders, receipts read from a photo and double-entry accounting for Swiss freelancers and SMEs. Free to start, no credit card."
   },
   "nav": {
     "features": "Features",
@@ -13,49 +13,308 @@
     "faq": "FAQ"
   },
   "home": {
-    "kicker": "New in the Lead family",
-    "title": "Quotes, invoices and accounting, done before the end of the day.",
-    "subtitle": "InvoiceLead prepares your quotes, issues compliant QR-bills, chases unpaid invoices and keeps your Swiss accounts. For freelancers and SMEs alike, free to start.",
+    "news": "New",
+    "newsText": "Read supplier invoices from a photo",
+    "title1": "From quote to money in the bank.",
+    "title2": "Without retyping a single line.",
+    "lede": "InvoiceLead prepares your quotes, sends compliant Swiss QR-bills, chases late payers and reads your receipts from a photo. Your books fill in along the way, ready for your accountant.",
     "ctaPrimary": "Start for free",
-    "ctaSecondary": "See the features",
-    "featuresTitle": "Everything you need to get paid, and nothing more",
-    "features": {
-      "quotes": {
-        "title": "From quote to invoice in one click",
-        "body": "An accepted quote becomes an order confirmation, then an invoice, with nothing to re-enter."
-      },
-      "qr": {
-        "title": "QR-bills to the Swiss standard",
-        "body": "Payment part compliant with the SIX standard, structured addresses, QR or SCOR reference."
-      },
-      "reminders": {
-        "title": "Automatic payment reminders",
-        "body": "Three reminder levels, with fees and deadlines you set, sent at the right time."
-      },
-      "accounting": {
-        "title": "Double-entry accounting",
-        "body": "SME chart of accounts, entries created from your invoices and payments, balance sheet and income statement."
-      },
-      "vat": {
-        "title": "Swiss VAT under control",
-        "body": "Rates of 8.1%, 2.6% and 3.8%, effective method or net tax rate method, VAT return prepared."
-      },
-      "team": {
-        "title": "The whole team, and your fiduciary",
-        "body": "Several users per company, with a single account for all Lead apps."
-      }
-    },
-    "familyTitle": "One account, all your Lead apps",
-    "familyBody": "Scanlead captures your trade fair contacts, CRMlead follows them through to the sale, InvoiceLead invoices and collects payment. A single Lead account to move from one to the other.",
-    "preview": {
-      "position": "Item",
+    "ctaSecondary": "See the app",
+    "fine": "No credit card. Free plan with no time limit. Sign in with your ERPlead account.",
+    "sample": "Sample data from a made-up company.",
+    "doc": {
+      "kind": "Invoice",
+      "number": "No. 2026-0040",
+      "date": "08.10.2026",
+      "client": "Hôtel du Lac Vert SA",
+      "clientAddress": "Quai des Saules 12, 2000 Neuchâtel",
+      "item": "Item",
       "qty": "Qty",
+      "rows": [
+        {
+          "label": "Solid ash staircase, 14 steps",
+          "unit": "flat rate"
+        },
+        {
+          "label": "Fitting and oil finish",
+          "unit": "16 h"
+        },
+        {
+          "label": "Brass handrail",
+          "unit": "1 pc"
+        },
+        {
+          "label": "Travel",
+          "unit": "2 days"
+        }
+      ],
       "subtotal": "Subtotal",
       "vat": "VAT 8.1%",
       "total": "Total",
+      "receipt": "Receipt",
       "payment": "Payment part",
-      "rows": ["Consulting, September", "Kick-off workshop", "Travel expenses"],
-      "hours": "h"
+      "account": "Account / Payable to",
+      "reference": "Reference",
+      "amount": "Amount",
+      "draft": "Draft",
+      "sent": "Sent",
+      "paid": "Paid",
+      "bank": "Payment received, matched with the bank statement"
+    },
+    "stats": {
+      "label": "The free plan in numbers",
+      "invoices": "invoices a month on the free plan",
+      "aiReads": "receipts and documents read by AI every month, also free",
+      "reminders": "reminder levels, with fees and late interest",
+      "languages": "languages for your quotes and invoices"
+    },
+    "overview": {
+      "title": "What's invoiced, paid or overdue. At a glance.",
+      "body": "The dashboard adds up this month's revenue, what's outstanding and what's overdue, and charts your last twelve months. You know who to chase before you open a single list.",
+      "legend": [
+        "Revenue for the month and the year",
+        "Outstanding and overdue invoices",
+        "Twelve months in one chart"
+      ],
+      "alt": "InvoiceLead dashboard: revenue, outstanding, overdue and a twelve-month chart",
+      "mobileAlt": "The dashboard on a phone"
+    },
+    "features": {
+      "title": "Every step, from quote to payment.",
+      "body": "Pick a step to see the matching screen.",
+      "tablist": "InvoiceLead features",
+      "pro": "Pro plan",
+      "tabs": {
+        "quotes": {
+          "label": "Quotes",
+          "title": "An accepted quote becomes an invoice in one click.",
+          "points": [
+            "Numbered quotes, valid for 30 days",
+            "Accepted or declined, with the date",
+            "Turned into an invoice with nothing to retype"
+          ],
+          "alt": "Open quote for a client"
+        },
+        "qr": {
+          "label": "QR-bill",
+          "title": "QR-bills every Swiss bank reads first time.",
+          "points": [
+            "Payment part to the SIX standard, structured addresses",
+            "QR or SCOR reference, depending on your account",
+            "Sent by email, with the PDF and a view link"
+          ],
+          "alt": "QR-bill as a PDF, with its payment part"
+        },
+        "reminders": {
+          "label": "Reminders",
+          "title": "Late invoices chased at the right moment, without a thought.",
+          "points": [
+            "Overdue invoices sorted by reminder level",
+            "Three levels, fees and late interest",
+            "Sent automatically every morning with Pro"
+          ],
+          "alt": "Reminders screen with the overdue invoices"
+        },
+        "receipts": {
+          "label": "Expenses",
+          "title": "Snap the receipt and the expense is done.",
+          "points": [
+            "Amount, date and VAT read by AI",
+            "The receipt stays attached to the entry",
+            "{n} reads a month on the free plan"
+          ],
+          "alt": "Expense claim filled in from the receipt read by AI"
+        },
+        "bills": {
+          "label": "Suppliers",
+          "title": "Supplier invoices read, checked and ready to pay.",
+          "points": [
+            "From a photo, a PDF or an e-invoice",
+            "Due dates in view before they slip",
+            "pain.001 payment file for your bank"
+          ],
+          "alt": "Supplier invoices with their due dates"
+        },
+        "bank": {
+          "label": "Bank",
+          "title": "Statement imported, every payment matched.",
+          "points": [
+            "camt.053 statements from any Swiss bank",
+            "Each credit matched to the right invoice",
+            "Autopilot books the safe cases"
+          ],
+          "alt": "Imported bank statement with suggested matches"
+        },
+        "vat": {
+          "label": "VAT",
+          "title": "Your Swiss VAT return, prepared for the FTA.",
+          "points": [
+            "Effective method or net tax rate",
+            "On agreed or received consideration",
+            "eCH-0217 XML export for the FTA portal"
+          ],
+          "alt": "Quarterly VAT return"
+        },
+        "time": {
+          "label": "Time",
+          "title": "Project hours go straight onto the invoice.",
+          "points": [
+            "Timer or quick entry, linked to a project",
+            "Billable hours invoiced in one click",
+            "Connected to ProjectLead if you use it"
+          ],
+          "alt": "Time tracking by project"
+        }
+      }
+    },
+    "photo": {
+      "title": "One receipt. One photo. Booked.",
+      "body": "On site or at lunch, open InvoiceLead on your phone and take a photo of the receipt. The AI reads the amount, the date and the VAT, then suggests the account. One tap to confirm.",
+      "steps": [
+        {
+          "title": "Snap it",
+          "body": "Straight from your phone's home screen, with no app to install."
+        },
+        {
+          "title": "AI reads it",
+          "body": "Amount, VAT rate, date and supplier, in seconds."
+        },
+        {
+          "title": "Confirm",
+          "body": "The expense is booked and the photo stays on file as its receipt."
+        }
+      ],
+      "ticket": {
+        "items": [
+          "Stainless screws 4x40, 200 pcs",
+          "Wood glue D3, 750 g",
+          "Sandpaper P120",
+          "Clear hard wax oil, 1 l"
+        ],
+        "total": "Total CHF",
+        "vatIncl": "incl. VAT 8.1%",
+        "card": "Paid by card",
+        "thanks": "Thank you for your visit"
+      },
+      "read": {
+        "title": "Read by AI",
+        "supplier": "Supplier",
+        "date": "Date",
+        "amount": "Amount",
+        "vat": "VAT",
+        "account": "Suggested account",
+        "accountValue": "4000 Cost of materials"
+      },
+      "alt": "Taking a receipt photo on a phone: the AI reads it"
+    },
+    "swiss": {
+      "title": "Made for Switzerland. Ready for clients abroad.",
+      "items": [
+        {
+          "title": "Swiss QR-bill, SIX 2.3",
+          "body": "Compliant payment part, structured addresses, QR or SCOR reference."
+        },
+        {
+          "title": "VAT at 8.1%, 2.6% and 3.8%",
+          "body": "Effective or net tax rate method, return prepared."
+        },
+        {
+          "title": "eCH-0217",
+          "body": "Your VAT return as XML, accepted by the FTA portal."
+        },
+        {
+          "title": "camt.053 and pain.001",
+          "body": "Bank statements imported, supplier payments exported."
+        },
+        {
+          "title": "Swiss SME chart of accounts",
+          "body": "Entries posted from your invoices, balance sheet, income statement and ledger."
+        },
+        {
+          "title": "Documents in 4 languages",
+          "body": "German, French, Italian and English, chosen per client."
+        },
+        {
+          "title": "Multi-currency",
+          "body": "Quotes and invoices in EUR, USD or GBP at the day's rate."
+        },
+        {
+          "title": "Beyond Switzerland",
+          "body": "UStVA in Germany, CA3 in France, MTD in the UK, sales tax in the US."
+        }
+      ]
+    },
+    "pricing": {
+      "title": "Free to start. Pro when you grow.",
+      "body": "Pro features stay visible in the app, greyed out with a Pro badge, so you know what they do before you pay.",
+      "what": "What's included",
+      "free": "Free",
+      "pro": "Pro",
+      "freePrice": "€0",
+      "proPrice": "€19 a month",
+      "unlimited": "Unlimited",
+      "rows": {
+        "invoices": {
+          "label": "Invoices",
+          "free": "{n} a month"
+        },
+        "aiReads": {
+          "label": "Receipts and documents read by AI",
+          "free": "{n} a month",
+          "pro": "{n} a month"
+        },
+        "assistant": {
+          "label": "Questions to the accounting assistant",
+          "free": "{n} a month"
+        },
+        "reminders": {
+          "label": "Reminders",
+          "free": "First reminder by hand, {n} a month",
+          "pro": "3 levels, fees, sent automatically"
+        },
+        "bank": {
+          "label": "Bank statements imported",
+          "free": "{n} a month"
+        },
+        "recurring": {
+          "label": "Recurring invoices",
+          "free": "{n} active"
+        },
+        "vat": {
+          "label": "VAT return, multi-currency, accountant access",
+          "free": "Visible, greyed out",
+          "pro": "Included"
+        },
+        "seats": {
+          "label": "Users",
+          "free": "{n}",
+          "pro": "{n}, plus your accountant"
+        }
+      },
+      "note": "Prices exclude VAT. Pro+ at €39 a month: 5 users, API, MCP server and webhooks.",
+      "more": "See all pricing"
+    },
+    "family": {
+      "title": "One ERPlead account for the whole Lead family.",
+      "body": "Sign in with Google, Apple, Microsoft or your email address. The same account opens Scanlead, CRMlead, ProjectLead and Greetlead, and the apps hand work on to each other.",
+      "here": "You are here",
+      "apps": {
+        "scanlead": "Captures trade fair contacts",
+        "crmlead": "Follows them through to the sale",
+        "projectlead": "Runs the project, counts the hours",
+        "invoicelead": "Invoices and collects",
+        "greetlead": "The card the whole team signs"
+      }
+    },
+    "faq": {
+      "title": "Frequently asked questions",
+      "more": "All questions"
+    },
+    "final": {
+      "title": "Your next invoice can go out today.",
+      "body": "Your account is ready in a minute. The free plan stays free, with no time limit.",
+      "cta": "Start for free",
+      "secondary": "See pricing"
     }
   },
   "auth": {

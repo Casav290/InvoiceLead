@@ -1,7 +1,7 @@
 {
   "meta": {
     "title": "InvoiceLead, devis, factures QR et comptabilité suisse",
-    "description": "Devis, factures QR conformes, relances automatiques et comptabilité en partie double pour indépendants et PME suisses. Gratuit pour démarrer."
+    "description": "Devis, factures QR conformes, relances, tickets lus en photo et comptabilité en partie double pour les indépendants et PME suisses. Gratuit pour démarrer, sans carte bancaire."
   },
   "nav": {
     "features": "Fonctions",
@@ -13,49 +13,308 @@
     "faq": "FAQ"
   },
   "home": {
-    "kicker": "Nouveau dans la famille Lead",
-    "title": "Devis, factures et comptabilité, bouclés avant la fin de journée.",
-    "subtitle": "InvoiceLead prépare vos devis, émet des factures QR conformes, relance les impayés et tient votre comptabilité suisse. Pour les indépendants comme pour les PME, gratuit pour démarrer.",
+    "news": "Nouveau",
+    "newsText": "Les factures fournisseurs se lisent en photo",
+    "title1": "Du devis à l'encaissement.",
+    "title2": "Sans ressaisir une ligne.",
+    "lede": "InvoiceLead prépare vos devis, envoie des factures QR conformes, relance les retards et lit vos tickets en photo. Votre comptabilité se remplit au passage, prête pour la fiduciaire.",
     "ctaPrimary": "Commencer gratuitement",
-    "ctaSecondary": "Voir les fonctions",
-    "featuresTitle": "Tout ce qu'il faut pour être payé, et rien de plus",
-    "features": {
-      "quotes": {
-        "title": "Du devis à la facture en un clic",
-        "body": "Un devis accepté devient confirmation puis facture, sans rien ressaisir."
-      },
-      "qr": {
-        "title": "Factures QR au standard suisse",
-        "body": "Section paiement QR conforme à la norme SIX, adresses structurées, référence QR ou SCOR."
-      },
-      "reminders": {
-        "title": "Relances automatiques",
-        "body": "Trois niveaux de rappel, frais et délais à votre main, envoyés au bon moment."
-      },
-      "accounting": {
-        "title": "Comptabilité en partie double",
-        "body": "Plan comptable PME, écritures créées par vos factures et paiements, bilan et compte de résultat."
-      },
-      "vat": {
-        "title": "TVA suisse maîtrisée",
-        "body": "Taux 8,1 %, 2,6 % et 3,8 %, méthode effective ou taux de la dette fiscale nette, décompte préparé."
-      },
-      "team": {
-        "title": "Toute l'équipe, et votre fiduciaire",
-        "body": "Plusieurs utilisateurs par entreprise, avec un seul compte pour toutes les applications Lead."
-      }
-    },
-    "familyTitle": "Un compte, toutes vos applications Lead",
-    "familyBody": "Scanlead capte vos contacts de salon, CRMlead les suit jusqu'à la vente, InvoiceLead facture et encaisse. Un seul Compte Lead pour passer de l'une à l'autre.",
-    "preview": {
-      "position": "Position",
+    "ctaSecondary": "Voir l'application",
+    "fine": "Sans carte bancaire. Formule gratuite sans limite de durée. Connexion avec votre compte ERPlead.",
+    "sample": "Données d'exemple d'une entreprise fictive.",
+    "doc": {
+      "kind": "Facture",
+      "number": "N° 2026-0040",
+      "date": "08.10.2026",
+      "client": "Hôtel du Lac Vert SA",
+      "clientAddress": "Quai des Saules 12, 2000 Neuchâtel",
+      "item": "Désignation",
       "qty": "Qté",
+      "rows": [
+        {
+          "label": "Escalier en frêne massif, 14 marches",
+          "unit": "forfait"
+        },
+        {
+          "label": "Pose et finition à l'huile",
+          "unit": "16 h"
+        },
+        {
+          "label": "Main courante en laiton",
+          "unit": "1 pce"
+        },
+        {
+          "label": "Déplacements",
+          "unit": "2 jours"
+        }
+      ],
       "subtotal": "Sous-total",
       "vat": "TVA 8,1 %",
       "total": "Total",
+      "receipt": "Récépissé",
       "payment": "Section paiement",
-      "rows": ["Conseil, septembre", "Atelier de lancement", "Frais de déplacement"],
-      "hours": "h"
+      "account": "Compte / Payable à",
+      "reference": "Référence",
+      "amount": "Montant",
+      "draft": "Brouillon",
+      "sent": "Envoyée",
+      "paid": "Payée",
+      "bank": "Paiement reçu, rapproché avec le relevé bancaire"
+    },
+    "stats": {
+      "label": "La formule gratuite en chiffres",
+      "invoices": "factures par mois dans la formule gratuite",
+      "aiReads": "tickets et justificatifs lus par l'IA chaque mois, offerts aussi",
+      "reminders": "niveaux de relance, avec frais et intérêts moratoires",
+      "languages": "langues pour vos devis et factures"
+    },
+    "overview": {
+      "title": "Ce qui est facturé, payé ou en retard. D'un coup d'œil.",
+      "body": "Le tableau de bord additionne le chiffre d'affaires du mois, l'encours et les retards, et trace vos douze derniers mois. Vous savez qui relancer avant d'ouvrir la moindre liste.",
+      "legend": [
+        "Chiffre d'affaires du mois et de l'année",
+        "Encours et factures en retard",
+        "Douze mois en un graphique"
+      ],
+      "alt": "Tableau de bord d'InvoiceLead : chiffre d'affaires, encours, retards et graphique sur douze mois",
+      "mobileAlt": "Le tableau de bord sur un téléphone"
+    },
+    "features": {
+      "title": "Chaque étape, du devis au paiement.",
+      "body": "Choisissez une étape pour voir l'écran correspondant.",
+      "tablist": "Fonctions d'InvoiceLead",
+      "pro": "Formule Pro",
+      "tabs": {
+        "quotes": {
+          "label": "Devis",
+          "title": "Le devis accepté devient facture en un clic.",
+          "points": [
+            "Devis numérotés, valables 30 jours",
+            "Accepté ou refusé, avec la date",
+            "Converti en facture sans rien ressaisir"
+          ],
+          "alt": "Devis en cours pour un client"
+        },
+        "qr": {
+          "label": "Facture QR",
+          "title": "Des factures QR que chaque banque lit du premier coup.",
+          "points": [
+            "Section paiement selon la norme SIX, adresses structurées",
+            "Référence QR ou SCOR selon votre compte",
+            "Envoi par e-mail, avec le PDF et un lien de consultation"
+          ],
+          "alt": "Facture QR en PDF, avec sa section paiement"
+        },
+        "reminders": {
+          "label": "Relances",
+          "title": "Les retards relancés au bon moment, sans y penser.",
+          "points": [
+            "Factures échues classées par niveau de relance",
+            "Trois niveaux, frais et intérêts moratoires",
+            "Envoi automatique chaque matin avec Pro"
+          ],
+          "alt": "Écran des relances avec les factures en retard"
+        },
+        "receipts": {
+          "label": "Notes de frais",
+          "title": "Le ticket en photo, la note de frais est faite.",
+          "points": [
+            "Montant, date et TVA lus par l'IA",
+            "Le justificatif reste attaché à l'écriture",
+            "{n} lectures par mois dans la formule gratuite"
+          ],
+          "alt": "Note de frais remplie à partir du ticket lu par l'IA"
+        },
+        "bills": {
+          "label": "Fournisseurs",
+          "title": "Les factures fournisseurs lues, contrôlées, prêtes à payer.",
+          "points": [
+            "En photo, en PDF ou en e-facture",
+            "Échéances visibles avant qu'elles ne tombent",
+            "Ordre de paiement pain.001 pour votre banque"
+          ],
+          "alt": "Factures fournisseurs avec leurs échéances"
+        },
+        "bank": {
+          "label": "Banque",
+          "title": "Le relevé importé, chaque paiement rapproché.",
+          "points": [
+            "Relevés camt.053 de toutes les banques suisses",
+            "Chaque crédit proposé face à la bonne facture",
+            "Le pilote automatique valide les cas sûrs"
+          ],
+          "alt": "Relevé bancaire importé avec les rapprochements proposés"
+        },
+        "vat": {
+          "label": "TVA",
+          "title": "Le décompte TVA préparé pour l'AFC.",
+          "points": [
+            "Méthode effective ou taux de la dette fiscale nette",
+            "Contre-prestations convenues ou reçues",
+            "Export XML eCH-0217 pour le portail de l'AFC"
+          ],
+          "alt": "Décompte TVA du trimestre"
+        },
+        "time": {
+          "label": "Temps",
+          "title": "Les heures du projet passent sur la facture.",
+          "points": [
+            "Chrono ou saisie rapide, rattachés à un projet",
+            "Heures facturables changées en facture en un clic",
+            "Relié à ProjectLead si vous l'utilisez"
+          ],
+          "alt": "Saisie du temps par projet"
+        }
+      }
+    },
+    "photo": {
+      "title": "Un ticket. Une photo. C'est comptabilisé.",
+      "body": "Sur le chantier ou au restaurant, ouvrez InvoiceLead sur votre téléphone et photographiez le ticket. L'IA lit le montant, la date et la TVA, puis propose le compte. Vous validez d'un geste.",
+      "steps": [
+        {
+          "title": "Photographiez",
+          "body": "Depuis l'écran d'accueil du téléphone, sans application à installer."
+        },
+        {
+          "title": "L'IA lit",
+          "body": "Montant, taux de TVA, date et fournisseur, en quelques secondes."
+        },
+        {
+          "title": "Validez",
+          "body": "La dépense est comptabilisée, la photo reste en justificatif."
+        }
+      ],
+      "ticket": {
+        "items": [
+          "Vis inox 4x40, 200 pces",
+          "Colle à bois D3, 750 g",
+          "Papier abrasif P120",
+          "Huile dure incolore, 1 l"
+        ],
+        "total": "Total CHF",
+        "vatIncl": "dont TVA 8,1 %",
+        "card": "Payé par carte",
+        "thanks": "Merci de votre visite"
+      },
+      "read": {
+        "title": "Lu par l'IA",
+        "supplier": "Fournisseur",
+        "date": "Date",
+        "amount": "Montant",
+        "vat": "TVA",
+        "account": "Compte proposé",
+        "accountValue": "4000 Charges de matériel"
+      },
+      "alt": "Photographier un justificatif sur le téléphone : le ticket est lu par l'IA"
+    },
+    "swiss": {
+      "title": "Fait pour la Suisse. Prêt pour vos clients d'ailleurs.",
+      "items": [
+        {
+          "title": "QR-facture SIX 2.3",
+          "body": "Section paiement conforme, adresses structurées, référence QR ou SCOR."
+        },
+        {
+          "title": "TVA à 8,1 %, 2,6 % et 3,8 %",
+          "body": "Méthode effective ou taux de la dette fiscale nette, décompte préparé."
+        },
+        {
+          "title": "eCH-0217",
+          "body": "Le décompte TVA en XML, accepté par le portail de l'AFC."
+        },
+        {
+          "title": "camt.053 et pain.001",
+          "body": "Relevés bancaires importés, paiements fournisseurs exportés."
+        },
+        {
+          "title": "Plan comptable PME",
+          "body": "Écritures passées par vos factures, bilan, compte de résultat et grand livre."
+        },
+        {
+          "title": "Documents en 4 langues",
+          "body": "Allemand, français, italien et anglais, choisis pour chaque client."
+        },
+        {
+          "title": "Multidevise",
+          "body": "Devis et factures en EUR, USD ou GBP, au cours du jour."
+        },
+        {
+          "title": "Au-delà de la Suisse",
+          "body": "UStVA en Allemagne, CA3 en France, MTD au Royaume-Uni, sales tax aux États-Unis."
+        }
+      ]
+    },
+    "pricing": {
+      "title": "Gratuit pour commencer. Pro quand vous grandissez.",
+      "body": "Les fonctions Pro restent visibles en gris dans l'application, avec leur marque Pro : vous savez ce qu'elles font avant de payer.",
+      "what": "Ce qui est compris",
+      "free": "Gratuit",
+      "pro": "Pro",
+      "freePrice": "0 €",
+      "proPrice": "19 € par mois",
+      "unlimited": "Sans limite",
+      "rows": {
+        "invoices": {
+          "label": "Factures",
+          "free": "{n} par mois"
+        },
+        "aiReads": {
+          "label": "Tickets et justificatifs lus par l'IA",
+          "free": "{n} par mois",
+          "pro": "{n} par mois"
+        },
+        "assistant": {
+          "label": "Questions à l'assistant comptable",
+          "free": "{n} par mois"
+        },
+        "reminders": {
+          "label": "Relances",
+          "free": "Premier rappel à la main, {n} par mois",
+          "pro": "3 niveaux, frais, envoi automatique"
+        },
+        "bank": {
+          "label": "Relevés bancaires importés",
+          "free": "{n} par mois"
+        },
+        "recurring": {
+          "label": "Factures récurrentes",
+          "free": "{n} active"
+        },
+        "vat": {
+          "label": "Décompte TVA, multidevise, accès fiduciaire",
+          "free": "Visibles en gris",
+          "pro": "Compris"
+        },
+        "seats": {
+          "label": "Utilisateurs",
+          "free": "{n}",
+          "pro": "{n}, plus votre fiduciaire"
+        }
+      },
+      "note": "Prix hors TVA. Pro+ à 39 € par mois : 5 utilisateurs, API, serveur MCP et webhooks.",
+      "more": "Voir tous les tarifs"
+    },
+    "family": {
+      "title": "Un compte ERPlead pour toute la famille Lead.",
+      "body": "Connectez-vous avec Google, Apple, Microsoft ou votre adresse e-mail. Le même compte ouvre Scanlead, CRMlead, ProjectLead et Greetlead, et les applications se passent le relais.",
+      "here": "Vous êtes ici",
+      "apps": {
+        "scanlead": "Capte les contacts des salons",
+        "crmlead": "Les suit jusqu'à la vente",
+        "projectlead": "Mène le projet, compte les heures",
+        "invoicelead": "Facture et encaisse",
+        "greetlead": "La carte que toute l'équipe signe"
+      }
+    },
+    "faq": {
+      "title": "Questions fréquentes",
+      "more": "Toutes les questions"
+    },
+    "final": {
+      "title": "Votre prochaine facture peut partir aujourd'hui.",
+      "body": "Votre compte est prêt en une minute. La formule gratuite reste gratuite, sans limite de durée.",
+      "cta": "Commencer gratuitement",
+      "secondary": "Voir les tarifs"
     }
   },
   "auth": {

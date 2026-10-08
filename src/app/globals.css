@@ -13,7 +13,7 @@
   --drop-shadow-*: initial;
   --text-shadow-*: initial;
 
-  --font-sans: "Archivo Variable", "Archivo", system-ui, sans-serif;
+  --font-sans: "Archivo Variable", "Archivo", "Archivo Fallback", system-ui, sans-serif;
   --font-mono: Menlo, ui-monospace, monospace;
 
   --color-white: #ffffff;
@@ -67,6 +67,16 @@
   --color-ok: #16a34a;
   --color-ok-bg: #dcfce7;
   --color-ok-fg: #15803d;
+}
+
+/*
+ * Police de secours aux largeurs d'Archivo (Arial réduite de 1,2 %), le temps qu'Archivo arrive :
+ * les lignes se coupent au même endroit avant et après, la page ne bouge pas au chargement.
+ */
+@font-face {
+  font-family: "Archivo Fallback";
+  src: local("Arial"), local("Liberation Sans"), local("Helvetica");
+  size-adjust: 98.8%;
 }
 
 @layer base {

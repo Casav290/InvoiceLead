@@ -47,20 +47,22 @@ export function PublicHeader({
             </a>
           ))}
         </nav>
-        <div className="flex w-full flex-wrap items-center justify-between gap-y-2 py-2 sm:ml-auto sm:w-auto sm:flex-nowrap sm:justify-start sm:py-0">
+        {/* Sur téléphone, le bouton d'inscription prend sa propre ligne : l'en-tête garde la même
+            hauteur avant et après le chargement de la police (pas de décalage de la page). */}
+        <div className="flex w-full flex-wrap items-center justify-between gap-y-1.5 py-2 sm:ml-auto sm:w-auto sm:flex-nowrap sm:justify-start sm:py-0">
           <LanguageSwitcher
             className="border-r border-line-strong pr-1 sm:self-stretch sm:px-2"
             query={langQuery}
           />
           <a
             href={leadLoginHref(locale, false, back)}
-            className="border-r border-line-strong px-3 text-center text-[12px] font-semibold text-ink-muted hover:text-ink sm:px-4 sm:py-2 sm:text-[13px]"
+            className="px-3 py-1 text-center text-[13px] font-semibold text-ink-muted hover:text-ink sm:border-r sm:border-line-strong sm:px-4 sm:py-2"
           >
             {t("login")}
           </a>
           <a
             href={leadLoginHref(locale, true, back)}
-            className="ml-2 bg-accent px-3 py-2 text-center text-[12px] font-bold text-white hover:bg-accent-dark sm:ml-3 sm:px-4 sm:text-[13px] sm:whitespace-nowrap"
+            className="w-full bg-accent px-3 py-2 text-center text-[13px] font-bold text-white hover:bg-accent-dark sm:ml-3 sm:w-auto sm:px-4 sm:py-2 sm:whitespace-nowrap"
           >
             {t("cta")}
           </a>

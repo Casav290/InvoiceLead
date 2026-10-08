@@ -1,0 +1,167 @@
+{
+  "de/dashboard-desktop": {
+    "w": 1920,
+    "h": 1200,
+    "widths": [800, 1280, 1920]
+  },
+  "de/quote-desktop": {
+    "w": 1920,
+    "h": 1200,
+    "widths": [800, 1280, 1920]
+  },
+  "de/reminders-desktop": {
+    "w": 1920,
+    "h": 1200,
+    "widths": [800, 1280, 1920]
+  },
+  "de/expenses-desktop": {
+    "w": 1920,
+    "h": 1200,
+    "widths": [800, 1280, 1920]
+  },
+  "de/bills-desktop": {
+    "w": 1920,
+    "h": 1200,
+    "widths": [800, 1280, 1920]
+  },
+  "de/bank-desktop": {
+    "w": 1920,
+    "h": 1200,
+    "widths": [800, 1280, 1920]
+  },
+  "de/vat-desktop": {
+    "w": 1920,
+    "h": 1200,
+    "widths": [800, 1280, 1920]
+  },
+  "de/time-desktop": {
+    "w": 1920,
+    "h": 1200,
+    "widths": [800, 1280, 1920]
+  },
+  "de/dashboard-mobile": {
+    "w": 800,
+    "h": 1731,
+    "widths": [400, 800]
+  },
+  "de/capture-mobile": {
+    "w": 800,
+    "h": 1731,
+    "widths": [400, 800]
+  },
+  "de/invoice-pdf": {
+    "w": 1280,
+    "h": 1810,
+    "widths": [800, 1280]
+  },
+  "fr/dashboard-desktop": {
+    "w": 1920,
+    "h": 1200,
+    "widths": [800, 1280, 1920]
+  },
+  "fr/quote-desktop": {
+    "w": 1920,
+    "h": 1200,
+    "widths": [800, 1280, 1920]
+  },
+  "fr/reminders-desktop": {
+    "w": 1920,
+    "h": 1200,
+    "widths": [800, 1280, 1920]
+  },
+  "fr/expenses-desktop": {
+    "w": 1920,
+    "h": 1200,
+    "widths": [800, 1280, 1920]
+  },
+  "fr/bills-desktop": {
+    "w": 1920,
+    "h": 1200,
+    "widths": [800, 1280, 1920]
+  },
+  "fr/bank-desktop": {
+    "w": 1920,
+    "h": 1200,
+    "widths": [800, 1280, 1920]
+  },
+  "fr/vat-desktop": {
+    "w": 1920,
+    "h": 1200,
+    "widths": [800, 1280, 1920]
+  },
+  "fr/time-desktop": {
+    "w": 1920,
+    "h": 1200,
+    "widths": [800, 1280, 1920]
+  },
+  "fr/dashboard-mobile": {
+    "w": 800,
+    "h": 1731,
+    "widths": [400, 800]
+  },
+  "fr/capture-mobile": {
+    "w": 800,
+    "h": 1731,
+    "widths": [400, 800]
+  },
+  "fr/invoice-pdf": {
+    "w": 1280,
+    "h": 1810,
+    "widths": [800, 1280]
+  },
+  "en/dashboard-desktop": {
+    "w": 1920,
+    "h": 1200,
+    "widths": [800, 1280, 1920]
+  },
+  "en/quote-desktop": {
+    "w": 1920,
+    "h": 1200,
+    "widths": [800, 1280, 1920]
+  },
+  "en/reminders-desktop": {
+    "w": 1920,
+    "h": 1200,
+    "widths": [800, 1280, 1920]
+  },
+  "en/expenses-desktop": {
+    "w": 1920,
+    "h": 1200,
+    "widths": [800, 1280, 1920]
+  },
+  "en/bills-desktop": {
+    "w": 1920,
+    "h": 1200,
+    "widths": [800, 1280, 1920]
+  },
+  "en/bank-desktop": {
+    "w": 1920,
+    "h": 1200,
+    "widths": [800, 1280, 1920]
+  },
+  "en/vat-desktop": {
+    "w": 1920,
+    "h": 1200,
+    "widths": [800, 1280, 1920]
+  },
+  "en/time-desktop": {
+    "w": 1920,
+    "h": 1200,
+    "widths": [800, 1280, 1920]
+  },
+  "en/dashboard-mobile": {
+    "w": 800,
+    "h": 1731,
+    "widths": [400, 800]
+  },
+  "en/capture-mobile": {
+    "w": 800,
+    "h": 1731,
+    "widths": [400, 800]
+  },
+  "en/invoice-pdf": {
+    "w": 1280,
+    "h": 1810,
+    "widths": [800, 1280]
+  }
+}
