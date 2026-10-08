@@ -9,7 +9,7 @@
  * compile avec `noUncheckedIndexedAccess`, plus strict que CRMlead.
  *
  * Variables d'environnement attendues :
- *   LEAD_ID_ISSUER         https://crmlead.io
+ *   LEAD_ID_ISSUER         https://erplead.io
  *   LEAD_ID_CLIENT_ID      scanlead
  *   LEAD_ID_CLIENT_SECRET  lid_…   (Réglages CRMlead → Mon compte Lead → Applications reliées)
  *   LEAD_ID_REDIRECT_URI   https://scanlead.io/auth/lead/callback

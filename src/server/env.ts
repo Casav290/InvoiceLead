@@ -10,6 +10,8 @@ const schema = z.object({
   LEAD_ID_CLIENT_SECRET: z.string().min(1),
   LEAD_ID_REDIRECT_URI: z.url(),
   LEAD_ID_APP: z.string().min(1),
+  /** L'application CRMlead (envoi des clients et des factures), distincte de l'émetteur des connexions. */
+  CRMLEAD_URL: z.url().default("https://crmlead.io"),
   // Envoi des e-mails par Resend ; sans clé, l'envoi est désactivé et seul le lien reste proposé.
   RESEND_API_KEY: z.string().min(1).optional(),
   RESEND_API_URL: z.url().default("https://api.resend.com"),

@@ -138,7 +138,7 @@ export async function deliverCrmlead(
     if (!row) continue;
     const e = row.envelope as Parameters<typeof send>[1];
     try {
-      await send({ app: "crmlead", url: env().LEAD_ID_ISSUER }, e);
+      await send({ app: "crmlead", url: env().CRMLEAD_URL }, e);
       await database
         .update(crmleadOutbox)
         .set({

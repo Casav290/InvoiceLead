@@ -19,7 +19,7 @@ vi.mock("next/server", () => ({
 
 const t = testDb();
 const db = t.database;
-beforeAll(() => setTestEnv({ LEAD_ID_ISSUER: "https://crm.test" }));
+beforeAll(() => setTestEnv({ LEAD_ID_ISSUER: "https://erp.test", CRMLEAD_URL: "https://crm.test" }));
 beforeEach(() => t.reset());
 afterEach(() => vi.unstubAllGlobals());
 afterAll(() => t.close());
@@ -27,11 +27,14 @@ afterAll(() => t.close());
 const LEAD = "4f0c2a9e-1b2c-4d3e-8f90-123456789abc";
 
 /** Faux CRMlead : jeton d'application, carte de visite, boîte de réception qui garde les envois. */
+let calls: string[] = [];
 function fakeCrmlead(status = 200) {
   const received: Record<string, unknown>[] = [];
+  calls = [];
   vi.stubGlobal(
     "fetch",
     vi.fn(async (url: string, init?: { body?: unknown }) => {
+      calls.push(url);
       if (url.endsWith("/oauth/token"))
         return Response.json({ access_token: "tok", token_type: "Bearer", expires_in: 300 });
       if (url.endsWith("/.well-known/lead-app.json"))
@@ -126,6 +129,9 @@ describe("états vers CRMlead", () => {
     expect(received.at(-1)).toMatchObject({ data: { kind: "invoice", status: "paid" } });
     const rows = await db.select().from(crmleadOutbox);
     expect(rows.every((r) => r.status === "delivered")).toBe(true);
+    // Le jeton vient de l'émetteur des connexions (ERPlead), les envois vont à CRMlead.
+    expect(calls.filter((u) => u.endsWith("/oauth/token")).every((u) => u.startsWith("https://erp.test/"))).toBe(true);
+    expect(calls.filter((u) => !u.endsWith("/oauth/token")).every((u) => u.startsWith("https://crm.test/"))).toBe(true);
   });
 
   it("CRMlead injoignable : l'envoi attend et repart ; lead introuvable : abandon", async () => {
