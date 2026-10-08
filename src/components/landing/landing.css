@@ -203,14 +203,13 @@
     }
   }
 }
+/* Transformation seule, sans transparence : le texte de la capture garde son contraste. */
 @keyframes lp-tilt {
   from {
     transform: perspective(1800px) rotateX(20deg) scale(0.86);
-    opacity: 0.35;
   }
   to {
     transform: none;
-    opacity: 1;
   }
 }
 @keyframes lp-drift {
