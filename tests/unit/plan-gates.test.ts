@@ -558,7 +558,8 @@ describe("fonctions réservées", () => {
     expect(before).toMatchObject({ status: "pending", attempts: 0 });
     await setRank(org.id, 1);
     const fetcher = vi.fn(async () => new Response("ok", { status: 200 }));
-    const now = new Date("2026-10-05T08:00:00Z");
+    // Après la création de la livraison (une date fixe la rendait « pas encore due » passé le 05.10).
+    const now = new Date(Date.now() + 60_000);
     expect(await deliverPending(db, { organizationId: org.id, now, fetcher })).toEqual({
       delivered: 0,
       failed: 0,
