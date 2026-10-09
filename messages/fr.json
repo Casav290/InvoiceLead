@@ -296,7 +296,7 @@
     },
     "family": {
       "title": "Un compte ERPlead pour toute la famille Lead.",
-      "body": "Connectez-vous avec Google, Apple, Microsoft ou votre adresse e-mail. Le même compte ouvre Scanlead, CRMlead, ProjectLead et Greetlead, et les applications se passent le relais.",
+      "body": "Connectez-vous avec Google, Apple ou votre adresse e-mail. Le même compte ouvre Scanlead, CRMlead, ProjectLead et Greetlead, et les applications se passent le relais.",
       "here": "Vous êtes ici",
       "apps": {
         "scanlead": "Capte les contacts des salons",

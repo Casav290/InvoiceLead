@@ -296,7 +296,7 @@
     },
     "family": {
       "title": "One ERPlead account for the whole Lead family.",
-      "body": "Sign in with Google, Apple, Microsoft or your email address. The same account opens Scanlead, CRMlead, ProjectLead and Greetlead, and the apps hand work on to each other.",
+      "body": "Sign in with Google, Apple or your email address. The same account opens Scanlead, CRMlead, ProjectLead and Greetlead, and the apps hand work on to each other.",
       "here": "You are here",
       "apps": {
         "scanlead": "Captures trade fair contacts",

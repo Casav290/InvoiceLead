@@ -296,7 +296,7 @@
     },
     "family": {
       "title": "Ein ERPlead-Konto für die ganze Lead-Familie.",
-      "body": "Melden Sie sich mit Google, Apple, Microsoft oder Ihrer E-Mail-Adresse an. Dasselbe Konto öffnet Scanlead, CRMlead, ProjectLead und Greetlead, und die Apps arbeiten einander zu.",
+      "body": "Melden Sie sich mit Google, Apple oder Ihrer E-Mail-Adresse an. Dasselbe Konto öffnet Scanlead, CRMlead, ProjectLead und Greetlead, und die Apps arbeiten einander zu.",
       "here": "Sie sind hier",
       "apps": {
         "scanlead": "Erfasst Ihre Messekontakte",
