@@ -106,6 +106,7 @@ export default async function CrmImportPage({ params, searchParams }: Props) {
                     {t("net")}
                   </td>
                   <td className="px-5 py-2 text-right tabular-nums" data-testid="crm-total">
+                    {handoff.currency}{" "}
                     {formatAmount(
                       handoffTotalCents(handoff),
                       countryPack(organization.country).amounts,

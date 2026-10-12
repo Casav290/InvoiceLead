@@ -1,6 +1,7 @@
 import { and, eq, isNull, sql } from "drizzle-orm";
 import { z } from "zod";
 import { VAT_CODES } from "@/countries/ch/vat";
+import { CURRENCIES } from "@/lib/currencies";
 import {
   CONTACT_COUNTRIES,
   CONTACT_KINDS,
@@ -23,7 +24,9 @@ const opt = (max: number) => z.string().trim().max(max).optional();
 export const handoffSchema = z.object({
   v: z.literal(1),
   kind: z.enum(["quote", "invoice"]).default("quote"),
-  currency: z.literal("CHF").default("CHF"),
+  // La devise du lead (12.10.2026). CRMlead ne l'envoyait pas : un lead à 1000 EUR devenait un devis à 1000 CHF.
+  // Une devise qu'InvoiceLead ne facture pas est refusée plutôt que changée en CHF ; sans devise, CHF (anciens liens).
+  currency: z.enum(CURRENCIES).default("CHF"),
   lead: z.object({ id: str(100), title: opt(200) }),
   contact: z.object({
     id: opt(100),
@@ -163,6 +166,7 @@ export async function importHandoff(
     {
       contactId: contact.id,
       language,
+      currency: h.currency,
       title: h.lead.title || null,
       introText: null,
       footerText: null,

@@ -42,7 +42,10 @@ describe("passage CRMlead", () => {
     expect(decodeHandoff(null)).toBeNull();
     expect(decodeHandoff("pas-du-json")).toBeNull();
     expect(decodeHandoff(encodeHandoff({ ...HANDOFF, lines: [] }))).toBeNull();
-    expect(decodeHandoff(encodeHandoff({ ...HANDOFF, currency: "EUR" } as never))).toBeNull();
+    // Une devise qu'InvoiceLead ne facture pas est refusée ; EUR, USD, GBP passent telles quelles, sans devise : CHF.
+    expect(decodeHandoff(encodeHandoff({ ...HANDOFF, currency: "SEK" } as never))).toBeNull();
+    expect(decodeHandoff(encodeHandoff({ ...HANDOFF, currency: "EUR" } as never))?.currency).toBe("EUR");
+    expect(decodeHandoff(encodeHandoff({ ...HANDOFF, currency: undefined } as never))?.currency).toBe("CHF");
     const ok = decodeHandoff(encodeHandoff(HANDOFF));
     expect(ok?.contact.email).toBe("lea@rochat.test");
     expect(ok?.lines[1]).toMatchObject({ unit: "flat", vatCode: "normal" });
@@ -64,6 +67,7 @@ describe("passage CRMlead", () => {
       title: "Refonte du site",
       language: "fr",
       netCents: 430000,
+      currency: "CHF",
       externalRef: "crmlead:lead-42",
     });
     const lines = await db.select().from(invoiceLines).where(eq(invoiceLines.invoiceId, first.id));
@@ -83,6 +87,14 @@ describe("passage CRMlead", () => {
     if (!other) throw new Error("handoff");
     const second = await importHandoff(db, who, other, { ...opts, canCreateContact: false });
     expect(second).toMatchObject({ status: "created", kind: "invoice" });
+
+    // Lead en euros : la pièce est en euros, au même montant (plus de 1000 EUR devenus 1000 CHF).
+    const euro = decodeHandoff(encodeHandoff({ ...HANDOFF, currency: "EUR", lead: { id: "lead-eur" } } as never));
+    if (!euro) throw new Error("handoff");
+    const third = await importHandoff(db, who, euro, opts);
+    if (third.status === "contactLimit") throw new Error("contactLimit");
+    const [eur] = await db.select().from(invoices).where(eq(invoices.id, third.id));
+    expect(eur).toMatchObject({ currency: "EUR", netCents: 430000 });
     expect(await db.select().from(contacts)).toHaveLength(1);
 
     // Nouveau client alors que la limite est atteinte.
