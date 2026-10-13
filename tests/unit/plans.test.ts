@@ -1,3 +1,6 @@
+import { readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { and, eq } from "drizzle-orm";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { attachLeadIdentity } from "@/server/auth/attach";
@@ -66,6 +69,24 @@ describe("formules", () => {
     expect(upgradeUrl("fr")).toBe("/fr/app/settings/plan");
     expect(upgradeUrl("de", "pro")).toBe("/de/app/settings/plan?plan=pro");
     expect(upgradeUrl("en", "proplus")).toBe("/en/app/settings/plan?plan=pro_plus");
+  });
+
+  it("se lisent partout avec l'abonnement payé ici (planColumns, jamais trois colonnes à part)", () => {
+    // Une sélection qui oublierait billing_plan traiterait en Gratuit une entreprise qui paie ici.
+    const files = (dir: string): string[] =>
+      readdirSync(dir, { withFileTypes: true }).flatMap((e) =>
+        e.isDirectory()
+          ? files(join(dir, e.name))
+          : /\.tsx?$/.test(e.name)
+            ? [join(dir, e.name)]
+            : [],
+      );
+    const offenders = files(fileURLToPath(new URL("../../src", import.meta.url))).filter(
+      (f) =>
+        !f.endsWith("/server/plans.ts") &&
+        /entitlementsAt: organizations\.entitlementsAt/.test(readFileSync(f, "utf8")),
+    );
+    expect(offenders).toEqual([]);
   });
 
   it("valent dans InvoiceLead seulement : la formule d'InvoiceLead et l'abonnement payé ici", () => {

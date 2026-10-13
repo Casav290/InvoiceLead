@@ -320,14 +320,17 @@ export async function reportPendingToLead(
   limit = 100,
 ): Promise<{ reported: number; pending: number }> {
   const rows = await database
-    .select({ id: billingSubscriptions.id })
+    .select({ id: billingSubscriptions.id, leadOrg: organizations.leadOrg })
     .from(billingSubscriptions)
+    .innerJoin(organizations, eq(organizations.id, billingSubscriptions.organizationId))
     .where(isNull(billingSubscriptions.erpleadSyncedAt))
     .orderBy(billingSubscriptions.updatedAt)
     .limit(limit);
   let reported = 0;
   let silent = 0;
   for (const row of rows) {
+    // Entreprise sans organisation Lead (impossible par la connexion) : rien à déclarer, on passe.
+    if (!row.leadOrg) continue;
     if (await reportToLead(database, row.id)) {
       reported += 1;
       silent = 0;
