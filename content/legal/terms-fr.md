@@ -12,7 +12,7 @@ InvoiceLead permet d'établir des devis et des factures (y compris la QR-facture
 
 ## 3. Compte
 
-L'accès se fait avec un Compte Lead, commun aux applications de la famille Lead. L'Utilisateur agit à titre professionnel, garde ses identifiants confidentiels et répond des actions faites avec son compte. Plusieurs personnes d'une même organisation peuvent utiliser le Service selon la formule souscrite.
+L'accès se fait avec un Compte Lead, commun aux applications de la famille Lead. L'Utilisateur agit à titre professionnel, garde ses identifiants confidentiels et répond des actions faites avec son compte. Plusieurs personnes d'une même organisation peuvent utiliser le Service selon sa formule InvoiceLead.
 
 ## 4. Formules et prix
 

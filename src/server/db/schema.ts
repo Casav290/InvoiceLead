@@ -1151,6 +1151,11 @@ export const billingSubscriptions = pgTable(
     status: text("status").notNull(),
     currentPeriodEnd: timestamp("current_period_end", { withTimezone: true }),
     cancelAtPeriodEnd: boolean("cancel_at_period_end").notNull().default(false),
+    /**
+     * Fin programmée (résiliation par le portail : les versions récentes de l'API Stripe posent
+     * cancel_at, à la fin de la période, plutôt que cancel_at_period_end).
+     */
+    cancelAt: timestamp("cancel_at", { withTimezone: true }),
     livemode: boolean("livemode").notNull().default(false),
     createdAt: createdAt(),
     updatedAt: updatedAt(),

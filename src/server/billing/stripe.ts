@@ -171,6 +171,7 @@ export type StripeSubscription = {
   status: string;
   livemode?: boolean;
   cancel_at_period_end?: boolean;
+  cancel_at?: number | null;
   current_period_end?: number | null;
   metadata?: Record<string, string> | null;
   items?: { data?: { price?: Price; current_period_end?: number | null }[] };

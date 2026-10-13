@@ -14,7 +14,7 @@ InvoiceLead makes it possible to prepare quotes and invoices (including the Swis
 
 ## 3. Account
 
-Access is by means of a Lead Account, which is shared by the applications of the Lead family. The User acts in a professional capacity, keeps their credentials confidential and is liable for actions carried out with their account. Several persons within the same organisation may use the Service in accordance with the subscribed plan.
+Access is by means of a Lead Account, which is shared by the applications of the Lead family. The User acts in a professional capacity, keeps their credentials confidential and is liable for actions carried out with their account. Several persons within the same organisation may use the Service in accordance with its InvoiceLead plan.
 
 ## 4. Plans and prices
 

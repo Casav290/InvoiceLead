@@ -465,6 +465,45 @@ describe("webhook d'abonnement InvoiceLead", () => {
     expect((await post(billingWebhook, ghost)).body.result).toBe("unknown_subscription");
   });
 
+  it("résiliation en fin de période (portail, cancel_at) : Pro jusqu'à la fin", async () => {
+    const org = await company();
+    const sub = subscription("sub_il_10", { account: org.id });
+    subs.set(sub.id, sub);
+    await post(billingWebhook, event("customer.subscription.created", sub));
+    const end = future();
+    subs.set(sub.id, { ...sub, cancel_at: end });
+    const res = await post(billingWebhook, event("customer.subscription.updated", sub));
+    expect(res.body.result).toBe("applied");
+    const [row] = await db.select().from(billingSubscriptions);
+    expect(row?.cancelAt?.getTime()).toBe(end * 1000);
+    expect(row?.status).toBe("active");
+    expect(tierOf(await orgRow(org.id))).toBe("pro");
+    // Rien de neuf pour le Compte Lead (même formule, même statut, même fin) : pas redéclaré.
+    expect(reports()).toHaveLength(1);
+    expect(row?.erpleadSyncedAt).toBeInstanceOf(Date);
+  });
+
+  it("deux abonnements de la même entreprise en même temps : la formule les voit tous les deux", async () => {
+    const org = await company();
+    const pro = subscription("sub_il_11", { account: org.id });
+    const plus = subscription("sub_il_12", {
+      account: org.id,
+      price: { id: PRICE.pro_plus.month, recurring: { interval: "month" } },
+    });
+    subs.set(pro.id, pro);
+    subs.set(plus.id, plus);
+    const results = await Promise.all([
+      post(billingWebhook, event("customer.subscription.created", pro)),
+      post(billingWebhook, event("customer.subscription.created", plus)),
+    ]);
+    expect(results.map((r) => r.body.result)).toEqual(["applied", "applied"]);
+    expect((await orgRow(org.id)).billingPlan).toBe("pro_plus");
+    // Le Pro+ résilié : il reste le Pro.
+    subs.set(plus.id, { ...plus, status: "canceled" });
+    await post(billingWebhook, event("customer.subscription.deleted", plus));
+    expect((await orgRow(org.id)).billingPlan).toBe("pro");
+  });
+
   it("Pro+ annuel : cinq places ; changement de formule dans le portail", async () => {
     const org = await company();
     const plus = subscription("sub_il_4", {

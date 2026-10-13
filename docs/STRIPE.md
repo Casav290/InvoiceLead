@@ -1,5 +1,7 @@
 # Paiement en ligne avec Stripe Connect
 
+> L'abonnement d'InvoiceLead lui-même (Pro, Pro+) passe par le compte Stripe de la famille Lead, avec d'autres variables (`STRIPE_BILLING_*`) et un autre webhook (`/api/billing/webhook`) : voir docs/ABONNEMENT.md. Rien ici ne le concerne.
+
 Les clients d'une entreprise paient une facture depuis son lien de consultation, par carte, TWINT (Suisse), SEPA ou ACH, selon ce que le compte Stripe de l'entreprise accepte. L'argent va directement sur ce compte : InvoiceLead ne touche jamais les fonds, il est seulement la plateforme qui ouvre la session de paiement et reçoit la confirmation.
 
 ## Mise en place (une fois, par Ève)

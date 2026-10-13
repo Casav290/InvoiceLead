@@ -76,7 +76,11 @@ async function expectLocked(lock: Locator, tier: "Pro" | "Pro+", reason: string 
   await expect(lock.getByTestId("pro-badge").last()).toHaveText(tier);
   await expect(lock.getByTestId("lock-note")).toContainText(reason);
   const link = lock.getByRole("link", { name: tier === "Pro" ? "Passer à Pro" : "Passer à Pro+" });
-  await expect(link).toHaveAttribute("href", /^https:\/\//);
+  // La page Formule d'InvoiceLead, la formule qui ouvre la fonction présélectionnée.
+  await expect(link).toHaveAttribute(
+    "href",
+    `/fr/app/settings/plan?plan=${tier === "Pro" ? "pro" : "pro_plus"}`,
+  );
   await expectTabReachable(lock.page(), link);
 }
 
@@ -99,7 +103,10 @@ test("formule gratuite : chaque fonction Pro reste visible, grisée, avec sa mar
   for (const [id, text] of quotas) await expect(page.getByTestId(id)).toContainText(text);
   await page.getByTestId("user-menu").click();
   await expect(page.getByTestId("menu-upgrade")).toHaveText("Passer à Pro");
-  await expect(page.getByTestId("menu-upgrade")).toHaveAttribute("href", /^https:\/\//);
+  await expect(page.getByTestId("menu-upgrade")).toHaveAttribute(
+    "href",
+    "/fr/app/settings/plan?plan=pro",
+  );
   await page.keyboard.press("Escape");
 
   await setupBilling(page);
@@ -120,10 +127,10 @@ test("formule gratuite : chaque fonction Pro reste visible, grisée, avec sa mar
   );
   await expect(
     figures.getByTestId("vat-figures-lock").getByRole("link", { name: "Passer à Pro" }),
-  ).toHaveAttribute("href", /^https:\/\//);
+  ).toHaveAttribute("href", "/fr/app/settings/plan?plan=pro");
   await expect(
     page.getByTestId("plan-notice").getByRole("link", { name: "Passer à Pro" }),
-  ).toHaveAttribute("href", /^https:\/\//);
+  ).toHaveAttribute("href", "/fr/app/settings/plan?plan=pro");
   await expectLocked(
     page.getByTestId("vat-validate-lock"),
     "Pro",
@@ -430,7 +437,7 @@ test("formule gratuite : allocations du mois utilisées, chaque commande grisée
   await expect(reminders).toContainText("Vos 5 relances gratuites de ce mois sont envoyées.");
   await expect(reminders.getByTestId("pro-badge")).toHaveText("Pro");
   const upgrade = reminders.getByRole("link", { name: "Passer à Pro" });
-  await expect(upgrade).toHaveAttribute("href", /^https:\/\//);
+  await expect(upgrade).toHaveAttribute("href", "/fr/app/settings/plan?plan=pro");
   await expectTabReachable(page, upgrade);
   const mailed = page
     .getByTestId("reminder-row")

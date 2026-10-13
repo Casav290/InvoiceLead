@@ -144,6 +144,12 @@ export async function applySubscription(
     .select({ organizationId: billingSubscriptions.organizationId })
     .from(billingSubscriptions)
     .where(eq(billingSubscriptions.id, sub.id));
+  // Verrou par entreprise (après celui de l'abonnement, toujours dans cet ordre) : deux abonnements
+  // de la même entreprise traités en même temps recalculent sa formule l'un après l'autre, chacun
+  // voyant la ligne de l'autre.
+  const orgs = [...new Set([organizationId, before?.organizationId ?? organizationId])].sort();
+  for (const id of orgs)
+    await database.execute(sql`select pg_advisory_xact_lock(hashtext(${`billing-org:${id}`}))`);
   const values = {
     organizationId,
     customerId: customer,
@@ -153,6 +159,7 @@ export async function applySubscription(
     status: sub.status,
     currentPeriodEnd: periodEnd(sub),
     cancelAtPeriodEnd: sub.cancel_at_period_end === true,
+    cancelAt: typeof sub.cancel_at === "number" ? new Date(sub.cancel_at * 1000) : null,
     livemode: sub.livemode === true,
   };
   const t = billingSubscriptions;
@@ -214,7 +221,7 @@ export async function processSubscription(
     }
     return out;
   });
-  if (result === "applied") await reportToLead(database, subscriptionId);
+  if (result === "applied") await reportToLead(database, subscriptionId, { onlyPending: true });
   return result;
 }
 
@@ -241,9 +248,14 @@ export async function handleBillingEvent(database: Db, event: StripeEvent): Prom
  * relecture de formule (plan-refresh.ts). Rend false si le Compte Lead n'a pas répondu : la
  * déclaration reste à faire (erplead_synced_at vide) et la tâche quotidienne la reprend.
  */
-export async function reportToLead(database: Db, subscriptionId: string): Promise<boolean> {
+export async function reportToLead(
+  database: Db,
+  subscriptionId: string,
+  options: { onlyPending?: boolean } = {},
+): Promise<boolean> {
   const [row] = await database
     .select({
+      syncedAt: billingSubscriptions.erpleadSyncedAt,
       id: billingSubscriptions.id,
       organizationId: billingSubscriptions.organizationId,
       plan: billingSubscriptions.plan,
@@ -256,6 +268,8 @@ export async function reportToLead(database: Db, subscriptionId: string): Promis
     .innerJoin(organizations, eq(organizations.id, billingSubscriptions.organizationId))
     .where(eq(billingSubscriptions.id, subscriptionId));
   if (!row?.leadOrg) return false;
+  // Déjà déclaré dans cet état (organisation, formule, statut, fin inchangés) : rien à redire.
+  if (options.onlyPending && row.syncedAt) return true;
   let timer: ReturnType<typeof setTimeout> | undefined;
   try {
     const lead = await Promise.race([

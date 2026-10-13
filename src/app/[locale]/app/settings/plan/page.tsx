@@ -115,11 +115,13 @@ export default async function PlanSettingsPage({ params, searchParams }: Props) 
         : q.checkout === "cancel"
           ? t("notices.cancel")
           : null;
+  // Résilié dans le portail : fin programmée (cancel_at), ou fin de période.
+  const endsAt = sub?.cancelAt ?? (sub?.cancelAtPeriodEnd ? sub.currentPeriodEnd : null);
   const status = open
     ? sub.status === "past_due"
       ? t("status.pastDue", { plan: tierName })
-      : sub.cancelAtPeriodEnd && sub.currentPeriodEnd
-        ? t("status.ends", { plan: tierName, date: day(sub.currentPeriodEnd) })
+      : endsAt
+        ? t("status.ends", { plan: tierName, date: day(endsAt) })
         : sub.currentPeriodEnd
           ? t("status.renews", { interval: sub.interval, date: day(sub.currentPeriodEnd) })
           : null

@@ -21,12 +21,14 @@ CREATE TABLE IF NOT EXISTS "billing_subscriptions" (
 	"status" text NOT NULL,
 	"current_period_end" timestamp with time zone,
 	"cancel_at_period_end" boolean DEFAULT false NOT NULL,
+	"cancel_at" timestamp with time zone,
 	"livemode" boolean DEFAULT false NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"erplead_synced_at" timestamp with time zone
 );
 --> statement-breakpoint
+ALTER TABLE "billing_subscriptions" ADD COLUMN IF NOT EXISTS "cancel_at" timestamp with time zone;--> statement-breakpoint
 ALTER TABLE "organizations" ADD COLUMN IF NOT EXISTS "billing_customer_id" text;--> statement-breakpoint
 ALTER TABLE "organizations" ADD COLUMN IF NOT EXISTS "billing_plan" text;--> statement-breakpoint
 ALTER TABLE "organizations" ADD COLUMN IF NOT EXISTS "billing_plan_until" timestamp with time zone;--> statement-breakpoint

@@ -12,7 +12,7 @@ Mit InvoiceLead erstellen Sie Offerten und Rechnungen (inklusive Schweizer QR-Re
 
 ## 3. Konto
 
-Der Zugang erfolgt mit einem Lead-Konto, das für alle Anwendungen der Lead-Familie gilt. Der Nutzer handelt geschäftlich, hält seine Zugangsdaten geheim und haftet für Handlungen über sein Konto. Mehrere Personen einer Organisation können den Dienst gemäss Abo nutzen.
+Der Zugang erfolgt mit einem Lead-Konto, das für alle Anwendungen der Lead-Familie gilt. Der Nutzer handelt geschäftlich, hält seine Zugangsdaten geheim und haftet für Handlungen über sein Konto. Mehrere Personen einer Organisation können den Dienst gemäss ihrem InvoiceLead-Abo nutzen.
 
 ## 4. Abos und Preise
 

@@ -29,7 +29,7 @@ test("devise : réservée à Pro, cours BCE figé à l'émission, différence de
   );
   await expect(
     free.getByTestId("currency-lock").getByRole("link", { name: "Passer à Pro" }),
-  ).toHaveAttribute("href", /^https:\/\//);
+  ).toHaveAttribute("href", "/fr/app/settings/plan?plan=pro");
   // Demande forgée (option réactivée dans la page) : le serveur refuse.
   await eur.evaluate((o) => o.removeAttribute("disabled"));
   await free.getByLabel("Devise").selectOption("EUR");

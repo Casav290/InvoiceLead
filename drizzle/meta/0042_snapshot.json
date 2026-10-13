@@ -1,5 +1,5 @@
 {
-  "id": "f6514543-45c4-47c0-9def-854f923f6890",
+  "id": "1236c2e3-907c-4f53-9098-d108691eb490",
   "prevId": "a5cd7c83-c0a5-40be-acd5-1b46cd6c7b94",
   "version": "7",
   "dialect": "postgresql",
@@ -693,6 +693,12 @@
           "primaryKey": false,
           "notNull": true,
           "default": false
+        },
+        "cancel_at": {
+          "name": "cancel_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
         },
         "livemode": {
           "name": "livemode",
