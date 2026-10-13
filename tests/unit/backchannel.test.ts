@@ -14,7 +14,7 @@ afterAll(() => t.close());
 
 const plus = {
   plan: { code: "pro_plus", name: "Pro+", rank: 20, seats: 5 },
-  apps: claims().lead!.apps,
+  apps: claims().lead?.apps,
   subscriptions: [],
 };
 

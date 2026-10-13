@@ -48,7 +48,7 @@ const mail = (l) => `eve+e2e6-${l}-${stamp}@example.test`;
 const PASS = `Tr3s-l0ng-e2e6-${stamp}`;
 let fails = 0;
 const check = (name, ok, detail = "") => {
-  console.log(`${ok ? "  ok  " : "  NON "} ${name}${ok ? "" : " " + detail}`);
+  console.log(`${ok ? "  ok  " : "  NON "} ${name}${ok ? "" : ` ${detail}`}`);
   if (!ok) fails++;
 };
 const ONLY = process.env.ONLY ?? "";
@@ -134,9 +134,7 @@ const authorize = (locale = "fr") => {
     scope: "openid email profile lead offline_access",
     state: randomBytes(8).toString("hex"),
     nonce: randomBytes(8).toString("hex"),
-    code_challenge: createHash("sha256")
-      .update("v" + stamp)
-      .digest("base64url"),
+    code_challenge: createHash("sha256").update(`v${stamp}`).digest("base64url"),
     code_challenge_method: "S256",
     ui_locales: locale,
   });
@@ -385,7 +383,7 @@ if (step("THEME")) {
   );
   const banner = page.locator("text=Connectez-vous pour continuer vers InvoiceLead").locator("..");
   const bb = await banner.evaluate(
-    (el) => getComputedStyle(el).borderTopColor + " | " + getComputedStyle(el).backgroundColor,
+    (el) => `${getComputedStyle(el).borderTopColor} | ${getComputedStyle(el).backgroundColor}`,
   );
   check("bandeau sans vert CRMlead", !/15, 111, 112|238, 246, 246/.test(bb), bb);
   const touch = () =>
@@ -407,7 +405,7 @@ if (step("THEME")) {
   await page.goto(`${CRM}/login`);
   await page.getByRole("button", { name: "Se connecter" }).waitFor();
   await page.evaluate((n) => {
-    history.pushState({}, "", "/signup?next=" + encodeURIComponent(n));
+    history.pushState({}, "", `/signup?next=${encodeURIComponent(n)}`);
     dispatchEvent(new PopStateEvent("popstate"));
   }, authorize());
   await page.waitForTimeout(600);
@@ -518,16 +516,16 @@ if (step("SWOFF")) {
       if (app) {
         const raw = sessionStorage.getItem(k);
         if (raw) {
-          sessionStorage.setItem(k + ".sso-parked", raw);
+          sessionStorage.setItem(`${k}.sso-parked`, raw);
           sessionStorage.removeItem(k);
         }
-      } else sessionStorage.removeItem(k + ".sso-parked");
-      sessionStorage.setItem(k + ".sso", String(Date.now() + 5));
+      } else sessionStorage.removeItem(`${k}.sso-parked`);
+      sessionStorage.setItem(`${k}.sso`, String(Date.now() + 5));
     }, withApp);
     await ctx.clearCookies();
     const off = (r) => r.abort("internetdisconnected");
     await ctx.route(/\/(login|signup)\?.*retour=/, off);
-    const res = await page
+    const _res = await page
       .goto(`${CRM}/api/auth/sso/google/callback?error=access_denied`)
       .catch((e) => e);
     await page.waitForTimeout(800);
@@ -535,7 +533,7 @@ if (step("SWOFF")) {
     const body = await page.evaluate(() => document.body.innerText);
     const heads = await page.evaluate(() =>
       Array.from(document.querySelectorAll("link")).map(
-        (l) => l.rel + ":" + l.getAttribute("href"),
+        (l) => `${l.rel}:${l.getAttribute("href")}`,
       ),
     );
     check(

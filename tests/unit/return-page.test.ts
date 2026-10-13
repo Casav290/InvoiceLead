@@ -24,8 +24,8 @@ describe("page de retour d'une reconnexion", () => {
         "?period=2026-07-01",
         "/fr/app/accounting/vat?period=2026-07-01",
       ],
-      ["/de/app/invoices/" + DOC + "/xrechnung", "", `/de/app/invoices/${DOC}`],
-      ["/de/app/credit-notes/" + DOC + "/xrechnung", "", `/de/app/credit-notes/${DOC}`],
+      [`/de/app/invoices/${DOC}/xrechnung`, "", `/de/app/invoices/${DOC}`],
+      [`/de/app/credit-notes/${DOC}/xrechnung`, "", `/de/app/credit-notes/${DOC}`],
       ["/fr/app/accounting/bills/export", "", "/fr/app/accounting/bills"],
     ];
     for (const [path, search, page] of cases) {
@@ -55,8 +55,8 @@ describe("page de retour d'une reconnexion", () => {
     const pages: [string, string][] = [
       ["/fr/app/contacts", "?q=M%C3%BCller*"],
       ["/fr/app/accounting/reports", `?year=${YEAR}`],
-      ["/fr/app/invoices/" + DOC, ""],
-      ["/fr/app/invoices/" + DOC + "/pdf", ""],
+      [`/fr/app/invoices/${DOC}`, ""],
+      [`/fr/app/invoices/${DOC}/pdf`, ""],
       ["/fr/app", ""],
     ];
     for (const [path, search] of pages) expect(returnPage(path, search)).toBe(`${path}${search}`);

@@ -46,7 +46,7 @@ await ctx.addInitScript(() => {
 const page = await ctx.newPage();
 const stamp = Date.now();
 const email = `eve+${stamp}@example.test`;
-const pass = "Tr3s-l0ng-mot-de-passe-unique-" + stamp;
+const pass = `Tr3s-l0ng-mot-de-passe-unique-${stamp}`;
 const results = {};
 const isBad = (e) =>
   e.crmBrand || e.tagline || e.ssr || /CRMlead/.test(e.title) || e.crmIcon || e.dashboard;
@@ -56,7 +56,7 @@ async function step(name, fn) {
   try {
     await fn();
   } catch (e) {
-    ok = "ERREUR " + String(e).split("\n")[0].slice(0, 200);
+    ok = `ERREUR ${String(e).split("\n")[0].slice(0, 200)}`;
     await page.screenshot({ path: `${SP}/e2e2-${name}.png` });
   }
   const evs = events.slice(from);
@@ -99,7 +99,7 @@ await step("bouton-retour", async () => {
   if (page.url().startsWith(CRM) && !/oauth/.test(page.url())) {
     await page.waitForTimeout(2500);
     console.log("  URL 2.5 s plus tard:", page.url());
-    if (page.url().startsWith(CRM)) throw new Error("resté sur crmlead: " + page.url());
+    if (page.url().startsWith(CRM)) throw new Error(`resté sur crmlead: ${page.url()}`);
   }
 });
 await step("mot-de-passe-oublie", async () => {
@@ -128,7 +128,7 @@ await step("mot-de-passe-oublie", async () => {
     .split("\n")
     .filter((l) => l.includes("[email simulé]"))
     .slice(-1);
-  console.log("  " + lines.join("\n"));
+  console.log(`  ${lines.join("\n")}`);
   if (!/Compte Lead/.test(lines[0] ?? ""))
     throw new Error("email de réinitialisation pas au nom du Compte Lead");
   await page.getByRole("link", { name: /Retour à la connexion/ }).click();
@@ -161,7 +161,7 @@ await step("langue-allemande", async () => {
   await page.waitForSelector('[data-testid="suite-brand"]');
   const t = await page.locator("h1").first().innerText();
   console.log("  titre:", t, "| onglet:", await page.title());
-  if (!/Anmeld/.test(t)) throw new Error("pas en allemand: " + t);
+  if (!/Anmeld/.test(t)) throw new Error(`pas en allemand: ${t}`);
 });
 console.log("\nRESULTATS", JSON.stringify(results, null, 1));
 await browser.close();

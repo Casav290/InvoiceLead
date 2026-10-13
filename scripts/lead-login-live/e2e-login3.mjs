@@ -15,13 +15,13 @@ async function step(name, fn) {
     await fn();
     results[name] = "ok";
   } catch (e) {
-    results[name] = "ERREUR " + String(e).split("\n")[0].slice(0, 250);
+    results[name] = `ERREUR ${String(e).split("\n")[0].slice(0, 250)}`;
   }
   console.log(`=== ${name}: ${results[name]}`);
 }
 const stamp = Date.now();
 const email = `onglets+${stamp}@example.test`;
-const pass = "Tr3s-l0ng-mot-de-passe-unique-" + stamp;
+const pass = `Tr3s-l0ng-mot-de-passe-unique-${stamp}`;
 const ctx = await browser.newContext({ locale: "fr-CH" });
 const p1 = await ctx.newPage();
 
@@ -80,7 +80,7 @@ await step("lien de réinitialisation ouvert déjà connecté", async () => {
   await pg.goto(`${CRM}/mot-de-passe?jeton=${token}&next=${encodeURIComponent(next)}`);
   await pg.waitForSelector("#auth-password", { timeout: 10000 });
   if (!pg.url().startsWith(`${CRM}/mot-de-passe`))
-    throw new Error("formulaire non montré: " + pg.url());
+    throw new Error(`formulaire non montré: ${pg.url()}`);
   console.log("  formulaire affiché, onglet:", await pg.title());
   await pg.close();
 });
@@ -95,7 +95,7 @@ await step("inscription Google annulée", async () => {
   await pg.goto(`${CRM}/signup?sso=canceled&next=${encodeURIComponent(next)}`);
   await pg.waitForSelector('[data-testid="suite-brand"]');
   const v = await pg.inputValue("#auth-account");
-  const err = await pg
+  const _err = await pg
     .locator("form")
     .first()
     .innerText()

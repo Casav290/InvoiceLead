@@ -19,7 +19,9 @@ vi.mock("next/server", () => ({
 
 const t = testDb();
 const db = t.database;
-beforeAll(() => setTestEnv({ LEAD_ID_ISSUER: "https://erp.test", CRMLEAD_URL: "https://crm.test" }));
+beforeAll(() =>
+  setTestEnv({ LEAD_ID_ISSUER: "https://erp.test", CRMLEAD_URL: "https://crm.test" }),
+);
 beforeEach(() => t.reset());
 afterEach(() => vi.unstubAllGlobals());
 afterAll(() => t.close());
@@ -130,8 +132,16 @@ describe("états vers CRMlead", () => {
     const rows = await db.select().from(crmleadOutbox);
     expect(rows.every((r) => r.status === "delivered")).toBe(true);
     // Le jeton vient de l'émetteur des connexions (ERPlead), les envois vont à CRMlead.
-    expect(calls.filter((u) => u.endsWith("/oauth/token")).every((u) => u.startsWith("https://erp.test/"))).toBe(true);
-    expect(calls.filter((u) => !u.endsWith("/oauth/token")).every((u) => u.startsWith("https://crm.test/"))).toBe(true);
+    expect(
+      calls
+        .filter((u) => u.endsWith("/oauth/token"))
+        .every((u) => u.startsWith("https://erp.test/")),
+    ).toBe(true);
+    expect(
+      calls
+        .filter((u) => !u.endsWith("/oauth/token"))
+        .every((u) => u.startsWith("https://crm.test/")),
+    ).toBe(true);
   });
 
   it("CRMlead injoignable : l'envoi attend et repart ; lead introuvable : abandon", async () => {

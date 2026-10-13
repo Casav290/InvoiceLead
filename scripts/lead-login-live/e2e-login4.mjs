@@ -13,13 +13,13 @@ async function step(name, fn) {
     await fn();
     results[name] = "ok";
   } catch (e) {
-    results[name] = "ERREUR " + String(e).split("\n")[0].slice(0, 250);
+    results[name] = `ERREUR ${String(e).split("\n")[0].slice(0, 250)}`;
   }
   console.log(`=== ${name}: ${results[name]}`);
 }
 const stamp = Date.now();
 const email = `reset+${stamp}@example.test`;
-const pass = "Tr3s-l0ng-mot-de-passe-unique-" + stamp;
+const pass = `Tr3s-l0ng-mot-de-passe-unique-${stamp}`;
 const ctx = await browser.newContext({ locale: "fr-CH" });
 const p = await ctx.newPage();
 await p.goto(`${IL}/auth/lead/start?locale=fr&signup=1`);
@@ -30,8 +30,8 @@ await p.fill("#auth-email", email);
 await p.fill("#auth-password", pass);
 await p.locator("form button").last().click();
 await p.waitForURL(`${IL}/fr/app**`, { timeout: 20000 });
-const realNext = async () => {
-  const r = await ctx.request
+const _realNext = async () => {
+  const _r = await ctx.request
     .get(`${CRM}/oauth/authorize?x=1`, { maxRedirects: 0 })
     .catch(() => null);
   return null;
@@ -89,7 +89,7 @@ await step("nouveau mot de passe dans un autre onglet, l'onglet d'origine repart
     if (await mine.isChecked()) throw new Error("« c'est mon compte » coché d'office");
     await mine.check();
   }
-  await mail.fill("#auth-password", pass + "x");
+  await mail.fill("#auth-password", `${pass}x`);
   await mail.locator("form button").last().click();
   await mail.waitForURL(`${IL}/fr/app/quotes`, { timeout: 20000 }).catch(async (e) => {
     console.log("  mail fin:", mail.url(), (await mail.locator("body").innerText()).slice(0, 200));

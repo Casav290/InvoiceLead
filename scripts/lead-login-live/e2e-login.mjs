@@ -44,7 +44,7 @@ await ctx.addInitScript(() => {
 const page = await ctx.newPage();
 const stamp = Date.now();
 const email = `eve+${stamp}@example.test`;
-const pass = "Tr3s-l0ng-mot-de-passe-unique-" + stamp;
+const pass = `Tr3s-l0ng-mot-de-passe-unique-${stamp}`;
 const out = {};
 async function step(name, fn) {
   const from = events.length;
@@ -52,7 +52,7 @@ async function step(name, fn) {
     await fn();
     out[name] = "ok";
   } catch (e) {
-    out[name] = "ERREUR " + String(e).slice(0, 300);
+    out[name] = `ERREUR ${String(e).slice(0, 300)}`;
     await page.screenshot({ path: `${SP}/e2e-${name}-fail.png` });
   }
   const evs = events.slice(from);
