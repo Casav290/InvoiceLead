@@ -28,12 +28,15 @@ export async function backchannelLogout(
         .from(organizations)
         .where(eq(organizations.leadOrg, c.org))
     : [];
-  // Seulement dans l'entreprise de l'organisation annoncée, quand elle est donnée.
-  if (c.org && !org) return { sessions: 0, left: false };
+  // « logout » (elle s'est déconnectée dans ERPlead ou dans une autre app Lead) : se déconnecter ferme
+  // la session partout, donc TOUTES ses sessions, quelle que soit l'entreprise ouverte (fiduciaire
+  // comprise). Un départ (« disabled ») ne touche que l'entreprise de l'organisation annoncée.
+  const everywhere = c.lead_status === "logout";
+  if (c.org && !org && !everywhere) return { sessions: 0, left: false };
   const closed = await database
     .delete(sessions)
     .where(
-      org
+      org && !everywhere
         ? and(eq(sessions.userId, user.id), eq(sessions.organizationId, org.id))
         : eq(sessions.userId, user.id),
     )

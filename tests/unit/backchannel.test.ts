@@ -81,4 +81,22 @@ describe("départ d'une personne (OpenID Back-Channel Logout)", () => {
       }),
     ).toEqual({ sessions: 0, left: false });
   });
+
+  it("déconnexion (logout) : toutes ses sessions tombent, quelle que soit l'entreprise, sans départ", async () => {
+    const admin = await attachLeadIdentity(db, claims({ lead: plus }));
+    const org = admin.organization.id;
+    await createSession(db, { userId: admin.user.id, organizationId: org, idToken: null });
+    await createSession(db, { userId: admin.user.id, organizationId: org, idToken: null });
+    // Organisation annoncée sans entreprise InvoiceLead (ou celle d'une autre) : la session tombe quand même.
+    expect(
+      await backchannelLogout(db, { sub: "sub-ada", org: "org-autre", lead_status: "logout" }),
+    ).toEqual({ sessions: 2, left: false });
+    await createSession(db, { userId: admin.user.id, organizationId: org, idToken: null });
+    expect(
+      await backchannelLogout(db, { sub: "sub-ada", org: "org-atelier", lead_status: "logout" }),
+    ).toEqual({ sessions: 1, left: false });
+    expect(
+      await db.select().from(memberships).where(eq(memberships.userId, admin.user.id)),
+    ).toHaveLength(1);
+  });
 });
