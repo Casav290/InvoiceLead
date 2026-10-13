@@ -19,6 +19,7 @@ import { addPayment, parsePaymentForm } from "@/server/payments";
 import { claims } from "../support/claims";
 import { testDb } from "../support/db";
 import { setTestEnv } from "../support/env";
+import { leadPlan } from "../support/lead-plan";
 
 const t = testDb();
 setTestEnv({});
@@ -110,7 +111,7 @@ async function euroInvoice(extra: Record<string, string> = {}) {
   await db
     .update(organizations)
     .set({
-      entitlements: { plan: { rank: 1 } },
+      entitlements: { plan: leadPlan(1) },
       vatRegistered: true,
       vatMethod: "effective",
       vatSettlement: "agreed",

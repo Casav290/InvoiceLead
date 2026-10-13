@@ -23,6 +23,7 @@ import {
 import { claims } from "../support/claims";
 import { testDb } from "../support/db";
 import { setTestEnv } from "../support/env";
+import { leadPlan } from "../support/lead-plan";
 
 const t = testDb();
 const db = t.database;
@@ -108,7 +109,7 @@ describe("relances", () => {
     expect(await sendReminder(db, who, invoice.id, "2026-04-25", true)).toBe("plan");
     await db
       .update(organizations)
-      .set({ leadPlan: "pro", entitlements: { plan: { rank: 1 } } })
+      .set({ leadPlan: "pro", entitlements: { plan: leadPlan(1) } })
       .where(eq(organizations.id, a.organization.id));
     // En Pro, la même relance porte les frais et les intérêts courus (25 jours à 5 %).
     expect(await dueReminders(db, who.organizationId, "2026-04-25")).toMatchObject([
@@ -148,7 +149,7 @@ describe("relances", () => {
       .update(organizations)
       .set({
         leadPlan: "pro",
-        entitlements: { plan: { rank: 1 } },
+        entitlements: { plan: leadPlan(1) },
         legalName: "Atelier Muster",
         street: "Bahnhofstrasse",
         postalCode: "8001",

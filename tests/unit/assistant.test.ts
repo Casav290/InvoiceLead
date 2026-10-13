@@ -10,6 +10,7 @@ import { handleMcp } from "@/server/mcp";
 import { claims } from "../support/claims";
 import { testDb } from "../support/db";
 import { setTestEnv } from "../support/env";
+import { leadPlan } from "../support/lead-plan";
 
 const t = testDb();
 const db = t.database;
@@ -32,7 +33,7 @@ async function setup(rank = 2) {
     .update(organizations)
     .set({
       hasAccess: true,
-      entitlements: { plan: { rank } },
+      entitlements: { plan: leadPlan(rank) },
       legalName: "Atelier Muster GmbH",
       street: "Bahnhofstrasse",
       postalCode: "8001",

@@ -1,4 +1,5 @@
 import { Pool } from "pg";
+import { leadPlan } from "../support/lead-plan";
 
 /**
  * Base de l'application lancée pour les tests de bout en bout (adresse posée par la configuration
@@ -36,15 +37,17 @@ export async function addContacts(leadOrg: string, count: number) {
 }
 
 /**
- * Formule de l'organisation du Compte Lead ramenée à un rang (0 Gratuit, 1 Pro, 2 Pro+), comme le
- * ferait une résiliation lue par l'application ; la date de lecture reste celle de la connexion.
+ * Formule de l'organisation du Compte Lead ramenée à une autre (0 Gratuit, 1 Pro, 2 Pro+), telle
+ * qu'ERPlead la donne (code, rang 0, 10 ou 20, places), comme le ferait une résiliation lue par
+ * l'application ; la date de lecture reste celle de la connexion.
  */
-export async function setPlanRank(leadOrg: string, rank: number) {
+export async function setPlanRank(leadOrg: string, tier: number) {
   const { rowCount } = await base().query(
     `update organizations
-     set entitlements = jsonb_set(coalesce(entitlements, '{}'::jsonb), '{plan,rank}', to_jsonb($2::int))
+     set entitlements = jsonb_set(coalesce(entitlements, '{}'::jsonb), '{plan}', $2::jsonb),
+         lead_plan = $3
      where lead_org = $1`,
-    [leadOrg, rank],
+    [leadOrg, JSON.stringify(leadPlan(tier)), leadPlan(tier).code],
   );
   if (rowCount !== 1) throw new Error(`organisation ${leadOrg} introuvable`);
 }

@@ -37,6 +37,7 @@ import { camt053 } from "../support/camt";
 import { claims } from "../support/claims";
 import { testDb } from "../support/db";
 import { setTestEnv } from "../support/env";
+import { leadPlan } from "../support/lead-plan";
 
 // Les e-mails (relances, récapitulatif) se traduisent avec les vrais messages, hors de Next.
 vi.mock("next-intl/server", async () => {
@@ -95,7 +96,7 @@ async function company(rank: number, n = "a") {
   await db
     .update(organizations)
     .set({
-      entitlements: { plan: { rank } },
+      entitlements: { plan: leadPlan(rank) },
       legalName: "Atelier Muster GmbH",
       street: "Bahnhofstrasse",
       postalCode: "8001",
@@ -104,14 +105,14 @@ async function company(rank: number, n = "a") {
       settingsCompletedAt: new Date(),
     })
     .where(eq(organizations.id, a.organization.id));
-  const org = { ...a.organization, entitlements: { plan: { rank } } };
+  const org = { ...a.organization, entitlements: { plan: leadPlan(rank) } };
   return { org, who: { organizationId: org.id, userId: a.user.id } };
 }
 
 async function setRank(organizationId: string, rank: number) {
   await db
     .update(organizations)
-    .set({ entitlements: { plan: { rank } } })
+    .set({ entitlements: { plan: leadPlan(rank) } })
     .where(eq(organizations.id, organizationId));
 }
 
@@ -346,7 +347,7 @@ describe("import des relevés", () => {
     expect(
       await quotaAccess(
         db,
-        { ...org, entitlements: { plan: { rank: 0 } } },
+        { ...org, entitlements: { plan: leadPlan(0) } },
         "bankImports",
         "2026-10-02",
       ),
@@ -536,7 +537,7 @@ describe("fonctions réservées", () => {
     const inv = await inviteFiduciary(db, client.who, "compta@fidu.test");
     if (typeof inv === "string") throw new Error(inv);
     expect((await acceptInvitation(db, fid.user, inv.token)).status).toBe("accepted");
-    const plan = (rank: number) => ({ ...client.org, entitlements: { plan: { rank } } });
+    const plan = (rank: number) => ({ ...client.org, entitlements: { plan: leadPlan(rank) } });
     expect(await hasSeat(db, plan(1), fid.user.id)).toBe(true);
     await setRank(client.org.id, 0);
     expect(await hasSeat(db, plan(0), fid.user.id)).toBe(false);
@@ -1038,7 +1039,7 @@ describe("formule relue au Compte Lead", () => {
           ? new Response("down", { status: 503 })
           : Response.json({
               org: "org-a",
-              plan: { code: ["free", "pro", "pro_plus"][rank], name: "x", rank, seats: null },
+              plan: { ...leadPlan(rank), seats: null },
               apps: { invoicelead: { access: true, status: "live", upgrade_url: null } },
               subscriptions: [],
             });

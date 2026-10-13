@@ -15,7 +15,16 @@ test("équipe : rôle d'un utilisateur, invitation et accès d'une fiduciaire", 
     plan: "pro",
   });
 
-  // Un utilisateur de l'entreprise, limité aux factures.
+  // Pro : une place, celle de l'administratrice. L'ajout d'une personne reste visible, grisé,
+  // marqué Pro+.
+  await page.goto("/fr/app/settings/team");
+  await expect(page.getByTestId("seats")).toHaveText("1 sur 1 places utilisées");
+  const seatsLock = page.getByTestId("seats-lock");
+  await expect(seatsLock).toHaveAttribute("data-locked", "proplus");
+  await expect(seatsLock).toContainText("Pro+ compte 5 places.");
+  await expect(seatsLock.getByTestId("member-invite-submit")).toBeDisabled();
+
+  // Un utilisateur de l'entreprise, limité aux factures (l'entreprise est passée à Pro+).
   const bobContext = await browser.newContext();
   const bob = await bobContext.newPage();
   await login(bob, "fr", {
@@ -25,16 +34,11 @@ test("équipe : rôle d'un utilisateur, invitation et accès d'une fiduciaire", 
     org,
     org_name: "Équipe Sàrl",
     org_role: "user",
-    plan: "pro",
+    plan: "proplus",
   });
 
   await page.goto("/fr/app/settings/team");
-  await expect(page.getByTestId("seats")).toHaveText("2 sur 2 places utilisées");
-  // Toutes les places prises : l'ajout d'une personne reste visible, grisé, marqué Pro+.
-  const seatsLock = page.getByTestId("seats-lock");
-  await expect(seatsLock).toHaveAttribute("data-locked", "proplus");
-  await expect(seatsLock).toContainText("Pro+ compte 5 places.");
-  await expect(seatsLock.getByTestId("member-invite-submit")).toBeDisabled();
+  await expect(page.getByTestId("seats")).toHaveText("2 sur 5 places utilisées");
   const bobRow = page.getByTestId("team-member").filter({ hasText: "Bob Muster" });
   await bobRow.getByLabel("Dans InvoiceLead").selectOption({ label: "Factures seulement" });
   await bobRow.getByRole("button", { name: "Enregistrer" }).click();

@@ -18,6 +18,7 @@ import {
 import { claims } from "../support/claims";
 import { testDb } from "../support/db";
 import { setTestEnv } from "../support/env";
+import { leadPlan } from "../support/lead-plan";
 
 const t = testDb();
 const db = t.database;
@@ -31,7 +32,7 @@ async function company(rank: number) {
     .update(organizations)
     .set({
       hasAccess: true,
-      entitlements: { plan: { rank } },
+      entitlements: { plan: leadPlan(rank) },
       legalName: "Atelier Muster GmbH",
       street: "Bahnhofstrasse",
       postalCode: "8001",
@@ -63,12 +64,12 @@ describe("clés d'API", () => {
     // Formule Pro : l'API n'en fait pas partie.
     await db
       .update(organizations)
-      .set({ entitlements: { plan: { rank: 1 } } })
+      .set({ entitlements: { plan: leadPlan(1) } })
       .where(eq(organizations.id, a.organization.id));
     expect(await apiCaller(db, `Bearer ${created.key}`, "contacts.list")).toBe("forbidden");
     await db
       .update(organizations)
-      .set({ entitlements: { plan: { rank: 2 } } })
+      .set({ entitlements: { plan: leadPlan(2) } })
       .where(eq(organizations.id, a.organization.id));
 
     // La personne qui a créé la clé passe en lecture seule : la clé ne facture plus.

@@ -16,6 +16,7 @@ import {
   supplierBills,
   users,
 } from "@/server/db/schema";
+import { seatsOf } from "@/server/plans";
 import { can } from "@/server/roles";
 import {
   acceptInvitation,
@@ -40,6 +41,7 @@ import {
 import { claims } from "../support/claims";
 import { testDb } from "../support/db";
 import { setTestEnv } from "../support/env";
+import { leadPlan } from "../support/lead-plan";
 
 const t = testDb();
 const db = t.database;
@@ -49,7 +51,7 @@ afterAll(() => t.close());
 
 const base = claims().lead;
 if (!base) throw new Error("droits absents");
-const pro = { ...base, plan: { code: "pro", name: "Pro", rank: 1, seats: 2 } };
+const pro = { ...base, plan: leadPlan(1) };
 
 describe("droits", () => {
   it("responsables : tout ; utilisateurs selon leur rôle ; fiduciaire : comptabilité", () => {
@@ -92,9 +94,16 @@ describe("équipe", () => {
     );
     const org = admin.organization;
     const who = (u: { user: { id: string } }) => ({ organizationId: org.id, userId: u.user.id });
-    const [fresh] = await db.select().from(organizations).where(eq(organizations.id, org.id));
-    if (!fresh) throw new Error("organisation absente");
+    const [row1] = await db.select().from(organizations).where(eq(organizations.id, org.id));
+    if (!row1) throw new Error("organisation absente");
 
+    // Pro : une place, celle de l'administratrice (les responsables passent d'abord).
+    expect(seatsOf(row1)).toBe(1);
+    expect(await hasSeat(db, row1, admin.user.id)).toBe(true);
+    expect(await hasSeat(db, row1, bob.user.id)).toBe(false);
+
+    // Le Compte Lead donne le nombre de places quand il le connaît : ici deux.
+    const fresh = { ...row1, entitlements: { ...pro, plan: { ...leadPlan(1), seats: 2 } } };
     // Deux places : l'administratrice et Bob, arrivé avant Eve.
     expect(await hasSeat(db, fresh, admin.user.id)).toBe(true);
     expect(await hasSeat(db, fresh, bob.user.id)).toBe(true);

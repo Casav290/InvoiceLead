@@ -29,6 +29,7 @@ import { camt053 } from "../support/camt";
 import { claims } from "../support/claims";
 import { testDb } from "../support/db";
 import { setTestEnv } from "../support/env";
+import { leadPlan } from "../support/lead-plan";
 
 const t = testDb();
 const db = t.database;
@@ -71,7 +72,7 @@ async function setup(autopilot: boolean, rank = 1) {
     .set({
       autopilot,
       leadPlan: rank === 0 ? "free" : "pro",
-      entitlements: { plan: { rank } },
+      entitlements: { plan: leadPlan(rank) },
       legalName: "Atelier Muster GmbH",
       street: "Bahnhofstrasse",
       postalCode: "8001",

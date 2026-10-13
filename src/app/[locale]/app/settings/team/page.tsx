@@ -10,7 +10,7 @@ import { formatDate } from "@/lib/fiscal-year";
 import { requireAppSession } from "@/server/auth/guard";
 import { db } from "@/server/db";
 import { lockFor, planLock } from "@/server/plan-lock";
-import { featureAccess, PLANS, seatsOf, tierOf } from "@/server/plans";
+import { featureAccess, PLANS, seatsOf, tierOf, tierWithMoreSeats } from "@/server/plans";
 import { APP_ROLES, appRoleOf, can, isManager } from "@/server/roles";
 import { INVITATION_DAYS, listTeam, seated } from "@/server/team";
 import { cancelInvitationAction, removeFiduciaryAction, setAppRoleAction } from "./actions";
@@ -42,22 +42,22 @@ export default async function TeamPage({ params, searchParams }: Props) {
   // d'une fiduciaire déjà invitée est suspendu (rendu au retour à Pro).
   const fiduciaryAccess = featureAccess(organization, "fiduciary");
   const fiduciaryLock = await lockFor(locale, organization, fiduciaryAccess, t("planOnly"));
-  // Places : la formule suivante en donne davantage ; marque et lien à côté du compteur.
+  // Places : la première formule supérieure qui en donne davantage (Pro+ depuis Gratuit, Pro
+  // n'ayant qu'une place) ; marque et lien à côté du compteur.
   const tier = tierOf(organization);
-  const nextTier = tier === "free" ? "pro" : tier === "pro" ? "proplus" : null;
-  const seatsLock =
-    nextTier && PLANS[nextTier].seats > seats
-      ? await planLock(
-          locale,
-          organization,
-          nextTier,
-          t("moreSeats", {
-            tier: nextTier,
-            pro: PLANS.pro.seats,
-            plus: PLANS.proplus.seats,
-          }),
-        )
-      : null;
+  const nextTier = tierWithMoreSeats(tier, seats);
+  const seatsLock = nextTier
+    ? await planLock(
+        locale,
+        organization,
+        nextTier,
+        t("moreSeats", {
+          tier: nextTier,
+          pro: PLANS.pro.seats,
+          plus: PLANS.proplus.seats,
+        }),
+      )
+    : null;
   // Ajout d'une personne (administrateur seulement) : toutes les places prises, la commande reste
   // visible, grisée, avec la marque et le lien de la formule qui en donne davantage ; le serveur
   // refuse de même (inviteMemberAction, seatLimit).

@@ -84,11 +84,12 @@ function idTokenFor(u, nonce) {
     org_name: u.org_name,
     org_role: u.org_role,
     lead: {
+      // Comme ERPlead (table plans) : rangs 0, 10 et 20, une place en Pro, cinq en Pro+.
       plan:
         u.plan === "proplus"
-          ? { code: "pro_plus", name: "Pro+", rank: 2, seats: 5 }
+          ? { code: "pro_plus", name: "Pro+", rank: 20, seats: 5 }
           : u.plan === "pro"
-            ? { code: "pro", name: "Pro", rank: 1, seats: 2 }
+            ? { code: "pro", name: "Pro", rank: 10, seats: 1 }
             : { code: "free", name: "Gratuit", rank: 0, seats: 1 },
       apps: {
         scanlead: {

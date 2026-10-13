@@ -23,6 +23,7 @@ import { quotaAccess } from "@/server/plans";
 import { claims } from "../support/claims";
 import { testDb } from "../support/db";
 import { setTestEnv } from "../support/env";
+import { leadPlan } from "../support/lead-plan";
 
 /**
  * La clé « Relier ProjectLead » (toutes les formules) n'ouvre que ce que ProjectLead appelle :
@@ -56,7 +57,7 @@ async function company(rank: number) {
     .update(organizations)
     .set({
       hasAccess: true,
-      entitlements: { plan: { rank } },
+      entitlements: { plan: leadPlan(rank) },
       legalName: "Atelier Muster GmbH",
       street: "Bahnhofstrasse",
       postalCode: "8001",

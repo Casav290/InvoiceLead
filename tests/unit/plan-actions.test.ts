@@ -31,6 +31,7 @@ import {
 import { claims } from "../support/claims";
 import { testDb } from "../support/db";
 import { setTestEnv } from "../support/env";
+import { leadPlan } from "../support/lead-plan";
 
 /**
  * Les actions serveur elles-mêmes, appelées comme le ferait un formulaire réactivé à la main dans
@@ -129,7 +130,7 @@ async function signedIn(rank: number) {
   await db
     .update(organizations)
     .set({
-      entitlements: { plan: { rank } },
+      entitlements: { plan: leadPlan(rank) },
       vatRegistered: true,
       vatMethod: "effective",
       vatSettlement: "agreed",
@@ -152,7 +153,7 @@ async function signedIn(rank: number) {
 async function setRank(organizationId: string, rank: number) {
   await db
     .update(organizations)
-    .set({ entitlements: { plan: { rank } } })
+    .set({ entitlements: { plan: leadPlan(rank) } })
     .where(eq(organizations.id, organizationId));
 }
 
@@ -562,7 +563,7 @@ describe("tâche quotidienne", () => {
         .select({ leadPlan: organizations.leadPlan, entitlements: organizations.entitlements })
         .from(organizations)
         .where(eq(organizations.id, who.organizationId));
-      expect(org).toMatchObject({ leadPlan: "free", entitlements: { plan: { rank: 0 } } });
+      expect(org).toMatchObject({ leadPlan: "free", entitlements: { plan: leadPlan(0) } });
     } finally {
       vi.unstubAllGlobals();
     }

@@ -15,6 +15,7 @@ import { addPayment } from "@/server/payments";
 import { claims } from "../support/claims";
 import { testDb } from "../support/db";
 import { setTestEnv } from "../support/env";
+import { leadPlan } from "../support/lead-plan";
 
 const t = testDb();
 const db = t.database;
@@ -44,7 +45,7 @@ async function setup() {
       iban: "CH9300762011623852957",
       settingsCompletedAt: new Date(),
       leadPlan: "pro",
-      entitlements: { plan: { rank: 1 } },
+      entitlements: { plan: leadPlan(1) },
     })
     .where(eq(organizations.id, a.organization.id));
   return who;

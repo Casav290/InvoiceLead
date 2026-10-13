@@ -10,6 +10,7 @@ import { createInvoice, issueInvoice, parseInvoiceForm } from "@/server/invoices
 import { claims } from "../support/claims";
 import { testDb } from "../support/db";
 import { setTestEnv } from "../support/env";
+import { leadPlan } from "../support/lead-plan";
 
 /**
  * L'API est réservée à Pro+, dont les allocations sont sans limite : « plan_limit » ne se voit que
@@ -41,7 +42,7 @@ async function freeCompany() {
   await db
     .update(organizations)
     .set({
-      entitlements: { plan: { rank: 0 } },
+      entitlements: { plan: leadPlan(0) },
       legalName: "Atelier Muster GmbH",
       street: "Bahnhofstrasse",
       postalCode: "8001",

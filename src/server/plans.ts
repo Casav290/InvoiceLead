@@ -3,8 +3,9 @@ import type { Db } from "./db";
 import { contacts, invoices, organizations, planUsage, recurringInvoices } from "./db/schema";
 
 /**
- * Formules de la famille Lead (docs/PLAN.md, section 9, décidée le 1er octobre 2026). Le rang vient
- * du Compte Lead : 0 Gratuit, 1 Pro, 2 Pro+.
+ * Formules d'InvoiceLead (docs/PLAN.md, section 9, décidée le 1er octobre 2026) : Gratuit, Pro et
+ * Pro+. Le Compte Lead (ERPlead) les nomme par leur code, « free », « pro » et « pro_plus » ; leur
+ * rang y vaut 0, 10 et 20 (table plans d'ERPlead). Le code fait foi, le rang n'est qu'un repli.
  *
  * Rien n'est caché à une formule : une fonction d'une formule supérieure reste visible, grisée, avec
  * sa marque et le lien de mise à niveau. La formule gratuite reçoit de petites allocations (20
@@ -98,7 +99,8 @@ export const PLANS: Record<Tier, Plan> = {
       bankImports: UNLIMITED,
       recurring: UNLIMITED,
     },
-    seats: 2,
+    // Une place, comme dans ERPlead et les autres applications Lead (Pro+ : cinq).
+    seats: 1,
     poweredBy: false,
   },
   proplus: {
@@ -164,13 +166,26 @@ export type Access = {
   limit: number;
 };
 
+/**
+ * Formule du Compte Lead : son code (« pro_plus », « pro », toute autre valeur Gratuit), sinon son
+ * rang (20 et plus Pro+, 10 et plus Pro), sinon la formule enregistrée à la connexion (lead_plan).
+ * Jusqu'au 13.10.2026, le rang était lu comme 1 Pro et 2 Pro+ : un Pro d'ERPlead (rang 10) devenait
+ * Pro+ ici.
+ */
+function leadTier(org: OrgPlan): Tier {
+  const plan = (org.entitlements as { plan?: { code?: unknown; rank?: unknown } } | null)?.plan;
+  const code = plan?.code;
+  if (typeof code === "string" && code) {
+    return code === "pro_plus" ? "proplus" : code === "pro" ? "pro" : "free";
+  }
+  const rank = Number(plan?.rank);
+  if (Number.isFinite(rank)) return rank >= 20 ? "proplus" : rank >= 10 ? "pro" : "free";
+  return org.leadPlan === "pro" ? "pro" : org.leadPlan === "pro_plus" ? "proplus" : "free";
+}
+
 export function tierOf(org: OrgPlan): Tier {
   if (planTooOld(org)) return "free";
-  const rank = Number((org.entitlements as { plan?: { rank?: unknown } } | null)?.plan?.rank);
-  if (rank >= 2) return "proplus";
-  if (rank === 1) return "pro";
-  if (Number.isFinite(rank)) return "free";
-  return org.leadPlan === "pro" ? "pro" : org.leadPlan === "pro_plus" ? "proplus" : "free";
+  return leadTier(org);
 }
 
 /** Lien « Passer à Pro » : celui du Compte Lead, ou la page de facturation de la famille. */
@@ -187,6 +202,11 @@ export function seatsOf(org: OrgPlan): number {
   if (planTooOld(org)) return PLANS.free.seats;
   const seats = Number((org.entitlements as { plan?: { seats?: unknown } } | null)?.plan?.seats);
   return Number.isInteger(seats) && seats > 0 ? seats : PLANS[tierOf(org)].seats;
+}
+
+/** Première formule au-dessus de `tier` qui compte plus de `seats` places (Pro+ depuis Gratuit). */
+export function tierWithMoreSeats(tier: Tier, seats: number): Tier | null {
+  return TIERS.find((t) => RANK[t] > RANK[tier] && PLANS[t].seats > seats) ?? null;
 }
 
 /** Mention « Créé avec InvoiceLead » sur les documents de la formule gratuite. */

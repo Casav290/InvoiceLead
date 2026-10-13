@@ -13,20 +13,23 @@ import {
   poweredBy,
   quotaAccess,
   refundQuota,
+  seatsOf,
   tierOf,
+  tierWithMoreSeats,
   upgradeUrl,
 } from "@/server/plans";
 import { claims } from "../support/claims";
 import { testDb } from "../support/db";
+import { leadPlan } from "../support/lead-plan";
 
 const t = testDb();
 const db = t.database;
 beforeEach(() => t.reset());
 afterAll(() => t.close());
 
-const FREE = { leadPlan: "free", entitlements: { plan: { rank: 0 } } };
-const PRO = { leadPlan: "pro", entitlements: { plan: { rank: 1 } } };
-const PLUS = { leadPlan: "x", entitlements: { plan: { rank: 2 } } };
+const FREE = { leadPlan: "free", entitlements: { plan: leadPlan(0) } };
+const PRO = { leadPlan: "pro", entitlements: { plan: leadPlan(1) } };
+const PLUS = { leadPlan: "x", entitlements: { plan: leadPlan(2) } };
 
 /** Entreprise du Compte Lead à la formule voulue (rang 0, 1 ou 2). */
 async function company(rank: number, n = "a") {
@@ -36,9 +39,9 @@ async function company(rank: number, n = "a") {
   );
   await db
     .update(organizations)
-    .set({ entitlements: { plan: { rank } } })
+    .set({ entitlements: { plan: leadPlan(rank) } })
     .where(eq(organizations.id, a.organization.id));
-  return { ...a.organization, entitlements: { plan: { rank } } };
+  return { ...a.organization, entitlements: { plan: leadPlan(rank) } };
 }
 
 /** Consomme `n` unités et rend le nombre accepté. */
@@ -73,6 +76,36 @@ describe("formules", () => {
         entitlements: { apps: { invoicelead: { upgrade_url: "javascript:alert(1)" } } },
       }),
     ).toBe("https://scanlead.io/billing");
+  });
+
+  it("lisent le code de la formule d'ERPlead, le rang (0, 10, 20) n'étant qu'un repli", () => {
+    const lead = (plan: Record<string, unknown>, leadPlan = "free") => ({
+      leadPlan,
+      entitlements: { plan },
+    });
+    // Un Pro d'ERPlead (rang 10) reste Pro : jusqu'au 13.10.2026, « rang >= 2 » en faisait un Pro+.
+    expect(tierOf(lead({ code: "pro", rank: 10, seats: 1 }))).toBe("pro");
+    expect(featureAccess(lead({ code: "pro", rank: 10 }), "api").allowed).toBe(false);
+    expect(tierOf(lead({ code: "pro_plus", rank: 20, seats: 5 }))).toBe("proplus");
+    expect(tierOf(lead({ code: "free", rank: 0 }))).toBe("free");
+    // Le code l'emporte sur le rang, dans les deux sens ; un code inconnu vaut Gratuit.
+    expect(tierOf(lead({ code: "pro", rank: 20 }))).toBe("pro");
+    expect(tierOf(lead({ code: "free", rank: 20 }))).toBe("free");
+    expect(tierOf(lead({ code: "team", rank: 20 }))).toBe("free");
+    // Sans code : le rang d'ERPlead.
+    expect(tierOf(lead({ rank: 10 }))).toBe("pro");
+    expect(tierOf(lead({ rank: 20 }))).toBe("proplus");
+    expect(tierOf(lead({ rank: 1 }))).toBe("free");
+    expect(tierOf(lead({ rank: 2 }))).toBe("free");
+    // Ni code ni rang : la formule enregistrée à la connexion.
+    expect(tierOf(lead({}, "pro_plus"))).toBe("proplus");
+    // Pro : une place, comme ERPlead ; Pro+ : cinq.
+    expect([PLANS.free.seats, PLANS.pro.seats, PLANS.proplus.seats]).toEqual([1, 1, 5]);
+    expect(seatsOf(lead({ code: "pro", rank: 10 }))).toBe(1);
+    expect(seatsOf(lead({ code: "pro_plus", rank: 20 }))).toBe(5);
+    expect(tierWithMoreSeats("free", 1)).toBe("proplus");
+    expect(tierWithMoreSeats("pro", 1)).toBe("proplus");
+    expect(tierWithMoreSeats("proplus", 5)).toBeNull();
   });
 
   it("réservent chaque fonction à sa formule, avec la formule qui l'ouvre", () => {
@@ -233,7 +266,7 @@ describe("allocations mensuelles", () => {
       (
         await quotaAccess(
           db,
-          { ...a.organization, entitlements: { plan: { rank: 1 } } },
+          { ...a.organization, entitlements: { plan: leadPlan(1) } },
           "contacts",
         )
       ).allowed,
