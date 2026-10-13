@@ -266,9 +266,9 @@ test("formule gratuite : chaque fonction Pro reste visible, grisée, avec sa mar
   await expectLocked(page.getByTestId("fiduciary-lock"), "Pro", "formules Pro et Pro+");
   await expect(page.getByTestId("fiduciary-invite")).toBeDisabled();
   // Places : 1 en formule gratuite, prise par l'administrateur. L'ajout d'une personne reste visible,
-  // grisé, avec la marque Pro et le lien qui disent qu'il y en a davantage.
+  // grisé, avec la marque Pro+ et le lien qui disent qu'il y en a davantage (Pro n'en a qu'une).
   const seats = page.getByTestId("seats-lock");
-  await expectLocked(seats, "Pro", "Pro compte 2 places et Pro+ en compte 5.");
+  await expectLocked(seats, "Pro+", "Pro+ compte 5 places.");
   await expect(seats.getByTestId("member-invite")).toBeVisible();
   await expect(page.getByTestId("member-invite-submit")).toBeDisabled();
   await expect(seats.getByLabel("Adresse e-mail")).toBeDisabled();

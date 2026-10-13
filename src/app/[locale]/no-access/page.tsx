@@ -7,7 +7,7 @@ import { accessProblem, appPage, requireSession } from "@/server/auth/guard";
 import { billingConfigured, GRANTING, portalConfigured } from "@/server/billing/stripe";
 import { subscriptionOf } from "@/server/billing/subscriptions";
 import { db } from "@/server/db";
-import { seatsOf } from "@/server/plans";
+import { seatsOf, tierOf } from "@/server/plans";
 import { listUserOrganizations } from "@/server/team";
 
 export async function generateMetadata({
@@ -41,11 +41,13 @@ export default async function NoAccessPage({
   // Places toutes prises : Pro+ se prend ici même (cet écran, et non la page Formule, que la
   // personne sans place ne peut pas ouvrir), par l'administrateur seulement. Déjà abonné : le
   // passage à Pro+ se fait dans le portail Stripe d'InvoiceLead.
-  const admin = session.membership.role === "admin";
-  const sub = problem === "seat" && admin ? await subscriptionOf(db(), organization.id) : null;
+  // Déjà en Pro+ (cinq places) : aucune formule n'en donne plus, rien à proposer.
+  const upgradable =
+    problem === "seat" && session.membership.role === "admin" && tierOf(organization) !== "proplus";
+  const sub = upgradable ? await subscriptionOf(db(), organization.id) : null;
   const subscribed = !!sub && (GRANTING as readonly string[]).includes(sub.status);
-  const buy = problem === "seat" && admin && billingConfigured() && !subscribed;
-  const portal = problem === "seat" && admin && subscribed && portalConfigured();
+  const buy = upgradable && billingConfigured() && !subscribed;
+  const portal = upgradable && subscribed && portalConfigured();
   const title =
     problem === "blocked"
       ? t("blockedTitle")
@@ -76,7 +78,7 @@ export default async function NoAccessPage({
         <div className="border-b border-line px-6 py-5">
           <h1 className="text-[22px] leading-tight">{title}</h1>
           <p className="mt-2 text-[14px] leading-relaxed text-ink-muted">{body}</p>
-          {problem === "seat" && !admin ? (
+          {problem === "seat" && session.membership.role !== "admin" ? (
             <p className="mt-2 text-[14px] leading-relaxed text-ink-muted">
               {t("seatAsk", { org: organization.name })}
             </p>

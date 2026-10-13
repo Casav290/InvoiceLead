@@ -8,7 +8,7 @@ Rien à voir avec Stripe Connect (docs/STRIPE.md), qui sert aux factures que les
 
 1. Tous les liens « Passer à Pro / Pro+ » (menu de la personne, fonctions grisées, équipe, tableau de bord, page Tarifs après inscription) mènent à **Réglages → Formule** (`/[locale]/app/settings/plan`, `?plan=pro|pro_plus` présélectionne).
 2. L'administrateur (rôle Lead `admin`) choisit mensuel ou annuel et clique : `POST /api/billing/checkout` crée (une fois) le client Stripe propre à InvoiceLead, puis une session Stripe Checkout, et l'y envoie.
-3. Au retour (`?checkout=success&session_id=…`), la page relit la session chez Stripe et enregistre l'abonnement aussitôt, puis se recharge sur `?checkout=done`. Le webhook fait de même de son côté.
+3. Au retour, Stripe ramène sur `GET /api/billing/return?locale=…&session_id=…`, qui relit la session chez Stripe et enregistre l'abonnement aussitôt (si la session est bien celle de l'entreprise connectée), puis ouvre la page Formule sur `?checkout=done`. Le webhook fait de même de son côté.
 4. Ensuite, « Gérer l'abonnement » (`POST /api/billing/portal`) ouvre le portail Stripe d'InvoiceLead : changer de formule ou de période, carte, factures, résiliation en fin de période.
 5. Toutes les places prises (écran « sans accès ») : l'administrateur peut passer à Pro+ depuis cet écran même.
 

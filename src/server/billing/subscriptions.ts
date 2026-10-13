@@ -371,10 +371,13 @@ async function hasOpenSubscription(database: Db, organizationId: string): Promis
  * jamais retrouvé par e-mail ni partagé avec une autre application Lead. La clé d'idempotence
  * dépend des données envoyées : un double clic reçoit le même client.
  */
-export async function ensureCustomer(database: Db, org: BillingOrg, email: string) {
+export async function ensureCustomer(database: Db, org: BillingOrg, email: string, salt = "") {
   if (org.billingCustomerId) return org.billingCustomerId;
   const name = org.legalName || org.name;
-  const digest = createHash("sha256").update(`${name}\n${email}`).digest("hex").slice(0, 16);
+  const digest = createHash("sha256")
+    .update(`${name}\n${email}\n${salt}`)
+    .digest("hex")
+    .slice(0, 16);
   const customer = await stripeBilling<{ id: string }>(
     "POST",
     "/v1/customers",
@@ -409,16 +412,45 @@ export async function createCheckout(
   database: Db,
   input: { org: BillingOrg; email: string; plan: PaidPlan; interval: Interval; locale: string },
 ): Promise<string> {
-  const { org, plan, interval, locale } = input;
+  const { org } = input;
   if (await hasOpenSubscription(database, org.id))
     throw new BillingError(409, "already_subscribed", "abonnement déjà actif");
   const customer = await ensureCustomer(database, org, input.email);
+  try {
+    return await startCheckout(database, input, customer);
+  } catch (e) {
+    // Client Stripe supprimé dans le tableau de bord : on oublie la référence locale (rien n'est
+    // supprimé chez Stripe), un nouveau client est créé, une seule fois.
+    if (!(e instanceof BillingError && e.code === "resource_missing" && e.param === "customer"))
+      throw e;
+    await database
+      .update(organizations)
+      .set({ billingCustomerId: null })
+      .where(and(eq(organizations.id, org.id), eq(organizations.billingCustomerId, customer)));
+    // Autre clé d'idempotence : la première rendrait le client supprimé pendant 24 heures.
+    const fresh = await ensureCustomer(
+      database,
+      { ...org, billingCustomerId: null },
+      input.email,
+      `remplace ${customer}`,
+    );
+    return startCheckout(database, input, fresh);
+  }
+}
+
+async function startCheckout(
+  database: Db,
+  input: { org: BillingOrg; plan: PaidPlan; interval: Interval; locale: string },
+  customer: string,
+): Promise<string> {
+  const { org, plan, interval, locale } = input;
   const metadata = { app: APP, account_id: org.id, plan, interval };
   const params: Record<string, unknown> = {
     mode: "subscription",
     customer,
     line_items: [{ price: priceIds()[plan][interval], quantity: 1 }],
-    success_url: planPageUrl(locale, "?checkout=success&session_id={CHECKOUT_SESSION_ID}"),
+    // Retour par /api/billing/return, qui enregistre l'abonnement avant d'ouvrir la page Formule.
+    success_url: `${env().APP_URL}/api/billing/return?locale=${locale}&session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: planPageUrl(locale, "?checkout=cancel"),
     locale: stripeLocale(locale),
     metadata,

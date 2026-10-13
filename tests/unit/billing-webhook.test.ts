@@ -92,11 +92,17 @@ function fakeFetch() {
       }
       if (path === "/v1/customers" && method === "POST")
         return Response.json({ id: `cus_new_${calls.length}` });
-      if (path === "/v1/checkout/sessions" && method === "POST")
+      if (path === "/v1/checkout/sessions" && method === "POST") {
+        if (new URLSearchParams(body).get("customer") === "cus_gone")
+          return Response.json(
+            { error: { code: "resource_missing", param: "customer", message: "No such customer" } },
+            { status: 400 },
+          );
         return Response.json({
           id: "cs_test_new",
           url: "https://checkout.stripe.test/cs_test_new",
         });
+      }
       if (path === "/v1/billing_portal/sessions" && method === "POST")
         return Response.json({ url: "https://billing.stripe.test/p/session" });
       return Response.json({ error: { message: `inconnu ${path}` } }, { status: 400 });
@@ -599,7 +605,7 @@ describe("paiement et portail", () => {
     const keys = [...session.keys()].join(" ");
     expect(keys).not.toMatch(/client_reference_id|workspace_id|invoice_id|organization_id/);
     expect(session.get("success_url")).toBe(
-      "https://invoicelead.io/fr/app/settings/plan?checkout=success&session_id={CHECKOUT_SESSION_ID}",
+      "https://invoicelead.io/api/billing/return?locale=fr&session_id={CHECKOUT_SESSION_ID}",
     );
     // Le client est gardé : un second départ ne le recrée pas.
     expect((await orgRow(org.id)).billingCustomerId).toMatch(/^cus_new_/);
@@ -612,6 +618,28 @@ describe("paiement et portail", () => {
       locale: "de",
     });
     expect(calls.filter((c) => c.url === `${STRIPE}/v1/customers`)).toEqual([]);
+  });
+
+  it("client Stripe supprimé dans le tableau de bord : un nouveau, une seule fois", async () => {
+    const org = await company();
+    await db
+      .update(organizations)
+      .set({ billingCustomerId: "cus_gone" })
+      .where(eq(organizations.id, org.id));
+    const url = await createCheckout(db, {
+      org: await orgRow(org.id),
+      email: "ada@atelier.test",
+      plan: "pro",
+      interval: "month",
+      locale: "fr",
+    });
+    expect(url).toBe("https://checkout.stripe.test/cs_test_new");
+    const created = calls.filter((c) => c.url === `${STRIPE}/v1/customers`);
+    expect(created).toHaveLength(1);
+    expect(created[0]?.headers["idempotency-key"]).toMatch(
+      new RegExp(`^invoicelead-customer-${org.id}-`),
+    );
+    expect((await orgRow(org.id)).billingCustomerId).toMatch(/^cus_new_/);
   });
 
   it("déjà abonné : pas de second abonnement, le portail (sa configuration) s'ouvre", async () => {

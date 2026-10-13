@@ -25,7 +25,7 @@ test("lead gagné dans CRMlead : relecture, puis devis en brouillon créé une s
 
   await page.goto(`/fr/app/import/crmlead?d=${d}`);
   await expect(page.getByTestId("crm-import")).toContainText("Boulangerie Rochat SA");
-  await expect(page.getByTestId("crm-total")).toHaveText("2'400.00");
+  await expect(page.getByTestId("crm-total")).toHaveText("CHF 2'400.00");
   await page.getByTestId("crm-import-confirm").click();
   await expect(page.getByText("Brouillon créé depuis CRMlead.", { exact: false })).toBeVisible();
   const url = page.url();

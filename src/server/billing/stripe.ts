@@ -121,6 +121,8 @@ export class BillingError extends Error {
     public status: number,
     public code: string,
     message: string,
+    /** Paramètre en cause selon Stripe (« customer »…). */
+    public param?: string,
   ) {
     super(message);
   }
@@ -149,13 +151,14 @@ export async function stripeBilling<T = Record<string, unknown>>(
     signal: AbortSignal.timeout(15_000),
   });
   const data = (await res.json().catch(() => ({}))) as {
-    error?: { code?: string; type?: string; message?: string };
+    error?: { code?: string; type?: string; message?: string; param?: string };
   };
   if (!res.ok) {
     throw new BillingError(
       res.status,
       data.error?.code ?? data.error?.type ?? "stripe_error",
       data.error?.message ?? `HTTP ${res.status}`,
+      data.error?.param,
     );
   }
   return data as T;

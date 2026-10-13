@@ -233,6 +233,47 @@ test("formule : paiement annulé, puis un utilisateur sans droit et sans place",
   await other.close();
 });
 
+test("sans place : l'administrateur passe à Pro+ depuis l'écran, puis entre", async ({
+  page,
+  browser,
+}) => {
+  const run = Date.now();
+  const org = `org-abo3-${run}`;
+  // Une responsable arrivée la première occupe la seule place de la formule gratuite.
+  const first = await browser.newContext();
+  await login(await first.newPage(), "fr", {
+    sub: `sub-abo3-mgr-${run}`,
+    email: `mgr-${run}@atelier.test`,
+    org,
+    org_name: "Places Sàrl",
+    org_role: "manager",
+  });
+  await first.close();
+  await login(
+    page,
+    "fr",
+    {
+      sub: `sub-abo3-${run}`,
+      email: `admin-${run}@atelier.test`,
+      org,
+      org_name: "Places Sàrl",
+      org_role: "admin",
+    },
+    "**/fr/no-access?**",
+  );
+  await expect(page.getByTestId("no-access")).toHaveAttribute("data-reason", "seat");
+  await expect(page.getByTestId("no-access")).toContainText(
+    "Passez à Pro+ (5 places) dans InvoiceLead",
+  );
+  await page.getByTestId("no-access-checkout-month").click();
+  await page.getByRole("link", { name: "Payer" }).click();
+  // Le retour enregistre l'abonnement avant d'ouvrir l'application : la place est là.
+  await page.waitForURL("**/fr/app/settings/plan?checkout=done");
+  await expect(page.getByTestId("plan-current")).toHaveAttribute("data-tier", "proplus");
+  await page.goto("/fr/app/settings/team");
+  await expect(page.getByTestId("seats")).toHaveText("2 sur 5 places utilisées");
+});
+
 test("tarifs : « Choisir Pro » mène à l'inscription puis à la page Formule", async ({ page }) => {
   await page.goto("/fr/pricing");
   await expect(

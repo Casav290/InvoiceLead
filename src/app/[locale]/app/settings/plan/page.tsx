@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { type PlanCard, PlanChooser } from "@/components/settings/PlanChooser";
 import { SettingsNav } from "@/components/settings/SettingsNav";
@@ -7,24 +6,14 @@ import { Button } from "@/components/ui/button";
 import { formatDate } from "@/lib/fiscal-year";
 import { AVAILABLE, PRICE_CARDS } from "@/lib/pricing";
 import { requireAppSession } from "@/server/auth/guard";
-import {
-  BillingError,
-  billingConfigured,
-  GRANTING,
-  portalConfigured,
-} from "@/server/billing/stripe";
-import { subscriptionOf, syncCheckoutSession } from "@/server/billing/subscriptions";
+import { billingConfigured, GRANTING, portalConfigured } from "@/server/billing/stripe";
+import { subscriptionOf } from "@/server/billing/subscriptions";
 import { db } from "@/server/db";
 import { billingTier, tierOf } from "@/server/plans";
 
 type Props = {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{
-    plan?: string;
-    checkout?: string;
-    session_id?: string;
-    error?: string;
-  }>;
+  searchParams: Promise<{ plan?: string; checkout?: string; error?: string }>;
 };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -65,18 +54,7 @@ export default async function PlanSettingsPage({ params, searchParams }: Props) 
   const { organization, membership } = await requireAppSession(locale);
   const isAdmin = membership.role === "admin";
 
-  // Retour du paiement : l'abonnement est relu chez Stripe et enregistré tout de suite, sans
-  // attendre le webhook ; puis la page se recharge (en-tête compris) sur la formule à jour.
-  if (q.checkout === "success" && q.session_id && billingConfigured()) {
-    const result = await syncCheckoutSession(db(), organization.id, q.session_id).catch((e) => {
-      console.error("[billing] retour du paiement", e instanceof BillingError ? e.code : e);
-      return "pending" as const;
-    });
-    redirect(
-      `/${locale}/app/settings/plan?checkout=${result === "applied" || result === "duplicate" ? "done" : "pending"}`,
-    );
-  }
-
+  // Retour du paiement : /api/billing/return a déjà enregistré l'abonnement (checkout=done).
   const t = await getTranslations({ locale, namespace: "app.billing" });
   const tp = await getTranslations({ locale, namespace: "pricing" });
   const tPlan = await getTranslations({ locale, namespace: "app.plan" });
