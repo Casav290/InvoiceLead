@@ -341,14 +341,6 @@
       "time": "Zeit",
       "expenses": "Spesen"
     },
-    "switcher": {
-      "open": "Anwendung wechseln",
-      "title": "Lead-Anwendungen",
-      "current": "Hier",
-      "openLink": "Öffnen",
-      "soon": "Demnächst",
-      "upgrade": "Abo wechseln"
-    },
     "user": {
       "logout": "Abmelden",
       "planLine": "Abo: <strong>{plan}</strong>",

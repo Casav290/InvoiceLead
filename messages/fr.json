@@ -341,14 +341,6 @@
       "time": "Temps",
       "expenses": "Frais"
     },
-    "switcher": {
-      "open": "Changer d'application",
-      "title": "Applications Lead",
-      "current": "Ici",
-      "openLink": "Ouvrir",
-      "soon": "Bientôt",
-      "upgrade": "Changer de formule"
-    },
     "user": {
       "logout": "Se déconnecter",
       "planLine": "Formule : <strong>{plan}</strong>",

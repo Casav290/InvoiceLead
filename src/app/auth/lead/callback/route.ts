@@ -1,6 +1,13 @@
 import { cookies } from "next/headers";
 import { type NextRequest, NextResponse } from "next/server";
-import { LOGIN_COOKIE, LOGIN_COOKIE_PATH, loginCookieName, SESSION_COOKIE } from "@/lib/cookies";
+import {
+  LOGIN_COOKIE,
+  LOGIN_COOKIE_PATH,
+  loginCookieName,
+  PROBE_COOKIE,
+  SESSION_COOKIE,
+} from "@/lib/cookies";
+import { silentError } from "@/lib/lead-entry";
 import { attachLeadIdentity } from "@/server/auth/attach";
 import {
   cookieBytes,
@@ -10,6 +17,7 @@ import {
   LOGIN_REQUEST_SECONDS,
   localeFromRequest,
   openLogin,
+  pickLocale,
   readDone,
   restartable,
   returnParams,
@@ -24,6 +32,7 @@ import {
   createSession,
   destroySession,
   dropSessionsBefore,
+  probeCookieOptions,
   SESSION_HOURS,
 } from "@/server/auth/session";
 import { db } from "@/server/db";
@@ -88,6 +97,14 @@ export async function GET(request: NextRequest) {
       response.cookies.set(OLD_RETRY_COOKIE, "", { ...cookieOptions(0), path: LOGIN_COOKIE_PATH });
     return response;
   };
+  // Essai silencieux (racine tapée, lead-entry.ts) : le Compte Lead n'avait pas de session ouverte, ou
+  // le retour ne peut pas être mené à bout. Retour sur la page d'où il part (la page publique), sans
+  // écran d'erreur ni nouvel essai : lead_probe, posé au départ, empêche toute boucle. Les erreurs
+  // propres à `prompt=none` (login_required…) ne viennent que d'un essai silencieux, même si son
+  // `state` est illisible.
+  const silent = asked?.silent === true || silentError(q.get("error"));
+  const quiet = () => done(`${APP_URL}${asked?.from ?? "/"}`);
+
   // Session InvoiceLead déjà dans ce navigateur : remplacée par celle-ci au succès, et sa ligne
   // effacée (elle peut être celle d'une autre personne : poste partagé, invitation d'un collègue).
   const previous = store.get(SESSION_COOKIE)?.value;
@@ -112,7 +129,9 @@ export async function GET(request: NextRequest) {
   const fresh: Record<string, string> = asked?.fresh || unverified ? { fresh: "1" } : {};
   const restart = () =>
     done(
-      `${APP_URL}/auth/lead/start?${new URLSearchParams({ locale, ...back, ...fresh, retry: "1" })}`,
+      // Sans langue dans l'adresse de départ, la relance part sans elle : l'arrivée reste dans la
+      // langue du Compte Lead.
+      `${APP_URL}/auth/lead/start?${new URLSearchParams({ ...(asked?.auto ? {} : { locale }), ...back, ...fresh, retry: "1" })}`,
     );
   const failed = async (reason: "lead" | "session") => {
     // Entrée fraîche (ou retour invérifiable) qui n'aboutit pas : l'identité du Compte Lead n'est pas
@@ -141,7 +160,7 @@ export async function GET(request: NextRequest) {
   // le Compte Lead vient d'authentifier quelqu'un, peut-être une autre personne que celle de la session
   // (poste partagé) : relance fraîche ci-dessous, invisible, vers la même page entière.
   if (!saved && finished && previous && !q.get("code")) return done(`${APP_URL}${finished.target}`);
-  if (!saved) return retried ? failed("session") : restart();
+  if (!saved) return silent ? quiet() : retried ? failed("session") : restart();
 
   try {
     const { claims, tokens } = await finishLogin(
@@ -178,10 +197,14 @@ export async function GET(request: NextRequest) {
     const credAt = (claims as { cred_at?: unknown }).cred_at;
     if (typeof credAt === "number" && Number.isFinite(credAt) && credAt > 0)
       await dropSessionsBefore(db(), user.id, new Date((credAt - 1) * 1000), session.id);
-    // Retour sur la page demandée avant la connexion, sinon le tableau de bord.
-    const landing = wanted ?? `/${locale}/app`;
+    // Retour sur la page demandée avant la connexion, sinon le tableau de bord : dans la langue de
+    // l'adresse de départ, ou, sans elle (/login des lanceurs, racine « / »), dans celle du Compte Lead.
+    const home = asked?.auto ? pickLocale(user.locale) : locale;
+    const landing = wanted ?? `/${home}/app`;
     const response = done(`${APP_URL}${landing}`);
     response.cookies.set(SESSION_COOKIE, session.token, cookieOptions(SESSION_HOURS * 3600));
+    // Connectée : la racine peut de nouveau mener tout droit dans l'espace.
+    if (store.get(PROBE_COOKIE)) response.cookies.set(PROBE_COOKIE, "", probeCookieOptions(0));
     // Trace de la demande aboutie (sa page seulement, rien de secret), pour l'onglet d'origine qui
     // reprendrait la même demande plus tard. Les plus anciennes s'effacent.
     if (cookieName !== LOGIN_COOKIE) {
@@ -196,6 +219,11 @@ export async function GET(request: NextRequest) {
     return response;
   } catch (error) {
     const why = describeLoginError(error);
+    // Un essai silencieux qui n'aboutit pas n'est pas une erreur : la page publique, sans journal.
+    if (silent) {
+      if (!silentError(q.get("error"))) console.error("[lead-id] callback silencieux", why);
+      return quiet();
+    }
     console.error("[lead-id] callback", why);
     // `state` d'une autre demande (deux onglets), ou code déjà échangé (même retour rejoué : la réponse
     // du premier s'est perdue en route, coupure du réseau ou page d'erreur, puis la personne recharge) :

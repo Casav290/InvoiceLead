@@ -341,14 +341,6 @@
       "time": "Time",
       "expenses": "Expenses"
     },
-    "switcher": {
-      "open": "Switch app",
-      "title": "Lead apps",
-      "current": "Here",
-      "openLink": "Open",
-      "soon": "Soon",
-      "upgrade": "Upgrade"
-    },
     "user": {
       "logout": "Log out",
       "planLine": "Plan: <strong>{plan}</strong>",

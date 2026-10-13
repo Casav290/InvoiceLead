@@ -28,6 +28,14 @@ export function cookieOptions(maxAgeSeconds: number) {
 }
 
 /**
+ * Cookie lead_probe (essai silencieux déjà fait, cookies.ts) : lisible côté navigateur, sans rien de
+ * secret, mêmes réglages que la famille (chemin « / », Lax, Secure en HTTPS).
+ */
+export function probeCookieOptions(maxAgeSeconds: number) {
+  return { ...cookieOptions(maxAgeSeconds), httpOnly: false };
+}
+
+/**
  * Toutes les cinq minutes au plus, une session vérifie auprès du Compte Lead que l'accès de sa
  * connexion tient (revalidateSession) : un mot de passe réinitialisé, une déconnexion de partout ou un
  * compte fermé y révoquent les jetons de rafraîchissement, et la session tombe à sa page suivante.

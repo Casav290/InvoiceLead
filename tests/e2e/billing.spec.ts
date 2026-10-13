@@ -1,6 +1,6 @@
 import { createHmac } from "node:crypto";
 import { expect, test } from "@playwright/test";
-import { LEAD, login, traitNetIssues } from "./helpers";
+import { APP, LEAD, login, traitNetIssues } from "./helpers";
 
 /**
  * Abonnement InvoiceLead payé dans InvoiceLead (décision d'Ève du 13.10.2026) : « Passer à Pro »
@@ -147,7 +147,7 @@ test("formule : Passer à Pro+ (annuel), paiement, Pro+ ici, portail, autres app
   expect(portal).toMatchObject({
     customer: session?.customer,
     configuration: "bpc_e2e_invoicelead",
-    return_url: "http://localhost:3100/fr/app/settings/plan",
+    return_url: `${APP}/fr/app/settings/plan`,
     locale: "fr",
   });
 
@@ -280,7 +280,7 @@ test("tarifs : « Choisir Pro » mène à l'inscription puis à la page Formule"
     page.getByText("Un abonnement InvoiceLead ne vaut que pour InvoiceLead."),
   ).toBeVisible();
   const pro = page.getByTestId("plan-pro").getByRole("link");
-  const href = new URL(String(await pro.getAttribute("href")), "http://localhost:3100");
+  const href = new URL(String(await pro.getAttribute("href")), APP);
   expect(href.pathname).toBe("/auth/lead/start");
   expect(href.searchParams.get("signup")).toBe("1");
   expect(href.searchParams.get("next")).toBe("/fr/app/settings/plan?plan=pro");

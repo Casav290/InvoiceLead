@@ -4,7 +4,6 @@ import { leadAppItems } from "@/lib/lead-apps";
 import { APP_CODE } from "@/server/auth/attach";
 import { requireAppSession } from "@/server/auth/guard";
 import { db } from "@/server/db";
-import type { LeadEntitlements } from "@/server/lead-id/leadId";
 import { tierOf, upgradeUrl } from "@/server/plans";
 import { listUserOrganizations } from "@/server/team";
 
@@ -17,7 +16,6 @@ export default async function AppLayout({
 }) {
   const { locale } = await params;
   const { user, organization } = await requireAppSession(locale);
-  const entitlements = organization.entitlements as LeadEntitlements | null;
   const orgs = await listUserOrganizations(db(), user.id);
   const tier = tierOf(organization);
   const tp = await getTranslations({ locale, namespace: "app.plan" });
@@ -29,7 +27,9 @@ export default async function AppLayout({
           label: tp(tier === "pro" ? "upgradePlus" : "upgrade"),
         };
   return (
-    <div className="flex min-h-screen flex-col">
+    // data-lead-org : l'organisation du Compte Lead de l'espace ouvert (contrôle du passage entre
+    // applications de la famille, ~/projets/lead-e2e/check-passage.mjs).
+    <div className="flex min-h-screen flex-col" data-lead-org={organization.leadOrg ?? undefined}>
       <AppHeader
         locale={locale}
         orgId={organization.id}
@@ -39,7 +39,8 @@ export default async function AppLayout({
         // La formule DANS InvoiceLead (tierOf : Compte Lead et abonnement payé ici).
         planCode={tier === "proplus" ? "pro_plus" : tier}
         planName={tp(tier)}
-        apps={leadAppItems(APP_CODE, entitlements?.apps)}
+        // La liste commune de la famille, jamais filtrée par les droits ni par la formule.
+        apps={leadAppItems(APP_CODE, locale)}
         upgrade={upgrade}
       />
       <main className="flex-1">{children}</main>

@@ -12,6 +12,9 @@ export default defineConfig({
     include: ["tests/unit/**/*.test.ts"],
     environment: "node",
     fileParallelism: false,
+    // Le proxy (src/proxy.ts) est testé tel quel : next-intl importe « next/server » sans extension,
+    // que seul Vite sait résoudre.
+    server: { deps: { inline: ["next-intl"] } },
     env: {
       TEST_DATABASE_URL:
         process.env.TEST_DATABASE_URL ?? "postgres://postgres@localhost:5432/invoicelead_test",

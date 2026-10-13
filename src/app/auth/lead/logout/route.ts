@@ -4,10 +4,12 @@ import {
   AFTER_LOGOUT_COOKIE,
   LOGIN_COOKIE,
   LOGIN_COOKIE_PATH,
+  PROBE_COOKIE,
+  PROBE_SECONDS,
   SESSION_COOKIE,
 } from "@/lib/cookies";
 import { invitePath, pickLocale, safeInvite } from "@/server/auth/login-cookie";
-import { cookieOptions, destroySession } from "@/server/auth/session";
+import { cookieOptions, destroySession, probeCookieOptions } from "@/server/auth/session";
 import { db } from "@/server/db";
 import { env } from "@/server/env";
 import { logoutUrl } from "@/server/lead-id/leadId";
@@ -35,6 +37,8 @@ export async function POST(request: NextRequest) {
   const response = NextResponse.redirect(logoutUrl(idToken, `${APP_URL}/`), 303);
   response.cookies.set(SESSION_COOKIE, "", cookieOptions(0));
   response.cookies.set("NEXT_LOCALE", locale, { path: "/", sameSite: "lax", maxAge: 31_536_000 });
+  // Le Compte Lead ramène à l'accueil : la page publique, sans essai silencieux (lead-entry.ts).
+  response.cookies.set(PROBE_COOKIE, "1", probeCookieOptions(PROBE_SECONDS));
   // Lax : le cookie part avec le retour du Compte Lead (navigation depuis un autre site). Dix minutes.
   if (invite)
     response.cookies.set(AFTER_LOGOUT_COOKIE, invitePath(locale, invite), cookieOptions(600));

@@ -1,7 +1,7 @@
 import { useTranslations } from "next-intl";
 import { AppMark } from "@/components/brand/AppMark";
 import { Link } from "@/i18n/navigation";
-import type { LeadAppItem } from "@/lib/lead-apps";
+import { type LeadAppItem, leadFamilyTexts } from "@/lib/lead-apps";
 import { AppNav } from "./AppNav";
 import { AppSwitcher } from "./AppSwitcher";
 import { type OrgItem, OrgSwitcher } from "./OrgSwitcher";
@@ -56,7 +56,7 @@ export function AppHeader({
               {orgName}
             </span>
           )}
-          <AppSwitcher items={apps} />
+          <AppSwitcher items={apps} texts={leadFamilyTexts(locale)} />
           <UserMenu
             name={user.name}
             email={user.email}

@@ -16,6 +16,8 @@ export type FakeUser = {
   plan?: "free" | "pro" | "proplus";
   /** Statut d'InvoiceLead dans la famille : « retired » ferme l'application. */
   status?: "live" | "soon" | "retired";
+  /** Langue du Compte Lead (claims.locale) ; « fr » par défaut. */
+  locale?: string;
 };
 
 /** Connexion complète par le faux Compte Lead, depuis l'écran de connexion. */

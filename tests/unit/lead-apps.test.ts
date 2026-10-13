@@ -1,51 +1,61 @@
 import { describe, expect, it } from "vitest";
-import { leadAppItems } from "@/lib/lead-apps";
+import { LEAD_FAMILY, leadAppItems, leadFamilyTexts, PROJECTLEAD_URL } from "@/lib/lead-apps";
 
-describe("sélecteur d'applications", () => {
-  it("sans droits connus : sœurs ouvertes sur /login (ProjectLead compris), InvoiceLead courante", () => {
-    const items = leadAppItems("invoicelead", null);
-    expect(items.map((i) => [i.code, i.state, i.href])).toEqual([
-      ["scanlead", "open", "https://scanlead.io/login"],
-      ["crmlead", "open", "https://crmlead.io/login"],
-      ["projectlead", "open", "https://projectlead.io/login"],
-      ["invoicelead", "current", null],
+const ORDER = ["erplead", "scanlead", "crmlead", "projectlead", "invoicelead", "greetlead"];
+
+describe("lanceur de la famille Lead", () => {
+  it("liste les six applications, dans l'ordre commun, vers leur adresse d'entrée", () => {
+    const items = leadAppItems("invoicelead", "fr");
+    expect(items.map((i) => [i.code, i.mark, i.color, i.href])).toEqual([
+      ["erplead", "EL", "#4338ca", "https://erplead.io/account"],
+      ["scanlead", "SL", "#2563eb", "https://scanlead.io/login"],
+      ["crmlead", "CL", "#0f6e70", "https://crmlead.io/login"],
+      ["projectlead", "PL", "#9a6a00", "https://projectlead.io/login"],
+      ["invoicelead", "IL", "#7a2e67", null],
+      ["greetlead", "GL", "#c2185b", "https://greetlead.io/login"],
+    ]);
+    expect(items.filter((i) => i.current).map((i) => i.code)).toEqual(["invoicelead"]);
+    expect(items.map((i) => i.action)).toEqual([
+      "Gérer mon compte",
+      "Scanner des contacts",
+      "Suivre mes leads",
+      "Gérer mes projets",
+      "Faire une facture",
+      "Envoyer une carte",
     ]);
   });
 
-  it("ProjectLead est en ligne : ouvert même quand le Compte Lead le dit encore « Bientôt »", () => {
-    const items = leadAppItems("invoicelead", {
-      projectlead: { access: true, url: null, status: "soon" },
-    });
-    expect(items.find((i) => i.code === "projectlead")).toMatchObject({
-      state: "open",
-      href: "https://projectlead.io/login",
-      mark: "PL",
-    });
+  it("ne cache, ne désactive ni ne détourne aucune application (ni « Bientôt » ni mise à niveau)", () => {
+    for (const locale of ["de", "fr", "en"]) {
+      const items = leadAppItems("invoicelead", locale);
+      expect(items.map((i) => i.code)).toEqual(ORDER);
+      for (const item of items.filter((i) => !i.current)) {
+        const entry = LEAD_FAMILY.apps.find((a) => a.code === item.code)?.entry;
+        expect(item.href).toBe(entry);
+        // Jamais la racine publique ni une page de formule.
+        expect(item.href).toMatch(/^https:\/\/[a-z]+\.io\/(login|account)$/);
+      }
+      expect(JSON.stringify(items)).not.toMatch(/upgrade|soon|billing|plan/i);
+    }
   });
 
-  it("suit les droits du Compte Lead : mise à niveau, bientôt, applications nouvelles", () => {
-    const items = leadAppItems("invoicelead", {
-      scanlead: {
-        access: false,
-        url: "https://scanlead.io",
-        status: "live",
-        upgrade_url: "https://scanlead.io/billing",
-      },
-      laterlead: { access: true, name: "LaterLead", url: "https://laterlead.io", status: "soon" },
-      newlead: { access: true, name: "NewLead", url: "https://newlead.io/", status: "live" },
+  it("dit « Vous êtes ici » et « Ouvrir » dans la langue de la page, le français par défaut", () => {
+    expect(leadFamilyTexts("fr")).toEqual({
+      title: "Applications Lead",
+      open: "Ouvrir",
+      here: "Vous êtes ici",
     });
-    expect(items.find((i) => i.code === "scanlead")).toMatchObject({
-      state: "upgrade",
-      href: "https://scanlead.io/billing",
+    expect(leadFamilyTexts("de")).toEqual({
+      title: "Lead-Apps",
+      open: "Öffnen",
+      here: "Sie sind hier",
     });
-    expect(items.find((i) => i.code === "laterlead")).toMatchObject({
-      state: "soon",
-      href: null,
-    });
-    expect(items.find((i) => i.code === "newlead")).toMatchObject({
-      state: "open",
-      href: "https://newlead.io/login",
-      mark: "NE",
-    });
+    expect(leadFamilyTexts("en").here).toBe("You are here");
+    expect(leadFamilyTexts("rm").here).toBe("Vous êtes ici");
+    expect(leadAppItems("invoicelead", "de")[4]?.action).toBe("Rechnung erstellen");
+  });
+
+  it("garde le lien de ProjectLead des pages Temps et Liaison", () => {
+    expect(PROJECTLEAD_URL).toBe("https://projectlead.io");
   });
 });

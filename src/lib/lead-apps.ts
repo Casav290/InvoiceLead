@@ -1,65 +1,197 @@
-/** Les applications de la famille Lead, telles que les montre le sélecteur à 9 points. */
-export type LeadAppState = "current" | "open" | "soon" | "upgrade";
+/**
+ * La famille Lead, telle que la montre le lanceur à 9 points (« Applications Lead ») de chaque
+ * application. Liste canonique commune aux six applications : champ « family » de la conception du
+ * passage entre applications (passage-design.json), copié tel quel (même contenu, même ordre) dans les
+ * six dépôts et dans ~/projets/lead-e2e/lead-family.json ; check-launchers.mjs compare les copies.
+ * Ne pas modifier ici seulement : changer la liste commune, puis recopier partout.
+ *
+ * Statique : ni droits du Compte Lead (claims.lead.apps), ni formule, ni appel réseau. Le lanceur
+ * s'affiche tout de suite et aucune application n'y est cachée, désactivée (« Bientôt ») ou détournée
+ * vers une page de formule : une formule payante n'est jamais nécessaire pour en ouvrir une autre.
+ */
+export const LEAD_FAMILY = {
+  version: 1,
+  note: "Liste canonique de la famille Lead. Copiée telle quelle (même contenu, même ordre) dans les 6 dépôts et dans ~/projets/lead-e2e/lead-family.json ; check-launchers.mjs compare les copies.",
+  title: {
+    fr: "Applications Lead",
+    de: "Lead-Apps",
+    en: "Lead apps",
+    it: "App Lead",
+    es: "Apps Lead",
+  },
+  open: {
+    fr: "Ouvrir",
+    de: "Öffnen",
+    en: "Open",
+    it: "Apri",
+    es: "Abrir",
+  },
+  here: {
+    fr: "Vous êtes ici",
+    de: "Sie sind hier",
+    en: "You are here",
+    it: "Sei qui",
+    es: "Estás aquí",
+  },
+  apps: [
+    {
+      code: "erplead",
+      name: "ERPlead",
+      mark: "EL",
+      color: "#4338ca",
+      origin: "https://erplead.io",
+      entry: "https://erplead.io/account",
+      fresh: "https://erplead.io/account",
+      do: {
+        fr: "Gérer mon compte",
+        de: "Mein Konto verwalten",
+        en: "Manage my account",
+        it: "Gestire il mio account",
+        es: "Gestionar mi cuenta",
+      },
+    },
+    {
+      code: "scanlead",
+      name: "Scanlead",
+      mark: "SL",
+      color: "#2563eb",
+      origin: "https://scanlead.io",
+      entry: "https://scanlead.io/login",
+      fresh: "https://scanlead.io/auth/lead/start?locale={locale}&fresh=1",
+      do: {
+        fr: "Scanner des contacts",
+        de: "Kontakte scannen",
+        en: "Scan contacts",
+        it: "Scansionare contatti",
+        es: "Escanear contactos",
+      },
+    },
+    {
+      code: "crmlead",
+      name: "CRMlead",
+      mark: "CL",
+      color: "#0f6e70",
+      origin: "https://crmlead.io",
+      entry: "https://crmlead.io/login",
+      fresh: "https://crmlead.io/auth/lead/start?locale={locale}&fresh=1",
+      do: {
+        fr: "Suivre mes leads",
+        de: "Meine Leads verfolgen",
+        en: "Follow up my leads",
+        it: "Seguire i miei lead",
+        es: "Seguir mis leads",
+      },
+    },
+    {
+      code: "projectlead",
+      name: "ProjectLead",
+      mark: "PL",
+      color: "#9a6a00",
+      origin: "https://projectlead.io",
+      entry: "https://projectlead.io/login",
+      fresh: "https://projectlead.io/auth/lead/start?locale={locale}&fresh=1",
+      do: {
+        fr: "Gérer mes projets",
+        de: "Meine Projekte verwalten",
+        en: "Manage my projects",
+        it: "Gestire i miei progetti",
+        es: "Gestionar mis proyectos",
+      },
+    },
+    {
+      code: "invoicelead",
+      name: "InvoiceLead",
+      mark: "IL",
+      color: "#7a2e67",
+      origin: "https://invoicelead.io",
+      entry: "https://invoicelead.io/login",
+      fresh: "https://invoicelead.io/auth/lead/start?locale={locale}&fresh=1",
+      do: {
+        fr: "Faire une facture",
+        de: "Rechnung erstellen",
+        en: "Create an invoice",
+        it: "Creare una fattura",
+        es: "Crear una factura",
+      },
+    },
+    {
+      code: "greetlead",
+      name: "Greetlead",
+      mark: "GL",
+      color: "#c2185b",
+      origin: "https://greetlead.io",
+      entry: "https://greetlead.io/login",
+      fresh: "https://greetlead.io/auth/lead/start?locale={locale}&fresh=1",
+      do: {
+        fr: "Envoyer une carte",
+        de: "Karte senden",
+        en: "Send a card",
+        it: "Inviare un biglietto",
+        es: "Enviar una tarjeta",
+      },
+    },
+  ],
+  workspace_home: {
+    erplead: "/account",
+    scanlead: "/dashboard",
+    crmlead: "/",
+    projectlead: "/",
+    invoicelead: "/{locale}/app",
+    greetlead: "/{locale}/app",
+  },
+} as const;
 
+export type LeadAppCode = (typeof LEAD_FAMILY.apps)[number]["code"];
+
+/** Langues des textes de la famille ; le français par défaut. */
+type FamilyLocale = keyof typeof LEAD_FAMILY.title;
+
+function familyLocale(locale: string): FamilyLocale {
+  const short = locale.slice(0, 2).toLowerCase();
+  return short in LEAD_FAMILY.title ? (short as FamilyLocale) : "fr";
+}
+
+/** Une ligne du lanceur. */
 export type LeadAppItem = {
-  code: string;
+  code: LeadAppCode;
   name: string;
+  /** Marque à deux lettres, blanche sur la couleur de l'application. */
   mark: string;
+  color: string;
+  /** Ce qu'on y fait (« Faire une facture »), dans la langue de la page. */
+  action: string;
+  /**
+   * Adresse d'entrée de l'application (`<app>/login`, ERPlead : `/account`), en lien simple dans le
+   * même onglet : connectée au Compte Lead, la personne y arrive tout droit dans l'espace de son
+   * entreprise. Null pour l'application courante, qui n'a pas de lien.
+   */
   href: string | null;
-  state: LeadAppState;
+  current: boolean;
 };
 
-type EntitlementApp = {
-  access?: boolean;
-  name?: string;
-  url?: string | null;
-  status?: string;
-  upgrade_url?: string | null;
-};
-
-/** Adresse de ProjectLead : sélecteur d'applications, page Temps, réglage de la liaison. */
-export const PROJECTLEAD_URL = "https://projectlead.io";
-
-/**
- * Applications connues. `url` : l'application est en ligne à cette adresse. Une application sœur en
- * ligne s'ouvre même si le Compte Lead la dit encore « Bientôt » ou ne donne pas son adresse : sa
- * fiche peut y être en retard sur le lancement (ProjectLead).
- */
-const KNOWN: { code: string; name: string; mark: string; url: string | null }[] = [
-  { code: "scanlead", name: "Scanlead", mark: "SL", url: "https://scanlead.io" },
-  { code: "crmlead", name: "CRMlead", mark: "CL", url: "https://crmlead.io" },
-  { code: "projectlead", name: "ProjectLead", mark: "PL", url: PROJECTLEAD_URL },
-  { code: "invoicelead", name: "InvoiceLead", mark: "IL", url: null },
-];
-
-function loginUrl(base: string): string {
-  return `${base.replace(/\/+$/, "")}/login`;
+/** Les six applications, dans l'ordre de la famille, l'application courante à sa place. */
+export function leadAppItems(current: string, locale: string): LeadAppItem[] {
+  const lang = familyLocale(locale);
+  return LEAD_FAMILY.apps.map((app) => ({
+    code: app.code,
+    name: app.name,
+    mark: app.mark,
+    color: app.color,
+    action: app.do[lang],
+    href: app.code === current ? null : app.entry,
+    current: app.code === current,
+  }));
 }
 
-/**
- * Construit la liste à partir des droits du Compte Lead (`claims.lead.apps`). Sans droits connus,
- * les applications sœurs s'ouvrent sur leur écran de connexion, les autres restent « Bientôt ». Une
- * application que le Compte Lead réserve à une autre formule (`access: false`) mène à la mise à niveau.
- */
-export function leadAppItems(
-  current: string,
-  apps: Record<string, EntitlementApp> | null | undefined,
-): LeadAppItem[] {
-  const codes = [...KNOWN.map((k) => k.code), ...Object.keys(apps ?? {})].filter(
-    (code, i, all) => all.indexOf(code) === i,
-  );
-  return codes.map((code) => {
-    const known = KNOWN.find((k) => k.code === code);
-    const app = apps?.[code];
-    const name = app?.name || known?.name || code;
-    const mark = known?.mark ?? name.slice(0, 2).toUpperCase();
-    const url = app?.url ?? known?.url ?? null;
-    if (code === current) return { code, name, mark, href: null, state: "current" };
-    if ((app?.status === "soon" && !known?.url) || !url)
-      return { code, name, mark, href: null, state: "soon" };
-    if (app && app.access === false) {
-      return { code, name, mark, href: app.upgrade_url ?? null, state: "upgrade" };
-    }
-    return { code, name, mark, href: loginUrl(url), state: "open" };
-  });
+/** Titre du lanceur, « Ouvrir » et « Vous êtes ici », dans la langue de la page. */
+export function leadFamilyTexts(locale: string): { title: string; open: string; here: string } {
+  const lang = familyLocale(locale);
+  return {
+    title: LEAD_FAMILY.title[lang],
+    open: LEAD_FAMILY.open[lang],
+    here: LEAD_FAMILY.here[lang],
+  };
 }
+
+/** Adresse de ProjectLead : page Temps, réglage de la liaison. */
+export const PROJECTLEAD_URL: string = LEAD_FAMILY.apps[3].origin;

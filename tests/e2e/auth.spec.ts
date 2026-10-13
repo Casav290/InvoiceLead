@@ -103,9 +103,13 @@ test("connexion par le Compte Lead, puis retour direct dans l'application", asyn
   await expect(page).toHaveURL(/\/fr\/app$/);
 });
 
-test("le sélecteur d'applications ouvre <app>/login", async ({ page }) => {
+test("le lanceur liste les six applications Lead vers leur adresse d'entrée", async ({ page }) => {
   await login(page, "de");
-  await page.getByTestId("application-switcher").click();
+  await page.locator("[data-lead-launcher]").click();
+  await expect(page.getByTestId("application-switcher-erplead")).toHaveAttribute(
+    "href",
+    "https://erplead.io/account",
+  );
   await expect(page.getByTestId("application-switcher-crmlead")).toHaveAttribute(
     "href",
     "https://crmlead.io/login",
@@ -114,13 +118,17 @@ test("le sélecteur d'applications ouvre <app>/login", async ({ page }) => {
     "href",
     "https://scanlead.io/login",
   );
-  // ProjectLead est en ligne : ouvert, même si le Compte Lead le dit encore « Bientôt ».
+  // ProjectLead s'ouvre, même si le Compte Lead le dit encore « Bientôt » : la liste est fixe.
   await expect(page.getByTestId("application-switcher-projectlead")).toHaveAttribute(
     "href",
     "https://projectlead.io/login",
   );
-  await expect(page.getByRole("menuitem", { name: /ProjectLead/ })).toContainText("Öffnen");
-  await expect(page.getByRole("menuitem", { name: /InvoiceLead/ })).toContainText("Hier");
+  await expect(page.getByTestId("application-switcher-greetlead")).toHaveAttribute(
+    "href",
+    "https://greetlead.io/login",
+  );
+  await expect(page.getByRole("link", { name: /ProjectLead/ })).toContainText("Öffnen");
+  await expect(page.getByTestId("application-switcher-invoicelead")).toContainText("Sie sind hier");
 });
 
 test("déconnexion : session locale et Compte Lead fermés", async ({ page }) => {

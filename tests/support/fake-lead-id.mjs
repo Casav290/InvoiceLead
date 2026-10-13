@@ -4,7 +4,11 @@
  * tests ne prouveraient rien du branchement réel (même principe que les faux fournisseurs de CRMlead).
  *
  *   node tests/support/fake-lead-id.mjs            (port 4010)
- *   POST /test/next-user  {sub,email,name,org,org_name,org_role,access,plan,status}  choisit la prochaine personne
+ *   POST /test/next-user  {sub,email,name,org,org_name,org_role,access,plan,status,locale}  choisit la prochaine personne
+ *   Session du Compte Lead : une connexion (authorize sans prompt) pose le cookie « fake_lead_sid » ;
+ *     authorize avec prompt=none rend un code pour sa personne, sans écran, ou, sans lui,
+ *     error=login_required (comme ERPlead) ; /oauth/logout l'efface. GET /test/authorizes relit les
+ *     demandes reçues (prompt, ui_locales)
  *   POST /resend/emails   imite l'API d'envoi de Resend (clé « re_test ») ; GET /test/emails les relit
  *   POST /api/lead-id/v1/members/invite  invitation dans l'organisation ; GET /test/member-invites les relit
  *     (comme le Compte Lead : jeton d'identité de l'administrateur dans X-Lead-Id-Token, sinon 403)
@@ -51,6 +55,11 @@ const defaultUser = {
 };
 let nextUser = { ...defaultUser };
 const codes = new Map();
+/** Sessions du Compte Lead ouvertes dans un navigateur : cookie « fake_lead_sid » → personne. */
+const leadSessions = new Map();
+const SID_COOKIE = "fake_lead_sid";
+/** Demandes /oauth/authorize reçues (prompt, langue), pour compter les essais silencieux. */
+const authorizes = [];
 /** Jetons de rafraîchissement valables : jeton → personne (claims de sa connexion). */
 const refreshTokens = new Map();
 let refreshes = 0;
@@ -98,7 +107,7 @@ function idTokenFor(u, nonce) {
     email: u.email,
     email_verified: true,
     name: u.name,
-    locale: "fr",
+    locale: u.locale ?? "fr",
     zoneinfo: "Europe/Zurich",
     org: u.org,
     org_name: u.org_name,
@@ -201,18 +210,38 @@ createServer(async (req, res) => {
     if (q.get("code_challenge_method") !== "S256" || !q.get("code_challenge")) {
       return send(res, 400, { error: "pkce_required" });
     }
+    authorizes.push({ prompt: q.get("prompt"), ui_locales: q.get("ui_locales") });
+    const back = new URL(REDIRECT_URI);
+    back.searchParams.set("state", q.get("state") ?? "");
+    const sid = /(?:^|;\s*)fake_lead_sid=([0-9a-f]+)/.exec(req.headers.cookie ?? "")?.[1];
+    const headers = {};
+    let user;
+    if (q.get("prompt") === "none") {
+      // Essai silencieux : la personne de la session ouverte, sinon login_required, sans écran.
+      user = sid ? leadSessions.get(sid) : undefined;
+      if (!user) {
+        back.searchParams.set("error", "login_required");
+        res.writeHead(302, { Location: back.toString() });
+        return res.end();
+      }
+    } else {
+      // « Écran de connexion » : la prochaine personne choisie par le test se connecte, et sa session
+      // du Compte Lead reste ouverte dans ce navigateur.
+      user = nextUser;
+      nextUser = { ...defaultUser };
+      const opened = randomBytes(12).toString("hex");
+      leadSessions.set(opened, user);
+      headers["Set-Cookie"] = `${SID_COOKIE}=${opened}; Path=/; HttpOnly; SameSite=Lax`;
+    }
     const code = randomBytes(16).toString("hex");
     codes.set(code, {
-      user: nextUser,
+      user,
       nonce: q.get("nonce"),
       challenge: q.get("code_challenge"),
       at: Date.now(),
     });
-    nextUser = { ...defaultUser };
-    const back = new URL(REDIRECT_URI);
     back.searchParams.set("code", code);
-    back.searchParams.set("state", q.get("state") ?? "");
-    res.writeHead(302, { Location: back.toString() });
+    res.writeHead(302, { Location: back.toString(), ...headers });
     return res.end();
   }
 
@@ -287,7 +316,12 @@ createServer(async (req, res) => {
 
   if (url.pathname === "/oauth/logout") {
     logouts.push({ client_id: q.get("client_id"), id_token_hint: q.get("id_token_hint") });
-    res.writeHead(302, { Location: q.get("post_logout_redirect_uri") ?? "/" });
+    const sid = /(?:^|;\s*)fake_lead_sid=([0-9a-f]+)/.exec(req.headers.cookie ?? "")?.[1];
+    if (sid) leadSessions.delete(sid);
+    res.writeHead(302, {
+      Location: q.get("post_logout_redirect_uri") ?? "/",
+      "Set-Cookie": `${SID_COOKIE}=; Path=/; Max-Age=0`,
+    });
     return res.end();
   }
 
@@ -585,6 +619,7 @@ createServer(async (req, res) => {
   }
 
   if (url.pathname === "/test/logouts") return send(res, 200, logouts);
+  if (url.pathname === "/test/authorizes") return send(res, 200, authorizes);
   if (url.pathname === "/health") return send(res, 200, { ok: true });
 
   send(res, 404, { error: "not_found" });

@@ -7,11 +7,15 @@ import {
   REQUESTED_PATH_HEADER,
   SESSION_COOKIE,
 } from "./lib/cookies";
+import { entryRedirect } from "./lib/lead-entry";
 import { returnPage } from "./lib/return-page";
 
 const intl = createMiddleware(routing);
 const PROTECTED = new RegExp(`^/(${routing.locales.join("|")})/(?:app|no-access)(?:/|$)`, "i");
-/** Accueil : « / » ou « /fr », là où le Compte Lead ramène après une déconnexion. */
+/**
+ * Accueil : « / » ou « /fr », là où le Compte Lead ramène après une déconnexion. L'entrée par la
+ * racine (session, essai silencieux) est dans lead-entry.ts.
+ */
 const HOME = new RegExp(`^/(?:(?:${routing.locales.join("|")})/?)?$`, "i");
 
 function decodedPath(pathname: string): string {
@@ -46,6 +50,22 @@ export default function proxy(request: NextRequest) {
       ? NextResponse.redirect(new URL(value, request.url), 303)
       : intl(request);
     response.cookies.set(AFTER_LOGOUT_COOKIE, "", { path: "/", maxAge: 0 });
+    return response;
+  }
+  // Adresses d'entrée (racine tapée, /login sans langue) : connectée au Compte Lead, la personne
+  // arrive tout droit dans l'espace de son entreprise ; sinon un seul essai silencieux, puis la page
+  // publique (lead-entry.ts). Jamais mis en cache : la réponse dépend des cookies.
+  const entry = entryRedirect({
+    method: request.method,
+    pathname: decodedPath(request.nextUrl.pathname),
+    search: request.nextUrl.search,
+    header: (name) => request.headers.get(name),
+    hasCookie: (name) => request.cookies.has(name),
+  });
+  if (entry) {
+    const response = NextResponse.redirect(new URL(entry.location, request.url), entry.status);
+    response.headers.set("Cache-Control", "no-store");
+    response.headers.set("Vary", "Cookie");
     return response;
   }
   // Page où revenir après la connexion : celle demandée, ou celle du formulaire d'un fichier à

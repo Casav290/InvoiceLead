@@ -35,7 +35,24 @@ npm run build && npm run e2e   # Playwright : connexion Compte Lead et audit Tra
 ```
 
 L'audit Trait net échoue sur toute police autre qu'Archivo, tout arrondi, toute ombre, tout dégradé
-et tout débordement horizontal.
+et tout débordement horizontal. `E2E_APP_PORT` et `E2E_LEAD_PORT` (3100 et 4010 par défaut) lancent la
+suite Playwright sur d'autres ports, à côté d'une autre suite.
+
+## Passer d'une application Lead à l'autre
+
+Règle commune de la famille (13.10.2026). L'adresse d'entrée d'InvoiceLead est `https://invoicelead.io/login` :
+c'est elle que visent les lanceurs et les liens des autres applications.
+
+- Session du Compte Lead ouverte : `/login`, la racine tapée (`/`, `/fr`, `/?lang=fr`) et tout lien profond
+  mènent sans écran dans l'espace de l'entreprise, créé ou rejoint au besoin (`attach.ts`), dans la langue de
+  l'adresse ou, sans elle, dans celle du Compte Lead (`claims.locale`), jamais celle du navigateur.
+- Session fermée : la racine fait un seul essai silencieux (`/auth/lead/start?prompt=none&from=…`, décision
+  dans `src/lib/lead-entry.ts`), puis montre la page de vente ; le cookie `lead_probe` (10 minutes, posé aussi
+  par la déconnexion) empêche toute boucle. Robots, préchargements et `HEAD` reçoivent la page telle quelle.
+- Le lanceur à 9 points (`AppSwitcher.tsx`) lit la liste commune des six applications (`src/lib/lead-apps.ts`,
+  copie de `~/projets/lead-e2e/lead-family.json`) : même ordre, mêmes marques et couleurs, jamais cachée ni
+  détournée par la formule. L'espace porte `data-lead-org` (organisation du Compte Lead) pour le banc
+  `~/projets/lead-e2e/check-passage.mjs`.
 
 ## Variables d'environnement
 

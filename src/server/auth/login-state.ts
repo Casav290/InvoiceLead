@@ -1,5 +1,6 @@
 import { createCipheriv, createDecipheriv, hkdfSync, randomBytes } from "node:crypto";
 import { z } from "zod";
+import { safeFrom } from "@/lib/lead-entry";
 import { INVITE_TOKEN, safeNext } from "./login-cookie";
 
 /**
@@ -24,6 +25,18 @@ import { INVITE_TOKEN, safeNext } from "./login-cookie";
 
 export type LoginRequest = {
   locale: "de" | "fr" | "en";
+  /**
+   * La langue ne venait pas de l'adresse (/login sans langue, racine « / ») : `locale` ne sert qu'aux
+   * écrans d'erreur, l'arrivée prend la langue du Compte Lead (claims.locale), jamais celle du navigateur.
+   */
+  auto?: true;
+  /**
+   * Essai silencieux (`prompt=none`) depuis une adresse d'entrée : s'il n'aboutit pas, retour sur
+   * `from`, sans écran d'erreur ni nouvel essai (callback).
+   */
+  silent?: true;
+  /** Page d'où part l'essai silencieux (racine, page publique), retrouvée s'il échoue (safeFrom). */
+  from?: string;
   next?: string;
   invite?: string;
   /**
@@ -68,6 +81,9 @@ const payload = z.object({
   f: z.literal(1).optional(),
   r: z.string().regex(PAGE_REF).optional(),
   x: z.literal(1).optional(),
+  a: z.literal(1).optional(),
+  s: z.literal(1).optional(),
+  o: z.string().optional(),
 });
 
 function key(secret: string): Buffer {
@@ -95,6 +111,9 @@ export function sealState(request: LoginRequest, secret: string, now = Date.now(
     // La référence ne sert que si la page n'a pas tenu entière dans le `state`.
     ...(cut && request.ref && PAGE_REF.test(request.ref) ? { r: request.ref } : {}),
     ...(request.retry ? { x: 1 } : {}),
+    ...(request.auto ? { a: 1 } : {}),
+    ...(request.silent ? { s: 1 } : {}),
+    ...(safeFrom(request.from) ? { o: request.from } : {}),
   };
   const salt = randomBytes(SALT);
   const iv = randomBytes(IV);
@@ -138,6 +157,8 @@ export function openState(
   if (at > now + 60_000 || now - at > STATE_MAX_AGE_SECONDS * 1000) return null;
   const next = safeNext(parsed.n);
   if (parsed.n && !next) return null;
+  const from = safeFrom(parsed.o);
+  if (parsed.o && !from) return null;
   return {
     locale: parsed.l,
     at,
@@ -146,5 +167,8 @@ export function openState(
     ...(parsed.f ? { fresh: true as const } : {}),
     ...(parsed.r ? { ref: parsed.r } : {}),
     ...(parsed.x ? { retry: true as const } : {}),
+    ...(parsed.a ? { auto: true as const } : {}),
+    ...(parsed.s ? { silent: true as const } : {}),
+    ...(from ? { from } : {}),
   };
 }

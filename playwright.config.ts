@@ -1,13 +1,16 @@
 import { defineConfig, devices } from "@playwright/test";
 
-const APP_PORT = 3100;
-const LEAD_PORT = 4010;
+// Ports changeables (E2E_APP_PORT, E2E_LEAD_PORT) pour lancer deux suites côte à côte sur un même
+// serveur ; 3100 et 4010 par défaut.
+const APP_PORT = Number(process.env.E2E_APP_PORT ?? 3100);
+const LEAD_PORT = Number(process.env.E2E_LEAD_PORT ?? 4010);
 const DATABASE_URL =
   process.env.E2E_DATABASE_URL ?? "postgres://postgres@localhost:5432/invoicelead_test";
 // Les tests qui préparent un état en base (tests/e2e/db.ts) passent par la même adresse.
 process.env.E2E_DATABASE_URL = DATABASE_URL;
-// Les tests joignent InvoiceLead par cette adresse (tests/e2e/helpers.ts).
+// Les tests joignent InvoiceLead et le faux Compte Lead par ces adresses (tests/e2e/helpers.ts).
 process.env.E2E_APP_URL = `http://localhost:${APP_PORT}`;
+process.env.E2E_LEAD_URL = `http://localhost:${LEAD_PORT}`;
 
 const appEnv = {
   DATABASE_URL,
