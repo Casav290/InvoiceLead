@@ -39,7 +39,7 @@ export default async function ApiSettingsPage({ params, searchParams }: Props) {
   const { organization, membership } = await requireAppSession(locale);
   const q = await searchParams;
   const t = await getTranslations({ locale, namespace: "app.apiSettings" });
-  const lock = await lockFor(locale, organization, featureAccess(organization, "api"), t("plan"));
+  const lock = await lockFor(locale, featureAccess(organization, "api"), t("plan"));
   const editable = can(membership, "company");
   const keys = await listApiKeys(db(), organization.id, "full");
   const endpoints = await listEndpoints(db(), organization.id);

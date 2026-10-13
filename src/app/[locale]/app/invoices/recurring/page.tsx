@@ -35,7 +35,7 @@ export default async function RecurringPage({ params, searchParams }: Props) {
   const slots = await quotaAccess(db(), organization, "recurring");
   const running = await runningRecurring(db(), organization);
   const usedUp = tp("used.recurring", { limit: slots.limit, plan: slots.tier });
-  const lock = await lockFor(locale, organization, slots, usedUp);
+  const lock = await lockFor(locale, slots, usedUp);
   // Sans la multidevise, une récurrence sur une facture en devise étrangère attend.
   const multiCurrency = featureAccess(organization, "multiCurrency").allowed;
   const foreign = (currency: string) => !multiCurrency && currency !== organization.currency;
@@ -119,7 +119,7 @@ export default async function RecurringPage({ params, searchParams }: Props) {
                       : t("held", { limit: slots.limit })}
                   </span>
                   <a
-                    href={upgradeUrl(organization)}
+                    href={upgradeUrl(locale, "pro")}
                     rel="noopener"
                     className="font-semibold text-accent-dark underline"
                   >

@@ -121,12 +121,25 @@ export const PLANS: Record<Tier, Plan> = {
 /**
  * Formule d'une entreprise telle qu'enregistrée. `entitlementsAt` dit quand le Compte Lead l'a donnée
  * (connexion, ou relecture par plan-refresh.ts) ; quand il est connu et trop ancien, la formule ne
- * vaut plus (planTooOld).
+ * vaut plus (planTooOld). `billingPlan` et `billingPlanUntil` : la formule payée dans InvoiceLead
+ * (src/server/billing), qui vaut d'elle-même jusqu'à sa date. Sélectionner `planColumns` pour les
+ * avoir toutes.
  */
 export type OrgPlan = {
   leadPlan: string;
   entitlements: unknown;
   entitlementsAt?: Date | string | null;
+  billingPlan?: string | null;
+  billingPlanUntil?: Date | string | null;
+};
+
+/** Colonnes de la formule, à sélectionner ensemble partout où une formule est décidée. */
+export const planColumns = {
+  leadPlan: organizations.leadPlan,
+  entitlements: organizations.entitlements,
+  entitlementsAt: organizations.entitlementsAt,
+  billingPlan: organizations.billingPlan,
+  billingPlanUntil: organizations.billingPlanUntil,
 };
 type Org = OrgPlan & { id: string };
 
@@ -183,25 +196,51 @@ function leadTier(org: OrgPlan): Tier {
   return org.leadPlan === "pro" ? "pro" : org.leadPlan === "pro_plus" ? "proplus" : "free";
 }
 
-export function tierOf(org: OrgPlan): Tier {
-  if (planTooOld(org)) return "free";
-  return leadTier(org);
+/**
+ * Formule payée dans InvoiceLead (abonnement Stripe, src/server/billing), tant que sa date tient :
+ * fin de période plus trois jours de grâce.
+ */
+export function billingTier(org: OrgPlan, now = Date.now()): Tier {
+  const plan = org.billingPlan;
+  if (plan !== "pro" && plan !== "pro_plus") return "free";
+  if (org.billingPlanUntil) {
+    const until = new Date(org.billingPlanUntil).getTime();
+    if (!Number.isFinite(until) || until <= now) return "free";
+  }
+  return plan === "pro_plus" ? "proplus" : "pro";
 }
 
-/** Lien « Passer à Pro » : celui du Compte Lead, ou la page de facturation de la famille. */
-export function upgradeUrl(org: OrgPlan): string {
-  const url = (org.entitlements as { apps?: { invoicelead?: { upgrade_url?: unknown } } } | null)
-    ?.apps?.invoicelead?.upgrade_url;
-  return typeof url === "string" && url.startsWith("https://")
-    ? url
-    : "https://scanlead.io/billing";
+/**
+ * Formule de l'entreprise DANS InvoiceLead : la meilleure de celle que donne le Compte Lead (ERPlead
+ * calcule la formule propre à InvoiceLead, abonnements hérités compris) et de l'abonnement payé ici
+ * (effet immédiat après paiement, même si le Compte Lead tarde à le confirmer). Un abonnement pris
+ * dans une autre application Lead n'ouvre rien ici (décision d'Ève du 13.10.2026), sauf l'héritage
+ * que le Compte Lead accorde jusqu'à la fin de la période déjà payée.
+ */
+export function tierOf(org: OrgPlan, now = Date.now()): Tier {
+  const local = billingTier(org, now);
+  const lead = planTooOld(org, now) ? "free" : leadTier(org);
+  return RANK[local] >= RANK[lead] ? local : lead;
 }
 
-/** Places de l'entreprise : celles du Compte Lead quand il les donne, sinon celles de la formule. */
+/**
+ * Lien « Passer à Pro » : la page Formule d'InvoiceLead, où l'abonnement se prend et se gère. `tier`
+ * présélectionne la formule qui ouvre la fonction.
+ */
+export function upgradeUrl(locale: string, tier?: Tier | null): string {
+  const plan = tier === "proplus" ? "pro_plus" : tier === "pro" ? "pro" : null;
+  return `/${locale}/app/settings/plan${plan ? `?plan=${plan}` : ""}`;
+}
+
+/**
+ * Places de l'entreprise dans InvoiceLead : celles de sa formule, ou davantage si le Compte Lead en
+ * donne plus pour InvoiceLead.
+ */
 export function seatsOf(org: OrgPlan): number {
-  if (planTooOld(org)) return PLANS.free.seats;
+  const own = PLANS[tierOf(org)].seats;
+  if (planTooOld(org)) return own;
   const seats = Number((org.entitlements as { plan?: { seats?: unknown } } | null)?.plan?.seats);
-  return Number.isInteger(seats) && seats > 0 ? seats : PLANS[tierOf(org)].seats;
+  return Number.isInteger(seats) && seats > 0 ? Math.max(seats, own) : own;
 }
 
 /** Première formule au-dessus de `tier` qui compte plus de `seats` places (Pro+ depuis Gratuit). */
@@ -399,13 +438,7 @@ export async function organizationPlan(
   organizationId: string,
 ): Promise<(Org & { currency: string }) | null> {
   const [row] = await database
-    .select({
-      id: organizations.id,
-      leadPlan: organizations.leadPlan,
-      entitlements: organizations.entitlements,
-      entitlementsAt: organizations.entitlementsAt,
-      currency: organizations.currency,
-    })
+    .select({ id: organizations.id, ...planColumns, currency: organizations.currency })
     .from(organizations)
     .where(eq(organizations.id, organizationId));
   return row ?? null;

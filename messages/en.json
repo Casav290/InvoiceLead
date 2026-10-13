@@ -296,7 +296,7 @@
     },
     "family": {
       "title": "One ERPlead account for the whole Lead family.",
-      "body": "Sign in with Google, Apple or your email address. The same account opens Scanlead, CRMlead, ProjectLead and Greetlead, and the apps hand work on to each other.",
+      "body": "Sign in with Google, Apple or your email address. The same account opens Scanlead, CRMlead, ProjectLead and Greetlead, and the apps hand work on to each other. Each app has its own subscription.",
       "here": "You are here",
       "apps": {
         "scanlead": "Captures trade fair contacts",
@@ -321,7 +321,7 @@
     "loginTitle": "Log in to InvoiceLead",
     "loginSubtitle": "InvoiceLead uses your Lead account, the same one as for Scanlead and CRMlead.",
     "signupTitle": "Create your account",
-    "signupSubtitle": "Your Lead account gives you access to InvoiceLead and every app in the family. The next screen offers “Create an account”.",
+    "signupSubtitle": "Your Lead account gives you access to InvoiceLead and every app in the family, in their free versions. The next screen offers “Create an account”.",
     "leadButton": "Log in with my Lead account",
     "noAccountYet": "No account yet? The same button lets you create one.",
     "errors": {
@@ -402,19 +402,22 @@
       "expired": "expired on {date}"
     },
     "noAccess": {
-      "title": "Your plan does not include InvoiceLead",
-      "body": "Your organisation {org} does not have access to InvoiceLead yet. Switch to a plan that includes it to continue.",
-      "upgrade": "Upgrade",
+      "title": "Your Lead account has no access to InvoiceLead",
+      "body": "InvoiceLead is not open to your organisation {org} at the moment.",
       "logout": "Log out",
       "blockedTitle": "Access to InvoiceLead removed",
       "blockedBody": "A manager at {org} has removed your access to InvoiceLead. Ask them to restore it in the team settings.",
-      "seatTitle": "All seats are taken",
-      "seatBody": "The {org} plan includes {seats, plural, one {# user} other {# users}}, all already taken. A manager can upgrade to a higher plan or free up a seat.",
+      "seatTitle": "All InvoiceLead seats are taken",
+      "seatBody": "{seats, plural, one {The only InvoiceLead seat} other {All # InvoiceLead seats}} of {org} {seats, plural, one {is already taken} other {are already taken}}. Upgrade to Pro+ (5 seats) in InvoiceLead, or free up a seat in the team settings.",
       "fiduciaryTitle": "Fiduciary access paused",
       "fiduciaryBody": "{org} is on the Free plan. Fiduciary access is part of the Pro plan and comes back as soon as {org} moves to Pro again.",
       "otherOrgs": "Work in another company",
       "betaTitle": "InvoiceLead is in private beta",
-      "betaBody": "{org} is not on the beta list yet. We are opening access in small groups; write to us at hello@invoicelead.io to be added."
+      "betaBody": "{org} is not on the beta list yet. We are opening access in small groups; write to us at hello@invoicelead.io to be added.",
+      "seatAsk": "Ask the administrator of {org} to upgrade to Pro+ in InvoiceLead or to free up a seat for you.",
+      "upgradeMonthly": "Upgrade to Pro+ (€39 a month)",
+      "upgradeYearly": "Pro+ yearly (€390)",
+      "manage": "Upgrade to Pro+ in the portal"
     },
     "company": {
       "title": "Company",
@@ -722,7 +725,8 @@
       "team": "Team",
       "payments": "Online payments",
       "api": "API",
-      "projectlead": "ProjectLead"
+      "projectlead": "ProjectLead",
+      "plan": "Plan"
     },
     "accounts": {
       "title": "Chart of accounts",
@@ -2202,6 +2206,41 @@
       "closing": "Cash",
       "later": "Beyond: receipts {in}, payments {out}.",
       "method": "Receipts: open invoices at the date each customer usually pays. Payments: supplier bills and expense claims at their due date. Anything already due counts in the current week."
+    },
+    "billing": {
+      "title": "InvoiceLead plan",
+      "subtitle": "Your InvoiceLead plan is taken here and applies to InvoiceLead only. The Lead account itself is free and opens every Lead app in its free version.",
+      "current": "Your plan: {plan}",
+      "currentBadge": "Your plan",
+      "interval": "Billing period",
+      "monthly": "Monthly",
+      "yearly": "Yearly (2 months free)",
+      "perYear": "per year",
+      "manage": "Manage subscription",
+      "manageHint": "Change plan or period, update your card, download invoices or cancel: it all happens in the InvoiceLead Stripe customer portal.",
+      "adminOnly": "Only the administrator of {org} can take or change the plan.",
+      "unavailable": "Paying for a plan opens in InvoiceLead soon.",
+      "footer": "Prices exclude VAT, billed in euros by Quantum Liquid LLC. Card payment, automatic renewal, cancel at any time effective at the end of the paid period. An InvoiceLead subscription applies to InvoiceLead only.",
+      "status": {
+        "free": "Free plan: move to Pro or Pro+ below whenever you need it.",
+        "renews": "{interval, select, year {Yearly} other {Monthly}} subscription, renews on {date}.",
+        "ends": "Subscription cancelled: {plan} until {date}, then Free.",
+        "pastDue": "The last payment failed. Update your card in “Manage subscription” to keep {plan}.",
+        "inherited": "Until {date}, your {app} subscription also gives you {plan} in InvoiceLead. After that, InvoiceLead goes back to Free unless you take a plan here."
+      },
+      "notices": {
+        "done": "Thank you! Your InvoiceLead {plan} plan is active.",
+        "pending": "Payment received. Your plan will be active in a moment: reload the page.",
+        "cancel": "Payment cancelled: nothing was charged."
+      },
+      "errors": {
+        "admin": "Only the organisation's administrator can take or manage the plan.",
+        "unavailable": "Paying for a plan is not open yet.",
+        "invalid": "Unknown plan: choose Pro or Pro+.",
+        "already": "Your InvoiceLead subscription is already active: change plan in “Manage subscription”.",
+        "stripe": "Stripe did not answer. Try again in a moment.",
+        "noCustomer": "No InvoiceLead subscription to manage yet."
+      }
     }
   },
   "footer": {
@@ -2237,8 +2276,8 @@
     }
   },
   "pricing": {
-    "title": "Simple pricing for the whole Lead family",
-    "subtitle": "A single plan unlocks InvoiceLead, Scanlead and CRMlead. Prices excl. VAT.",
+    "title": "Simple pricing",
+    "subtitle": "An InvoiceLead subscription applies to InvoiceLead only. The Lead account is free and opens every Lead app for you in its free version. Prices excl. VAT.",
     "notice": "InvoiceLead is opening in stages: features marked “Soon” are coming in the next releases. Signing up is free.",
     "monthly": "per month",
     "yearly": "or {price} per year (2 months free)",
@@ -2295,7 +2334,7 @@
         ]
       }
     },
-    "footer": "Billed in euros by the Lead family (Quantum Liquid LLC). Cancel at any time."
+    "footer": "Billed in euros by Quantum Liquid LLC. Cancel at any time."
   },
   "faq": {
     "title": "Frequently asked questions",
@@ -2314,7 +2353,7 @@
       },
       {
         "q": "What is the Lead account?",
-        "a": "The single account for the Lead family: the same login for InvoiceLead, Scanlead and CRMlead, and a plan paid for in one app unlocks the others."
+        "a": "The single account for the Lead family: the same login for InvoiceLead, Scanlead, CRMlead, ProjectLead and Greetlead. Each app has its own plan: a subscription only applies in the app where it was taken."
       },
       {
         "q": "Can my accountant access my accounts?",

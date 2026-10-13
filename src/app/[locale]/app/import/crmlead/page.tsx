@@ -63,7 +63,7 @@ export default async function CrmImportPage({ params, searchParams }: Props) {
             <PlanNotice
               locale={locale}
               message={t("contactLimit")}
-              href={upgradeUrl(organization)}
+              href={upgradeUrl(locale, "pro")}
             />
           ) : null}
           <section className="mt-6 border border-line-strong bg-panel" data-testid="crm-import">

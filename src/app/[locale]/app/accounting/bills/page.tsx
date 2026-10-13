@@ -56,7 +56,7 @@ export default async function BillsPage({ params, searchParams }: Props) {
   const tp = await getTranslations({ locale, namespace: "app.plan" });
   const reads = await quotaAccess(db(), organization, "aiReads");
   const usedUp = tp("used.aiReads", { limit: reads.limit, plan: reads.tier });
-  const photoLock = await lockFor(locale, organization, reads, usedUp);
+  const photoLock = await lockFor(locale, reads, usedUp);
   const photoError = q.error && PHOTO_ERRORS.includes(q.error) ? q.error : null;
   const notice =
     q.imported !== undefined

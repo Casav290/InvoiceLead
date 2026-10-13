@@ -44,6 +44,21 @@ const schema = z.object({
   STRIPE_WEBHOOK_SECRET: z.string().min(1).optional(),
   STRIPE_API_URL: z.url().default("https://api.stripe.com"),
   STRIPE_CONNECT_URL: z.url().default("https://connect.stripe.com"),
+  // Abonnement InvoiceLead (src/server/billing) : compte Stripe de la famille Lead, distinct de
+  // Stripe Connect ci-dessus (autres clés, autre webhook /api/billing/webhook, autre secret). Sans
+  // clé ni les quatre prix, les boutons « Passer à Pro » se disent indisponibles et le webhook
+  // répond 503.
+  STRIPE_BILLING_SECRET_KEY: z.string().min(1).optional(),
+  STRIPE_BILLING_WEBHOOK_SECRET: z.string().min(1).optional(),
+  STRIPE_BILLING_PRICE_PRO_MONTHLY: z.string().min(1).optional(),
+  STRIPE_BILLING_PRICE_PRO_YEARLY: z.string().min(1).optional(),
+  STRIPE_BILLING_PRICE_PROPLUS_MONTHLY: z.string().min(1).optional(),
+  STRIPE_BILLING_PRICE_PROPLUS_YEARLY: z.string().min(1).optional(),
+  /** Configuration du portail client propre à InvoiceLead (« bpc_… »), jamais celle par défaut. */
+  STRIPE_BILLING_PORTAL_CONFIGURATION: z.string().min(1).optional(),
+  /** « 1 » : TVA calculée par Stripe Tax au Checkout (éteinte par défaut, comme CRMlead). */
+  STRIPE_BILLING_AUTOMATIC_TAX: z.enum(["0", "1"]).optional(),
+  STRIPE_BILLING_API_URL: z.url().default("https://api.stripe.com"),
   /** Cours de change de référence de la BCE, pour les factures en devise. */
   FX_API_URL: z.url().default("https://api.frankfurter.dev/v1"),
 });

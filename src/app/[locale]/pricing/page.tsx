@@ -4,28 +4,17 @@ import { PublicFooter } from "@/components/public/PublicFooter";
 import { PublicHeader } from "@/components/public/PublicHeader";
 import { Button } from "@/components/ui/button";
 import { leadLoginHref } from "@/lib/lead-login";
+import { AVAILABLE, euros, PRICE_CARDS } from "@/lib/pricing";
 import { cn } from "@/lib/utils";
 
 type Params = { params: Promise<{ locale: string }> };
 
-/** Prix de la famille Lead, identiques à Scanlead (hors TVA, encaissés en euros). Annuel = 10 mois. */
-const PLANS = [
-  { key: "free", monthly: "0 €", yearly: null, highlighted: false },
-  { key: "pro", monthly: "19 €", yearly: "190 €", highlighted: false },
-  { key: "proPlus", monthly: "39 €", yearly: "390 €", highlighted: true },
-] as const;
-
 /**
- * Lignes sans étiquette « Bientôt » (index dans pricing.plans.*.features) : fonctions déjà
- * disponibles et limites de la formule, décidées le 1er octobre 2026 (docs/PLAN.md, section 9).
- * En Pro+, plusieurs sociétés, la connexion bancaire directe, eBill, l'archivage GeBüV et le
- * support prioritaire restent à venir.
+ * Prix d'InvoiceLead (hors TVA, en euros), les mêmes que les autres applications Lead ; chaque
+ * application vend pourtant sa propre formule. L'abonnement se prend dans InvoiceLead (page Formule),
+ * après l'inscription au Compte Lead.
  */
-const AVAILABLE: Record<string, number[]> = {
-  free: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
-  pro: [0, 1, 2, 3, 4, 5, 6, 7],
-  proPlus: [0, 1, 2],
-};
+const PLANS = PRICE_CARDS;
 
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { locale } = await params;
@@ -71,12 +60,12 @@ export default async function PricingPage({ params }: Params) {
                   </div>
                   <p className="text-[13px] text-ink-muted">{t(`plans.${plan.key}.tagline`)}</p>
                   <p className="mt-4">
-                    <span className="text-[30px] font-bold">{plan.monthly}</span>
+                    <span className="text-[30px] font-bold">{euros(plan.monthly)}</span>
                     <span className="ml-1.5 text-[13px] text-ink-muted">{t("monthly")}</span>
                   </p>
                   {plan.yearly ? (
                     <p className="text-[12px] text-ink-muted">
-                      {t("yearly", { price: plan.yearly })}
+                      {t("yearly", { price: euros(plan.yearly) })}
                     </p>
                   ) : null}
                 </div>
@@ -99,7 +88,17 @@ export default async function PricingPage({ params }: Params) {
                   ))}
                 </ul>
                 <Button asChild variant={plan.highlighted ? "primary" : "secondary"}>
-                  <a href={leadLoginHref(locale, true)}>
+                  {/* Formule payante : inscription (ou connexion) au Compte Lead, puis la page
+                      Formule d'InvoiceLead, cette formule présélectionnée. */}
+                  <a
+                    href={leadLoginHref(
+                      locale,
+                      true,
+                      plan.plan
+                        ? { next: `/${locale}/app/settings/plan?plan=${plan.plan}` }
+                        : undefined,
+                    )}
+                  >
                     {plan.key === "free" ? t("cta.free") : t("cta.paid", { plan: name })}
                   </a>
                 </Button>

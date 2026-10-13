@@ -116,7 +116,7 @@ export default async function DashboardPage({
         {usageMark ? <ProBadge tier={usageMark} className="mr-1 align-[1px]" /> : null}
         {tier !== "proplus" ? (
           <a
-            href={upgradeUrl(organization)}
+            href={upgradeUrl(locale, tier === "pro" ? "proplus" : "pro")}
             className="font-semibold text-accent-dark underline"
             rel="noopener"
           >

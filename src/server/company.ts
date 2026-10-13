@@ -19,7 +19,7 @@ import {
 } from "@/lib/swiss-ids";
 import type { Db } from "./db";
 import { auditLog, invoices, memberships, organizations, supplierBills } from "./db/schema";
-import { featureAccess } from "./plans";
+import { featureAccess, planColumns } from "./plans";
 import { can } from "./roles";
 
 export const LEGAL_FORMS = [
@@ -297,9 +297,7 @@ export async function saveCompanySettings(
   const [current] = await database
     .select({
       country: organizations.country,
-      leadPlan: organizations.leadPlan,
-      entitlements: organizations.entitlements,
-      entitlementsAt: organizations.entitlementsAt,
+      ...planColumns,
     })
     .from(organizations)
     .where(eq(organizations.id, who.organizationId));

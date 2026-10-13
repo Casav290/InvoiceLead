@@ -10,7 +10,7 @@ import { db } from "./db";
 import { type Invoice, type InvoiceLine, organizations } from "./db/schema";
 import { renderInvoicePdf } from "./invoice-pdf";
 import { organizationLogo } from "./logo";
-import { poweredBy } from "./plans";
+import { planColumns, poweredBy } from "./plans";
 
 export const kindNamespace = (kind: string) =>
   kind === "quote" ? "app.quotes" : kind === "credit_note" ? "app.creditNotes" : "app.invoices";
@@ -61,9 +61,7 @@ export async function buildDocumentPdf(
   );
   const [org] = await db()
     .select({
-      leadPlan: organizations.leadPlan,
-      entitlements: organizations.entitlements,
-      entitlementsAt: organizations.entitlementsAt,
+      ...planColumns,
     })
     .from(organizations)
     .where(eq(organizations.id, invoice.organizationId));

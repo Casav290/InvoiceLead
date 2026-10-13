@@ -11,7 +11,7 @@ import { db } from "@/server/db";
 import { emailConfigured, sendEmail } from "@/server/email";
 import { env } from "@/server/env";
 import { inviteMember } from "@/server/lead-id/members";
-import { featureAccess, seatsOf, upgradeUrl } from "@/server/plans";
+import { featureAccess, seatsOf, tierOf, tierWithMoreSeats, upgradeUrl } from "@/server/plans";
 import {
   cancelInvitation,
   INVITATION_DAYS,
@@ -133,7 +133,11 @@ export async function inviteMemberAction(
     return { ...typed, error: "alreadyMember" };
   // Toutes les places déjà prises ici : inutile de demander au Compte Lead, qui refuserait.
   const seats = seatsOf(organization);
-  const full = { ...typed, error: "seatLimit" as const, upgrade: upgradeUrl(organization) };
+  const full = {
+    ...typed,
+    error: "seatLimit" as const,
+    upgrade: upgradeUrl(locale, tierWithMoreSeats(tierOf(organization), seats)),
+  };
   if (seated(members, seats).size >= seats) return full;
   const outcome = await inviteMember({
     org: organization.leadOrg,

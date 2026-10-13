@@ -1,6 +1,6 @@
 # Allgemeine Geschäftsbedingungen InvoiceLead
 
-Fassung vom 30. September 2026.
+Fassung vom 13. Oktober 2026.
 
 ## 1. Gegenstand
 
@@ -16,9 +16,9 @@ Der Zugang erfolgt mit einem Lead-Konto, das für alle Anwendungen der Lead-Fami
 
 ## 4. Abos und Preise
 
-Es gelten die Abos der Lead-Familie: Gratis, Pro und Pro+. Ein in einer Lead-Anwendung abgeschlossenes Bezahl-Abo öffnet die anderen gemäss seinen Bedingungen. Die geltenden Preise und Limiten stehen auf der Preisseite. Preise verstehen sich exklusive Steuern. Die Zahlung wickelt Stripe, Inc. ab; InvoiceLead speichert keine Kartendaten.
+Die Abos von InvoiceLead sind Gratis, Pro (19 € pro Monat oder 190 € pro Jahr) und Pro+ (39 € pro Monat oder 390 € pro Jahr, bis 5 Personen). Sie werden in InvoiceLead abgeschlossen und gelten nur für InvoiceLead; ein in einer anderen Lead-Anwendung abgeschlossenes Abo öffnet die Bezahl-Abos von InvoiceLead nicht. Jederzeit kündbar, wirksam auf das Ende der bezahlten Periode. Die geltenden Limiten stehen auf der Preisseite. Preise verstehen sich exklusive Steuern. Die Zahlung wickelt Stripe, Inc. ab; InvoiceLead speichert keine Kartendaten.
 
-Das Abo verlängert sich automatisch und kann jederzeit auf das Ende der bezahlten Periode gekündigt werden. Eine anteilige Rückerstattung erfolgt nicht, vorbehaltlich zwingender Bestimmungen.
+Das Abo verlängert sich am Ende jeder Periode, monatlich oder jährlich, automatisch und wird in InvoiceLead verwaltet (Einstellungen, Abo). Eine anteilige Rückerstattung erfolgt nicht, vorbehaltlich zwingender Bestimmungen.
 
 ## 5. Verantwortung für die eigene Buchhaltung
 

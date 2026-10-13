@@ -26,7 +26,6 @@ export default async function AssistantPage({ params }: Props) {
   const lock = limited
     ? await planLock(
         locale,
-        organization,
         access.upgradeTo,
         tp("used.assistant", { limit: access.limit, plan: access.tier }),
       )

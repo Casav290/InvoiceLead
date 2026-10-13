@@ -48,7 +48,7 @@ export default async function ExpensesPage({ params, searchParams }: Props) {
   // Tickets lus par l'IA : même compteur que la boîte des justificatifs (Gratuit 20 par mois).
   const reads = await quotaAccess(db(), organization, "aiReads");
   const usedUp = tp("used.aiReads", { limit: reads.limit, plan: reads.tier });
-  const scanLock = await lockFor(locale, organization, reads, usedUp);
+  const scanLock = await lockFor(locale, reads, usedUp);
   const [claims, iban, chart, travel, ticket] = await Promise.all([
     listClaims(db(), organization.id, user.id),
     lastClaimIban(db(), organization.id, user.id),

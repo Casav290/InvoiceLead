@@ -1,6 +1,6 @@
 # Conditions générales InvoiceLead
 
-Version du 30 septembre 2026.
+Version du 13 octobre 2026.
 
 ## 1. Objet
 
@@ -16,9 +16,9 @@ L'accès se fait avec un Compte Lead, commun aux applications de la famille Lead
 
 ## 4. Formules et prix
 
-Les formules sont celles de la famille Lead : Gratuit, Pro et Pro+. Une formule payante souscrite dans une application Lead ouvre les autres selon ses conditions. Les prix et limites en vigueur sont affichés sur la page Tarifs. Les prix s'entendent hors taxes. L'encaissement est assuré par Stripe, Inc. ; aucune donnée de carte n'est conservée par InvoiceLead.
+Les formules d'InvoiceLead sont Gratuit, Pro (19 € par mois ou 190 € par an) et Pro+ (39 € par mois ou 390 € par an, jusqu'à 5 personnes). Elles se souscrivent dans InvoiceLead et ne valent que pour InvoiceLead ; un abonnement pris dans une autre application Lead n'ouvre pas les formules payantes d'InvoiceLead. Résiliation à tout moment, effective à la fin de la période payée. Les limites en vigueur sont affichées sur la page Tarifs. Les prix s'entendent hors taxes. L'encaissement est assuré par Stripe, Inc. ; aucune donnée de carte n'est conservée par InvoiceLead.
 
-L'abonnement se renouvelle automatiquement et peut être résilié à tout moment, avec effet à la fin de la période payée. Aucun remboursement au prorata n'est dû, sauf disposition impérative contraire.
+L'abonnement se renouvelle automatiquement à la fin de chaque période, mensuelle ou annuelle, et se gère dans InvoiceLead (Réglages, Formule). Aucun remboursement au prorata n'est dû, sauf disposition impérative contraire.
 
 ## 5. Responsabilité de l'Utilisateur pour sa comptabilité
 

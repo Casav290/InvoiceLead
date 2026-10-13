@@ -25,7 +25,7 @@ export default async function AppLayout({
     tier === "proplus"
       ? null
       : {
-          href: upgradeUrl(organization),
+          href: upgradeUrl(locale, tier === "pro" ? "proplus" : "pro"),
           label: tp(tier === "pro" ? "upgradePlus" : "upgrade"),
         };
   return (
@@ -36,8 +36,9 @@ export default async function AppLayout({
         orgName={organization.name}
         orgs={orgs}
         user={{ name: user.name, email: user.email }}
-        planCode={entitlements?.plan?.code ?? organization.leadPlan}
-        planName={entitlements?.plan?.name ?? organization.leadPlan}
+        // La formule DANS InvoiceLead (tierOf : Compte Lead et abonnement payé ici).
+        planCode={tier === "proplus" ? "pro_plus" : tier}
+        planName={tp(tier)}
         apps={leadAppItems(APP_CODE, entitlements?.apps)}
         upgrade={upgrade}
       />

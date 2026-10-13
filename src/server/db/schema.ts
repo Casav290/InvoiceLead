@@ -93,6 +93,19 @@ export const organizations = pgTable("organizations", {
   /** Compte Stripe connecté (Stripe Connect) qui reçoit les paiements en ligne des clients. */
   stripeAccountId: text("stripe_account_id"),
   /**
+   * Abonnement InvoiceLead de l'entreprise (src/server/billing), sans rapport avec Stripe Connect :
+   * client Stripe propre à InvoiceLead (metadata app=invoicelead), jamais partagé avec une autre
+   * application Lead ni retrouvé par e-mail.
+   */
+  billingCustomerId: text("billing_customer_id").unique(),
+  /**
+   * Formule payée ici, tirée de billing_subscriptions à chaque événement Stripe : « pro »,
+   * « pro_plus » ou vide. Elle vaut jusqu'à billing_plan_until (fin de période plus trois jours de
+   * grâce), même si le Compte Lead tarde à la confirmer (tierOf prend la meilleure des deux).
+   */
+  billingPlan: text("billing_plan"),
+  billingPlanUntil: timestamp("billing_plan_until", { withTimezone: true }),
+  /**
    * Pilote automatique : les propositions sûres (référence de paiement, règle confirmée, IA très
    * confiante) sont comptabilisées sans clic ; la personne ne relit que les exceptions.
    */
@@ -1114,3 +1127,44 @@ export const loginPages = pgTable(
     index("login_pages_client_idx").on(t.client, t.createdAt),
   ],
 );
+
+/**
+ * Abonnements InvoiceLead encaissés par Stripe (src/server/billing), un par abonnement Stripe.
+ * Écrits seulement par le webhook /api/billing/webhook et le retour de paiement, d'après
+ * l'abonnement relu chez Stripe ; jamais par Stripe Connect.
+ */
+export const billingSubscriptions = pgTable(
+  "billing_subscriptions",
+  {
+    /** Identifiant Stripe (« sub_… »), aussi external_id de la déclaration au Compte Lead. */
+    id: text("id").primaryKey(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id),
+    customerId: text("customer_id").notNull(),
+    /** « pro » ou « pro_plus », d'après le prix. */
+    plan: text("plan").notNull(),
+    /** « month » ou « year ». */
+    interval: text("interval").notNull(),
+    priceId: text("price_id"),
+    /** Statut Stripe : active, trialing, past_due ouvrent la formule ; les autres non. */
+    status: text("status").notNull(),
+    currentPeriodEnd: timestamp("current_period_end", { withTimezone: true }),
+    cancelAtPeriodEnd: boolean("cancel_at_period_end").notNull().default(false),
+    livemode: boolean("livemode").notNull().default(false),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+    /** Dernier état déclaré au Compte Lead ; vide : à déclarer (webhook, puis tâche quotidienne). */
+    erpleadSyncedAt: timestamp("erplead_synced_at", { withTimezone: true }),
+  },
+  (t) => [index("billing_subscriptions_organization_idx").on(t.organizationId)],
+);
+
+/** Événements Stripe de l'abonnement déjà traités : un événement renvoyé n'a pas d'effet. */
+export const billingEvents = pgTable("billing_events", {
+  id: text("id").primaryKey(),
+  type: text("type").notNull(),
+  subscriptionId: text("subscription_id"),
+  result: text("result").notNull(),
+  receivedAt: timestamp("received_at", { withTimezone: true }).notNull().defaultNow(),
+});

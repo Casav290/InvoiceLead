@@ -23,7 +23,7 @@ export default async function NewContactPage({ params }: Props) {
   // le lien de mise à niveau (adresse directe, favori, retour arrière). La raison vient en tête :
   // la fin du formulaire est loin du premier écran.
   const live = await quotaAccess(db(), organization, "contacts");
-  const lock = await lockFor(locale, organization, live, t("planLimit", { limit: live.limit }));
+  const lock = await lockFor(locale, live, t("planLimit", { limit: live.limit }));
   const form = (
     <ContactForm
       locale={locale}

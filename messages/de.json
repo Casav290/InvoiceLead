@@ -296,7 +296,7 @@
     },
     "family": {
       "title": "Ein ERPlead-Konto für die ganze Lead-Familie.",
-      "body": "Melden Sie sich mit Google, Apple oder Ihrer E-Mail-Adresse an. Dasselbe Konto öffnet Scanlead, CRMlead, ProjectLead und Greetlead, und die Apps arbeiten einander zu.",
+      "body": "Melden Sie sich mit Google, Apple oder Ihrer E-Mail-Adresse an. Dasselbe Konto öffnet Scanlead, CRMlead, ProjectLead und Greetlead, und die Apps arbeiten einander zu. Jede App hat ihr eigenes Abo.",
       "here": "Sie sind hier",
       "apps": {
         "scanlead": "Erfasst Ihre Messekontakte",
@@ -321,7 +321,7 @@
     "loginTitle": "Bei InvoiceLead anmelden",
     "loginSubtitle": "InvoiceLead verwendet Ihr Lead-Konto, dasselbe wie für Scanlead und CRMlead.",
     "signupTitle": "Konto erstellen",
-    "signupSubtitle": "Mit dem Lead-Konto nutzen Sie InvoiceLead und alle Anwendungen der Familie. Im nächsten Schritt können Sie «Konto erstellen» wählen.",
+    "signupSubtitle": "Mit dem Lead-Konto nutzen Sie InvoiceLead und alle Anwendungen der Familie in der Gratis-Version. Im nächsten Schritt können Sie «Konto erstellen» wählen.",
     "leadButton": "Mit meinem Lead-Konto anmelden",
     "noAccountYet": "Noch kein Konto? Mit derselben Schaltfläche erstellen Sie eines.",
     "errors": {
@@ -402,19 +402,22 @@
       "expired": "abgelaufen am {date}"
     },
     "noAccess": {
-      "title": "Ihr Abo enthält InvoiceLead nicht",
-      "body": "Ihre Organisation {org} hat noch keinen Zugang zu InvoiceLead. Wechseln Sie zu einem Abo, das InvoiceLead enthält.",
-      "upgrade": "Abo wechseln",
+      "title": "Ihr Lead-Konto hat keinen Zugang zu InvoiceLead",
+      "body": "InvoiceLead ist für Ihre Organisation {org} derzeit nicht offen.",
       "logout": "Abmelden",
       "blockedTitle": "Zugang zu InvoiceLead entzogen",
       "blockedBody": "Eine verantwortliche Person von {org} hat Ihren Zugang zu InvoiceLead entzogen. Bitten Sie sie, ihn in den Team-Einstellungen wiederherzustellen.",
-      "seatTitle": "Alle Plätze sind belegt",
-      "seatBody": "Das Abo von {org} umfasst {seats, plural, one {# Benutzer} other {# Benutzer}}, alle bereits belegt. Eine verantwortliche Person kann ein höheres Abo wählen oder einen Platz freigeben.",
+      "seatTitle": "Alle InvoiceLead-Plätze sind belegt",
+      "seatBody": "{seats, plural, one {Der einzige InvoiceLead-Platz} other {Alle # InvoiceLead-Plätze}} von {org} {seats, plural, one {ist bereits belegt} other {sind bereits belegt}}. Wechseln Sie in InvoiceLead auf Pro+ (5 Plätze) oder geben Sie in den Team-Einstellungen einen Platz frei.",
       "fiduciaryTitle": "Treuhandzugang pausiert",
       "fiduciaryBody": "{org} nutzt das Gratis-Abo. Der Treuhandzugang ist Teil des Pro-Abos und ist wieder offen, sobald {org} auf Pro wechselt.",
       "otherOrgs": "In einem anderen Unternehmen arbeiten",
       "betaTitle": "InvoiceLead ist in der privaten Beta",
-      "betaBody": "{org} steht noch nicht auf der Beta-Liste. Wir öffnen den Zugang in kleinen Gruppen; schreiben Sie uns an hello@invoicelead.io, um aufgenommen zu werden."
+      "betaBody": "{org} steht noch nicht auf der Beta-Liste. Wir öffnen den Zugang in kleinen Gruppen; schreiben Sie uns an hello@invoicelead.io, um aufgenommen zu werden.",
+      "seatAsk": "Bitten Sie den Administrator von {org}, in InvoiceLead auf Pro+ zu wechseln oder Ihnen einen Platz freizugeben.",
+      "upgradeMonthly": "Auf Pro+ wechseln (39 € pro Monat)",
+      "upgradeYearly": "Pro+ jährlich (390 €)",
+      "manage": "Im Portal auf Pro+ wechseln"
     },
     "company": {
       "title": "Firma",
@@ -722,7 +725,8 @@
       "team": "Team",
       "payments": "Online-Zahlung",
       "api": "API",
-      "projectlead": "ProjectLead"
+      "projectlead": "ProjectLead",
+      "plan": "Abo"
     },
     "accounts": {
       "title": "Kontenplan",
@@ -2202,6 +2206,41 @@
       "closing": "Flüssige Mittel",
       "later": "Danach: Eingänge {in}, Zahlungen {out}.",
       "method": "Eingänge: offene Rechnungen zum Datum, an dem der Kunde üblicherweise zahlt. Zahlungen: Lieferantenrechnungen und Spesen bei Fälligkeit. Bereits Fälliges zählt in der laufenden Woche."
+    },
+    "billing": {
+      "title": "InvoiceLead-Abo",
+      "subtitle": "Ihr InvoiceLead-Abo schliessen Sie hier ab; es gilt nur für InvoiceLead. Das Lead-Konto selbst ist kostenlos und öffnet alle Lead-Apps in der Gratis-Version.",
+      "current": "Ihr Abo: {plan}",
+      "currentBadge": "Ihr Abo",
+      "interval": "Abrechnungszeitraum",
+      "monthly": "Monatlich",
+      "yearly": "Jährlich (2 Monate geschenkt)",
+      "perYear": "pro Jahr",
+      "manage": "Abo verwalten",
+      "manageHint": "Abo oder Zeitraum wechseln, Karte aktualisieren, Rechnungen herunterladen oder kündigen: alles im Stripe-Kundenportal von InvoiceLead.",
+      "adminOnly": "Nur der Administrator von {org} kann das Abo abschliessen oder ändern.",
+      "unavailable": "Die Zahlung des Abos öffnet in InvoiceLead in Kürze.",
+      "footer": "Preise exkl. MWST, verrechnet in Euro durch Quantum Liquid LLC. Zahlung per Karte, automatische Verlängerung, jederzeit kündbar auf Ende der bezahlten Periode. Ein InvoiceLead-Abo gilt nur für InvoiceLead.",
+      "status": {
+        "free": "Gratis-Abo: Wechseln Sie unten auf Pro oder Pro+, sobald Sie es brauchen.",
+        "renews": "{interval, select, year {Jahresabo} other {Monatsabo}}, verlängert sich am {date}.",
+        "ends": "Abo gekündigt: {plan} bis {date}, danach Gratis.",
+        "pastDue": "Die letzte Zahlung ist fehlgeschlagen. Aktualisieren Sie Ihre Karte unter «Abo verwalten», um {plan} zu behalten.",
+        "inherited": "Bis {date} gibt Ihnen Ihr {app}-Abo auch {plan} in InvoiceLead. Danach wechselt InvoiceLead auf Gratis, ausser Sie schliessen hier ein Abo ab."
+      },
+      "notices": {
+        "done": "Danke! Ihr InvoiceLead-Abo {plan} ist aktiv.",
+        "pending": "Zahlung erhalten. Ihr Abo wird in wenigen Augenblicken aktiv: Laden Sie die Seite neu.",
+        "cancel": "Zahlung abgebrochen: Es wurde nichts belastet."
+      },
+      "errors": {
+        "admin": "Nur der Administrator der Organisation kann das Abo abschliessen oder verwalten.",
+        "unavailable": "Die Zahlung des Abos ist noch nicht offen.",
+        "invalid": "Unbekanntes Abo: Wählen Sie Pro oder Pro+.",
+        "already": "Ihr InvoiceLead-Abo ist bereits aktiv: Wechseln Sie das Abo unter «Abo verwalten».",
+        "stripe": "Stripe hat nicht geantwortet. Versuchen Sie es gleich noch einmal.",
+        "noCustomer": "Noch kein InvoiceLead-Abo zu verwalten."
+      }
     }
   },
   "footer": {
@@ -2237,8 +2276,8 @@
     }
   },
   "pricing": {
-    "title": "Einfache Preise, für die ganze Lead-Familie",
-    "subtitle": "Ein Abo öffnet InvoiceLead, Scanlead und CRMlead. Preise exkl. MWST.",
+    "title": "Einfache Preise",
+    "subtitle": "Ein InvoiceLead-Abo gilt nur für InvoiceLead. Das Lead-Konto ist kostenlos und öffnet Ihnen alle Lead-Apps in der Gratis-Version. Preise exkl. MWST.",
     "notice": "InvoiceLead öffnet schrittweise: Mit «Demnächst» markierte Funktionen folgen in den nächsten Versionen. Die Registrierung ist kostenlos.",
     "monthly": "pro Monat",
     "yearly": "oder {price} pro Jahr (2 Monate geschenkt)",
@@ -2295,7 +2334,7 @@
         ]
       }
     },
-    "footer": "Verrechnet in Euro durch die Lead-Familie (Quantum Liquid LLC). Jederzeit kündbar."
+    "footer": "Verrechnet in Euro durch Quantum Liquid LLC. Jederzeit kündbar."
   },
   "faq": {
     "title": "Häufige Fragen",
@@ -2314,7 +2353,7 @@
       },
       {
         "q": "Was ist das Lead-Konto?",
-        "a": "Das gemeinsame Konto der Lead-Familie: dieselbe Anmeldung für InvoiceLead, Scanlead und CRMlead, und ein in einer Anwendung bezahltes Abo öffnet die anderen."
+        "a": "Das gemeinsame Konto der Lead-Familie: dieselbe Anmeldung für InvoiceLead, Scanlead, CRMlead, ProjectLead und Greetlead. Jede App hat ihr eigenes Abo: Ein Abo gilt nur in der App, in der es abgeschlossen wurde."
       },
       {
         "q": "Kann meine Treuhand auf die Buchhaltung zugreifen?",

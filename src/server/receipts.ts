@@ -13,7 +13,7 @@ import {
   type ReceiptExtraction,
   receipts,
 } from "./db/schema";
-import { consumeQuota, refundQuota } from "./plans";
+import { consumeQuota, planColumns, refundQuota } from "./plans";
 import { getFile, putFile } from "./storage";
 
 type Who = { organizationId: string; userId: string };
@@ -151,9 +151,7 @@ export async function extractReceipt(
     .select({
       id: organizations.id,
       country: organizations.country,
-      leadPlan: organizations.leadPlan,
-      entitlements: organizations.entitlements,
-      entitlementsAt: organizations.entitlementsAt,
+      ...planColumns,
     })
     .from(organizations)
     .where(eq(organizations.id, who.organizationId));

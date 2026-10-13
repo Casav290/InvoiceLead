@@ -12,6 +12,13 @@
  *   POST /oauth/token (refresh_token)  le jeton de rafraîchissement tourne, comme au Compte Lead (un jeton
  *     déjà tourné ou révoqué : invalid_grant) ; POST /test/revoke-refresh {sub} révoque tous ceux d'une
  *     personne (mot de passe réinitialisé, déconnexion de partout), GET /test/refreshes compte les échanges
+ *   POST /api/lead-id/v1/subscriptions (jeton « billing ») : déclaration d'un abonnement, comme ERPlead
+ *     par application (formule d'InvoiceLead tirée de ses abonnements) ; GET /test/billing-reports les relit
+ *   /stripe-billing/v1/… : faux Stripe de l'abonnement InvoiceLead (clé « sk_test_billing_e2e ») :
+ *     clients, sessions Checkout (GET /stripe-billing/checkout/<id> : « Payer » revient au success_url,
+ *     « Annuler » au cancel_url),
+ *     abonnements, portail ; GET /test/billing relit tout, POST /test/billing/subscriptions/<id> change
+ *     un abonnement (statut, résiliation en fin de période)
  */
 import {
   createHash,
@@ -51,6 +58,19 @@ const logouts = [];
 const memberInvites = [];
 const memberResends = [];
 const MEMBERS_TOKEN = "members-token";
+const BILLING_TOKEN = "billing-token";
+/** Déclarations d'abonnements reçues (comme ERPlead), par organisation. */
+const billingReports = [];
+/** Faux Stripe de l'abonnement InvoiceLead. */
+const billing = { customers: [], checkouts: [], portals: [], subscriptions: new Map() };
+const BILLING_KEY = "Bearer sk_test_billing_e2e";
+/** Identifiants uniques d'un lancement à l'autre : la base des tests, elle, reste. */
+const STARTED = Date.now().toString(36);
+const PLAN_ROWS = {
+  free: { code: "free", name: "Gratuit", rank: 0, seats: 1 },
+  pro: { code: "pro", name: "Pro", rank: 10, seats: 1 },
+  pro_plus: { code: "pro_plus", name: "Pro+", rank: 20, seats: 5 },
+};
 
 const b64url = (v) =>
   Buffer.from(typeof v === "string" ? v : JSON.stringify(v)).toString("base64url");
@@ -104,7 +124,7 @@ function idTokenFor(u, nonce) {
           name: "CRMlead",
           url: "https://crmlead.io",
           status: "live",
-          upgrade_url: "https://scanlead.io/billing",
+          upgrade_url: "https://crmlead.io/settings#billing",
         },
         projectlead: {
           access: true,
@@ -118,7 +138,7 @@ function idTokenFor(u, nonce) {
           name: "InvoiceLead",
           url: "http://localhost:3100",
           status: u.status ?? "live",
-          upgrade_url: "https://scanlead.io/billing",
+          upgrade_url: "http://localhost:3100/fr/app/settings/plan",
         },
       },
       subscriptions: [],
@@ -205,10 +225,18 @@ createServer(async (req, res) => {
       return send(res, 401, { error: "invalid_client" });
     }
     const form = new URLSearchParams(await readBody(req));
-    // Jeton d'application (portée « members » : invitations dans l'organisation).
+    // Jeton d'application (portée « members » : invitations dans l'organisation ; « billing » :
+    // déclaration des abonnements).
     if (form.get("grant_type") === "client_credentials") {
-      if (!(form.get("scope") ?? "").split(" ").includes("members"))
-        return send(res, 400, { error: "invalid_scope" });
+      const scopes = (form.get("scope") ?? "").split(" ");
+      if (scopes.includes("billing"))
+        return send(res, 200, {
+          access_token: BILLING_TOKEN,
+          token_type: "Bearer",
+          expires_in: 600,
+          scope: "billing",
+        });
+      if (!scopes.includes("members")) return send(res, 400, { error: "invalid_scope" });
       return send(res, 200, {
         access_token: MEMBERS_TOKEN,
         token_type: "Bearer",
@@ -407,6 +435,153 @@ createServer(async (req, res) => {
         : { id: t.id, account: null, vat: null, confidence: 0.2, explanation: "Inconnu." },
     );
     return send(res, 200, { choices: [{ message: { content: JSON.stringify({ results }) } }] });
+  }
+
+  // ERPlead par application : l'abonnement déclaré par InvoiceLead donne la formule d'InvoiceLead.
+  if (url.pathname === "/api/lead-id/v1/subscriptions" && req.method === "POST") {
+    if (req.headers.authorization !== `Bearer ${BILLING_TOKEN}`)
+      return send(res, 401, { error: "invalid_token" });
+    const body = JSON.parse((await readBody(req)) || "{}");
+    billingReports.push(body);
+    const granting = ["active", "trialing", "past_due"].includes(body.status);
+    const plan = granting ? (PLAN_ROWS[body.plan] ?? PLAN_ROWS.free) : PLAN_ROWS.free;
+    return send(res, 200, {
+      org: body.org,
+      app: "invoicelead",
+      plan: { ...plan, source: granting ? "own" : "free", valid_until: null },
+      apps: {
+        invoicelead: {
+          access: true,
+          name: "InvoiceLead",
+          url: "http://localhost:3100",
+          status: "live",
+          upgrade_url: "http://localhost:3100/fr/app/settings/plan",
+        },
+      },
+      subscriptions: [],
+    });
+  }
+  if (url.pathname === "/test/billing-reports") return send(res, 200, billingReports);
+
+  // Faux Stripe de l'abonnement (distinct de Stripe Connect ci-dessus : autre clé, autre adresse).
+  if (url.pathname.startsWith("/stripe-billing/v1/")) {
+    if (req.headers.authorization !== BILLING_KEY)
+      return send(res, 401, { error: { message: "key" } });
+    const path = url.pathname.slice("/stripe-billing".length);
+    const form = req.method === "POST" ? new URLSearchParams(await readBody(req)) : null;
+    const meta = (prefix) => {
+      const out = {};
+      for (const [k, v] of form?.entries() ?? []) {
+        const m = new RegExp(`^${prefix.replace(/[[\]]/g, "\\$&")}\\[([^\\]]+)\\]$`).exec(k);
+        if (m) out[m[1]] = v;
+      }
+      return out;
+    };
+    if (path === "/v1/customers" && req.method === "POST") {
+      const id = `cus_e2e_${STARTED}_${billing.customers.length + 1}`;
+      billing.customers.push({
+        id,
+        idempotency: req.headers["idempotency-key"],
+        form: Object.fromEntries(form),
+      });
+      return send(res, 200, { id });
+    }
+    if (path === "/v1/checkout/sessions" && req.method === "POST") {
+      const id = `cs_test_e2e_${Date.now()}_${billing.checkouts.length + 1}`;
+      const session = {
+        id,
+        mode: form.get("mode"),
+        status: "open",
+        customer: form.get("customer"),
+        subscription: null,
+        metadata: meta("metadata"),
+        subscription_metadata: meta("subscription_data[metadata]"),
+        price: form.get("line_items[0][price]"),
+        success_url: form.get("success_url"),
+        cancel_url: form.get("cancel_url"),
+        form: Object.fromEntries(form),
+      };
+      billing.checkouts.push(session);
+      return send(res, 200, { id, url: `${ISSUER}/stripe-billing/checkout/${id}` });
+    }
+    const cs = /^\/v1\/checkout\/sessions\/([^/]+)$/.exec(path);
+    if (cs && req.method === "GET") {
+      const found = billing.checkouts.find((c) => c.id === decodeURIComponent(cs[1]));
+      if (!found) return send(res, 404, { error: { message: "No such checkout session" } });
+      const { form: _f, subscription_metadata: _m, price: _p, ...session } = found;
+      return send(res, 200, session);
+    }
+    const sub = /^\/v1\/subscriptions\/([^/]+)$/.exec(path);
+    if (sub && req.method === "GET") {
+      const found = billing.subscriptions.get(decodeURIComponent(sub[1]));
+      return found
+        ? send(res, 200, found)
+        : send(res, 404, { error: { code: "resource_missing", message: "No such subscription" } });
+    }
+    if (path === "/v1/billing_portal/sessions" && req.method === "POST") {
+      const n = billing.portals.length + 1;
+      billing.portals.push(Object.fromEntries(form));
+      return send(res, 200, { url: `${ISSUER}/stripe-billing/portal/${n}` });
+    }
+    return send(res, 400, { error: { message: `inconnu : ${req.method} ${path}` } });
+  }
+  // « Paiement » d'une session : l'abonnement naît, la session est terminée, retour à InvoiceLead.
+  const pay = /^\/stripe-billing\/checkout\/([^/]+)$/.exec(url.pathname);
+  if (pay) {
+    const session = billing.checkouts.find((c) => c.id === decodeURIComponent(pay[1]));
+    if (!session) return send(res, 404, { error: "session" });
+    if (url.searchParams.get("cancel") === "1") {
+      res.writeHead(303, { Location: session.cancel_url });
+      return res.end();
+    }
+    if (url.searchParams.get("pay") !== "1") {
+      res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+      return res.end(
+        `<!doctype html><title>Stripe Checkout</title><h1>Stripe Checkout (test)</h1><a href="?pay=1">Payer</a> <a href="?cancel=1">Annuler</a>`,
+      );
+    }
+    if (!session.subscription) {
+      const id = `sub_e2e_${STARTED}_${billing.subscriptions.size + 1}`;
+      const yearly = /yearly|_y$/.test(session.price ?? "");
+      billing.subscriptions.set(id, {
+        id,
+        object: "subscription",
+        customer: session.customer,
+        status: "active",
+        livemode: false,
+        cancel_at_period_end: false,
+        metadata: session.subscription_metadata,
+        items: {
+          data: [
+            {
+              current_period_end: Math.floor(Date.now() / 1000) + (yearly ? 365 : 30) * 86_400,
+              price: { id: session.price, recurring: { interval: yearly ? "year" : "month" } },
+            },
+          ],
+        },
+      });
+      session.subscription = id;
+      session.status = "complete";
+    }
+    res.writeHead(303, {
+      Location: session.success_url.replace("{CHECKOUT_SESSION_ID}", session.id),
+    });
+    return res.end();
+  }
+  if (/^\/stripe-billing\/portal\/\d+$/.test(url.pathname)) {
+    res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+    return res.end(
+      "<!doctype html><title>Portail</title><h1>Portail client InvoiceLead (test)</h1>",
+    );
+  }
+  if (url.pathname === "/test/billing")
+    return send(res, 200, { ...billing, subscriptions: [...billing.subscriptions.values()] });
+  const change = /^\/test\/billing\/subscriptions\/([^/]+)$/.exec(url.pathname);
+  if (change && req.method === "POST") {
+    const found = billing.subscriptions.get(decodeURIComponent(change[1]));
+    if (!found) return send(res, 404, { error: "subscription" });
+    Object.assign(found, JSON.parse((await readBody(req)) || "{}"));
+    return send(res, 200, found);
   }
 
   if (url.pathname === "/test/logouts") return send(res, 200, logouts);

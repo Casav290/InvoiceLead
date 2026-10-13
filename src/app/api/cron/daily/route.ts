@@ -1,6 +1,7 @@
 import { timingSafeEqual } from "node:crypto";
 import { purgePages } from "@/server/auth/login-pages";
 import { sendAutopilotDigests } from "@/server/autopilot-digest";
+import { reportPendingToLead } from "@/server/billing/subscriptions";
 import { deliverCrmlead } from "@/server/crmlead-sync";
 import { db } from "@/server/db";
 import { env } from "@/server/env";
@@ -31,6 +32,8 @@ export async function GET(request: Request) {
   // Formules payantes relues au Compte Lead d'abord : une formule résiliée sans nouvelle connexion
   // ne fait plus tourner relances, récurrences, webhooks ni récapitulatif.
   const plans = await refreshStalePlans(db());
+  // Abonnements InvoiceLead pas encore déclarés au Compte Lead (webhook passé pendant une panne).
+  const billing = await reportPendingToLead(db());
   const recurring = await runRecurring(db(), today, async (who, id) => {
     return (await sendWithDefaults(db(), who, id)) === "sent";
   });
@@ -47,6 +50,7 @@ export async function GET(request: Request) {
   return Response.json({
     today,
     plans,
+    billing,
     recurring,
     reminders,
     webhooks,

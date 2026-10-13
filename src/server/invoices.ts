@@ -22,7 +22,13 @@ import {
   type PartySnapshot,
 } from "./db/schema";
 import { fetchFxRate } from "./fx";
-import { foreignWithoutPro, foreignWithoutProFor, lockQuota, quotaAccess } from "./plans";
+import {
+  foreignWithoutPro,
+  foreignWithoutProFor,
+  lockQuota,
+  planColumns,
+  quotaAccess,
+} from "./plans";
 import { PRODUCT_UNITS } from "./products";
 import { emitEvent, invoiceSummary } from "./webhooks";
 
@@ -537,9 +543,7 @@ export async function issueInvoice(
       fxRate: invoices.fxRate,
       issueDate: invoices.issueDate,
       plan: {
-        leadPlan: organizations.leadPlan,
-        entitlements: organizations.entitlements,
-        entitlementsAt: organizations.entitlementsAt,
+        ...planColumns,
         currency: organizations.currency,
       },
     })

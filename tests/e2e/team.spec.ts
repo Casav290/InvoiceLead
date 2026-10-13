@@ -18,7 +18,7 @@ test("équipe : rôle d'un utilisateur, invitation et accès d'une fiduciaire", 
   // Pro : une place, celle de l'administratrice. L'ajout d'une personne reste visible, grisé,
   // marqué Pro+.
   await page.goto("/fr/app/settings/team");
-  await expect(page.getByTestId("seats")).toHaveText("1 sur 1 places utilisées");
+  await expect(page.getByTestId("seats")).toHaveText("1 sur 1 place utilisée");
   const seatsLock = page.getByTestId("seats-lock");
   await expect(seatsLock).toHaveAttribute("data-locked", "proplus");
   await expect(seatsLock).toContainText("Pro+ compte 5 places.");
@@ -148,9 +148,10 @@ test("équipe : l'administrateur invite une personne depuis InvoiceLead", async 
   await form.getByLabel("Adresse e-mail").fill(`plein-${run}@atelier.test`);
   await page.getByTestId("member-invite-submit").click();
   await expect(form.getByRole("alert")).toContainText("Toutes les places de votre formule");
+  // Vers la page Formule d'InvoiceLead, jamais vers une autre application.
   await expect(form.getByRole("link", { name: /plus de places/ })).toHaveAttribute(
     "href",
-    "https://scanlead.io/billing",
+    "/fr/app/settings/plan",
   );
 });
 

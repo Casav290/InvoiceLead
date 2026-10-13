@@ -2,7 +2,7 @@
 
 _This English version is provided for convenience. In case of discrepancy, the German version prevails._
 
-Version of 30 September 2026.
+Version of 13 October 2026.
 
 ## 1. Subject matter
 
@@ -18,9 +18,9 @@ Access is by means of a Lead Account, which is shared by the applications of the
 
 ## 4. Plans and prices
 
-The plans are those of the Lead family: Free, Pro and Pro+. A paid plan subscribed to in one Lead application gives access to the others in accordance with its conditions. The prices and limits in force are shown on the Pricing page. Prices are stated exclusive of taxes. Payments are processed by Stripe, Inc.; InvoiceLead stores no card data.
+InvoiceLead's plans are Free, Pro (€19 per month or €190 per year) and Pro+ (€39 per month or €390 per year, up to 5 people). They are subscribed to in InvoiceLead and apply to InvoiceLead only; a subscription taken in another Lead application does not unlock InvoiceLead's paid plans. Cancellation at any time, effective at the end of the paid period. The limits in force are shown on the Pricing page. Prices are stated exclusive of taxes. Payments are processed by Stripe, Inc.; InvoiceLead stores no card data.
 
-The subscription renews automatically and may be cancelled at any time, with effect from the end of the paid period. No pro rata refund is due, unless mandatory provisions provide otherwise.
+The subscription renews automatically at the end of each monthly or yearly period and is managed in InvoiceLead (Settings, Plan). No pro rata refund is due, unless mandatory provisions provide otherwise.
 
 ## 5. User's responsibility for their accounting
 

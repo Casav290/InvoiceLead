@@ -7,7 +7,7 @@ import type { Db } from "./db";
 import { anyUuid } from "./db/any";
 import { auditLog, organizations, webhookDeliveries, webhookEndpoints } from "./db/schema";
 import { env } from "./env";
-import { featureAccess, organizationPlan } from "./plans";
+import { featureAccess, organizationPlan, planColumns } from "./plans";
 
 type Who = { organizationId: string; userId: string };
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -240,9 +240,7 @@ export async function deliverPending(
   const plans = await database
     .selectDistinct({
       id: organizations.id,
-      leadPlan: organizations.leadPlan,
-      entitlements: organizations.entitlements,
-      entitlementsAt: organizations.entitlementsAt,
+      ...planColumns,
     })
     .from(webhookDeliveries)
     .innerJoin(webhookEndpoints, eq(webhookEndpoints.id, webhookDeliveries.endpointId))

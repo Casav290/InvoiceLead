@@ -3,15 +3,12 @@ import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { OrgSwitcher } from "@/components/app/OrgSwitcher";
 import { Button } from "@/components/ui/button";
-import { APP_CODE } from "@/server/auth/attach";
 import { accessProblem, appPage, requireSession } from "@/server/auth/guard";
+import { billingConfigured, GRANTING, portalConfigured } from "@/server/billing/stripe";
+import { subscriptionOf } from "@/server/billing/subscriptions";
 import { db } from "@/server/db";
-import type { LeadEntitlements } from "@/server/lead-id/leadId";
 import { seatsOf } from "@/server/plans";
 import { listUserOrganizations } from "@/server/team";
-
-/** Tant que seul Scanlead encaisse, toute mise à niveau passe par sa page de facturation (LEAD-ID.md). */
-const DEFAULT_UPGRADE_URL = "https://scanlead.io/billing";
 
 export async function generateMetadata({
   params,
@@ -40,9 +37,15 @@ export default async function NoAccessPage({
   const problem = await accessProblem(session);
   if (!problem) redirect(next ?? `/${locale}/app`);
   const t = await getTranslations({ locale, namespace: "app.noAccess" });
-  const entitlements = organization.entitlements as LeadEntitlements | null;
-  const upgradeUrl = entitlements?.apps?.[APP_CODE]?.upgrade_url ?? DEFAULT_UPGRADE_URL;
   const orgs = await listUserOrganizations(db(), session.user.id);
+  // Places toutes prises : Pro+ se prend ici même (cet écran, et non la page Formule, que la
+  // personne sans place ne peut pas ouvrir), par l'administrateur seulement. Déjà abonné : le
+  // passage à Pro+ se fait dans le portail Stripe d'InvoiceLead.
+  const admin = session.membership.role === "admin";
+  const sub = problem === "seat" && admin ? await subscriptionOf(db(), organization.id) : null;
+  const subscribed = !!sub && (GRANTING as readonly string[]).includes(sub.status);
+  const buy = problem === "seat" && admin && billingConfigured() && !subscribed;
+  const portal = problem === "seat" && admin && subscribed && portalConfigured();
   const title =
     problem === "blocked"
       ? t("blockedTitle")
@@ -63,8 +66,6 @@ export default async function NoAccessPage({
           : problem === "seat"
             ? t("seatBody", { org: organization.name, seats: seatsOf(organization) })
             : t("body", { org: organization.name });
-  // La fiduciaire ne paie pas la formule de son client : pas de bouton de mise à niveau pour elle.
-  const upgradable = problem !== "blocked" && problem !== "beta" && problem !== "fiduciary";
   return (
     <main className="flex min-h-screen items-start justify-center px-4 py-20">
       <div
@@ -75,12 +76,36 @@ export default async function NoAccessPage({
         <div className="border-b border-line px-6 py-5">
           <h1 className="text-[22px] leading-tight">{title}</h1>
           <p className="mt-2 text-[14px] leading-relaxed text-ink-muted">{body}</p>
+          {problem === "seat" && !admin ? (
+            <p className="mt-2 text-[14px] leading-relaxed text-ink-muted">
+              {t("seatAsk", { org: organization.name })}
+            </p>
+          ) : null}
         </div>
         <div className="flex flex-wrap gap-3 px-6 py-5">
-          {upgradable ? (
-            <Button asChild>
-              <a href={upgradeUrl}>{t("upgrade")}</a>
-            </Button>
+          {buy
+            ? (["month", "year"] as const).map((interval) => (
+                <form key={interval} action="/api/billing/checkout" method="post">
+                  <input type="hidden" name="locale" value={locale} />
+                  <input type="hidden" name="plan" value="pro_plus" />
+                  <input type="hidden" name="interval" value={interval} />
+                  <Button
+                    type="submit"
+                    variant={interval === "month" ? "primary" : "secondary"}
+                    data-testid={`no-access-checkout-${interval}`}
+                  >
+                    {t(interval === "month" ? "upgradeMonthly" : "upgradeYearly")}
+                  </Button>
+                </form>
+              ))
+            : null}
+          {portal ? (
+            <form action="/api/billing/portal" method="post">
+              <input type="hidden" name="locale" value={locale} />
+              <Button type="submit" data-testid="no-access-portal">
+                {t("manage")}
+              </Button>
+            </form>
           ) : null}
           <form action="/auth/lead/logout" method="post">
             <input type="hidden" name="locale" value={locale} />

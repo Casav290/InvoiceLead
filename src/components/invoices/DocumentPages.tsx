@@ -72,12 +72,7 @@ const ERRORS = [
  */
 async function currencyLock(locale: string, organization: OrgPlan): Promise<Lock | null> {
   const t = await getTranslations({ locale, namespace: "app.invoices" });
-  return lockFor(
-    locale,
-    organization,
-    featureAccess(organization, "multiCurrency"),
-    t("currencyPlan"),
-  );
+  return lockFor(locale, featureAccess(organization, "multiCurrency"), t("currencyPlan"));
 }
 
 /** Objet et message proposés, dans la langue de la pièce. */
@@ -358,7 +353,6 @@ export async function DocumentDetailPage({
     draft && foreign
       ? await lockFor(
           locale,
-          organization,
           featureAccess(organization, "multiCurrency"),
           t("issueCurrencyPlan", { currency: invoice.currency, home: organization.currency }),
         )
@@ -372,7 +366,6 @@ export async function DocumentDetailPage({
     (issued
       ? await lockFor(
           locale,
-          organization,
           issued,
           tp("used.invoices", { limit: issued.limit, plan: issued.tier }),
         )
@@ -383,7 +376,6 @@ export async function DocumentDetailPage({
     kind === "quote" && foreign && ["issued", "accepted"].includes(invoice.status)
       ? await lockFor(
           locale,
-          organization,
           featureAccess(organization, "multiCurrency"),
           t("quoteCurrencyPlan", { currency: invoice.currency }),
         )
@@ -407,7 +399,6 @@ export async function DocumentDetailPage({
     recurringSlots && invoice.currency !== organization.currency
       ? await lockFor(
           locale,
-          organization,
           featureAccess(organization, "multiCurrency"),
           t("recurring.currencyPlan", { currency: invoice.currency }),
         )
@@ -422,7 +413,6 @@ export async function DocumentDetailPage({
       (recurringSlots
         ? await lockFor(
             locale,
-            organization,
             recurringSlots,
             tp("used.recurring", { limit: recurringSlots.limit, plan: recurringSlots.tier }),
           )

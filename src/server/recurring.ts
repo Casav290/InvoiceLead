@@ -24,6 +24,7 @@ import {
   type OrgPlan,
   organizationPlan,
   PLANS,
+  planColumns,
   quotaAccess,
   tierOf,
 } from "./plans";
@@ -292,9 +293,7 @@ export async function runRecurring(
   const plans = await database
     .select({
       id: organizations.id,
-      leadPlan: organizations.leadPlan,
-      entitlements: organizations.entitlements,
-      entitlementsAt: organizations.entitlementsAt,
+      ...planColumns,
     })
     .from(organizations)
     .where(anyUuid(organizations.id, orgIds));

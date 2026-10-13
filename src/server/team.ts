@@ -15,7 +15,7 @@ import {
   supplierBills,
   users,
 } from "./db/schema";
-import { featureAccess, seatsOf } from "./plans";
+import { featureAccess, type OrgPlan, planColumns, seatsOf } from "./plans";
 import {
   APP_ROLES,
   type AppRole,
@@ -96,7 +96,7 @@ export function seated<T extends Member & { userId: string; createdAt: Date }>(
  */
 export async function hasSeat(
   database: Db,
-  org: { id: string; leadPlan: string; entitlements: unknown },
+  org: OrgPlan & { id: string },
   userId: string,
 ): Promise<boolean> {
   const { members, fiduciaries } = await listTeam(database, org.id);
@@ -183,9 +183,7 @@ export async function acceptInvitation(
         orgName: organizations.name,
         // Avec sa date de lecture : une formule Pro vieille de plus de 72 h vaut la formule gratuite.
         plan: {
-          leadPlan: organizations.leadPlan,
-          entitlements: organizations.entitlements,
-          entitlementsAt: organizations.entitlementsAt,
+          ...planColumns,
         },
       })
       .from(fiduciaryInvitations)
@@ -316,9 +314,7 @@ export async function switchOrganization(
 async function fiduciaryOpen(database: Db, organizationId: string): Promise<boolean> {
   const [org] = await database
     .select({
-      leadPlan: organizations.leadPlan,
-      entitlements: organizations.entitlements,
-      entitlementsAt: organizations.entitlementsAt,
+      ...planColumns,
     })
     .from(organizations)
     .where(eq(organizations.id, organizationId))
@@ -437,9 +433,7 @@ export async function organizationAccess(
       id: organizations.id,
       name: organizations.name,
       plan: {
-        leadPlan: organizations.leadPlan,
-        entitlements: organizations.entitlements,
-        entitlementsAt: organizations.entitlementsAt,
+        ...planColumns,
       },
     })
     .from(organizations)

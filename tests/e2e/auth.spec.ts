@@ -361,7 +361,7 @@ test.describe("navigateur en français", () => {
 
 test("pages publiques : tarifs, FAQ et textes légaux dans les deux langues", async ({ page }) => {
   for (const [path, heading] of [
-    ["/fr/pricing", "Des tarifs simples, pour toute la famille Lead"],
+    ["/fr/pricing", "Des tarifs simples"],
     ["/de/faq", "Häufige Fragen"],
     ["/fr/legal/privacy", "Politique de confidentialité InvoiceLead"],
     ["/de/legal/dpa", "Auftragsbearbeitungsvertrag (AVV) InvoiceLead"],

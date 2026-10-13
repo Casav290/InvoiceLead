@@ -1,11 +1,13 @@
 import { getTranslations } from "next-intl/server";
 import type { Lock } from "@/components/app/ProLock";
-import { type Access, type OrgPlan, type Tier, upgradeUrl } from "./plans";
+import { type Access, type Tier, upgradeUrl } from "./plans";
 
-/** Verrou à afficher pour une formule donnée : marque, raison, lien vers la formule qui l'ouvre. */
+/**
+ * Verrou à afficher pour une formule donnée : marque, raison, lien vers la page Formule
+ * d'InvoiceLead, la formule qui l'ouvre présélectionnée.
+ */
 export async function planLock(
   locale: string,
-  org: OrgPlan,
   upgradeTo: Tier | null,
   reason: string,
 ): Promise<Lock> {
@@ -15,7 +17,7 @@ export async function planLock(
     tier,
     reason,
     upgrade: tier
-      ? { label: t(tier === "proplus" ? "upgradePlus" : "upgrade"), href: upgradeUrl(org) }
+      ? { label: t(tier === "proplus" ? "upgradePlus" : "upgrade"), href: upgradeUrl(locale, tier) }
       : null,
   };
 }
@@ -23,11 +25,10 @@ export async function planLock(
 /** Verrou d'un accès refusé (null s'il est permis). */
 export async function lockFor(
   locale: string,
-  org: OrgPlan,
   access: Access,
   reason: string,
 ): Promise<Lock | null> {
-  return access.allowed ? null : planLock(locale, org, access.upgradeTo, reason);
+  return access.allowed ? null : planLock(locale, access.upgradeTo, reason);
 }
 
 /** Raison type d'une fonction réservée : « Fonction Pro. Passez à Pro pour l'utiliser. » */

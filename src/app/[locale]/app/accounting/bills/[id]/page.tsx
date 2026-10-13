@@ -93,12 +93,7 @@ export default async function BillPage({ params, searchParams }: Props) {
   // Facture en devise étrangère, formule gratuite : l'approbation reste visible, grisée (Pro).
   const approveLock =
     draft && bill.currency !== organization.currency
-      ? await lockFor(
-          locale,
-          organization,
-          multiCurrency,
-          t("approveCurrencyPlan", { currency: bill.currency }),
-        )
+      ? await lockFor(locale, multiCurrency, t("approveCurrencyPlan", { currency: bill.currency }))
       : null;
   const approveBox = (
     <div className="flex flex-wrap items-center gap-3 border border-line-strong bg-panel px-5 py-4">
@@ -182,7 +177,7 @@ export default async function BillPage({ params, searchParams }: Props) {
             id={bill.id}
             vatRegistered={organization.vatRegistered}
             homeCurrency={organization.currency}
-            currencyLock={await lockFor(locale, organization, multiCurrency, t("currencyPlan"))}
+            currencyLock={await lockFor(locale, multiCurrency, t("currencyPlan"))}
             accounts={chart
               .filter((a) => a.active && (a.type === "expense" || a.type === "asset") && !a.role)
               .map((a) => ({ id: a.id, label: `${a.number} ${accountName(a, locale)}` }))}

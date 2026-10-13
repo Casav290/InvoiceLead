@@ -50,16 +50,15 @@ export default async function RemindersPage({ params, searchParams }: Props) {
   // automatique, les frais et les intérêts restent visibles, grisés, avec la marque Pro.
   const sends = await quotaAccess(db(), organization, "reminders");
   const usedUp = tp("used.reminders", { limit: sends.limit, plan: sends.tier });
-  const sendLock = await lockFor(locale, organization, sends, usedUp);
+  const sendLock = await lockFor(locale, sends, usedUp);
   const settingsLock = await lockFor(
     locale,
-    organization,
     featureAccess(organization, "reminderAuto"),
     t("settings.plan"),
   );
   const levelLock = featureAccess(organization, "reminderLevels").allowed
     ? null
-    : await planLock(locale, organization, "pro", t("levelPlan"));
+    : await planLock(locale, "pro", t("levelPlan"));
   const sendable = rows.filter((r) => !r.locked);
   const settingsForm = (
     <form action={saveReminderSettingsAction} className="grid gap-4 p-5 sm:grid-cols-2">

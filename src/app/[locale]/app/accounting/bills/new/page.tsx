@@ -32,12 +32,7 @@ export default async function NewBillPage({ params }: Props) {
         vatRegistered={organization.vatRegistered}
         homeCurrency={organization.currency}
         currencyLock={
-          await lockFor(
-            locale,
-            organization,
-            featureAccess(organization, "multiCurrency"),
-            t("currencyPlan"),
-          )
+          await lockFor(locale, featureAccess(organization, "multiCurrency"), t("currencyPlan"))
         }
         accounts={chart
           .filter((a) => a.active && (a.type === "expense" || a.type === "asset") && !a.role)

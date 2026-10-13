@@ -137,19 +137,9 @@ export default async function VatPage({ params, searchParams }: Props) {
   // marque Pro. Un décompte déjà validé (en Pro) reste lisible en entier.
   const access = featureAccess(organization, "vatReturn");
   const masked = !access.allowed && !validated;
-  const reviewLock = await lockFor(
-    locale,
-    organization,
-    access,
-    await lockedReason(locale, access.upgradeTo),
-  );
-  const validateLock = await lockFor(locale, organization, access, t("validatePlan"));
-  const figuresLock = await lockFor(
-    locale,
-    organization,
-    access,
-    t(usa ? "figuresPlanUs" : "figuresPlan"),
-  );
+  const reviewLock = await lockFor(locale, access, await lockedReason(locale, access.upgradeTo));
+  const validateLock = await lockFor(locale, access, t("validatePlan"));
+  const figuresLock = await lockFor(locale, access, t(usa ? "figuresPlanUs" : "figuresPlan"));
   // Montant réservé à Pro : un trait gris à sa place, et la raison pour les lecteurs d'écran (le
   // texte masqué reste dans le tableau qui défile : `relative`, sinon il élargit la page à 320 px).
   const hiddenAmount = (
@@ -207,7 +197,7 @@ export default async function VatPage({ params, searchParams }: Props) {
         <PlanNotice
           locale={locale}
           message={t(usa ? "planOnlyUs" : "planOnly")}
-          href={upgradeUrl(organization)}
+          href={upgradeUrl(locale, "pro")}
           tier="pro"
         />
       )}

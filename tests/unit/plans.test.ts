@@ -62,20 +62,36 @@ describe("formules", () => {
     expect(tierOf({ leadPlan: "pro", entitlements: null })).toBe("pro");
     expect(poweredBy(FREE)).toBe(true);
     expect(poweredBy(PRO)).toBe(false);
+    // « Passer à Pro » mène à la page Formule d'InvoiceLead, jamais à une autre application.
+    expect(upgradeUrl("fr")).toBe("/fr/app/settings/plan");
+    expect(upgradeUrl("de", "pro")).toBe("/de/app/settings/plan?plan=pro");
+    expect(upgradeUrl("en", "proplus")).toBe("/en/app/settings/plan?plan=pro_plus");
+  });
+
+  it("valent dans InvoiceLead seulement : la formule d'InvoiceLead et l'abonnement payé ici", () => {
+    const now = Date.parse("2026-10-13T12:00:00Z");
+    const later = new Date(now + 86_400_000);
+    const past = new Date(now - 1000);
+    // Abonnement InvoiceLead payé ici : vaut tout de suite, même si le Compte Lead dit Gratuit.
+    const paid = { ...FREE, billingPlan: "pro", billingPlanUntil: later };
+    expect(tierOf(paid, now)).toBe("pro");
+    expect(tierOf({ ...FREE, billingPlan: "pro_plus", billingPlanUntil: later }, now)).toBe(
+      "proplus",
+    );
+    const tomorrow = new Date(Date.now() + 86_400_000);
+    expect(seatsOf({ ...FREE, billingPlan: "pro_plus", billingPlanUntil: tomorrow })).toBe(5);
+    // Échu (fin de période plus la grâce passée) : plus rien.
+    expect(tierOf({ ...FREE, billingPlan: "pro", billingPlanUntil: past }, now)).toBe("free");
+    // Valeur inconnue : rien.
+    expect(tierOf({ ...FREE, billingPlan: "team", billingPlanUntil: later }, now)).toBe("free");
+    // La meilleure des deux : Pro+ du Compte Lead (héritage) l'emporte sur Pro payé ici.
+    expect(tierOf({ ...PLUS, billingPlan: "pro", billingPlanUntil: later }, now)).toBe("proplus");
+    // Formule du Compte Lead trop ancienne (72 h sans nouvelle) : l'abonnement payé ici tient.
+    const stale = new Date(now - 100 * 3_600_000);
+    expect(tierOf({ ...PLUS, entitlementsAt: stale }, now)).toBe("free");
     expect(
-      upgradeUrl({
-        leadPlan: "free",
-        entitlements: {
-          apps: { invoicelead: { upgrade_url: "https://scanlead.io/billing?app=invoicelead" } },
-        },
-      }),
-    ).toBe("https://scanlead.io/billing?app=invoicelead");
-    expect(
-      upgradeUrl({
-        leadPlan: "free",
-        entitlements: { apps: { invoicelead: { upgrade_url: "javascript:alert(1)" } } },
-      }),
-    ).toBe("https://scanlead.io/billing");
+      tierOf({ ...PLUS, entitlementsAt: stale, billingPlan: "pro", billingPlanUntil: later }, now),
+    ).toBe("pro");
   });
 
   it("lisent le code de la formule d'ERPlead, le rang (0, 10, 20) n'étant qu'un repli", () => {

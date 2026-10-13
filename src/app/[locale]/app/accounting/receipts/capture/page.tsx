@@ -40,7 +40,7 @@ export default async function CapturePage({ params, searchParams }: Props) {
   const tp = await getTranslations({ locale, namespace: "app.plan" });
   const reads = await quotaAccess(db(), organization, "aiReads");
   const usedUp = tp("used.aiReads", { limit: reads.limit, plan: reads.tier });
-  const lock = aiConfigured() ? await lockFor(locale, organization, reads, usedUp) : null;
+  const lock = aiConfigured() ? await lockFor(locale, reads, usedUp) : null;
 
   return (
     <div className="mx-auto max-w-md px-4 py-8">

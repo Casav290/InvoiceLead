@@ -2,7 +2,7 @@
 
 _This English version is provided for convenience. In case of discrepancy, the German version prevails._
 
-Version of 30 September 2026.
+Version of 13 October 2026.
 
 ## 1. Controller
 
@@ -20,7 +20,11 @@ This policy applies under the Swiss Federal Act on Data Protection (FADP) and, f
 
 ### 3.1 Account
 
-InvoiceLead does not manage passwords. Sign-in takes place through the Lead Account, the identity service shared by the Lead applications and operated by Quantum Liquid LLC (crmlead.io). InvoiceLead receives and stores: the Lead Account identifier, email address, name, language, organisation and role, the subscribed plan and the associated entitlements.
+InvoiceLead does not manage passwords. Sign-in takes place through the Lead Account, the identity service shared by the Lead applications and operated by Quantum Liquid LLC (erplead.io). InvoiceLead receives and stores: the Lead Account identifier, email address, name, language, organisation and role, the InvoiceLead plan and the associated entitlements.
+
+### 3.1a Subscription
+
+For an InvoiceLead subscription (Pro, Pro+), payment goes through Stripe. Stripe receives the organisation's name, the email address of the administrator who subscribes, the billing address, any VAT number and the card details, entered at Stripe. InvoiceLead stores the Stripe customer and subscription identifiers, the plan, the period, the status and the end date, and reports them to the Lead Account. InvoiceLead stores no card data.
 
 ### 3.2 Business Data
 
@@ -53,6 +57,7 @@ As at the date of this version, InvoiceLead uses no audience measurement tools a
 |---|---|---|
 | Vercel Inc. | Application hosting | United States (Cleveland, Ohio) |
 | Neon (Databricks, Inc.) | Database | United States (AWS us-east-2, Ohio) |
+| Stripe, Inc. | Collection of InvoiceLead subscription payments | United States |
 
 Any change to this list is announced at least 30 days in advance.
 

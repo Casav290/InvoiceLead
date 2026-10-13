@@ -10,6 +10,7 @@ const ITEMS = [
   { href: "/app/settings/accounts", key: "accounts" },
   { href: "/app/settings/fiscal-years", key: "fiscalYears" },
   { href: "/app/settings/team", key: "team" },
+  { href: "/app/settings/plan", key: "plan" },
   { href: "/app/settings/payments", key: "payments" },
   { href: "/app/settings/projectlead", key: "projectlead" },
   { href: "/app/settings/api", key: "api" },
@@ -18,8 +19,9 @@ const ITEMS = [
 export type SettingsMarks = Partial<Record<(typeof ITEMS)[number]["key"], "pro" | "proplus">>;
 
 /**
- * Onglets des réglages : entreprise, plan comptable, exercices, équipe, paiements, ProjectLead (toutes
- * formules), API. Un onglet marqué (fonction réservée) reste un lien, grisé, avec sa marque.
+ * Onglets des réglages : entreprise, plan comptable, exercices, équipe, formule (abonnement
+ * InvoiceLead), paiements, ProjectLead (toutes formules), API. Un onglet marqué (fonction réservée)
+ * reste un lien, grisé, avec sa marque.
  */
 export function SettingsTabs({ marks }: { marks: SettingsMarks }) {
   const t = useTranslations("app.settingsNav");

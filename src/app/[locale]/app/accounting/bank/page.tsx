@@ -69,7 +69,6 @@ export default async function BankPage({ params, searchParams }: Props) {
   const imports = await quotaAccess(db(), organization, "bankImports");
   const importLock = await lockFor(
     locale,
-    organization,
     imports,
     tp("used.bankImports", { limit: imports.limit, plan: imports.tier }),
   );

@@ -4,7 +4,7 @@ import type { Db } from "./db";
 import { organizations } from "./db/schema";
 import { env } from "./env";
 import { appToken, type LeadEntitlements } from "./lead-id/leadId";
-import { PLAN_FRESH_MS, planAge } from "./plans";
+import { PLAN_FRESH_MS, planAge, planColumns } from "./plans";
 
 /**
  * La formule d'une entreprise n'est écrite qu'à la connexion web. Une entreprise qui n'utilise plus
@@ -96,9 +96,7 @@ export async function refreshStalePlans(
     .select({
       id: organizations.id,
       leadOrg: organizations.leadOrg,
-      leadPlan: organizations.leadPlan,
-      entitlements: organizations.entitlements,
-      entitlementsAt: organizations.entitlementsAt,
+      ...planColumns,
     })
     .from(organizations)
     .where(

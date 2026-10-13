@@ -1,6 +1,6 @@
 # Datenschutzerklärung InvoiceLead
 
-Fassung vom 30. September 2026.
+Fassung vom 13. Oktober 2026.
 
 ## 1. Verantwortliche Stelle
 
@@ -18,7 +18,11 @@ Diese Erklärung gilt nach dem schweizerischen Bundesgesetz über den Datenschut
 
 ### 3.1 Konto
 
-InvoiceLead verwaltet keine Passwörter. Die Anmeldung erfolgt über das Lead-Konto, den gemeinsamen Identitätsdienst der Lead-Anwendungen, betrieben von der Quantum Liquid LLC (crmlead.io). InvoiceLead erhält und speichert: die Kennung des Lead-Kontos, E-Mail-Adresse, Name, Sprache, Organisation und Rolle, das gewählte Abo und die zugehörigen Rechte.
+InvoiceLead verwaltet keine Passwörter. Die Anmeldung erfolgt über das Lead-Konto, den gemeinsamen Identitätsdienst der Lead-Anwendungen, betrieben von der Quantum Liquid LLC (erplead.io). InvoiceLead erhält und speichert: die Kennung des Lead-Kontos, E-Mail-Adresse, Name, Sprache, Organisation und Rolle, das InvoiceLead-Abo und die zugehörigen Rechte.
+
+### 3.1a Abo
+
+Für ein InvoiceLead-Abo (Pro, Pro+) läuft die Zahlung über Stripe. Stripe erhält den Namen der Organisation, die E-Mail-Adresse der abschliessenden Administratorin oder des abschliessenden Administrators, die Rechnungsadresse, eine allfällige MWST-Nummer und die Kartendaten, die bei Stripe eingegeben werden. InvoiceLead speichert die Stripe-Kennungen von Kunde und Abo, das Abo, die Periode, den Status und das Enddatum und meldet sie dem Lead-Konto. InvoiceLead speichert keine Kartendaten.
 
 ### 3.2 Geschäftsdaten
 
@@ -51,6 +55,7 @@ InvoiceLead setzt zum Zeitpunkt dieser Fassung weder Reichweitenmessung noch Wer
 |---|---|---|
 | Vercel Inc. | Hosting der Anwendung | USA (Cleveland, Ohio) |
 | Neon (Databricks, Inc.) | Datenbank | USA (AWS us-east-2, Ohio) |
+| Stripe, Inc. | Zahlung der InvoiceLead-Abos | USA |
 
 Änderungen dieser Liste werden mindestens 30 Tage im Voraus angekündigt.
 

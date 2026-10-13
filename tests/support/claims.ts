@@ -20,7 +20,7 @@ export function claims(overrides: Partial<LeadClaims> & { access?: boolean } = {
           name: "InvoiceLead",
           url: null,
           status: "live",
-          upgrade_url: "https://scanlead.io/billing",
+          upgrade_url: null,
         },
         crmlead: {
           access: true,

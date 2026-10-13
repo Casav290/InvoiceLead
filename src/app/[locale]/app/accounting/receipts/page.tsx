@@ -48,7 +48,7 @@ export default async function ReceiptsPage({ params, searchParams }: Props) {
   // restent visibles mais grisés.
   const reads = await quotaAccess(db(), organization, "aiReads");
   const usedUp = tp("used.aiReads", { limit: reads.limit, plan: reads.tier });
-  const readLock = aiConfigured() ? await lockFor(locale, organization, reads, usedUp) : null;
+  const readLock = aiConfigured() ? await lockFor(locale, reads, usedUp) : null;
   const uploadForm = (
     <form
       action={uploadReceiptsAction}

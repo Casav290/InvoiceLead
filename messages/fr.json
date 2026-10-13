@@ -296,7 +296,7 @@
     },
     "family": {
       "title": "Un compte ERPlead pour toute la famille Lead.",
-      "body": "Connectez-vous avec Google, Apple ou votre adresse e-mail. Le même compte ouvre Scanlead, CRMlead, ProjectLead et Greetlead, et les applications se passent le relais.",
+      "body": "Connectez-vous avec Google, Apple ou votre adresse e-mail. Le même compte ouvre Scanlead, CRMlead, ProjectLead et Greetlead, et les applications se passent le relais. Chaque application a son propre abonnement.",
       "here": "Vous êtes ici",
       "apps": {
         "scanlead": "Capte les contacts des salons",
@@ -321,7 +321,7 @@
     "loginTitle": "Connexion à InvoiceLead",
     "loginSubtitle": "InvoiceLead utilise votre Compte Lead, le même que pour Scanlead et CRMlead.",
     "signupTitle": "Créer votre compte",
-    "signupSubtitle": "Le Compte Lead vous ouvre InvoiceLead et toutes les applications de la famille. L'écran suivant propose « Créer un compte ».",
+    "signupSubtitle": "Le Compte Lead vous ouvre InvoiceLead et toutes les applications de la famille, en version gratuite. L'écran suivant propose « Créer un compte ».",
     "leadButton": "Se connecter avec mon compte Lead",
     "noAccountYet": "Pas encore de compte ? Le même bouton permet d'en créer un.",
     "errors": {
@@ -402,19 +402,22 @@
       "expired": "expirée le {date}"
     },
     "noAccess": {
-      "title": "Votre formule n'inclut pas InvoiceLead",
-      "body": "Votre organisation {org} n'a pas encore accès à InvoiceLead. Passez à une formule qui l'inclut pour continuer.",
-      "upgrade": "Changer de formule",
+      "title": "Votre Compte Lead n'a pas accès à InvoiceLead",
+      "body": "InvoiceLead n'est pas ouvert à votre organisation {org} pour l'instant.",
       "logout": "Se déconnecter",
       "blockedTitle": "Accès à InvoiceLead retiré",
       "blockedBody": "Un responsable de {org} a retiré votre accès à InvoiceLead. Demandez-lui de le rétablir dans les réglages de l'équipe.",
-      "seatTitle": "Toutes les places sont prises",
-      "seatBody": "La formule de {org} compte {seats, plural, one {# utilisateur} other {# utilisateurs}}, déjà tous occupés. Un responsable peut passer à une formule supérieure ou libérer une place.",
+      "seatTitle": "Toutes les places InvoiceLead sont prises",
+      "seatBody": "{seats, plural, one {La seule place} other {Les # places}} InvoiceLead de {org} {seats, plural, one {est déjà prise} other {sont déjà prises}}. Passez à Pro+ (5 places) dans InvoiceLead, ou libérez une place dans les réglages de l'équipe.",
       "fiduciaryTitle": "Accès fiduciaire suspendu",
       "fiduciaryBody": "{org} est en formule gratuite. L'accès fiduciaire fait partie de la formule Pro : il revient dès que {org} repasse à Pro.",
       "otherOrgs": "Travailler dans une autre entreprise",
       "betaTitle": "InvoiceLead est en bêta privée",
-      "betaBody": "{org} n'est pas encore sur la liste de la bêta. Nous ouvrons les accès par petits groupes ; écrivez-nous à hello@invoicelead.io pour y figurer."
+      "betaBody": "{org} n'est pas encore sur la liste de la bêta. Nous ouvrons les accès par petits groupes ; écrivez-nous à hello@invoicelead.io pour y figurer.",
+      "seatAsk": "Demandez à l'administrateur de {org} de passer à Pro+ dans InvoiceLead ou de vous libérer une place.",
+      "upgradeMonthly": "Passer à Pro+ (39 € par mois)",
+      "upgradeYearly": "Pro+ à l'année (390 €)",
+      "manage": "Passer à Pro+ dans le portail"
     },
     "company": {
       "title": "Entreprise",
@@ -722,7 +725,8 @@
       "team": "Équipe",
       "payments": "Paiement en ligne",
       "api": "API",
-      "projectlead": "ProjectLead"
+      "projectlead": "ProjectLead",
+      "plan": "Formule"
     },
     "accounts": {
       "title": "Plan comptable",
@@ -2202,6 +2206,41 @@
       "closing": "Liquidités",
       "later": "Au-delà : encaissements {in}, paiements {out}.",
       "method": "Encaissements : factures ouvertes à la date où chaque client paie d'habitude. Paiements : factures fournisseurs et notes de frais à leur échéance. Ce qui est déjà échu compte dans la semaine en cours."
+    },
+    "billing": {
+      "title": "Formule InvoiceLead",
+      "subtitle": "Votre formule InvoiceLead se prend ici et ne vaut que pour InvoiceLead. Le Compte Lead, lui, est gratuit et ouvre toutes les applications Lead en version gratuite.",
+      "current": "Votre formule : {plan}",
+      "currentBadge": "Votre formule",
+      "interval": "Période de facturation",
+      "monthly": "Mensuel",
+      "yearly": "Annuel (2 mois offerts)",
+      "perYear": "par an",
+      "manage": "Gérer l'abonnement",
+      "manageHint": "Changer de formule ou de période, mettre à jour la carte, télécharger les factures ou résilier : tout se fait dans le portail Stripe d'InvoiceLead.",
+      "adminOnly": "Seul l'administrateur de {org} peut prendre ou changer la formule.",
+      "unavailable": "Le paiement de la formule ouvre bientôt dans InvoiceLead.",
+      "footer": "Prix hors TVA, facturés en euros par Quantum Liquid LLC. Paiement par carte, renouvellement automatique, résiliable à tout moment avec effet à la fin de la période payée. Un abonnement InvoiceLead ne vaut que pour InvoiceLead.",
+      "status": {
+        "free": "Formule gratuite : passez à Pro ou Pro+ ci-dessous quand vous en avez besoin.",
+        "renews": "Abonnement {interval, select, year {annuel} other {mensuel}}, renouvelé le {date}.",
+        "ends": "Abonnement résilié : {plan} jusqu'au {date}, puis Gratuit.",
+        "pastDue": "Le dernier paiement a échoué. Mettez à jour votre carte dans « Gérer l'abonnement » pour garder {plan}.",
+        "inherited": "Jusqu'au {date}, votre abonnement {app} vous donne aussi {plan} dans InvoiceLead. Ensuite, InvoiceLead repasse en Gratuit, sauf si vous prenez une formule ici."
+      },
+      "notices": {
+        "done": "Merci ! Votre formule InvoiceLead {plan} est active.",
+        "pending": "Paiement reçu. Votre formule s'active dans quelques instants : rechargez la page.",
+        "cancel": "Paiement annulé : rien n'a été débité."
+      },
+      "errors": {
+        "admin": "Seul l'administrateur de l'organisation peut prendre ou gérer la formule.",
+        "unavailable": "Le paiement de la formule n'est pas encore ouvert.",
+        "invalid": "Formule inconnue : choisissez Pro ou Pro+.",
+        "already": "Votre abonnement InvoiceLead est déjà actif : changez de formule dans « Gérer l'abonnement ».",
+        "stripe": "Stripe n'a pas répondu. Réessayez dans un instant.",
+        "noCustomer": "Aucun abonnement InvoiceLead à gérer pour l'instant."
+      }
     }
   },
   "footer": {
@@ -2237,8 +2276,8 @@
     }
   },
   "pricing": {
-    "title": "Des tarifs simples, pour toute la famille Lead",
-    "subtitle": "Une seule formule ouvre InvoiceLead, Scanlead et CRMlead. Prix hors TVA.",
+    "title": "Des tarifs simples",
+    "subtitle": "Un abonnement InvoiceLead ne vaut que pour InvoiceLead. Le Compte Lead est gratuit et vous ouvre toutes les applications Lead en version gratuite. Prix hors TVA.",
     "notice": "InvoiceLead ouvre par étapes : les fonctions marquées « Bientôt » arrivent dans les prochaines versions. L'inscription est gratuite.",
     "monthly": "par mois",
     "yearly": "ou {price} par an (2 mois offerts)",
@@ -2295,7 +2334,7 @@
         ]
       }
     },
-    "footer": "Facturé en euros par la famille Lead (Quantum Liquid LLC). Résiliable à tout moment."
+    "footer": "Facturé en euros par Quantum Liquid LLC. Résiliable à tout moment."
   },
   "faq": {
     "title": "Questions fréquentes",
@@ -2314,7 +2353,7 @@
       },
       {
         "q": "Qu'est-ce que le Compte Lead ?",
-        "a": "Le compte unique de la famille Lead : le même identifiant pour InvoiceLead, Scanlead et CRMlead, et une formule payée dans une application ouvre les autres."
+        "a": "Le compte unique de la famille Lead : le même identifiant pour InvoiceLead, Scanlead, CRMlead, ProjectLead et Greetlead. Chaque application a sa propre formule : un abonnement ne vaut que pour l'application où il est pris."
       },
       {
         "q": "Ma fiduciaire peut-elle accéder à ma comptabilité ?",

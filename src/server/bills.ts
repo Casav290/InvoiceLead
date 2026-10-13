@@ -23,7 +23,7 @@ import {
 } from "./db/schema";
 import { fetchFxRate } from "./fx";
 import { appendEntry, LedgerError, type Posting, roleAccounts } from "./ledger";
-import { featureAccess, organizationPlan, quotaAccess } from "./plans";
+import { featureAccess, organizationPlan, planColumns, quotaAccess } from "./plans";
 import { extractReceipt, uploadReceipt } from "./receipts";
 
 type Who = { organizationId: string; userId: string };
@@ -510,9 +510,7 @@ export async function approveBill(
     .select({
       dualApproval: organizations.dualApproval,
       currency: organizations.currency,
-      leadPlan: organizations.leadPlan,
-      entitlements: organizations.entitlements,
-      entitlementsAt: organizations.entitlementsAt,
+      ...planColumns,
     })
     .from(organizations)
     .where(eq(organizations.id, who.organizationId));

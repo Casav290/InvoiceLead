@@ -1,6 +1,6 @@
 # Politique de confidentialité InvoiceLead
 
-Version du 30 septembre 2026.
+Version du 13 octobre 2026.
 
 ## 1. Responsable du traitement
 
@@ -18,7 +18,11 @@ La présente politique s'applique au regard de la loi fédérale suisse sur la p
 
 ### 3.1 Compte
 
-InvoiceLead ne gère pas de mot de passe. La connexion passe par le Compte Lead, service d'identité commun aux applications Lead exploité par Quantum Liquid LLC (crmlead.io). InvoiceLead reçoit et conserve : l'identifiant du Compte Lead, l'adresse électronique, le nom, la langue, l'organisation et le rôle, la formule souscrite et les droits associés.
+InvoiceLead ne gère pas de mot de passe. La connexion passe par le Compte Lead, service d'identité commun aux applications Lead exploité par Quantum Liquid LLC (erplead.io). InvoiceLead reçoit et conserve : l'identifiant du Compte Lead, l'adresse électronique, le nom, la langue, l'organisation et le rôle, la formule InvoiceLead et les droits associés.
+
+### 3.1a Abonnement
+
+Pour un abonnement InvoiceLead (Pro, Pro+), le paiement passe par Stripe. Stripe reçoit le nom de l'organisation, l'adresse électronique de l'administrateur qui souscrit, l'adresse de facturation, le numéro de TVA éventuel et les données de carte, saisies chez Stripe. InvoiceLead conserve les identifiants Stripe du client et de l'abonnement, la formule, la période, le statut et la date de fin, et les déclare au Compte Lead. Aucune donnée de carte n'est conservée par InvoiceLead.
 
 ### 3.2 Données métier
 
@@ -51,6 +55,7 @@ InvoiceLead n'utilise pas d'outil de mesure d'audience ni de cookie publicitaire
 |---|---|---|
 | Vercel Inc. | Hébergement de l'application | États-Unis (Cleveland, Ohio) |
 | Neon (Databricks, Inc.) | Base de données | États-Unis (AWS us-east-2, Ohio) |
+| Stripe, Inc. | Encaissement des abonnements InvoiceLead | États-Unis |
 
 Toute modification de cette liste est annoncée au moins 30 jours à l'avance.
 

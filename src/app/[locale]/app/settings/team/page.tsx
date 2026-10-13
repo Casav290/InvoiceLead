@@ -41,7 +41,7 @@ export default async function TeamPage({ params, searchParams }: Props) {
   // Accès fiduciaire : formule Pro ; en dessous, l'invitation reste visible, grisée, et l'accès
   // d'une fiduciaire déjà invitée est suspendu (rendu au retour à Pro).
   const fiduciaryAccess = featureAccess(organization, "fiduciary");
-  const fiduciaryLock = await lockFor(locale, organization, fiduciaryAccess, t("planOnly"));
+  const fiduciaryLock = await lockFor(locale, fiduciaryAccess, t("planOnly"));
   // Places : la première formule supérieure qui en donne davantage (Pro+ depuis Gratuit, Pro
   // n'ayant qu'une place) ; marque et lien à côté du compteur.
   const tier = tierOf(organization);
@@ -49,7 +49,6 @@ export default async function TeamPage({ params, searchParams }: Props) {
   const seatsLock = nextTier
     ? await planLock(
         locale,
-        organization,
         nextTier,
         t("moreSeats", {
           tier: nextTier,

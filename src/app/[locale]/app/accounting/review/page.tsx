@@ -73,7 +73,6 @@ export default async function ReviewPage({ params, searchParams }: Props) {
   // Le pilote est ouvert à toutes les formules ; son récapitulatif du lundi fait partie de Pro.
   const digestLock = await lockFor(
     locale,
-    organization,
     featureAccess(organization, "autopilotDigest"),
     t("digestPlan"),
   );
