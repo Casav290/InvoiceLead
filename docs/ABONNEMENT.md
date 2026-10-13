@@ -43,6 +43,20 @@ Le compte Stripe live (« scanlead.io ») est celui de toutes les applications L
 
 Sans clé ni les 4 prix, la page Formule dit « bientôt » et le webhook répond 503 (Stripe réessaie pendant 3 jours).
 
+## En production (depuis le 13.10.2026)
+
+Code `1f8f145` poussé sur `main` à 10:24 UTC (migration 0042), variables posées en Production et redéploiement `dpl_2jBfvTxxKiikaefUeye2Qp3kfHU9` à 10:28 UTC. `STRIPE_BILLING_SECRET_KEY` est la clé secrète du compte (pas de clé restreinte, choix d'Ève). `STRIPE_SECRET_KEY` et `STRIPE_WEBHOOK_SECRET` (Connect) n'ont pas été touchées. Objets Stripe live (compte `acct_1TRVTg…`, posés par `crmlead-vercel/scripts/stripe-setup.mjs --app invoicelead --live`) :
+
+| Objet | Identifiant |
+|---|---|
+| Produits | `invoicelead_pro`, `invoicelead_pro_plus` (metadata `app=invoicelead`) |
+| Pro 19 €/mois, 190 €/an | `price_1UQ2s3EXSpi2MsjnPQ2L3fc8`, `price_1UQ2s3EXSpi2MsjnfQQ7PIxl` |
+| Pro+ 39 €/mois, 390 €/an | `price_1UQ2s4EXSpi2MsjnDFP7W14M`, `price_1UQ2s4EXSpi2MsjnrtXMypGo` |
+| Portail | `bpc_1UQ2s4EXSpi2MsjnqJrumo3R` (sans quantité, retour `https://invoicelead.io/app/settings/plan`) |
+| Endpoint | `we_1UQ2viEXSpi2MsjnPs7nibI1`, `https://invoicelead.io/api/billing/webhook`, 5 événements |
+
+Preuves en production le 13.10.2026 (banc `~/projets/lead-e2e`) : `STRIPE_LIVE_OK`, `BILLING_PROD_OK` (tarifs publics 19 et 39 €, webhook configuré), parcours au navigateur d'un compte qui n'a qu'un abonnement ProjectLead : « Votre formule : Gratuit » et « Passer à Pro » sur la page Formule d'InvoiceLead. Aucun achat réel.
+
 ## Mise en place des objets Stripe
 
 `scripts/stripe-billing-setup.mjs` (idempotent ; refuse une clé live sans `--live`) crée les produits `invoicelead_pro` et `invoicelead_pro_plus`, les 4 prix (EUR, `tax_behavior=exclusive`), la configuration de portail (4 prix, prorata, **sans quantité**, résiliation en fin de période) et, avec `--webhook`, l'endpoint aux 5 événements (`checkout.session.completed`, `customer.subscription.created/updated/deleted`, `invoice.payment_failed`). Le secret de l'endpoint n'est jamais affiché : il est écrit dans `--secret-file` (mode 600), à poser tel quel dans Vercel. Le script commun de CRMlead (`scripts/stripe-setup.mjs --app invoicelead`) suit les mêmes conventions ; vérifier dans ce cas que le portail n'autorise pas la quantité.
@@ -55,4 +69,4 @@ Sans clé ni les 4 prix, la page Formule dit « bientôt » et le webhook répon
 
 ## Retour arrière
 
-Retirer les variables `STRIPE_BILLING_*` : la page Formule se dit « bientôt », le webhook répond 503, les abonnements déjà vendus restent dans Stripe et en base (et valent jusqu'à `billing_plan_until`). La migration 0042 est additive. Les objets Stripe ne se suppriment pas : les désactiver (prix `active=false`, endpoint désactivé).
+Retirer les variables `STRIPE_BILLING_*` : la page Formule se dit « bientôt », le webhook répond 503, les abonnements déjà vendus restent dans Stripe et en base (et valent jusqu'à `billing_plan_until`). La migration 0042 est additive. Code d'avant : `57730b1` (déploiement `dpl_ChJvKmgiaKDob4iWSuSLxagyqz61`), ou `2611481` (formule lue par son code, sans l'abonnement). Les objets Stripe ne se suppriment pas : les désactiver (prix `active=false`, endpoint désactivé).
