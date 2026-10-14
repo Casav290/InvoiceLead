@@ -6,10 +6,27 @@ import type { LeadClaims } from "../lead-id/leadId";
 export const APP_CODE = "invoicelead";
 const LOCALES = ["de", "fr", "en"] as const;
 
-/** Langue du Compte Lead (« fr-CH » → « fr ») ; absente ou inconnue (« it », « es ») : le français. */
-export function appLocale(locale: string | undefined): string {
+/** Langue du Compte Lead que connaît InvoiceLead (« fr-CH » → « fr »), ou undefined (« it », « es »). */
+function knownLocale(locale: string | undefined): string | undefined {
   const short = (locale ?? "").slice(0, 2).toLowerCase();
-  return (LOCALES as readonly string[]).includes(short) ? short : "fr";
+  return (LOCALES as readonly string[]).includes(short) ? short : undefined;
+}
+
+/**
+ * Langue d'arrivée de la personne (users.locale) : celle du Compte Lead ; absente ou inconnue
+ * (« it », « es ») : le français, repli commun de la famille Lead.
+ */
+export function appLocale(locale: string | undefined): string {
+  return knownLocale(locale) ?? "fr";
+}
+
+/**
+ * Langue par défaut des documents d'une nouvelle entreprise (organizations.default_locale : factures
+ * et devis de l'API et du serveur MCP, nouveaux contacts) : celle du Compte Lead ; absente ou inconnue,
+ * l'allemand comme avant (valeur par défaut du schéma). Le repli français d'appLocale ne la touche pas.
+ */
+function documentLocale(locale: string | undefined): string {
+  return knownLocale(locale) ?? "de";
 }
 
 /**
@@ -71,7 +88,7 @@ export async function attachLeadIdentity(database: Db, claims: LeadClaims) {
     };
     const [org] = await tx
       .insert(organizations)
-      .values({ ...orgValues, leadOrg: claims.org, defaultLocale: locale })
+      .values({ ...orgValues, leadOrg: claims.org, defaultLocale: documentLocale(claims.locale) })
       .onConflictDoUpdate({ target: organizations.leadOrg, set: orgValues })
       .returning();
     if (!org) throw new Error("lead_id:org_not_saved");

@@ -54,7 +54,8 @@ export default function proxy(request: NextRequest) {
   }
   // Adresses d'entrée (racine tapée, /login sans langue) : connectée au Compte Lead, la personne
   // arrive tout droit dans l'espace de son entreprise ; sinon un seul essai silencieux, puis la page
-  // publique (lead-entry.ts). Jamais mis en cache : la réponse dépend des cookies.
+  // publique (lead-entry.ts). Un préchargement du navigateur reçoit 204 sans contenu. Jamais mis en
+  // cache : la réponse dépend des cookies.
   const entry = entryRedirect({
     method: request.method,
     pathname: decodedPath(request.nextUrl.pathname),
@@ -63,7 +64,10 @@ export default function proxy(request: NextRequest) {
     hasCookie: (name) => request.cookies.has(name),
   });
   if (entry) {
-    const response = NextResponse.redirect(new URL(entry.location, request.url), entry.status);
+    const response =
+      entry.status === 204
+        ? new NextResponse(null, { status: 204 })
+        : NextResponse.redirect(new URL(entry.location, request.url), entry.status);
     response.headers.set("Cache-Control", "no-store");
     response.headers.set("Vary", "Cookie");
     return response;

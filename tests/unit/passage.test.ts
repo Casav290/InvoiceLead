@@ -161,6 +161,50 @@ describe("racine tapée avec une session InvoiceLead : l'accueil de l'espace", (
     // /fr/login reste la page de connexion, qui part avec sa langue (login/page.tsx).
     expect(where(await proxy("/fr/login"))).not.toContain("/auth/lead/start");
   });
+
+  it("préchargement du navigateur (adresse tapée dans Chrome) : 204 sans cache, jamais la page publique", async () => {
+    const token = await openSession("fr");
+    const prerender = { ...NAVIGATE, "sec-purpose": "prefetch;prerender" };
+    const cases: [string, Parameters<typeof request>[1]][] = [
+      // Session InvoiceLead ouverte : la page publique préchargée serait montrée à l'appui sur Entrée.
+      ["/fr", { headers: prerender, cookies: { il_session: token } }],
+      ["/", { headers: prerender, cookies: { il_session: token } }],
+      [
+        "/",
+        { headers: { ...NAVIGATE, "sec-purpose": "prefetch" }, cookies: { il_session: token } },
+      ],
+      // Session de 12 h expirée, Compte Lead peut-être ouvert : l'essai silencieux doit avoir lieu.
+      ["/fr", { headers: prerender }],
+      ["/", { headers: { "user-agent": CHROME, purpose: "prefetch" } }],
+      // /login des lanceurs : jamais l'écran de connexion préchargé.
+      ["/login", { headers: prerender }],
+      ["/login", { headers: prerender, cookies: { il_session: token } }],
+    ];
+    for (const [path, options] of cases) {
+      const response = await proxy(path, options);
+      const label = `${path} ${JSON.stringify(options?.headers)}`;
+      expect(response.status, label).toBe(204);
+      expect(response.headers.get("location"), label).toBeNull();
+      expect(response.headers.get("cache-control"), label).toBe("no-store");
+      expect(response.headers.get("vary"), label).toBe("Cookie");
+      expect(await response.text(), label).toBe("");
+    }
+    // La vraie navigation qui suit applique la règle d'entrée.
+    const real = await proxy("/fr", { cookies: { il_session: token } });
+    expect([real.status, where(real)]).toEqual([
+      307,
+      `${APP}/auth/lead/start?prompt=none&from=%2Ffr&locale=fr`,
+    ]);
+    // Lectures du routeur de Next (lien interne vers l'accueil) : inchangées, Next les sert.
+    for (const header of ["rsc", "next-router-prefetch"]) {
+      const next = await proxy("/fr", {
+        headers: { ...NAVIGATE, [header]: "1" },
+        cookies: { il_session: token },
+      });
+      expect(next.status, header).not.toBe(204);
+      expect(where(next), header).not.toContain("/auth/lead/start");
+    }
+  });
 });
 
 describe("racine tapée sans session : un seul essai silencieux, puis la page publique", () => {
@@ -428,6 +472,35 @@ describe("arrivée dans l'espace", () => {
       cookies: setCookies(login),
     });
     expect(where(back)).toBe(`${APP}/fr/app`);
+  });
+
+  it("langue des documents d'une nouvelle entreprise : celle du Compte Lead, sinon l'allemand comme avant", async () => {
+    // Le repli français ne vaut que pour la langue d'arrivée (users.locale). La langue par défaut
+    // des factures, devis et contacts (organizations.default_locale) garde l'ancienne règle.
+    const { attachLeadIdentity } = await import("@/server/auth/attach");
+    const cases: [string | undefined, string, string][] = [
+      ["it", "fr", "de"],
+      ["es-ES", "fr", "de"],
+      [undefined, "fr", "de"],
+      ["fr-CH", "fr", "fr"],
+      ["en", "en", "en"],
+      ["de-CH", "de", "de"],
+    ];
+    for (const [locale, userLocale, documentLocale] of cases) {
+      const tag = String(locale);
+      const { user, organization } = await attachLeadIdentity(
+        t.database,
+        claims({ locale, sub: `sub-${tag}`, email: `${tag}@atelier.test`, org: `org-${tag}` }),
+      );
+      expect(user.locale, tag).toBe(userLocale);
+      expect(organization.defaultLocale, tag).toBe(documentLocale);
+    }
+    // Une collègue en italien qui arrive ensuite ne change pas la langue des documents.
+    const { organization } = await attachLeadIdentity(
+      t.database,
+      claims({ locale: "it", sub: "sub-collegue", email: "bea@atelier.test", org: "org-fr-CH" }),
+    );
+    expect(organization.defaultLocale).toBe("fr");
   });
 
   it("la langue de l'adresse passe avant celle du Compte Lead, jamais celle du navigateur", async () => {
@@ -698,5 +771,18 @@ describe("garde-fous", () => {
       status: 303,
       location: "/auth/lead/start?prompt=none&from=%2F",
     });
+    // Préchargement du navigateur d'une adresse d'entrée : 204 (Chrome l'abandonne), pas une page.
+    const prefetching = {
+      ...base,
+      method: "GET",
+      header: (name: string) =>
+        name === "sec-purpose"
+          ? "prefetch;prerender"
+          : ((NAVIGATE as Record<string, string>)[name] ?? null),
+    };
+    expect(entryRedirect({ ...prefetching, pathname: "/" })).toEqual({ status: 204 });
+    expect(entryRedirect({ ...prefetching, pathname: "/login" })).toEqual({ status: 204 });
+    expect(entryRedirect({ ...prefetching, pathname: "/fr/pricing" })).toBeNull();
+    expect(entryRedirect({ ...prefetching, pathname: "/fr/app" })).toBeNull();
   });
 });

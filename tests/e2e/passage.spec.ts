@@ -142,6 +142,40 @@ test("robots : la page publique, sans redirection", async ({ page }) => {
   expect(root.headers().location ?? "").not.toContain("/auth/lead/start");
 });
 
+test("préchargement de l'adresse tapée : 204 sans cache, la vraie navigation entre dans l'espace", async ({
+  page,
+  context,
+}) => {
+  // Chrome précharge invoicelead.io quand il devine qu'on va l'ouvrir (Sec-Purpose: prefetch;prerender)
+  // et montrerait cette page à l'appui sur Entrée : jamais la page publique ni l'écran de connexion.
+  const prerender = {
+    "sec-purpose": "prefetch;prerender",
+    "sec-fetch-mode": "navigate",
+    "sec-fetch-dest": "document",
+  };
+  const prefetched = async (path: string) => {
+    const response = await page.request.get(path, { headers: prerender, maxRedirects: 0 });
+    expect(response.status(), path).toBe(204);
+    expect(response.headers()["cache-control"], path).toBe("no-store");
+    expect(await response.text(), path).toBe("");
+  };
+  const who = person("precharge", { locale: "fr" });
+  await login(page, "de", who, "**/de/app");
+  await prefetched("/fr");
+  await prefetched("/");
+  await prefetched("/login");
+  await page.goto("/fr");
+  await page.waitForURL(`${APP}/fr/app`);
+  // Session InvoiceLead expirée, Compte Lead ouvert : le préchargement n'empêche pas l'essai silencieux.
+  await leadSessionOnly(context);
+  await prefetched("/");
+  const before = await silentCount(page);
+  await page.goto("/");
+  await page.waitForURL(`${APP}/fr/app`);
+  await expect(page.locator("[data-lead-org]")).toHaveAttribute("data-lead-org", who.org);
+  expect(await silentCount(page)).toBe(before + 1);
+});
+
 for (const size of [
   { width: 1280, height: 800 },
   { width: 390, height: 844 },

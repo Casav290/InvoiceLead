@@ -88,20 +88,36 @@ export type EntryRequest = {
   hasCookie: (name: string) => boolean;
 };
 
-export type EntryRedirect = { status: 303 | 307; location: string };
+/**
+ * Réponse du proxy à une adresse d'entrée : une redirection, ou 204 sans contenu pour un préchargement
+ * du navigateur (voir browserPrefetch).
+ */
+export type EntryResponse = { status: 303 | 307; location: string } | { status: 204 };
 
 /**
- * Préchargement ou lecture du routeur de Next (en-tête RSC) : jamais suivi d'un départ vers le Compte
- * Lead, qui lancerait une connexion en arrière-plan.
+ * Lecture ou préchargement du routeur de Next (lien interne) : jamais suivi d'un départ vers le Compte
+ * Lead, qui lancerait une connexion en arrière-plan. Next sert la page telle quelle.
  */
-function prefetch(header: EntryRequest["header"]): boolean {
+function nextRouter(header: EntryRequest["header"]): boolean {
   return (
     header("rsc") !== null ||
     header("next-router-prefetch") !== null ||
-    header("x-middleware-prefetch") !== null ||
-    /prefetch|prerender/i.test(`${header("purpose") ?? ""} ${header("sec-purpose") ?? ""}`)
+    header("x-middleware-prefetch") !== null
   );
 }
+
+/**
+ * Préchargement du navigateur (« Sec-Purpose: prefetch;prerender », « Purpose: prefetch ») : Chrome
+ * précharge l'adresse qu'on tape quand il devine qu'on va l'ouvrir, et montre cette page à l'appui sur
+ * Entrée. Une adresse d'entrée n'y répond ni par une page (la page publique ou l'écran de connexion
+ * resteraient affichés à la place de l'espace) ni par un départ vers le Compte Lead : 204 sans
+ * contenu ni cache, que Chrome abandonne ; la vraie navigation applique ensuite la règle d'entrée.
+ */
+function browserPrefetch(header: EntryRequest["header"]): boolean {
+  return /prefetch|prerender/i.test(`${header("purpose") ?? ""} ${header("sec-purpose") ?? ""}`);
+}
+
+const NO_CONTENT = { status: 204 } as const;
 
 /** Vraie navigation de document : la personne ouvre l'adresse (lien, barre d'adresse, favori). */
 function documentNavigation(header: EntryRequest["header"]): boolean {
@@ -109,7 +125,8 @@ function documentNavigation(header: EntryRequest["header"]): boolean {
 }
 
 /**
- * Redirection d'une adresse d'entrée, ou null (le proxy continue comme avant).
+ * Redirection d'une adresse d'entrée (ou 204 pour un préchargement du navigateur), ou null (le proxy
+ * continue comme avant).
  *
  * - Racine avec une session InvoiceLead : départ vers /auth/lead/start, qui vérifie la session et
  *   ouvre l'accueil de l'espace (`/xx/app`, langue de l'adresse ou du Compte Lead). Le départ, et non
@@ -122,12 +139,15 @@ function documentNavigation(header: EntryRequest["header"]): boolean {
  *   publique dans les deux cas.
  * - /login sans langue : départ vers le Compte Lead, sans écran s'il est ouvert ; l'arrivée est dans
  *   la langue du Compte Lead, jamais celle du navigateur.
+ * - Préchargement du navigateur de la racine ou de /login (pas d'un robot) : 204, avec ou sans
+ *   session ; la page publique préchargée serait sinon montrée à la place de l'espace.
  */
-export function entryRedirect(request: EntryRequest): EntryRedirect | null {
+export function entryRedirect(request: EntryRequest): EntryResponse | null {
   const { header } = request;
-  if (request.method !== "GET" || prefetch(header)) return null;
+  if (request.method !== "GET" || nextRouter(header)) return null;
 
   if (LOGIN.test(request.pathname)) {
+    if (browserPrefetch(header)) return NO_CONTENT;
     // La page demandée (?next) suit ; le départ la vérifie (safeNext).
     const next = new URLSearchParams(request.search).get("next");
     return {
@@ -139,6 +159,7 @@ export function entryRedirect(request: EntryRequest): EntryRedirect | null {
   const home = HOME.exec(request.pathname);
   if (!home) return null;
   if (BOT_UA.test(header("user-agent") ?? "")) return null;
+  if (browserPrefetch(header)) return NO_CONTENT;
   const locale = addressLocale(home[1], request.search);
   const from =
     safeFrom(`${request.pathname}${request.search}`) ?? safeFrom(request.pathname) ?? "/";
