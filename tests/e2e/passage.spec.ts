@@ -1,4 +1,7 @@
-import { type BrowserContext, expect, type Page, test } from "@playwright/test";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { type BrowserContext, chromium, expect, type Page, test } from "@playwright/test";
 import { leadSidsOf } from "./db";
 import { APP, LEAD, login } from "./helpers";
 
@@ -233,29 +236,40 @@ for (const size of [
   });
 }
 
-test("cookies refusés : un seul essai silencieux, puis la page publique, sans boucle", async ({
-  browser,
-}) => {
-  // Un navigateur qui refuse tous les cookies : aucune réponse ne peut en poser.
-  const context = await browser.newContext({ baseURL: APP, locale: "de-CH" });
-  await context.route("**/*", async (route) => {
-    const response = await route.fetch({ maxRedirects: 0 });
-    const headers = { ...response.headers() };
-    delete headers["set-cookie"];
-    await route.fulfill({ response, headers });
+test("cookies refusés : un seul essai silencieux, puis la page publique, sans boucle", async () => {
+  // Un vrai navigateur qui refuse tous les cookies (réglage « bloquer tous les cookies » du profil
+  // Chromium, ici dans un profil jetable) : aucune réponse ne peut en poser, ni InvoiceLead ni le
+  // faux Compte Lead, et chaque navigation garde ses en-têtes Sec-Fetch-*.
+  const profile = mkdtempSync(path.join(tmpdir(), "il-sans-cookies-"));
+  mkdirSync(path.join(profile, "Default"));
+  writeFileSync(
+    path.join(profile, "Default", "Preferences"),
+    JSON.stringify({ profile: { default_content_setting_values: { cookies: 2 } } }),
+  );
+  const context = await chromium.launchPersistentContext(profile, {
+    channel: "chromium",
+    headless: true,
+    baseURL: APP,
+    locale: "de-CH",
   });
-  const page = await context.newPage();
-  const before = await silentCount(page);
-  await page.goto("/");
-  await page.waitForURL(`${APP}/de?lead_probe=1`);
-  await expect(page.locator("header").getByRole("link", { name: "Anmelden" })).toBeVisible();
-  expect(await silentCount(page)).toBe(before + 1);
-  expect(await context.cookies()).toEqual([]);
-  // Recharger, ou retaper la racine marquée : aucun nouvel essai.
-  await page.reload();
-  await expect(page).toHaveURL(`${APP}/de?lead_probe=1`);
-  expect(await silentCount(page)).toBe(before + 1);
-  await context.close();
+  try {
+    const page = await context.newPage();
+    const before = await silentCount(page);
+    await page.goto("/");
+    await page.waitForURL(`${APP}/de?lead_probe=1`);
+    await expect(page.locator("header").getByRole("link", { name: "Anmelden" })).toBeVisible();
+    expect(await silentCount(page)).toBe(before + 1);
+    expect(await context.cookies()).toEqual([]);
+    // Recharger, ou retaper la racine marquée : aucun nouvel essai.
+    await page.reload();
+    await expect(page).toHaveURL(`${APP}/de?lead_probe=1`);
+    await page.goto("/?lead_probe=1");
+    await expect(page).toHaveURL(`${APP}/de?lead_probe=1`);
+    expect(await silentCount(page)).toBe(before + 1);
+  } finally {
+    await context.close();
+    rmSync(profile, { recursive: true, force: true });
+  }
 });
 
 test("se déconnecter ferme ce navigateur seulement ; un départ ferme tous les appareils", async ({

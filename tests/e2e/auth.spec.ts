@@ -212,8 +212,11 @@ test("un état falsifié au retour est refusé", async ({ page, context }) => {
   // Départ réel (cookie posé), mais retour avec un autre `state` : une relance, aucune session.
   const start = await page.request.get("/auth/lead/start?locale=de", { maxRedirects: 0 });
   expect(start.status()).toBe(303);
+  // La relance reprend la langue du navigateur (de-CH) : page.request n'envoie pas Accept-Language
+  // de lui-même, on le donne comme le navigateur (sans lui : le français, repli de la famille).
   const back = await page.request.get("/auth/lead/callback?code=abc&state=faux", {
     maxRedirects: 0,
+    headers: { "accept-language": "de-CH,de;q=0.9" },
   });
   expect(back.status()).toBe(303);
   expect(back.headers().location).toBe(`${APP}/auth/lead/start?locale=de&retry=1`);
