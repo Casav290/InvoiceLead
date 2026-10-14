@@ -567,9 +567,9 @@ describe("déconnexion annoncée par ERPlead (route back-channel)", () => {
   const other = generateKeyPairSync("rsa", { modulusLength: 2048 });
   const EVENT = { "http://schemas.openid.net/event/backchannel-logout": {} };
 
-  function logoutToken(claims: Record<string, unknown>, signer = key.privateKey) {
+  function logoutToken(claims: Record<string, unknown>, signer = key.privateKey, kid = KID) {
     const now = Math.floor(Date.now() / 1000);
-    const head = Buffer.from(JSON.stringify({ alg: "RS256", kid: KID })).toString("base64url");
+    const head = Buffer.from(JSON.stringify({ alg: "RS256", kid })).toString("base64url");
     const body = Buffer.from(
       JSON.stringify({ iss: ISS, aud: "invoicelead", iat: now, exp: now + 120, ...claims }),
     ).toString("base64url");
@@ -710,6 +710,68 @@ describe("déconnexion annoncée par ERPlead (route back-channel)", () => {
     );
     expect(unknown.status).toBe(200);
     expect(await who.ada()).toEqual(["aucun", "sid-a", "sid-b"]);
+  });
+
+  const jwksReads = () =>
+    vi.mocked(fetch).mock.calls.filter(([url]) => String(url) === `${ISS}/oauth/jwks`).length;
+  const LOGOUT = { sub: "sub-ada", lead_status: "logout", events: EVENT };
+
+  it("des jetons forgés à clé inventée ne font pas relire les clés d'ERPlead à chaque requête", async () => {
+    const who = await devices();
+    expect((await post(logoutToken({ ...LOGOUT, sid: "sid-b" }))).status).toBe(200);
+    expect(await who.ada()).toEqual(["sid-a"]);
+    const before = jwksReads();
+    // Émetteur et audience attendus (sinon le jeton serait écarté avant la lecture des clés), signature bidon.
+    const forged = (kid: string) =>
+      [
+        Buffer.from(JSON.stringify({ alg: "RS256", kid })).toString("base64url"),
+        Buffer.from(JSON.stringify({ iss: ISS, aud: "invoicelead", ...LOGOUT })).toString(
+          "base64url",
+        ),
+        "c2ln",
+      ].join(".");
+    // En série puis en rafale : au plus une relecture pour l'ensemble.
+    for (let i = 0; i < 10; i++) expect((await post(forged(`forged-${i}`))).status).toBe(400);
+    const burst = await Promise.all(
+      Array.from({ length: 10 }, (_, i) => post(forged(`burst-${i}`))),
+    );
+    expect(burst.map((r) => r.status)).toEqual(Array(10).fill(400));
+    expect(jwksReads() - before).toBeLessThanOrEqual(1);
+    expect(await who.ada()).toEqual(["sid-a"]);
+    // Une vraie notification d'ERPlead passe toujours.
+    expect((await post(logoutToken({ ...LOGOUT, sid: "sid-a" }))).status).toBe(200);
+    expect(await who.ada()).toEqual([]);
+  });
+
+  it("une clé tournée par ERPlead est relue, au plus une fois toutes les 30 secondes", async () => {
+    const ROTATED = "passage-backchannel-rotated";
+    const rotated = { ...other.publicKey.export({ format: "jwk" }), kid: ROTATED };
+    let published: unknown[] = [{ ...key.publicKey.export({ format: "jwk" }), kid: KID }];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) =>
+        url === `${ISS}/oauth/jwks`
+          ? Response.json({ keys: published })
+          : new Response("{}", { status: 404 }),
+      ),
+    );
+    vi.useFakeTimers({ toFake: ["Date"] });
+    try {
+      vi.setSystemTime(Date.now() + 2 * 3_600_000); // cache d'une heure échu : une relecture
+      expect((await post(logoutToken(LOGOUT))).status).toBe(200);
+      expect(jwksReads()).toBe(1);
+      published = [...published, rotated];
+      // Relu il y a 5 s : pas de nouvelle lecture pour une clé inconnue.
+      vi.setSystemTime(Date.now() + 5_000);
+      expect((await post(logoutToken(LOGOUT, other.privateKey, ROTATED))).status).toBe(400);
+      expect(jwksReads()).toBe(1);
+      // 30 s après la dernière lecture : la nouvelle clé est lue et le jeton accepté.
+      vi.setSystemTime(Date.now() + 26_000);
+      expect((await post(logoutToken(LOGOUT, other.privateKey, ROTATED))).status).toBe(200);
+      expect(jwksReads()).toBe(2);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 

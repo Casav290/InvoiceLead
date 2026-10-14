@@ -84,6 +84,86 @@ describe("réception d'un échange pendant la transition", () => {
   });
 });
 
+describe("relecture des clés pour un kid inconnu : au plus une toutes les 30 s, par émetteur", () => {
+  it("une lecture récente des clés de CRMlead ne retarde pas une rotation chez ERPlead", async () => {
+    const erp = "https://erplead.io";
+    const crm = "https://crmlead.io";
+    const rotated = generateKeyPairSync("rsa", { modulusLength: 2048 });
+    const jwk = (iss: Iss) => ({
+      ...keys[iss].publicKey.export({ format: "jwk" }),
+      kid: kidOf(iss),
+    });
+    const published: Record<string, unknown[]> = { [erp]: [jwk(erp)], [crm]: [jwk(crm)] };
+    const reads: string[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) => {
+        const iss = url.replace(/\/oauth\/jwks$/, "");
+        if (!(iss in published)) return new Response("{}", { status: 404 });
+        reads.push(iss);
+        return Response.json({ keys: published[iss] });
+      }),
+    );
+    const withKid = (kid: string, iss: string, signer: typeof rotated.privateKey) => {
+      const h = Buffer.from(JSON.stringify({ alg: "RS256", kid })).toString("base64url");
+      const p = Buffer.from(
+        JSON.stringify({ iss, aud: "invoicelead", exp: Math.floor(Date.now() / 1000) + 300 }),
+      ).toString("base64url");
+      return `${h}.${p}.${sign("sha256", Buffer.from(`${h}.${p}`), signer).toString("base64url")}`;
+    };
+    const exchange = { aud: "invoicelead", scope: "exchange", app: "crmlead" };
+    vi.useFakeTimers({ toFake: ["Date"] });
+    try {
+      vi.setSystemTime(Date.now() + 2 * 3_600_000); // caches d'une heure échus
+      expect(await verifyLeadJwt(jwt(erp, { aud: "invoicelead" }), "invoicelead")).not.toBeNull();
+      expect(reads).toEqual([erp]);
+      published[erp] = [jwk(erp), { ...rotated.publicKey.export({ format: "jwk" }), kid: "erp-2" }];
+      // 31 s plus tard, un envoi signé par CRMlead fait lire ses clés.
+      vi.setSystemTime(Date.now() + 31_000);
+      expect(await incomingSender(`Bearer ${jwt(crm, exchange)}`)).toBe("crmlead");
+      expect(reads).toEqual([erp, crm]);
+      // Une seconde après : la clé tournée d'ERPlead est lue (sa dernière lecture date de 32 s)…
+      vi.setSystemTime(Date.now() + 1_000);
+      const turned = withKid("erp-2", erp, rotated.privateKey);
+      expect(await verifyLeadJwt(turned, "invoicelead")).not.toBeNull();
+      expect(reads).toEqual([erp, crm, erp]);
+      // … mais une clé inconnue annoncée par CRMlead, relu il y a 1 s, ne fait rien relire.
+      const unknown = withKid("crm-inconnue", crm, rotated.privateKey);
+      expect(await incomingSender(`Bearer ${unknown}`)).toBeNull();
+      expect(reads).toEqual([erp, crm, erp]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("en rafale, clés à relire : une seule lecture à la fois, partagée par toutes les requêtes", async () => {
+    const erp = "https://erplead.io";
+    const calls = stubJwks();
+    vi.useFakeTimers({ toFake: ["Date"] });
+    try {
+      vi.setSystemTime(Date.now() + 4 * 3_600_000); // caches d'une heure échus
+      // Émetteur et audience attendus, clé inventée, signature bidon.
+      const forged = (kid: string) =>
+        [
+          Buffer.from(JSON.stringify({ alg: "RS256", kid })).toString("base64url"),
+          Buffer.from(JSON.stringify({ iss: erp, aud: "invoicelead" })).toString("base64url"),
+          "c2ln",
+        ].join(".");
+      const out = await Promise.all([
+        ...Array.from({ length: 10 }, (_, i) =>
+          verifyLeadJwt(forged(`rafale-${i}`), "invoicelead"),
+        ),
+        verifyLeadJwt(jwt(erp, { aud: "invoicelead" }), "invoicelead"),
+      ]);
+      expect(out.slice(0, 10)).toEqual(Array(10).fill(null));
+      expect(out[10]).not.toBeNull();
+      expect(calls.filter((url) => url === `${erp}/oauth/jwks`)).toHaveLength(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
 describe("envoi vers CRMlead pendant la transition", () => {
   it("refusé avec le jeton d'ERPlead : redemande le jeton à CRMlead et renvoie", async () => {
     const auth: string[] = [];

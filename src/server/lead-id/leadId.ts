@@ -4,9 +4,10 @@
  * Un seul fichier, aucune dépendance : Node 18 ou plus (fetch et crypto intégrés). À copier tel
  * quel dans le serveur de l'application (ex. `server/leadId.ts`). Mode d'emploi : LEAD-ID.md.
  *
- * Copie conforme de CRMlead `docs/lead-id-kit/leadId.ts` au 30.09.2026. Ne pas modifier ici :
- * corriger dans CRMlead puis recopier. Seul ajout : `@ts-nocheck` ci-dessous, parce que ce dépôt
- * compile avec `noUncheckedIndexedAccess`, plus strict que CRMlead.
+ * Copie de CRMlead `docs/lead-id-kit/leadId.ts` au 30.09.2026. Ajouts propres à InvoiceLead depuis :
+ * `@ts-nocheck` ci-dessous (ce dépôt compile avec `noUncheckedIndexedAccess`, plus strict que CRMlead),
+ * émetteurs de transition (crmlead.io) en réception, `sid` de la session du Compte Lead, et relecture
+ * des clés pour un `kid` inconnu limitée à une toutes les 30 s (comme ScanLead `server/leadId.ts`).
  *
  * Variables d'environnement attendues :
  *   LEAD_ID_ISSUER         https://erplead.io
@@ -62,17 +63,40 @@ export type Tokens = { access_token: string; id_token: string; refresh_token?: s
 const LEGACY_EXCHANGE_ISSUERS = ['https://crmlead.io']
 
 const jwksCache = new Map<string, { at: number; keys: any[] }>()
-async function publicKey(kid: string, iss: string = issuer()) {
-  const fresh = async () => {
-    const r = await fetch(`${iss}/oauth/jwks`)
-    if (!r.ok) throw new Error(`jwks ${r.status}`)
-    jwksCache.set(iss, { at: Date.now(), keys: (await r.json()).keys })
+// Relecture pour une clé inconnue : au plus une toutes les 30 s par émetteur (même règle que ScanLead, 14.10.2026).
+// La route back-channel et la boîte de réception des échanges sont publiques : sans ce délai, chaque jeton forgé avec
+// un `kid` inventé ferait un appel à ERPlead (amplificateur 1 pour 1). Une vraie rotation de clé est prise en compte
+// dans les 30 s. Les requêtes simultanées partagent la même lecture. Par émetteur : une lecture récente des clés de
+// CRMlead (transition) ne retarde pas la prise en compte d'une rotation chez ERPlead. Les émetteurs sont filtrés
+// avant d'arriver ici (liste fixe), ces tables ne grandissent donc pas.
+const UNKNOWN_KID_REFRESH_MS = 30_000
+const jwksReadAt = new Map<string, number>()
+const jwksReading = new Map<string, Promise<void>>()
+function readJwks(iss: string): Promise<void> {
+  jwksReadAt.set(iss, Date.now())
+  let reading = jwksReading.get(iss)
+  if (!reading) {
+    // `.finally` s'exécute toujours après coup : la lecture est inscrite avant d'être retirée, même en cas d'échec immédiat.
+    reading = (async () => {
+      const r = await fetch(`${iss}/oauth/jwks`)
+      if (!r.ok) throw new Error(`jwks ${r.status}`)
+      jwksCache.set(iss, { at: Date.now(), keys: (await r.json()).keys })
+    })().finally(() => { jwksReading.delete(iss) })
+    jwksReading.set(iss, reading)
   }
+  return reading
+}
+/** Temps écoulé depuis `at` ; une horloge revenue en arrière compte comme « très ancien ». */
+const elapsed = (at: number) => { const d = Date.now() - at; return d < 0 ? Infinity : d }
+async function publicKey(kid: string, iss: string = issuer()) {
   const hit = jwksCache.get(iss)
-  if (!hit || Date.now() - hit.at > 3_600_000) await fresh()
+  if (!hit || elapsed(hit.at) > 3_600_000) await readJwks(iss)
   let jwk = jwksCache.get(iss)!.keys.find((k) => k.kid === kid)
-  // Clé inconnue : le compte Lead a peut-être tourné sa clé, on relit une fois.
-  if (!jwk) { await fresh(); jwk = jwksCache.get(iss)!.keys.find((k) => k.kid === kid) }
+  // Clé inconnue : le compte Lead a peut-être tourné sa clé, on relit (pas plus d'une fois toutes les 30 s par émetteur).
+  if (!jwk && elapsed(jwksReadAt.get(iss) ?? -Infinity) >= UNKNOWN_KID_REFRESH_MS) {
+    await readJwks(iss)
+    jwk = jwksCache.get(iss)!.keys.find((k) => k.kid === kid)
+  }
   return jwk ? createPublicKey({ key: jwk, format: 'jwk' }) : null
 }
 
