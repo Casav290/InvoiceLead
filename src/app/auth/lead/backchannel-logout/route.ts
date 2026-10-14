@@ -2,15 +2,17 @@ import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/server/db";
 import { env } from "@/server/env";
 import { BACKCHANNEL_EVENT, backchannelLogout } from "@/server/lead-id/backchannel";
-import { verifyLeadJwt } from "@/server/lead-id/leadId";
+import { leadSidOf, verifyLeadJwt } from "@/server/lead-id/leadId";
 
 export const dynamic = "force-dynamic";
 
 /**
  * OpenID Connect Back-Channel Logout : ERPlead poste un `logout_token` quand une personne est retirée de son
- * organisation (src/server/lead-id/backchannel.ts). Le jeton est vérifié comme un jeton d'identité (signature
- * d'ERPlead, émetteur, audience, expiration), doit porter l'événement de déconnexion, un `sub`, pas de `nonce`,
- * et dater de moins de cinq minutes. Pas de cookie, pas de redirection : 200 ou 400.
+ * organisation (`lead_status: "disabled"`, toutes ses sessions) ou se déconnecte dans un navigateur
+ * (`lead_status: "logout"` et `sid` : les sessions de ce navigateur seulement), voir
+ * src/server/lead-id/backchannel.ts. Le jeton est vérifié comme un jeton d'identité (signature d'ERPlead,
+ * émetteur, audience, expiration), doit porter l'événement de déconnexion, un `sub`, pas de `nonce`, et dater
+ * de moins de cinq minutes. Pas de cookie, pas de redirection : 200 ou 400.
  */
 export async function POST(request: NextRequest) {
   const headers = { "Cache-Control": "no-store" };
@@ -31,6 +33,7 @@ export async function POST(request: NextRequest) {
     sub: claims.sub,
     org: typeof claims.org === "string" ? claims.org : null,
     lead_status: typeof claims.lead_status === "string" ? claims.lead_status : null,
+    sid: leadSidOf(claims),
   });
   return new NextResponse(null, { status: 200, headers });
 }

@@ -13,6 +13,9 @@
  *   POST /api/lead-id/v1/members/invite  invitation dans l'organisation ; GET /test/member-invites les relit
  *     (comme le Compte Lead : jeton d'identité de l'administrateur dans X-Lead-Id-Token, sinon 403)
  *   POST /ai/chat/completions  faux assistant comptable : chaque sortie d'argent va en frais bancaires
+ *   /oauth/logout ferme la session du Compte Lead de CE navigateur et poste à l'application un logout_token
+ *     « logout » avec son `sid` ; POST /test/disable {sub,org} imite un départ (« disabled », sans sid) ;
+ *     GET /test/backchannels relit les envois. Chaque jeton d'identité porte le `sid` du navigateur.
  *   POST /oauth/token (refresh_token)  le jeton de rafraîchissement tourne, comme au Compte Lead (un jeton
  *     déjà tourné ou révoqué : invalid_grant) ; POST /test/revoke-refresh {sub} révoque tous ceux d'une
  *     personne (mot de passe réinitialisé, déconnexion de partout), GET /test/refreshes compte les échanges
@@ -94,7 +97,8 @@ function jwt(claims) {
   return `${head}.${body}.${sig}`;
 }
 
-function idTokenFor(u, nonce) {
+/** `sid` : la session du Compte Lead (le navigateur) qui a donné le code, comme ERPlead. */
+function idTokenFor(u, nonce, sid) {
   const now = Math.floor(Date.now() / 1000);
   return jwt({
     iss: ISSUER,
@@ -104,6 +108,7 @@ function idTokenFor(u, nonce) {
     exp: now + 600,
     auth_time: now,
     ...(nonce ? { nonce } : {}),
+    ...(sid ? { sid } : {}),
     email: u.email,
     email_verified: true,
     name: u.name,
@@ -197,6 +202,32 @@ async function readBody(req) {
   return data;
 }
 
+/** logout_token envoyés à l'application (OpenID Connect Back-Channel Logout), comme ERPlead. */
+const backchannels = [];
+async function backchannel(claims) {
+  const now = Math.floor(Date.now() / 1000);
+  const token = jwt({
+    iss: ISSUER,
+    aud: CLIENT_ID,
+    iat: now,
+    exp: now + 120,
+    jti: randomBytes(8).toString("hex"),
+    ...claims,
+    events: { "http://schemas.openid.net/event/backchannel-logout": {} },
+  });
+  const target = `${new URL(REDIRECT_URI).origin}/auth/lead/backchannel-logout`;
+  const status = await fetch(target, {
+    method: "POST",
+    headers: { "content-type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({ logout_token: token }),
+    signal: AbortSignal.timeout(5000),
+  })
+    .then((r) => r.status)
+    .catch(() => 0);
+  backchannels.push({ ...claims, status });
+  return status;
+}
+
 createServer(async (req, res) => {
   const url = new URL(req.url ?? "/", ISSUER);
   const q = url.searchParams;
@@ -216,6 +247,7 @@ createServer(async (req, res) => {
     const sid = /(?:^|;\s*)fake_lead_sid=([0-9a-f]+)/.exec(req.headers.cookie ?? "")?.[1];
     const headers = {};
     let user;
+    let browser = sid;
     if (q.get("prompt") === "none") {
       // Essai silencieux : la personne de la session ouverte, sinon login_required, sans écran.
       user = sid ? leadSessions.get(sid) : undefined;
@@ -230,12 +262,14 @@ createServer(async (req, res) => {
       user = nextUser;
       nextUser = { ...defaultUser };
       const opened = randomBytes(12).toString("hex");
+      browser = opened;
       leadSessions.set(opened, user);
       headers["Set-Cookie"] = `${SID_COOKIE}=${opened}; Path=/; HttpOnly; SameSite=Lax`;
     }
     const code = randomBytes(16).toString("hex");
     codes.set(code, {
       user,
+      sid: browser,
       nonce: q.get("nonce"),
       challenge: q.get("code_challenge"),
       at: Date.now(),
@@ -275,15 +309,16 @@ createServer(async (req, res) => {
     }
     if (form.get("grant_type") === "refresh_token") {
       const token = form.get("refresh_token") ?? "";
-      const u = refreshTokens.get(token);
+      const held = refreshTokens.get(token);
       refreshTokens.delete(token);
       refreshes += 1;
-      if (!u) return send(res, 400, { error: "invalid_grant" });
+      if (!held) return send(res, 400, { error: "invalid_grant" });
+      const u = held.user ?? held;
       const next = randomBytes(16).toString("hex");
-      refreshTokens.set(next, u);
+      refreshTokens.set(next, held);
       return send(res, 200, {
         access_token: randomBytes(16).toString("hex"),
-        id_token: idTokenFor(u, null),
+        id_token: idTokenFor(u, null, held.sid),
         refresh_token: next,
         expires_in: 600,
         scope: "openid email profile lead offline_access",
@@ -301,9 +336,9 @@ createServer(async (req, res) => {
       .digest("base64url");
     if (challenge !== entry.challenge) return send(res, 400, { error: "invalid_grant" });
 
-    const idToken = idTokenFor(entry.user, entry.nonce);
+    const idToken = idTokenFor(entry.user, entry.nonce, entry.sid);
     const refreshToken = randomBytes(16).toString("hex");
-    refreshTokens.set(refreshToken, entry.user);
+    refreshTokens.set(refreshToken, { user: entry.user, sid: entry.sid });
     return send(res, 200, {
       access_token: randomBytes(16).toString("hex"),
       id_token: idToken,
@@ -317,7 +352,14 @@ createServer(async (req, res) => {
   if (url.pathname === "/oauth/logout") {
     logouts.push({ client_id: q.get("client_id"), id_token_hint: q.get("id_token_hint") });
     const sid = /(?:^|;\s*)fake_lead_sid=([0-9a-f]+)/.exec(req.headers.cookie ?? "")?.[1];
+    const closing = sid ? leadSessions.get(sid) : undefined;
     if (sid) leadSessions.delete(sid);
+    // Comme ERPlead : la session de CE navigateur se ferme, ses jetons de rafraîchissement tombent, et
+    // l'application reçoit un logout_token « logout » avec ce sid (ses autres navigateurs restent).
+    if (closing && sid) {
+      for (const [token, held] of refreshTokens) if (held.sid === sid) refreshTokens.delete(token);
+      await backchannel({ sub: closing.sub, org: closing.org, lead_status: "logout", sid });
+    }
     res.writeHead(302, {
       Location: q.get("post_logout_redirect_uri") ?? "/",
       "Set-Cookie": `${SID_COOKIE}=; Path=/; Max-Age=0`,
@@ -361,9 +403,21 @@ createServer(async (req, res) => {
 
   if (url.pathname === "/test/revoke-refresh" && req.method === "POST") {
     const { sub } = JSON.parse((await readBody(req)) || "{}");
-    for (const [token, u] of refreshTokens) if (u.sub === sub) refreshTokens.delete(token);
+    for (const [token, held] of refreshTokens)
+      if ((held.user ?? held).sub === sub) refreshTokens.delete(token);
     return send(res, 200, { ok: true });
   }
+  // Départ d'une personne (comme ERPlead, « disabled ») : toutes ses sessions du Compte Lead et tous ses
+  // jetons tombent, et l'application reçoit un logout_token sans sid (toutes ses sessions, partout).
+  if (url.pathname === "/test/disable" && req.method === "POST") {
+    const { sub, org } = JSON.parse((await readBody(req)) || "{}");
+    for (const [token, held] of refreshTokens)
+      if ((held.user ?? held).sub === sub) refreshTokens.delete(token);
+    for (const [sid, u] of leadSessions) if (u.sub === sub) leadSessions.delete(sid);
+    const status = await backchannel({ sub, org, lead_status: "disabled" });
+    return send(res, 200, { ok: true, status });
+  }
+  if (url.pathname === "/test/backchannels") return send(res, 200, backchannels);
   if (url.pathname === "/test/refreshes") return send(res, 200, { refreshes });
 
   if (url.pathname === "/test/next-user" && req.method === "POST") {

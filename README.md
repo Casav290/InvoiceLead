@@ -48,7 +48,14 @@ c'est elle que visent les lanceurs et les liens des autres applications.
   l'adresse ou, sans elle, dans celle du Compte Lead (`claims.locale`), jamais celle du navigateur.
 - Session fermée : la racine fait un seul essai silencieux (`/auth/lead/start?prompt=none&from=…`, décision
   dans `src/lib/lead-entry.ts`), puis montre la page de vente ; le cookie `lead_probe` (10 minutes, posé aussi
-  par la déconnexion) empêche toute boucle. Robots, préchargements et `HEAD` reçoivent la page telle quelle.
+  par la déconnexion) empêche toute boucle. Si ce cookie ne revient pas (cookies refusés), l'adresse de retour
+  porte la marque `?lead_probe=1`, qui fait le même office. Robots, préchargements et `HEAD` reçoivent la page
+  telle quelle.
+- Déconnexion annoncée par ERPlead (`/auth/lead/backchannel-logout`, `src/server/lead-id/backchannel.ts`) :
+  chaque session garde le `sid` du Compte Lead (colonne `sessions.lead_sid`, migration
+  `drizzle/0043_session_lead_sid.sql`). `lead_status: "logout"` avec `sid` ferme les sessions de ce navigateur
+  (et les anciennes sans `sid`), pas celles des autres appareils ; `"disabled"` (départ) ou un jeton sans `sid`
+  (ERPlead d'avant le 13.10.2026) ferment toutes les sessions de la personne.
 - Le lanceur à 9 points (`AppSwitcher.tsx`) lit la liste commune des six applications (`src/lib/lead-apps.ts`,
   copie de `~/projets/lead-e2e/lead-family.json`) : même ordre, mêmes marques et couleurs, jamais cachée ni
   détournée par la formule. L'espace porte `data-lead-org` (organisation du Compte Lead) pour le banc

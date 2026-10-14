@@ -53,6 +53,8 @@ export async function createSession(
     idToken: string | null;
     /** Jeton de rafraîchissement du Compte Lead de cette connexion (gardé chiffré). */
     refreshToken?: string | null;
+    /** Session du Compte Lead (claim `sid`) : la déconnexion de ce navigateur ne ferme qu'elle. */
+    leadSid?: string | null;
   },
 ) {
   const token = randomToken();
@@ -66,6 +68,7 @@ export async function createSession(
     refreshTokenEnc: input.refreshToken
       ? encrypt(input.refreshToken, env().SESSION_SECRET, REFRESH_PURPOSE)
       : null,
+    leadSid: input.leadSid ?? null,
     expiresAt,
   });
   // Ménage opportuniste des sessions échues.

@@ -30,8 +30,12 @@ export function safeNext(value: string | null | undefined): string | undefined {
   return NEXT_PATH.test(value) ? value : undefined;
 }
 
+/**
+ * Langue d'InvoiceLead (de, fr, en). Absente ou inconnue (« it », « es », vide) : le français, langue de
+ * repli de la famille Lead, jamais l'allemand ni l'anglais par défaut.
+ */
 export function pickLocale(value: unknown): "de" | "fr" | "en" {
-  return value === "fr" || value === "en" ? value : "de";
+  return value === "de" || value === "en" ? value : "fr";
 }
 
 /** Page d'une invitation de fiduciaire, à rouvrir après la connexion. */
@@ -205,7 +209,7 @@ export function staleDone(jar: Jar, incoming: number, except?: string): string[]
 
 /**
  * Langue d'une requête sans demande de connexion en cours : cookie de langue de next-intl d'abord,
- * puis la première langue connue de l'en-tête Accept-Language, sinon l'allemand.
+ * puis la première langue connue de l'en-tête Accept-Language, sinon le français (repli de la famille).
  */
 export function localeFromRequest(
   nextLocaleCookie: string | undefined,
@@ -222,7 +226,7 @@ export function localeFromRequest(
     })
     .sort((a, b) => b.q - a.q);
   const found = ranked.find((r) => r.q > 0 && ["de", "fr", "en"].includes(r.lang));
-  return found ? pickLocale(found.lang) : "de";
+  return found ? pickLocale(found.lang) : "fr";
 }
 
 /** Ce qu'on peut journaliser d'une erreur de connexion, sans données personnelles ni jeton. */

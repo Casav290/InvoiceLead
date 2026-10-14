@@ -74,7 +74,7 @@ export default function proxy(request: NextRequest) {
   if (match && navigable && !request.cookies.has(SESSION_COOKIE)) {
     // Vers la connexion, avec la page demandée pour y revenir. Pas tout droit vers le Compte Lead :
     // un préchargement de Next suivrait la redirection et lancerait une connexion en arrière-plan.
-    const locale = match[1]?.toLowerCase() ?? "de";
+    const locale = match[1]?.toLowerCase() ?? "fr";
     const url = request.nextUrl.clone();
     url.pathname = `/${locale}/login`;
     url.search = `?${new URLSearchParams({ next: wanted })}`;

@@ -36,6 +36,14 @@ export type LeadClaims = {
   name: string; locale: string; zoneinfo: string
   org: string; org_name: string; org_role: 'admin' | 'manager' | 'user'
   lead: LeadEntitlements
+  /** Session du Compte Lead (un navigateur) qui a donné ce jeton : la déconnexion ne ferme qu'elle. */
+  sid?: string
+}
+
+/** Le `sid` d'un jeton du Compte Lead, s'il est utilisable (1 à 255 caractères), sinon null. */
+export function leadSidOf(claims: { sid?: unknown } | null | undefined): string | null {
+  const sid = claims?.sid
+  return typeof sid === 'string' && sid.length > 0 && sid.length <= 255 ? sid : null
 }
 export type LeadEntitlements = {
   plan: { code: 'free' | 'pro' | 'pro_plus' | string; name: string; rank: number; seats: number | null }

@@ -1,4 +1,5 @@
 import { type BrowserContext, expect, type Page, test } from "@playwright/test";
+import { leadSidsOf } from "./db";
 import { APP, LEAD, login } from "./helpers";
 
 /**
@@ -204,5 +205,104 @@ for (const size of [
     await expect(panel).toBeVisible();
     await page.locator("main").click({ position: { x: 5, y: 5 } });
     await expect(panel).toBeHidden();
+
+    // Un choix ferme aussi le panneau et rend le focus au bouton (la page suivante peut tarder : ici
+    // elle ne vient pas, réponse 204).
+    await page.route("https://crmlead.io/**", (route) => route.fulfill({ status: 204 }));
+    await launcher.click();
+    await expect(panel).toBeVisible();
+    await page.locator('[data-lead-app="crmlead"]').click();
+    await expect(panel).toBeHidden();
+    await expect(launcher).toBeFocused();
+
+    // Pastilles décoratives (le nom les suit) et lisibles : blanc sur la couleur de chaque
+    // application, contraste de 4,5:1 au moins (axe color-contrast).
+    const marks = await entries.evaluateAll((els) =>
+      els.map((el) => el.querySelector("span[aria-hidden]")?.getAttribute("aria-hidden")),
+    );
+    expect(marks).toEqual(Array(6).fill("true"));
+    const luminance = (rgb: string) => {
+      const [r = 0, g = 0, b = 0] = (rgb.match(/\d+/g) ?? []).map((v) => {
+        const c = Number(v) / 255;
+        return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+      });
+      return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    };
+    for (const s of seen)
+      expect(1.05 / (luminance(s.color) + 0.05) >= 4.5, `${s.code} ${s.color}`).toBe(true);
   });
 }
+
+test("cookies refusés : un seul essai silencieux, puis la page publique, sans boucle", async ({
+  browser,
+}) => {
+  // Un navigateur qui refuse tous les cookies : aucune réponse ne peut en poser.
+  const context = await browser.newContext({ baseURL: APP, locale: "de-CH" });
+  await context.route("**/*", async (route) => {
+    const response = await route.fetch({ maxRedirects: 0 });
+    const headers = { ...response.headers() };
+    delete headers["set-cookie"];
+    await route.fulfill({ response, headers });
+  });
+  const page = await context.newPage();
+  const before = await silentCount(page);
+  await page.goto("/");
+  await page.waitForURL(`${APP}/de?lead_probe=1`);
+  await expect(page.locator("header").getByRole("link", { name: "Anmelden" })).toBeVisible();
+  expect(await silentCount(page)).toBe(before + 1);
+  expect(await context.cookies()).toEqual([]);
+  // Recharger, ou retaper la racine marquée : aucun nouvel essai.
+  await page.reload();
+  await expect(page).toHaveURL(`${APP}/de?lead_probe=1`);
+  expect(await silentCount(page)).toBe(before + 1);
+  await context.close();
+});
+
+test("se déconnecter ferme ce navigateur seulement ; un départ ferme tous les appareils", async ({
+  browser,
+}) => {
+  const who = person("appareils");
+  // Deux navigateurs (bureau, téléphone) de la même personne, chacun avec sa session du Compte Lead.
+  const desk = await browser.newContext({ baseURL: APP, locale: "fr-CH" });
+  const phone = await browser.newContext({ baseURL: APP, locale: "fr-CH" });
+  const a = await desk.newPage();
+  const b = await phone.newPage();
+  await login(a, "fr", who);
+  await login(b, "fr", who);
+  const sids = await leadSidsOf(who.sub);
+  expect(sids).toHaveLength(2);
+  expect(sids.every((sid) => typeof sid === "string" && sid.length > 0)).toBe(true);
+  expect(new Set(sids).size).toBe(2);
+  const inside = async (page: Page) =>
+    (await page.request.get("/fr/app", { maxRedirects: 0 })).status() === 200;
+  expect([await inside(a), await inside(b)]).toEqual([true, true]);
+
+  // « Se déconnecter » sur le bureau : le Compte Lead annonce la fin de CETTE session (logout + sid).
+  await a.getByTestId("user-menu").click();
+  await a.getByTestId("logout").click();
+  await a.waitForURL(/\/(de|fr)$/);
+  const sent = (await (await a.request.get(`${LEAD}/test/backchannels`)).json()) as {
+    sub: string;
+    sid?: string;
+    lead_status: string;
+    status: number;
+  }[];
+  expect(sent.filter((x) => x.sub === who.sub)).toEqual([
+    { sub: who.sub, org: who.org, lead_status: "logout", sid: sids[0], status: 200 },
+  ]);
+  // Le téléphone reste connecté.
+  expect(await leadSidsOf(who.sub)).toEqual([sids[1]]);
+  expect(await inside(b)).toBe(true);
+  await b.reload();
+  await expect(b.locator("[data-lead-org]")).toHaveAttribute("data-lead-org", who.org);
+
+  // Départ de la personne (ERPlead, « disabled ») : toutes ses sessions tombent, téléphone compris.
+  const out = await (
+    await b.request.post(`${LEAD}/test/disable`, { data: { sub: who.sub, org: who.org } })
+  ).json();
+  expect(out.status).toBe(200);
+  expect(await leadSidsOf(who.sub)).toEqual([]);
+  expect(await inside(b)).toBe(false);
+  await desk.close();
+  await phone.close();
+});

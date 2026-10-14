@@ -6,9 +6,10 @@ import type { LeadClaims } from "../lead-id/leadId";
 export const APP_CODE = "invoicelead";
 const LOCALES = ["de", "fr", "en"] as const;
 
-function appLocale(locale: string | undefined): string {
+/** Langue du Compte Lead (« fr-CH » → « fr ») ; absente ou inconnue (« it », « es ») : le français. */
+export function appLocale(locale: string | undefined): string {
   const short = (locale ?? "").slice(0, 2).toLowerCase();
-  return (LOCALES as readonly string[]).includes(short) ? short : "de";
+  return (LOCALES as readonly string[]).includes(short) ? short : "fr";
 }
 
 /**

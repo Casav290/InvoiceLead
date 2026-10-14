@@ -38,6 +38,39 @@ export function safeFrom(value: string | null | undefined): string | undefined {
   return FROM_PATH.test(value) ? value : undefined;
 }
 
+/**
+ * Marque d'un essai silencieux déjà fait, dans l'adresse de retour (« ?lead_probe=1 ») : le cookie
+ * lead_probe ne suffit pas quand le navigateur refuse les cookies (rien n'est gardé, et la racine
+ * repartirait vers le Compte Lead à chaque chargement). Avec cette marque, la racine montre la page
+ * publique et le départ silencieux revient tout de suite, même sans aucun cookie. Rien de secret.
+ * Elle n'est ajoutée que si le cookie lead_probe n'est pas revenu (silentReturn) : un navigateur
+ * ordinaire garde une adresse propre (« /fr »).
+ */
+export const PROBE_PARAM = "lead_probe";
+
+/** La recherche (« ?lang=fr&lead_probe=1 ») ou l'adresse porte-t-elle la marque ? */
+export function hasProbeMarker(searchOrPath: string | null | undefined): boolean {
+  const value = searchOrPath ?? "";
+  const at = value.indexOf("?");
+  const search = at >= 0 ? value.slice(at + 1) : value;
+  return new URLSearchParams(search).has(PROBE_PARAM);
+}
+
+/** La page de retour d'un essai silencieux manqué, avec la marque (les autres paramètres restent). */
+export function withProbeMarker(path: string): string {
+  if (hasProbeMarker(path.includes("?") ? path : "")) return path;
+  return `${path}${path.includes("?") ? "&" : "?"}${PROBE_PARAM}=1`;
+}
+
+/**
+ * Page de retour d'un essai silencieux manqué ou déjà fait. Le cookie lead_probe est revenu avec la
+ * requête : il suffit à arrêter l'essai suivant, l'adresse reste telle quelle. Sinon (cookies refusés,
+ * ou demande perdue) : la marque dans l'adresse, seule garde contre une boucle.
+ */
+export function silentReturn(from: string, probeCookie: boolean): string {
+  return probeCookie ? from : withProbeMarker(from);
+}
+
 /** Langue donnée par l'adresse (« /fr », « ?lang=fr »), ou undefined : l'arrivée prend celle du Compte Lead. */
 export function addressLocale(pathLocale: string | undefined, search: string): Locale | undefined {
   const wanted = (pathLocale ?? new URLSearchParams(search).get("lang") ?? "").toLowerCase();
@@ -82,9 +115,11 @@ function documentNavigation(header: EntryRequest["header"]): boolean {
  *   ouvre l'accueil de l'espace (`/xx/app`, langue de l'adresse ou du Compte Lead). Le départ, et non
  *   un renvoi direct vers /xx/app : une session fermée depuis par le Compte Lead (déconnexion de
  *   partout) mène alors à la page publique, pas à l'écran de connexion.
- * - Racine sans session : un seul essai silencieux, à cinq conditions (GET, vraie navigation de
- *   document, pas de préchargement, pas de cookie lead_probe, pas un robot ; InvoiceLead n'a pas
- *   d'application native). Le départ pose lead_probe : le retour sur la racine montre la page publique.
+ * - Racine sans session : un seul essai silencieux, à six conditions (GET, vraie navigation de
+ *   document, pas de préchargement, pas de cookie lead_probe, pas de marque « lead_probe » dans
+ *   l'adresse, pas un robot ; InvoiceLead n'a pas d'application native). Le départ pose lead_probe ;
+ *   si le cookie ne revient pas (cookies refusés), le retour porte la marque : la racine montre la page
+ *   publique dans les deux cas.
  * - /login sans langue : départ vers le Compte Lead, sans écran s'il est ouvert ; l'arrivée est dans
  *   la langue du Compte Lead, jamais celle du navigateur.
  */
@@ -110,7 +145,13 @@ export function entryRedirect(request: EntryRequest): EntryRedirect | null {
   const query = new URLSearchParams({ prompt: "none", from, ...(locale ? { locale } : {}) });
   if (request.hasCookie(SESSION_COOKIE))
     return { status: 307, location: `/auth/lead/start?${query}` };
-  if (request.hasCookie(PROBE_COOKIE) || !documentNavigation(header)) return null;
+  // Essai déjà fait : cookie lead_probe, ou marque dans l'adresse (cookies refusés). Page publique.
+  if (
+    request.hasCookie(PROBE_COOKIE) ||
+    hasProbeMarker(request.search) ||
+    !documentNavigation(header)
+  )
+    return null;
   return { status: 303, location: `/auth/lead/start?${query}` };
 }
 

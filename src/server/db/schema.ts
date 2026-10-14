@@ -166,6 +166,13 @@ export const sessions = pgTable(
      * déconnexion de partout ou un compte fermé au Compte Lead le révoquent, et la session tombe.
      */
     refreshTokenEnc: text("refresh_token_enc"),
+    /**
+     * Session du Compte Lead (ERPlead) d'où vient cette connexion : claim `sid` de son jeton
+     * d'identité, c'est-à-dire un navigateur. « Se déconnecter » dans ce navigateur ferme les sessions
+     * de ce `sid` seulement (back-channel `lead_status: "logout"`) ; celles des autres appareils
+     * restent. Null pour une session ouverte avant le 13.10.2026 : fermée par personne, comme avant.
+     */
+    leadSid: text("lead_sid"),
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
     createdAt: createdAt(),
     /** Dernière vérification auprès du Compte Lead (revalidateSession). */

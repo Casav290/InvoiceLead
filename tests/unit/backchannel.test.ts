@@ -37,10 +37,13 @@ describe("départ d'une personne (OpenID Back-Channel Logout)", () => {
     await createSession(db, { userId: bob.user.id, organizationId: org, idToken: null });
     await createSession(db, { userId: admin.user.id, organizationId: org, idToken: null });
 
-    // Une organisation qui n'est pas la sienne : rien ne bouge.
+    // Départ annoncé pour une organisation sans entreprise ici : ses sessions tombent quand même (un
+    // départ ferme tout, partout), sa place dans l'atelier reste.
     expect(
       await backchannelLogout(db, { sub: "sub-bob", org: "org-autre", lead_status: "disabled" }),
-    ).toEqual({ sessions: 0, left: false });
+    ).toEqual({ sessions: 2, left: false });
+    await createSession(db, { userId: bob.user.id, organizationId: org, idToken: null });
+    await createSession(db, { userId: bob.user.id, organizationId: org, idToken: null });
 
     expect(
       await backchannelLogout(db, { sub: "sub-bob", org: "org-atelier", lead_status: "disabled" }),
@@ -82,7 +85,7 @@ describe("départ d'une personne (OpenID Back-Channel Logout)", () => {
     ).toEqual({ sessions: 0, left: false });
   });
 
-  it("déconnexion (logout) : toutes ses sessions tombent, quelle que soit l'entreprise, sans départ", async () => {
+  it("déconnexion (logout) sans sid : toutes ses sessions tombent, quelle que soit l'entreprise, sans départ", async () => {
     const admin = await attachLeadIdentity(db, claims({ lead: plus }));
     const org = admin.organization.id;
     await createSession(db, { userId: admin.user.id, organizationId: org, idToken: null });
@@ -98,5 +101,97 @@ describe("départ d'une personne (OpenID Back-Channel Logout)", () => {
     expect(
       await db.select().from(memberships).where(eq(memberships.userId, admin.user.id)),
     ).toHaveLength(1);
+  });
+  it("déconnexion d'un navigateur (logout + sid) : ses sessions de ce navigateur et les anciennes, pas ses autres appareils", async () => {
+    const admin = await attachLeadIdentity(db, claims({ lead: plus }));
+    const org = admin.organization.id;
+    const client = await attachLeadIdentity(
+      db,
+      claims({
+        sub: "sub-cleo",
+        email: "cleo@client.test",
+        name: "Cléo",
+        org: "org-client",
+        org_name: "Client SA",
+      }),
+    );
+    // Ada travaille aussi chez un client (fiduciaire) : une session dans une autre entreprise.
+    await db
+      .insert(memberships)
+      .values({ organizationId: client.organization.id, userId: admin.user.id, role: "fiduciary" });
+    const ids = async () =>
+      (await db.select().from(sessions).where(eq(sessions.userId, admin.user.id)))
+        .map((s) => s.leadSid ?? "aucun")
+        .sort();
+    // Navigateur A (bureau), navigateur B (téléphone), une session d'avant (sans sid), et une
+    // session du navigateur A chez le client.
+    await createSession(db, {
+      userId: admin.user.id,
+      organizationId: org,
+      idToken: null,
+      leadSid: "sid-a",
+    });
+    await createSession(db, {
+      userId: admin.user.id,
+      organizationId: org,
+      idToken: null,
+      leadSid: "sid-b",
+    });
+    await createSession(db, { userId: admin.user.id, organizationId: org, idToken: null });
+    await createSession(db, {
+      userId: admin.user.id,
+      organizationId: client.organization.id,
+      idToken: null,
+      leadSid: "sid-a",
+    });
+    await createSession(db, {
+      userId: client.user.id,
+      organizationId: client.organization.id,
+      idToken: null,
+      leadSid: "sid-a",
+    });
+    expect(await ids()).toEqual(["aucun", "sid-a", "sid-a", "sid-b"]);
+
+    // « Se déconnecter » dans le navigateur A : A (les deux entreprises) et l'ancienne tombent, B reste.
+    expect(
+      await backchannelLogout(db, {
+        sub: "sub-ada",
+        org: "org-atelier",
+        lead_status: "logout",
+        sid: "sid-a",
+      }),
+    ).toEqual({ sessions: 3, left: false });
+    expect(await ids()).toEqual(["sid-b"]);
+    // Le même sid chez une autre personne ne la concerne pas : sa session reste.
+    expect(
+      await db.select().from(sessions).where(eq(sessions.userId, client.user.id)),
+    ).toHaveLength(1);
+    // Rejoué, ou un sid inconnu : rien d'autre ne tombe.
+    expect(
+      await backchannelLogout(db, {
+        sub: "sub-ada",
+        org: "org-atelier",
+        lead_status: "logout",
+        sid: "sid-a",
+      }),
+    ).toEqual({ sessions: 0, left: false });
+    expect(await ids()).toEqual(["sid-b"]);
+
+    // Départ (disabled) : tout tombe, sid ou pas, dans toutes les entreprises.
+    await createSession(db, {
+      userId: admin.user.id,
+      organizationId: client.organization.id,
+      idToken: null,
+      leadSid: "sid-c",
+    });
+    expect(
+      await backchannelLogout(db, {
+        sub: "sub-ada",
+        org: "org-atelier",
+        lead_status: "disabled",
+        sid: "sid-b",
+      }),
+    ).toEqual({ sessions: 2, left: false });
+    expect(await ids()).toEqual([]);
   });
 });

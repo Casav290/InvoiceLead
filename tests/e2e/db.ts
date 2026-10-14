@@ -56,3 +56,13 @@ export async function closeDb() {
   await pool?.end();
   pool = null;
 }
+
+/** Sessions InvoiceLead d'une personne du Compte Lead : le `sid` (navigateur du Compte Lead) de chacune. */
+export async function leadSidsOf(sub: string): Promise<(string | null)[]> {
+  const { rows } = await base().query(
+    `select s.lead_sid from sessions s join users u on u.id = s.user_id
+      where u.lead_sub = $1 order by s.created_at`,
+    [sub],
+  );
+  return rows.map((r: { lead_sid: string | null }) => r.lead_sid);
+}

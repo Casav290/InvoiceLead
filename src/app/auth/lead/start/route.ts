@@ -7,7 +7,7 @@ import {
   PROBE_SECONDS,
   SESSION_COOKIE,
 } from "@/lib/cookies";
-import { safeFrom } from "@/lib/lead-entry";
+import { hasProbeMarker, safeFrom, silentReturn } from "@/lib/lead-entry";
 import {
   cookieBytes,
   hashState,
@@ -83,10 +83,12 @@ export async function GET(request: NextRequest) {
   // déconnexion de partout) : le cookie ne vaut plus rien. Effacé, pour que le retour sur la racine
   // montre la page publique au lieu de repartir ici (lead-entry.ts).
   const stale = silent && !fresh && Boolean(current);
-  // Essai silencieux déjà fait (lead_probe) : retour immédiat sur la page publique, sans passer par
-  // le Compte Lead. Pas de boucle possible.
-  if (silent && from && request.cookies.has(PROBE_COOKIE)) {
-    const response = NextResponse.redirect(`${APP_URL}${from}`, 303);
+  // Essai silencieux déjà fait (cookie lead_probe, ou marque « lead_probe » dans la page de retour
+  // quand les cookies sont refusés) : retour immédiat sur la page publique, sans passer par le Compte
+  // Lead. Pas de boucle possible, même sans aucun cookie (la marque reste alors dans l'adresse).
+  const probed = request.cookies.has(PROBE_COOKIE);
+  if (silent && from && (probed || hasProbeMarker(from))) {
+    const response = NextResponse.redirect(`${APP_URL}${silentReturn(from, probed)}`, 303);
     response.headers.set("Cache-Control", "no-store");
     if (stale) response.cookies.set(SESSION_COOKIE, "", cookieOptions(0));
     return response;

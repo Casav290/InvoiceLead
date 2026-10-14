@@ -11,8 +11,10 @@ import { cn } from "@/lib/utils";
  * adresse d'entrée, qui ouvre directement l'espace de l'entreprise. L'application courante reste à sa
  * place, sans lien, sur le fond pâle de sa couleur (« Vous êtes ici »).
  *
- * Le panneau se ferme par Échap, par un clic en dehors ou par un choix. Sous 480 px, il est fixe, à
- * 16 px des bords, sous l'en-tête, et défile à l'intérieur.
+ * Le panneau se ferme par Échap (le focus revient au bouton), par un clic en dehors ou par un choix
+ * (focus rendu au bouton aussi). Les pastilles sont décoratives (aria-hidden, AppMark) : le nom les suit ;
+ * blanc sur la couleur de chaque application, contraste de 4,5:1 au moins (#9a6a00 de ProjectLead :
+ * 4,73:1). Sous 480 px, il est fixe, à 16 px des bords, sous l'en-tête, et défile à l'intérieur.
  */
 export function AppSwitcher({
   items,
@@ -126,7 +128,12 @@ export function AppSwitcher({
                     href={item.href}
                     data-lead-app={item.code}
                     data-testid={`application-switcher-${item.code}`}
-                    onClick={() => setOpen(false)}
+                    onClick={() => {
+                      // Choix fait : le panneau se ferme et le focus revient au bouton (la page suivante
+                      // peut tarder, ou s'ouvrir dans un autre onglet avec Ctrl/Cmd).
+                      setOpen(false);
+                      button.current?.focus();
+                    }}
                     className={cn(
                       row,
                       "hover:bg-muted focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent",

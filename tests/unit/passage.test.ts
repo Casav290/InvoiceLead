@@ -1,5 +1,6 @@
+import { generateKeyPairSync, sign } from "node:crypto";
 import { NextRequest, type NextResponse } from "next/server";
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { leadAppItems } from "@/lib/lead-apps";
 import { entryRedirect, safeFrom, silentError } from "@/lib/lead-entry";
 import type { LeadClaims } from "@/server/lead-id/leadId";
@@ -200,7 +201,8 @@ describe("racine tapée sans session : un seul essai silencieux, puis la page pu
     expect(where(again)).not.toContain("/auth/lead/start");
     const fr = await proxy("/fr", { cookies: { lead_probe: "1" } });
     expect(fr.status).toBe(200);
-    // Un départ silencieux qui trouve lead_probe revient tout de suite, sans le Compte Lead.
+    // Un départ silencieux qui trouve lead_probe revient tout de suite, sans le Compte Lead ; le cookie
+    // suffit, l'adresse reste propre (la marque ne sert qu'aux cookies refusés).
     const back = await start("/auth/lead/start?prompt=none&from=%2Ffr&locale=fr", {
       cookies: { lead_probe: "1" },
     });
@@ -253,17 +255,19 @@ describe("racine tapée sans session : un seul essai silencieux, puis la page pu
       const back = await callback(`/auth/lead/callback?error=${error}&state=${state}`, {
         cookies: jar,
       });
+      // Le cookie lead_probe est revenu : il arrête l'essai suivant, l'adresse reste propre.
       expect([back.status, where(back)]).toEqual([303, `${APP}/fr`]);
       expect(where(back)).not.toContain("erreur");
       // lead_probe reste : la racine ne repart pas.
       expect(back.cookies.get("lead_probe")).toBeUndefined();
     }
-    // Demande perdue (autre navigateur, cookies effacés), state illisible : la racine, jamais l'écran.
+    // Demande perdue (autre navigateur, cookies effacés), state illisible : la racine, jamais l'écran,
+    // avec la marque (aucun cookie lead_probe n'est revenu).
     const lost = await callback("/auth/lead/callback?error=login_required&state=abimé");
-    expect(where(lost)).toBe(`${APP}/`);
+    expect(where(lost)).toBe(`${APP}/?lead_probe=1`);
     // Demande silencieuse sans son cookie, même avec un code : la page d'où elle part, sans relance.
     const orphan = await callback(`/auth/lead/callback?code=c&state=${state}`);
-    expect(where(orphan)).toBe(`${APP}/fr`);
+    expect(where(orphan)).toBe(`${APP}/fr?lead_probe=1`);
     // Une connexion ordinaire qui échoue garde son écran d'erreur.
     const plain = await start("/auth/lead/start?locale=fr");
     const plainState = new URL(where(plain)).searchParams.get("state") ?? "";
@@ -293,6 +297,83 @@ describe("racine tapée sans session : un seul essai silencieux, puis la page pu
   });
 });
 
+/**
+ * Un navigateur qui refuse tous les cookies : chaque requête part sans cookie, et ce que les réponses
+ * posent est perdu. Les redirections sont suivies comme par le navigateur ; le Compte Lead est simulé
+ * (session ouverte ou non, mais ses cookies à lui ne comptent pas ici). Rend le chemin parcouru, le
+ * nombre de passages par /oauth/authorize et la dernière réponse.
+ */
+async function cookielessVisit(path: string, { leadOpen = false } = {}) {
+  let url = new URL(`${APP}${path}`);
+  const trail: string[] = [];
+  let authorizes = 0;
+  for (let hop = 0; hop < 20; hop++) {
+    trail.push(url.href);
+    let response: Response;
+    if (url.pathname === "/oauth/authorize") {
+      authorizes += 1;
+      const back = new URL(url.searchParams.get("redirect_uri") ?? `${APP}/auth/lead/callback`);
+      back.searchParams.set("state", url.searchParams.get("state") ?? "");
+      if (url.searchParams.get("prompt") === "none" && !leadOpen)
+        back.searchParams.set("error", "login_required");
+      else back.searchParams.set("code", `code-${hop}`);
+      response = new Response(null, { status: 302, headers: { location: back.href } });
+    } else if (url.origin !== APP) {
+      throw new Error(`adresse inattendue : ${url.href}`);
+    } else if (url.pathname === "/auth/lead/start") {
+      response = await start(`${url.pathname}${url.search}`);
+    } else if (url.pathname === "/auth/lead/callback") {
+      response = await callback(`${url.pathname}${url.search}`);
+    } else {
+      response = await proxy(`${url.pathname}${url.search}`);
+    }
+    const location = response.headers.get("location");
+    if (response.status < 300 || response.status >= 400 || !location)
+      return { trail, authorizes, final: url, response };
+    url = new URL(location, url);
+  }
+  return { trail, authorizes, final: url, response: null };
+}
+
+describe("cookies refusés : jamais de boucle", () => {
+  it("racine sans session du Compte Lead : un seul essai silencieux, puis la page publique", async () => {
+    for (const path of ["/", "/fr", "/?lang=fr"]) {
+      const visit = await cookielessVisit(path);
+      expect(visit.response, visit.trail.join("\n")).not.toBeNull();
+      expect(visit.response?.status, visit.trail.join("\n")).toBe(200);
+      expect(visit.authorizes, visit.trail.join("\n")).toBe(1);
+      expect(visit.final.searchParams.get("lead_probe")).toBe("1");
+      expect(visit.final.pathname).toMatch(/^\/(de|fr|en)$/);
+      // Recharger la page publique ne repart pas vers le Compte Lead.
+      const again = await cookielessVisit(`${visit.final.pathname}${visit.final.search}`);
+      expect([again.authorizes, again.response?.status, again.trail.length]).toEqual([0, 200, 1]);
+    }
+  });
+
+  it("Compte Lead ouvert mais cookies d'InvoiceLead refusés : la page publique, sans relance", async () => {
+    const visit = await cookielessVisit("/fr", { leadOpen: true });
+    expect([visit.authorizes, visit.response?.status]).toEqual([1, 200]);
+    expect(`${visit.final.pathname}${visit.final.search}`).toBe("/fr?lead_probe=1");
+  });
+
+  it("départ silencieux dont la page de retour porte déjà la marque : aucun passage au Compte Lead", async () => {
+    const go = await start("/auth/lead/start?prompt=none&from=%2Ffr%3Flead_probe%3D1&locale=fr");
+    expect([go.status, where(go)]).toEqual([303, `${APP}/fr?lead_probe=1`]);
+    // La racine marquée ne repart pas, même sans cookie.
+    expect(where(await proxy("/fr?lead_probe=1"))).not.toContain("/auth/lead/start");
+    expect(where(await proxy("/?lead_probe=1"))).not.toContain("/auth/lead/start");
+  });
+
+  it("/login avec le Compte Lead ouvert : au plus une relance, puis l'écran d'erreur (pas de boucle)", async () => {
+    const visit = await cookielessVisit("/login", { leadOpen: true });
+    expect(visit.response, visit.trail.join("\n")).not.toBeNull();
+    expect(visit.authorizes).toBeLessThanOrEqual(2);
+    expect(`${visit.final.pathname}${visit.final.search}`).toMatch(
+      /^\/(de|fr|en)\/login\?erreur=session/,
+    );
+  });
+});
+
 describe("arrivée dans l'espace", () => {
   it("connectée au Compte Lead : l'espace de son entreprise, dans la langue du Compte Lead", async () => {
     ctx.claims = claims({ locale: "en" });
@@ -306,6 +387,47 @@ describe("arrivée dans l'espace", () => {
     expect(back.cookies.get("il_session")?.value).toMatch(/.{20,}/);
     // Connectée : lead_probe effacé, la racine mène de nouveau dans l'espace.
     expect(back.cookies.get("lead_probe")?.maxAge).toBe(0);
+  });
+
+  it("la session garde le sid du Compte Lead (déconnexion de ce navigateur seulement)", async () => {
+    ctx.claims = { ...claims(), sid: "sid-navigateur-a" };
+    const go = await start("/auth/lead/start?locale=fr");
+    const state = new URL(where(go)).searchParams.get("state") ?? "";
+    const back = await callback(`/auth/lead/callback?code=abc&state=${state}`, {
+      cookies: setCookies(go),
+    });
+    expect(where(back)).toBe(`${APP}/fr/app`);
+    const { sessions } = await import("@/server/db/schema");
+    const rows = await t.database.select().from(sessions);
+    expect(rows.map((r) => r.leadSid)).toEqual(["sid-navigateur-a"]);
+    // Un sid inutilisable (trop long, pas une chaîne) n'est pas gardé.
+    await t.reset();
+    ctx.claims = { ...claims(), sid: "x".repeat(300) };
+    const go2 = await start("/auth/lead/start?locale=fr");
+    const state2 = new URL(where(go2)).searchParams.get("state") ?? "";
+    await callback(`/auth/lead/callback?code=abc&state=${state2}`, { cookies: setCookies(go2) });
+    expect((await t.database.select().from(sessions)).map((r) => r.leadSid)).toEqual([null]);
+  });
+
+  it("langue absente ou inconnue : le français, jamais l'allemand", async () => {
+    const { pickLocale, localeFromRequest } = await import("@/server/auth/login-cookie");
+    const { appLocale } = await import("@/server/auth/attach");
+    for (const value of [undefined, null, "", "it", "es", "xx"]) {
+      expect(pickLocale(value), String(value)).toBe("fr");
+      expect(appLocale(value ?? undefined), String(value)).toBe("fr");
+    }
+    expect(pickLocale("de")).toBe("de");
+    expect(appLocale("de-CH")).toBe("de");
+    expect(localeFromRequest(undefined, null)).toBe("fr");
+    expect(localeFromRequest(undefined, "it-CH,it;q=0.9")).toBe("fr");
+    // Compte Lead en italien, arrivée par /login sans langue : l'espace en français.
+    ctx.claims = claims({ locale: "it" });
+    const login = await start("/auth/lead/start");
+    const state = new URL(where(login)).searchParams.get("state") ?? "";
+    const back = await callback(`/auth/lead/callback?code=abc&state=${state}`, {
+      cookies: setCookies(login),
+    });
+    expect(where(back)).toBe(`${APP}/fr/app`);
   });
 
   it("la langue de l'adresse passe avant celle du Compte Lead, jamais celle du navigateur", async () => {
@@ -358,6 +480,166 @@ describe("arrivée dans l'espace", () => {
   });
 });
 
+/**
+ * Déconnexion annoncée par ERPlead (OpenID Connect Back-Channel Logout), route appelée telle quelle avec
+ * un `logout_token` signé. ERPlead est mis en ligne en dernier : tant que celui de production n'envoie
+ * pas de `sid`, une déconnexion ferme toutes les sessions de la personne (repli sûr), jamais une
+ * erreur 500 ni une session laissée ouverte. Avec un `sid` : ce navigateur seulement.
+ */
+describe("déconnexion annoncée par ERPlead (route back-channel)", () => {
+  // Émetteur des tests (setTestEnv : LEAD_ID_ISSUER) ; sa clé publique est servie par un faux JWKS.
+  const ISS = "https://crmlead.io";
+  const KID = "passage-backchannel";
+  const key = generateKeyPairSync("rsa", { modulusLength: 2048 });
+  const other = generateKeyPairSync("rsa", { modulusLength: 2048 });
+  const EVENT = { "http://schemas.openid.net/event/backchannel-logout": {} };
+
+  function logoutToken(claims: Record<string, unknown>, signer = key.privateKey) {
+    const now = Math.floor(Date.now() / 1000);
+    const head = Buffer.from(JSON.stringify({ alg: "RS256", kid: KID })).toString("base64url");
+    const body = Buffer.from(
+      JSON.stringify({ iss: ISS, aud: "invoicelead", iat: now, exp: now + 120, ...claims }),
+    ).toString("base64url");
+    const sig = sign("sha256", Buffer.from(`${head}.${body}`), signer).toString("base64url");
+    return `${head}.${body}.${sig}`;
+  }
+
+  beforeEach(() => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) =>
+        url === `${ISS}/oauth/jwks`
+          ? Response.json({ keys: [{ ...key.publicKey.export({ format: "jwk" }), kid: KID }] })
+          : new Response("{}", { status: 404 }),
+      ),
+    );
+  });
+  afterEach(() => vi.unstubAllGlobals());
+
+  async function post(token?: string) {
+    const { POST } = await import("@/app/auth/lead/backchannel-logout/route");
+    const body = new FormData();
+    if (token !== undefined) body.set("logout_token", token);
+    return POST(request("/auth/lead/backchannel-logout", { method: "POST", headers: {}, body }));
+  }
+
+  /**
+   * Ada sur trois sessions : navigateur A (bureau), navigateur B (téléphone), et une session ouverte
+   * avant le `sid` (aucun). Bob, collègue, a sa propre session venue du même navigateur A.
+   */
+  async function devices() {
+    const { attachLeadIdentity } = await import("@/server/auth/attach");
+    const { createSession } = await import("@/server/auth/session");
+    const ada = await attachLeadIdentity(t.database, claims());
+    const bob = await attachLeadIdentity(
+      t.database,
+      claims({ sub: "sub-bob", email: "bob@atelier.test", name: "Bob", org_role: "user" }),
+    );
+    const open = (userId: string, leadSid: string | null) =>
+      createSession(t.database, {
+        userId,
+        organizationId: ada.organization.id,
+        idToken: null,
+        leadSid,
+      });
+    await open(ada.user.id, "sid-a");
+    await open(ada.user.id, "sid-b");
+    await open(ada.user.id, null);
+    await open(bob.user.id, "sid-a");
+    const left = async (userId: string) => {
+      const { sessions } = await import("@/server/db/schema");
+      const { eq } = await import("drizzle-orm");
+      return (await t.database.select().from(sessions).where(eq(sessions.userId, userId)))
+        .map((s) => s.leadSid ?? "aucun")
+        .sort();
+    };
+    return { ada: () => left(ada.user.id), bob: () => left(bob.user.id) };
+  }
+
+  it("ERPlead d'aujourd'hui, sans sid : toutes les sessions de la personne tombent", async () => {
+    const who = await devices();
+    const out = await post(
+      logoutToken({ sub: "sub-ada", org: "org-atelier", lead_status: "logout", events: EVENT }),
+    );
+    expect(out.status).toBe(200);
+    expect(await who.ada()).toEqual([]);
+    // Sa collègue n'est pas touchée, même venue du même navigateur.
+    expect(await who.bob()).toEqual(["sid-a"]);
+  });
+
+  it("avec sid : les sessions de ce navigateur et les anciennes sans sid, pas l'autre appareil", async () => {
+    const who = await devices();
+    const out = await post(
+      logoutToken({
+        sub: "sub-ada",
+        org: "org-atelier",
+        lead_status: "logout",
+        sid: "sid-a",
+        events: EVENT,
+      }),
+    );
+    expect(out.status).toBe(200);
+    expect(await who.ada()).toEqual(["sid-b"]);
+    expect(await who.bob()).toEqual(["sid-a"]);
+    // Le téléphone se déconnecte à son tour : plus rien.
+    await post(logoutToken({ sub: "sub-ada", lead_status: "logout", sid: "sid-b", events: EVENT }));
+    expect(await who.ada()).toEqual([]);
+  });
+
+  it("sid inutilisable (nombre, vide, trop long) : repli sûr, toutes ses sessions", async () => {
+    for (const sid of [42, "", "x".repeat(300), { id: "sid-a" }]) {
+      await t.reset();
+      const who = await devices();
+      const out = await post(
+        logoutToken({ sub: "sub-ada", lead_status: "logout", sid, events: EVENT }),
+      );
+      expect(out.status, JSON.stringify(sid)).toBe(200);
+      expect(await who.ada(), JSON.stringify(sid)).toEqual([]);
+    }
+  });
+
+  it("départ (disabled) : toutes ses sessions, même avec un sid", async () => {
+    const who = await devices();
+    const out = await post(
+      logoutToken({
+        sub: "sub-ada",
+        org: "org-atelier",
+        lead_status: "disabled",
+        sid: "sid-a",
+        events: EVENT,
+      }),
+    );
+    expect(out.status).toBe(200);
+    expect(await who.ada()).toEqual([]);
+  });
+
+  it("jeton refusé : 400, aucune session ne tombe ; personne inconnue : 200 sans erreur", async () => {
+    const who = await devices();
+    const base = { sub: "sub-ada", lead_status: "logout", events: EVENT };
+    const refused = [
+      undefined,
+      "",
+      "pas-un-jeton",
+      logoutToken(base, other.privateKey),
+      logoutToken({ ...base, events: undefined }),
+      logoutToken({ ...base, nonce: "n" }),
+      logoutToken({ ...base, iat: Math.floor(Date.now() / 1000) - 600 }),
+      logoutToken({ ...base, aud: "crmlead" }),
+      logoutToken({ ...base, sub: 7 }),
+    ];
+    for (const token of refused) {
+      const out = await post(token);
+      expect(out.status, String(token).slice(0, 40)).toBe(400);
+    }
+    expect(await who.ada()).toEqual(["aucun", "sid-a", "sid-b"]);
+    const unknown = await post(
+      logoutToken({ sub: "sub-inconnu", lead_status: "logout", sid: "sid-a", events: EVENT }),
+    );
+    expect(unknown.status).toBe(200);
+    expect(await who.ada()).toEqual(["aucun", "sid-a", "sid-b"]);
+  });
+});
+
 describe("garde-fous", () => {
   it("safeFrom : un chemin de ce site, jamais une autre adresse", () => {
     for (const ok of [
@@ -388,6 +670,12 @@ describe("garde-fous", () => {
       cookies: { lead_probe: "1" },
     });
     expect(where(go)).toBe(`${APP}/`);
+    // Sans cookie : la racine aussi, avec la marque, jamais l'adresse étrangère.
+    const bare = await start(
+      "/auth/lead/start?prompt=none&from=https%3A%2F%2Fevil.example%2F%3Flead_probe%3D1",
+    );
+    expect(new URL(where(bare)).origin).toBe("https://crmlead.io");
+    expect(where(bare)).not.toContain("evil.example");
   });
 
   it("seules les erreurs de prompt=none comptent comme un essai silencieux manqué", () => {

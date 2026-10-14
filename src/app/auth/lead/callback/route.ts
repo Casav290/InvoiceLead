@@ -7,7 +7,7 @@ import {
   PROBE_COOKIE,
   SESSION_COOKIE,
 } from "@/lib/cookies";
-import { silentError } from "@/lib/lead-entry";
+import { silentError, silentReturn } from "@/lib/lead-entry";
 import { attachLeadIdentity } from "@/server/auth/attach";
 import {
   cookieBytes,
@@ -37,7 +37,7 @@ import {
 } from "@/server/auth/session";
 import { db } from "@/server/db";
 import { env } from "@/server/env";
-import { finishLogin } from "@/server/lead-id/leadId";
+import { finishLogin, leadSidOf } from "@/server/lead-id/leadId";
 import { organizationForPage } from "@/server/team";
 
 export const dynamic = "force-dynamic";
@@ -99,11 +99,14 @@ export async function GET(request: NextRequest) {
   };
   // Essai silencieux (racine tapée, lead-entry.ts) : le Compte Lead n'avait pas de session ouverte, ou
   // le retour ne peut pas être mené à bout. Retour sur la page d'où il part (la page publique), sans
-  // écran d'erreur ni nouvel essai : lead_probe, posé au départ, empêche toute boucle. Les erreurs
-  // propres à `prompt=none` (login_required…) ne viennent que d'un essai silencieux, même si son
-  // `state` est illisible.
+  // écran d'erreur ni nouvel essai : le cookie lead_probe posé au départ arrête l'essai suivant ; s'il
+  // n'est pas revenu (cookies refusés), la page de retour porte la marque « lead_probe=1 », qui fait
+  // le même office (aucune boucle). Cette page vient du `state` scellé, lisible même sans le cookie de
+  // la demande. Les erreurs propres à `prompt=none` (login_required…) ne viennent que d'un essai
+  // silencieux, même si son `state` est illisible.
   const silent = asked?.silent === true || silentError(q.get("error"));
-  const quiet = () => done(`${APP_URL}${asked?.from ?? "/"}`);
+  const quiet = () =>
+    done(`${APP_URL}${silentReturn(asked?.from ?? "/", Boolean(store.get(PROBE_COOKIE)))}`);
 
   // Session InvoiceLead déjà dans ce navigateur : remplacée par celle-ci au succès, et sa ligne
   // effacée (elle peut être celle d'une autre personne : poste partagé, invitation d'un collègue).
@@ -185,6 +188,9 @@ export async function GET(request: NextRequest) {
       organizationId,
       idToken: tokens.id_token,
       refreshToken: tokens.refresh_token ?? null,
+      // Le navigateur du Compte Lead : « Se déconnecter » ailleurs dans ce navigateur ferme cette
+      // session, pas celles des autres appareils (backchannel.ts).
+      leadSid: leadSidOf(claims),
     });
     if (previous) await destroySession(db(), previous).catch(() => null);
     // Ses sessions d'autres navigateurs revérifient leur accès au Compte Lead dès leur page suivante :
