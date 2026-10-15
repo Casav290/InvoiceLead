@@ -773,6 +773,41 @@ describe("déconnexion annoncée par ERPlead (route back-channel)", () => {
       vi.useRealTimers();
     }
   });
+
+  it("juste après une rotation, deux déconnexions envoyées ensemble par ERPlead passent toutes les deux", async () => {
+    const ROTATED = "passage-backchannel-rotated-together";
+    let published: unknown[] = [{ ...key.publicKey.export({ format: "jwk" }), kid: KID }];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) => {
+        if (url !== `${ISS}/oauth/jwks`) return new Response("{}", { status: 404 });
+        await new Promise((done) => setTimeout(done, 50)); // une vraie lecture prend du temps
+        return Response.json({ keys: published });
+      }),
+    );
+    vi.useFakeTimers({ toFake: ["Date"] });
+    try {
+      vi.setSystemTime(Date.now() + 6 * 3_600_000); // cache d'une heure échu : une relecture
+      const who = await devices();
+      const nobody = { sub: "sub-inconnu", lead_status: "logout", events: EVENT };
+      expect((await post(logoutToken(nobody))).status).toBe(200);
+      expect(jwksReads()).toBe(1);
+      published = [...published, { ...other.publicKey.export({ format: "jwk" }), kid: ROTATED }];
+      // Une minute plus tard, Ada est retirée : ERPlead annonce ses deux navigateurs en même temps,
+      // signés par sa nouvelle clé. Aucun ne doit être refusé, aucune session ne doit rester ouverte.
+      vi.setSystemTime(Date.now() + 60_000);
+      const out = await Promise.all([
+        post(logoutToken({ ...LOGOUT, sid: "sid-a" }, other.privateKey, ROTATED)),
+        post(logoutToken({ ...LOGOUT, sid: "sid-b" }, other.privateKey, ROTATED)),
+      ]);
+      expect(out.map((r) => r.status)).toEqual([200, 200]);
+      expect(jwksReads()).toBe(2);
+      expect(await who.ada()).toEqual([]);
+      expect(await who.bob()).toEqual(["sid-a"]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });
 
 describe("garde-fous", () => {

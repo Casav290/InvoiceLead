@@ -66,7 +66,8 @@ const jwksCache = new Map<string, { at: number; keys: any[] }>()
 // Relecture pour une clé inconnue : au plus une toutes les 30 s par émetteur (même règle que ScanLead, 14.10.2026).
 // La route back-channel et la boîte de réception des échanges sont publiques : sans ce délai, chaque jeton forgé avec
 // un `kid` inventé ferait un appel à ERPlead (amplificateur 1 pour 1). Une vraie rotation de clé est prise en compte
-// dans les 30 s. Les requêtes simultanées partagent la même lecture. Par émetteur : une lecture récente des clés de
+// dans les 30 s. Les requêtes simultanées partagent la même lecture, qu'elle vienne de l'expiration d'une heure ou d'une
+// clé inconnue : une requête qui trouve une lecture en cours l'attend avant de conclure. Par émetteur : une lecture récente des clés de
 // CRMlead (transition) ne retarde pas la prise en compte d'une rotation chez ERPlead. Les émetteurs sont filtrés
 // avant d'arriver ici (liste fixe), ces tables ne grandissent donc pas.
 const UNKNOWN_KID_REFRESH_MS = 30_000
@@ -93,8 +94,12 @@ async function publicKey(kid: string, iss: string = issuer()) {
   if (!hit || elapsed(hit.at) > 3_600_000) await readJwks(iss)
   let jwk = jwksCache.get(iss)!.keys.find((k) => k.kid === kid)
   // Clé inconnue : le compte Lead a peut-être tourné sa clé, on relit (pas plus d'une fois toutes les 30 s par émetteur).
-  if (!jwk && elapsed(jwksReadAt.get(iss) ?? -Infinity) >= UNKNOWN_KID_REFRESH_MS) {
-    await readJwks(iss)
+  // Une relecture déjà en cours (lancée par une autre requête, dont `jwksReadAt` vient d'être posé) est attendue avant
+  // de conclure, sans nouvel appel : sinon, juste après une rotation, de deux jetons légitimes arrivés ensemble seul
+  // le premier serait accepté (connexion refusée, ou déconnexion back-channel en 400 et session laissée ouverte).
+  const pending = jwksReading.get(iss)
+  if (!jwk && (pending || elapsed(jwksReadAt.get(iss) ?? -Infinity) >= UNKNOWN_KID_REFRESH_MS)) {
+    await (pending ?? readJwks(iss))
     jwk = jwksCache.get(iss)!.keys.find((k) => k.kid === kid)
   }
   return jwk ? createPublicKey({ key: jwk, format: 'jwk' }) : null

@@ -162,6 +162,57 @@ describe("relecture des clés pour un kid inconnu : au plus une toutes les 30 s,
       vi.useRealTimers();
     }
   });
+
+  it("juste après une rotation, les jetons arrivés pendant une relecture en cours l'attendent au lieu d'être refusés", async () => {
+    const erp = "https://erplead.io";
+    const rotated = generateKeyPairSync("rsa", { modulusLength: 2048 });
+    let published: unknown[] = [
+      { ...keys[erp].publicKey.export({ format: "jwk" }), kid: kidOf(erp) },
+    ];
+    const reads: string[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) => {
+        if (url !== `${erp}/oauth/jwks`) return new Response("{}", { status: 404 });
+        reads.push(url);
+        await new Promise((done) => setTimeout(done, 50)); // une vraie lecture prend du temps
+        return Response.json({ keys: published });
+      }),
+    );
+    const signed = (kid: string, signer: typeof rotated.privateKey, sid: string) => {
+      const h = Buffer.from(JSON.stringify({ alg: "RS256", kid })).toString("base64url");
+      const p = Buffer.from(
+        JSON.stringify({
+          iss: erp,
+          aud: "invoicelead",
+          sid,
+          exp: Math.floor(Date.now() / 1000) + 300,
+        }),
+      ).toString("base64url");
+      return `${h}.${p}.${sign("sha256", Buffer.from(`${h}.${p}`), signer).toString("base64url")}`;
+    };
+    vi.useFakeTimers({ toFake: ["Date"] });
+    try {
+      vi.setSystemTime(Date.now() + 6 * 3_600_000); // caches d'une heure échus
+      expect(await verifyLeadJwt(jwt(erp, { aud: "invoicelead" }), "invoicelead")).not.toBeNull();
+      expect(reads).toHaveLength(1);
+      // ERPlead publie sa nouvelle clé. Une minute plus tard (cache d'une heure encore frais, dernière lecture
+      // vieille de plus de 30 s), arrivent ensemble : un jeton à clé inventée, qui lance la relecture, puis deux
+      // jetons légitimes signés par la nouvelle clé, pendant que cette relecture est en cours.
+      published = [...published, { ...rotated.publicKey.export({ format: "jwk" }), kid: "erp-2" }];
+      vi.setSystemTime(Date.now() + 60_000);
+      const out = await Promise.all([
+        verifyLeadJwt(signed("inventee", rotated.privateKey, "sid-x"), "invoicelead"),
+        verifyLeadJwt(signed("erp-2", rotated.privateKey, "sid-a"), "invoicelead"),
+        verifyLeadJwt(signed("erp-2", rotated.privateKey, "sid-b"), "invoicelead"),
+      ]);
+      expect(out.map((c) => c?.sid ?? null)).toEqual([null, "sid-a", "sid-b"]);
+      // Une seule relecture, partagée par les trois.
+      expect(reads).toHaveLength(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });
 
 describe("envoi vers CRMlead pendant la transition", () => {
