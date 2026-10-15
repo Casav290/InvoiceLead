@@ -141,6 +141,20 @@ export const memberships = pgTable(
     /** Droits dans InvoiceLead (roles.ts) : all, billing, accounting, readonly, none. Null vaut all. */
     appRole: text("app_role"),
     createdAt: createdAt(),
+    /**
+     * Dernière venue de la personne dans InvoiceLead pour cette entreprise (arrivée, changement
+     * d'entreprise, activité au plus une fois par heure). Gardée sur l'adhésion : elle reste après la
+     * fin des sessions. Null : pas encore venue depuis la migration 0044 (ni connexion au journal).
+     */
+    lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),
+    /**
+     * Retirée par un responsable (« Retirer », Réglages → Équipe) : plus d'accès ni de place, quel
+     * que soit son rôle, et le retrait est gardé à la reconnexion tant qu'un responsable ne la
+     * rétablit pas. Null : présente.
+     */
+    removedAt: timestamp("removed_at", { withTimezone: true }),
+    /** Responsable qui l'a retirée. */
+    removedBy: uuid("removed_by").references(() => users.id, { onDelete: "set null" }),
   },
   (t) => [
     primaryKey({ columns: [t.organizationId, t.userId] }),

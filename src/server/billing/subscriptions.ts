@@ -5,6 +5,7 @@ import type { Db } from "../db";
 import { auditLog, billingEvents, billingSubscriptions, organizations } from "../db/schema";
 import { env } from "../env";
 import { type LeadEntitlements, reportSubscription } from "../lead-id/leadId";
+import { offerAbove, planColumns } from "../plans";
 import {
   APP,
   BillingError,
@@ -410,6 +411,11 @@ export function planPageUrl(locale: string, query = ""): string {
  * Session Stripe Checkout d'un abonnement InvoiceLead. Les métadonnées {app, account_id, plan,
  * interval} vont sur la session ET sur l'abonnement ; pas de client_reference_id (Scanlead le lit),
  * pas d'invoice_id ni d'organization_id (Stripe Connect).
+ *
+ * Refusée (409) AVANT tout appel à Stripe, ni client ni session créés : un abonnement InvoiceLead déjà
+ * ouvert (« already_subscribed » : le changement de formule se fait au portail), ou une formule qui
+ * n'est pas STRICTEMENT au-dessus de la formule acquise (« plan_not_above » : abonnement pris ici ou
+ * formule propre lue au Compte Lead, relue en base ; un héritage de la transition n'empêche rien).
  */
 export async function createCheckout(
   database: Db,
@@ -418,6 +424,13 @@ export async function createCheckout(
   const { org } = input;
   if (await hasOpenSubscription(database, org.id))
     throw new BillingError(409, "already_subscribed", "abonnement déjà actif");
+  const [plan] = await database
+    .select(planColumns)
+    .from(organizations)
+    .where(eq(organizations.id, org.id))
+    .limit(1);
+  if (!plan || !offerAbove(plan, input.plan))
+    throw new BillingError(409, "plan_not_above", "formule déjà acquise ou supérieure");
   const customer = await ensureCustomer(database, org, input.email);
   try {
     return await startCheckout(database, input, customer);

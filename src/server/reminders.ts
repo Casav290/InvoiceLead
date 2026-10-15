@@ -394,6 +394,8 @@ export async function runAutoReminders(database: Db, today: string) {
         and(
           eq(memberships.organizationId, org.id),
           inArray(memberships.role, ["admin", "manager"]),
+          // Un responsable retiré (« Retirer ») n'agit plus pour l'entreprise.
+          isNull(memberships.removedAt),
         ),
       )
       .orderBy(memberships.createdAt)

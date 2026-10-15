@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { pickLocale } from "../auth/login-cookie";
 import { type CurrentSession, getSession } from "../auth/session";
 import { env } from "../env";
+import { isRemoved } from "../roles";
 import { planPageUrl } from "./subscriptions";
 
 /**
@@ -40,7 +41,12 @@ export async function billingRequest(request: Request): Promise<
       ),
     };
   }
-  if (!session.organization.hasAccess || session.membership.role !== "admin")
+  // Un administrateur retiré par un autre (« Retirer », Réglages → Équipe) ne gère plus rien.
+  if (
+    !session.organization.hasAccess ||
+    session.membership.role !== "admin" ||
+    isRemoved(session.membership)
+  )
     return { ok: false, response: back("?error=admin") };
   return { ok: true, session, locale, form, back };
 }

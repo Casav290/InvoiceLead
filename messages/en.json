@@ -400,16 +400,27 @@
       "blockedTitle": "Access to InvoiceLead removed",
       "blockedBody": "A manager at {org} has removed your access to InvoiceLead. Ask them to restore it in the team settings.",
       "seatTitle": "All InvoiceLead seats are taken",
-      "seatBody": "{seats, plural, one {The only InvoiceLead seat} other {All # InvoiceLead seats}} of {org} {seats, plural, one {is already taken} other {are already taken}}. Upgrade to Pro+ (5 seats) in InvoiceLead, or free up a seat in the team settings.",
       "fiduciaryTitle": "Fiduciary access paused",
       "fiduciaryBody": "{org} is on the Free plan. Fiduciary access is part of the Pro plan and comes back as soon as {org} moves to Pro again.",
       "otherOrgs": "Work in another company",
       "betaTitle": "InvoiceLead is in private beta",
       "betaBody": "{org} is not on the beta list yet. We are opening access in small groups; write to us at hello@invoicelead.io to be added.",
-      "seatAsk": "Ask the administrator of {org} to upgrade to Pro+ in InvoiceLead or to free up a seat for you.",
       "upgradeMonthly": "Upgrade to Pro+ (€39 a month)",
       "upgradeYearly": "Pro+ yearly (€390)",
-      "manage": "Upgrade to Pro+ in the portal"
+      "manage": "Upgrade to Pro+ in the portal",
+      "seatBodyFree": "The InvoiceLead Free plan has {seats, plural, one {a single seat} other {# seats}} for {org}, {seats, plural, one {already taken} other {all already taken}}.",
+      "seatBodyPro": "The InvoiceLead Pro plan has {seats, plural, one {a single seat} other {# seats}} for {org}, {seats, plural, one {already taken} other {all already taken}}.",
+      "seatBodyPlus": "{seats, plural, one {The only Pro+ seat} other {All # Pro+ seats}} of {org} in InvoiceLead {seats, plural, one {is already taken} other {are already taken}}: no plan has more.",
+      "seatBodyAny": "All InvoiceLead seats of {org} are already taken.",
+      "upgradeAdmin": "Upgrade to Pro+ ({plus} seats) in InvoiceLead, or free up a seat in the team settings.",
+      "upgradeAsk": "Ask the administrator of {org} to upgrade to Pro+ ({plus} seats) in InvoiceLead or to free up a seat for you.",
+      "freeUp": "Ask an administrator of {org} to free up a seat in the InvoiceLead team settings.",
+      "freeUpAdmin": "Free up a seat in the team settings: remove someone who no longer uses InvoiceLead.",
+      "anyAsk": "Ask an administrator of {org} to free up a seat or to choose a plan with more seats.",
+      "yourCompany": "your company",
+      "switchAccount": "Switch account",
+      "leadAccount": "ERPlead account",
+      "seePlans": "See plans"
     },
     "company": {
       "title": "Company",
@@ -1726,7 +1737,27 @@
         "failed": "The email could not be sent. Pass on the link below."
       },
       "emailSubject": "{org} is giving you access to its accounts",
-      "emailBody": "Hello,\n\n{org} is inviting you to access its accounts in InvoiceLead. Log in with your Lead account using this link (valid for {days} days):"
+      "emailBody": "Hello,\n\n{org} is inviting you to access its accounts in InvoiceLead. Log in with your Lead account using this link (valid for {days} days):",
+      "lastSeen": "Last visit: {date}",
+      "lastSeenNever": "Last visit: not yet",
+      "removeMember": "Remove",
+      "removeMemberLabel": "Remove {name}",
+      "removeTitle": "Remove {name} from InvoiceLead?",
+      "removeBody": "Their seat is freed at once and their sessions at {org} are closed. They no longer get into InvoiceLead on their own, even if a seat is free, until a manager restores them. Their invoices and entries stay with the company.",
+      "removeConfirm": "Remove {name}",
+      "keepMember": "Cancel",
+      "memberRemoved": "Person removed: their seat is free.",
+      "memberRestored": "Access restored.",
+      "removedTitle": "Removed people",
+      "removedHint": "They no longer get into InvoiceLead and take no seat until a manager restores them.",
+      "removedOn": "removed on {date}",
+      "restore": "Restore",
+      "restoreLabel": "Restore {name}",
+      "removeErrors": {
+        "self": "You cannot remove yourself.",
+        "forbidden": "Only managers remove someone, and only an administrator removes the administrator.",
+        "invalid": "This person is no longer in the team, or has already been removed."
+      }
     },
     "invite": {
       "title": "Fiduciary invitation",
@@ -2218,7 +2249,9 @@
         "renews": "{interval, select, year {Yearly} other {Monthly}} subscription, renews on {date}.",
         "ends": "Subscription cancelled: {plan} until {date}, then Free.",
         "pastDue": "The last payment failed. Update your card in “Manage subscription” to keep {plan}.",
-        "inherited": "Until {date}, your {app} subscription also gives you {plan} in InvoiceLead. After that, InvoiceLead goes back to Free unless you take a plan here."
+        "inherited": "Until {date}, your {app} subscription also gives you {plan} in InvoiceLead. After that, InvoiceLead goes back to Free unless you take a plan here.",
+        "lead": "{plan} through your ERPlead account until {date}: this plan is managed in ERPlead.",
+        "leadOpen": "{plan} through your ERPlead account: this plan is managed in ERPlead."
       },
       "notices": {
         "done": "Thank you! Your InvoiceLead {plan} plan is active.",
@@ -2231,8 +2264,10 @@
         "invalid": "Unknown plan: choose Pro or Pro+.",
         "already": "Your InvoiceLead subscription is already active: change plan in “Manage subscription”.",
         "stripe": "Stripe did not answer. Try again in a moment.",
-        "noCustomer": "No InvoiceLead subscription to manage yet."
-      }
+        "noCustomer": "No InvoiceLead subscription to manage yet.",
+        "alreadyPlan": "Your company already has {plan} in InvoiceLead: there is nothing more to pay."
+      },
+      "leadAccount": "Open my ERPlead account"
     }
   },
   "footer": {

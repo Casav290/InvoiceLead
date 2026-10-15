@@ -69,9 +69,15 @@ export async function GET(request: NextRequest) {
   // qu'un second retour sans demande montre l'écran d'erreur au lieu de relancer encore. Posé par un
   // autre site, il ne fait que retirer cette relance-là ; il ne donne jamais de session.
   const retry = q.get("retry") === "1";
+  // « Changer de compte » (page de refus, refusal.ts) : le Compte Lead redemande l'identifiant
+  // (prompt=login, formulaire vide), jamais la session reprise, même ouverte ici ou chez lui. Comme
+  // une entrée fraîche, la session InvoiceLead restée dans ce navigateur ne prend pas le relais : la
+  // nouvelle identité la remplace au retour (callback). Rien n'est effacé ici : n'importe quel site
+  // peut ouvrir cette adresse, qui ne fait que montrer le formulaire du Compte Lead.
+  const switching = q.get("switch") === "1" && !signup && !silent;
 
   const current = (await cookies()).get(SESSION_COOKIE)?.value;
-  const found = !fresh && current ? await findSession(db(), current) : null;
+  const found = !fresh && !switching && current ? await findSession(db(), current) : null;
   if (found) {
     // Déjà connectée ici : l'accueil de l'espace, dans la langue de l'adresse ou, sans elle, dans
     // celle de son Compte Lead (relue à chaque connexion, attach.ts).
@@ -96,7 +102,13 @@ export async function GET(request: NextRequest) {
 
   const login = startLogin({
     ...(given ? { locale: given } : {}),
-    ...(signup ? { prompt: "create" as const } : silent ? { prompt: "none" as const } : {}),
+    ...(signup
+      ? { prompt: "create" as const }
+      : silent
+        ? { prompt: "none" as const }
+        : switching
+          ? { prompt: "login" as const }
+          : {}),
   });
   // Page trop longue pour le `state` (lien d'import de CRMlead) : gardée côté serveur, le `state`
   // en porte la référence (login-pages.ts). Elle revient entière même sans le cookie de la demande.
@@ -114,7 +126,7 @@ export async function GET(request: NextRequest) {
       ...(silent ? { silent: true as const, from } : {}),
       ...(invite ? { invite } : {}),
       ...(next ? { next } : {}),
-      ...(fresh ? { fresh: true as const } : {}),
+      ...(fresh || switching ? { fresh: true as const } : {}),
       ...(ref ? { ref } : {}),
       ...(retry ? { retry: true as const } : {}),
     },

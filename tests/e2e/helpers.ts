@@ -14,6 +14,9 @@ export type FakeUser = {
   org_role?: string;
   access?: boolean;
   plan?: "free" | "pro" | "proplus";
+  /** D'où vient la formule au Compte Lead (« own » : propre, « family » : héritée) et jusqu'à quand. */
+  plan_source?: "own" | "family";
+  plan_until?: string;
   /** Statut d'InvoiceLead dans la famille : « retired » ferme l'application. */
   status?: "live" | "soon" | "retired";
   /** Langue du Compte Lead (claims.locale) ; « fr » par défaut. */

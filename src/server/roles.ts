@@ -12,18 +12,26 @@ export const APP_ROLES: AppRole[] = ["all", "billing", "accounting", "readonly",
  */
 export type Permission = "billing" | "accounting" | "setup" | "company";
 
-export type Member = { role: string; appRole: string | null };
+/**
+ * Une adhésion telle que la lisent les droits. `removedAt` : retirée par un responsable (« Retirer »,
+ * Réglages → Équipe) ; plus aucun droit ni place, quel que soit son rôle. Toute lecture qui décide d'un
+ * accès doit la sélectionner avec le rôle.
+ */
+export type Member = { role: string; appRole: string | null; removedAt?: Date | null };
 
 export const isManager = (m: Member) => m.role === "admin" || m.role === "manager";
 export const isFiduciary = (m: Member) => m.role === "fiduciary";
+export const isRemoved = (m: Member) => m.removedAt != null;
 
 export function appRoleOf(m: Member): AppRole {
+  if (isRemoved(m)) return "none";
   if (isManager(m)) return "all";
   if (isFiduciary(m)) return "accounting";
   return (APP_ROLES as string[]).includes(m.appRole ?? "") ? (m.appRole as AppRole) : "all";
 }
 
 export function can(m: Member, permission: Permission): boolean {
+  if (isRemoved(m)) return false;
   if (isManager(m)) return true;
   if (isFiduciary(m)) return permission === "accounting" || permission === "setup";
   const role = appRoleOf(m);
@@ -32,5 +40,5 @@ export function can(m: Member, permission: Permission): boolean {
   return false;
 }
 
-/** Un membre bloqué (« none ») n'entre pas et n'occupe pas de place. */
+/** Un membre bloqué (« none ») ou retiré n'entre pas et n'occupe pas de place. */
 export const hasAppAccess = (m: Member) => appRoleOf(m) !== "none";

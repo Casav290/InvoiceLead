@@ -63,6 +63,8 @@ export async function backchannelLogout(
           eq(memberships.organizationId, org.id),
           eq(memberships.role, "admin"),
           ne(memberships.userId, user.id),
+          // Un administrateur retiré (« Retirer ») ne remplace personne.
+          isNull(memberships.removedAt),
         ),
       );
     const [mine] = await database

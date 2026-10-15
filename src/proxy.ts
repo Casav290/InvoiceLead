@@ -11,7 +11,12 @@ import { entryRedirect } from "./lib/lead-entry";
 import { returnPage } from "./lib/return-page";
 
 const intl = createMiddleware(routing);
-const PROTECTED = new RegExp(`^/(${routing.locales.join("|")})/(?:app|no-access)(?:/|$)`, "i");
+/**
+ * Pages de l'application, réservées aux sessions. L'écran « sans accès » (/xx/no-access) n'en fait
+ * plus partie : le refus « places » se lit aussi sans session (refusal.ts), et la page elle-même
+ * renvoie à la connexion pour les autres raisons.
+ */
+const PROTECTED = new RegExp(`^/(${routing.locales.join("|")})/app(?:/|$)`, "i");
 /**
  * Accueil : « / » ou « /fr », là où le Compte Lead ramène après une déconnexion. L'entrée par la
  * racine (session, essai silencieux) est dans lead-entry.ts.

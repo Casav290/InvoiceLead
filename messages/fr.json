@@ -400,16 +400,27 @@
       "blockedTitle": "Accès à InvoiceLead retiré",
       "blockedBody": "Un responsable de {org} a retiré votre accès à InvoiceLead. Demandez-lui de le rétablir dans les réglages de l'équipe.",
       "seatTitle": "Toutes les places InvoiceLead sont prises",
-      "seatBody": "{seats, plural, one {La seule place} other {Les # places}} InvoiceLead de {org} {seats, plural, one {est déjà prise} other {sont déjà prises}}. Passez à Pro+ (5 places) dans InvoiceLead, ou libérez une place dans les réglages de l'équipe.",
       "fiduciaryTitle": "Accès fiduciaire suspendu",
       "fiduciaryBody": "{org} est en formule gratuite. L'accès fiduciaire fait partie de la formule Pro : il revient dès que {org} repasse à Pro.",
       "otherOrgs": "Travailler dans une autre entreprise",
       "betaTitle": "InvoiceLead est en bêta privée",
       "betaBody": "{org} n'est pas encore sur la liste de la bêta. Nous ouvrons les accès par petits groupes ; écrivez-nous à hello@invoicelead.io pour y figurer.",
-      "seatAsk": "Demandez à l'administrateur de {org} de passer à Pro+ dans InvoiceLead ou de vous libérer une place.",
       "upgradeMonthly": "Passer à Pro+ (39 € par mois)",
       "upgradeYearly": "Pro+ à l'année (390 €)",
-      "manage": "Passer à Pro+ dans le portail"
+      "manage": "Passer à Pro+ dans le portail",
+      "seatBodyFree": "La formule Gratuite d'InvoiceLead compte {seats, plural, one {une seule place} other {# places}} pour {org}, {seats, plural, one {déjà prise} other {toutes déjà prises}}.",
+      "seatBodyPro": "La formule Pro d'InvoiceLead compte {seats, plural, one {une seule place} other {# places}} pour {org}, {seats, plural, one {déjà prise} other {toutes déjà prises}}.",
+      "seatBodyPlus": "{seats, plural, one {La seule place Pro+ d'InvoiceLead de {org} est déjà prise} other {Les # places Pro+ d'InvoiceLead de {org} sont déjà prises}} : aucune formule n'en compte davantage.",
+      "seatBodyAny": "Toutes les places InvoiceLead de {org} sont déjà prises.",
+      "upgradeAdmin": "Passez à Pro+ ({plus} places) dans InvoiceLead, ou libérez une place dans les réglages de l'équipe.",
+      "upgradeAsk": "Demandez à l'administrateur de {org} de passer à Pro+ ({plus} places) dans InvoiceLead ou de vous libérer une place.",
+      "freeUp": "Demandez à un administrateur de {org} de libérer une place dans les réglages de l'équipe d'InvoiceLead.",
+      "freeUpAdmin": "Libérez une place dans les réglages de l'équipe : retirez une personne qui n'utilise plus InvoiceLead.",
+      "anyAsk": "Demandez à un administrateur de {org} de libérer une place, ou de choisir une formule qui en compte davantage.",
+      "yourCompany": "votre entreprise",
+      "switchAccount": "Changer de compte",
+      "leadAccount": "Compte ERPlead",
+      "seePlans": "Voir les formules"
     },
     "company": {
       "title": "Entreprise",
@@ -1726,7 +1737,27 @@
         "failed": "L'e-mail n'a pas pu partir. Transmettez le lien ci-dessous."
       },
       "emailSubject": "{org} vous donne accès à sa comptabilité",
-      "emailBody": "Bonjour,\n\n{org} vous invite à accéder à sa comptabilité dans InvoiceLead. Connectez-vous avec votre Compte Lead depuis ce lien (valable {days} jours) :"
+      "emailBody": "Bonjour,\n\n{org} vous invite à accéder à sa comptabilité dans InvoiceLead. Connectez-vous avec votre Compte Lead depuis ce lien (valable {days} jours) :",
+      "lastSeen": "Dernière venue : {date}",
+      "lastSeenNever": "Dernière venue : pas encore",
+      "removeMember": "Retirer",
+      "removeMemberLabel": "Retirer {name}",
+      "removeTitle": "Retirer {name} d'InvoiceLead ?",
+      "removeBody": "Sa place se libère tout de suite et ses sessions dans {org} se ferment. Cette personne n'entre plus d'elle-même dans InvoiceLead, même s'il reste une place, tant qu'un responsable ne la rétablit pas. Ses factures et ses écritures restent à l'entreprise.",
+      "removeConfirm": "Retirer {name}",
+      "keepMember": "Annuler",
+      "memberRemoved": "Personne retirée : sa place est libre.",
+      "memberRestored": "Accès rétabli.",
+      "removedTitle": "Personnes retirées",
+      "removedHint": "Elles n'entrent plus dans InvoiceLead et n'occupent aucune place tant qu'un responsable ne les rétablit pas.",
+      "removedOn": "retrait du {date}",
+      "restore": "Rétablir",
+      "restoreLabel": "Rétablir {name}",
+      "removeErrors": {
+        "self": "Vous ne pouvez pas vous retirer vous-même.",
+        "forbidden": "Seuls les responsables retirent une personne, et seul un administrateur retire l'administrateur.",
+        "invalid": "Cette personne n'est plus dans l'équipe, ou elle a déjà été retirée."
+      }
     },
     "invite": {
       "title": "Invitation fiduciaire",
@@ -2218,7 +2249,9 @@
         "renews": "Abonnement {interval, select, year {annuel} other {mensuel}}, renouvelé le {date}.",
         "ends": "Abonnement résilié : {plan} jusqu'au {date}, puis Gratuit.",
         "pastDue": "Le dernier paiement a échoué. Mettez à jour votre carte dans « Gérer l'abonnement » pour garder {plan}.",
-        "inherited": "Jusqu'au {date}, votre abonnement {app} vous donne aussi {plan} dans InvoiceLead. Ensuite, InvoiceLead repasse en Gratuit, sauf si vous prenez une formule ici."
+        "inherited": "Jusqu'au {date}, votre abonnement {app} vous donne aussi {plan} dans InvoiceLead. Ensuite, InvoiceLead repasse en Gratuit, sauf si vous prenez une formule ici.",
+        "lead": "{plan} par votre Compte ERPlead jusqu'au {date} : cette formule se gère dans ERPlead.",
+        "leadOpen": "{plan} par votre Compte ERPlead : cette formule se gère dans ERPlead."
       },
       "notices": {
         "done": "Merci ! Votre formule InvoiceLead {plan} est active.",
@@ -2231,8 +2264,10 @@
         "invalid": "Formule inconnue : choisissez Pro ou Pro+.",
         "already": "Votre abonnement InvoiceLead est déjà actif : changez de formule dans « Gérer l'abonnement ».",
         "stripe": "Stripe n'a pas répondu. Réessayez dans un instant.",
-        "noCustomer": "Aucun abonnement InvoiceLead à gérer pour l'instant."
-      }
+        "noCustomer": "Aucun abonnement InvoiceLead à gérer pour l'instant.",
+        "alreadyPlan": "Votre entreprise a déjà {plan} dans InvoiceLead : rien à payer de plus."
+      },
+      "leadAccount": "Ouvrir mon Compte ERPlead"
     }
   },
   "footer": {

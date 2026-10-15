@@ -400,16 +400,27 @@
       "blockedTitle": "Zugang zu InvoiceLead entzogen",
       "blockedBody": "Eine verantwortliche Person von {org} hat Ihren Zugang zu InvoiceLead entzogen. Bitten Sie sie, ihn in den Team-Einstellungen wiederherzustellen.",
       "seatTitle": "Alle InvoiceLead-Plätze sind belegt",
-      "seatBody": "{seats, plural, one {Der einzige InvoiceLead-Platz} other {Alle # InvoiceLead-Plätze}} von {org} {seats, plural, one {ist bereits belegt} other {sind bereits belegt}}. Wechseln Sie in InvoiceLead auf Pro+ (5 Plätze) oder geben Sie in den Team-Einstellungen einen Platz frei.",
       "fiduciaryTitle": "Treuhandzugang pausiert",
       "fiduciaryBody": "{org} nutzt das Gratis-Abo. Der Treuhandzugang ist Teil des Pro-Abos und ist wieder offen, sobald {org} auf Pro wechselt.",
       "otherOrgs": "In einem anderen Unternehmen arbeiten",
       "betaTitle": "InvoiceLead ist in der privaten Beta",
       "betaBody": "{org} steht noch nicht auf der Beta-Liste. Wir öffnen den Zugang in kleinen Gruppen; schreiben Sie uns an hello@invoicelead.io, um aufgenommen zu werden.",
-      "seatAsk": "Bitten Sie den Administrator von {org}, in InvoiceLead auf Pro+ zu wechseln oder Ihnen einen Platz freizugeben.",
       "upgradeMonthly": "Auf Pro+ wechseln (39 € pro Monat)",
       "upgradeYearly": "Pro+ jährlich (390 €)",
-      "manage": "Im Portal auf Pro+ wechseln"
+      "manage": "Im Portal auf Pro+ wechseln",
+      "seatBodyFree": "{seats, plural, one {Der einzige InvoiceLead-Platz} other {Alle # InvoiceLead-Plätze}} von {org} im Gratis-Abo {seats, plural, one {ist bereits belegt} other {sind bereits belegt}}.",
+      "seatBodyPro": "{seats, plural, one {Der einzige InvoiceLead-Platz} other {Alle # InvoiceLead-Plätze}} von {org} im Pro-Abo {seats, plural, one {ist bereits belegt} other {sind bereits belegt}}.",
+      "seatBodyPlus": "{seats, plural, one {Der einzige Pro+-Platz} other {Alle # Pro+-Plätze}} von {org} in InvoiceLead {seats, plural, one {ist bereits belegt} other {sind bereits belegt}}: Kein Abo umfasst mehr.",
+      "seatBodyAny": "Alle InvoiceLead-Plätze von {org} sind bereits belegt.",
+      "upgradeAdmin": "Wechseln Sie in InvoiceLead auf Pro+ ({plus} Plätze) oder geben Sie in den Team-Einstellungen einen Platz frei.",
+      "upgradeAsk": "Bitten Sie den Administrator von {org}, in InvoiceLead auf Pro+ ({plus} Plätze) zu wechseln oder Ihnen einen Platz freizugeben.",
+      "freeUp": "Bitten Sie einen Administrator von {org}, in den Team-Einstellungen von InvoiceLead einen Platz freizugeben.",
+      "freeUpAdmin": "Geben Sie in den Team-Einstellungen einen Platz frei: Entfernen Sie eine Person, die InvoiceLead nicht mehr nutzt.",
+      "anyAsk": "Bitten Sie einen Administrator von {org}, einen Platz freizugeben oder ein Abo mit mehr Plätzen zu wählen.",
+      "yourCompany": "Ihrem Unternehmen",
+      "switchAccount": "Konto wechseln",
+      "leadAccount": "ERPlead-Konto",
+      "seePlans": "Abos ansehen"
     },
     "company": {
       "title": "Firma",
@@ -1726,7 +1737,27 @@
         "failed": "Die E-Mail konnte nicht gesendet werden. Geben Sie den Link unten weiter."
       },
       "emailSubject": "{org} gibt Ihnen Zugang zur Buchhaltung",
-      "emailBody": "Guten Tag\n\n{org} lädt Sie ein, in InvoiceLead auf die Buchhaltung zuzugreifen. Melden Sie sich über diesen Link mit Ihrem Lead-Konto an (gültig {days} Tage):"
+      "emailBody": "Guten Tag\n\n{org} lädt Sie ein, in InvoiceLead auf die Buchhaltung zuzugreifen. Melden Sie sich über diesen Link mit Ihrem Lead-Konto an (gültig {days} Tage):",
+      "lastSeen": "Zuletzt da: {date}",
+      "lastSeenNever": "Zuletzt da: noch nie",
+      "removeMember": "Entfernen",
+      "removeMemberLabel": "{name} entfernen",
+      "removeTitle": "{name} aus InvoiceLead entfernen?",
+      "removeBody": "Der Platz wird sofort frei, und die Sitzungen bei {org} werden beendet. Die Person kommt nicht mehr von sich aus in InvoiceLead, auch wenn ein Platz frei ist, bis eine verantwortliche Person sie wieder aufnimmt. Rechnungen und Buchungen bleiben beim Unternehmen.",
+      "removeConfirm": "{name} entfernen",
+      "keepMember": "Abbrechen",
+      "memberRemoved": "Person entfernt: Der Platz ist frei.",
+      "memberRestored": "Zugang wiederhergestellt.",
+      "removedTitle": "Entfernte Personen",
+      "removedHint": "Sie kommen nicht mehr in InvoiceLead und belegen keinen Platz, bis eine verantwortliche Person sie wieder aufnimmt.",
+      "removedOn": "entfernt am {date}",
+      "restore": "Wieder aufnehmen",
+      "restoreLabel": "{name} wieder aufnehmen",
+      "removeErrors": {
+        "self": "Sie können sich nicht selbst entfernen.",
+        "forbidden": "Nur verantwortliche Personen entfernen jemanden, und nur ein Administrator entfernt den Administrator.",
+        "invalid": "Diese Person ist nicht mehr im Team oder wurde bereits entfernt."
+      }
     },
     "invite": {
       "title": "Treuhand-Einladung",
@@ -2218,7 +2249,9 @@
         "renews": "{interval, select, year {Jahresabo} other {Monatsabo}}, verlängert sich am {date}.",
         "ends": "Abo gekündigt: {plan} bis {date}, danach Gratis.",
         "pastDue": "Die letzte Zahlung ist fehlgeschlagen. Aktualisieren Sie Ihre Karte unter «Abo verwalten», um {plan} zu behalten.",
-        "inherited": "Bis {date} gibt Ihnen Ihr {app}-Abo auch {plan} in InvoiceLead. Danach wechselt InvoiceLead auf Gratis, ausser Sie schliessen hier ein Abo ab."
+        "inherited": "Bis {date} gibt Ihnen Ihr {app}-Abo auch {plan} in InvoiceLead. Danach wechselt InvoiceLead auf Gratis, ausser Sie schliessen hier ein Abo ab.",
+        "lead": "{plan} über Ihr ERPlead-Konto bis {date}: Dieses Abo wird in ERPlead verwaltet.",
+        "leadOpen": "{plan} über Ihr ERPlead-Konto: Dieses Abo wird in ERPlead verwaltet."
       },
       "notices": {
         "done": "Danke! Ihr InvoiceLead-Abo {plan} ist aktiv.",
@@ -2231,8 +2264,10 @@
         "invalid": "Unbekanntes Abo: Wählen Sie Pro oder Pro+.",
         "already": "Ihr InvoiceLead-Abo ist bereits aktiv: Wechseln Sie das Abo unter «Abo verwalten».",
         "stripe": "Stripe hat nicht geantwortet. Versuchen Sie es gleich noch einmal.",
-        "noCustomer": "Noch kein InvoiceLead-Abo zu verwalten."
-      }
+        "noCustomer": "Noch kein InvoiceLead-Abo zu verwalten.",
+        "alreadyPlan": "Ihr Unternehmen hat in InvoiceLead bereits {plan}: Es gibt nichts weiter zu bezahlen."
+      },
+      "leadAccount": "Mein ERPlead-Konto öffnen"
     }
   },
   "footer": {

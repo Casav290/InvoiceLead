@@ -8,7 +8,8 @@ import { betaAllowed } from "../beta";
 import { db } from "../db";
 import { env } from "../env";
 import { refreshPlan } from "../plan-refresh";
-import { featureAccess } from "../plans";
+import { featureAccess, tierOf } from "../plans";
+import { seatRefusalPath } from "../refusal";
 import { can, hasAppAccess, isFiduciary, type Permission } from "../roles";
 import { detourOrganization, hasSeat } from "../team";
 import { pickLocale, safeInvite, safeNext } from "./login-cookie";
@@ -97,6 +98,9 @@ export async function requireAppSession(locale: string, back?: ReturnTo): Promis
       );
       if (moved) redirect(wanted);
     }
+    // Places toutes prises : la page de refus adressable, qui dit la formule de l'entreprise
+    // (raison=places&formule=…) et s'affiche aussi sans session (refusal.ts).
+    if (problem === "seat") redirect(seatRefusalPath(lang, tierOf(session.organization), wanted));
     // L'écran « sans accès » garde la page demandée : changer d'entreprise depuis lui y ramène.
     const q = new URLSearchParams({
       ...(problem === "plan" ? {} : { reason: problem }),

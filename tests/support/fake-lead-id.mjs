@@ -5,6 +5,8 @@
  *
  *   node tests/support/fake-lead-id.mjs            (port 4010)
  *   POST /test/next-user  {sub,email,name,org,org_name,org_role,access,plan,status,locale}  choisit la prochaine personne
+ *     (plan_source « own » ou « family » et plan_until : d'où vient la formule et jusqu'à quand, comme
+ *     ERPlead par application ; « family » ajoute l'abonnement hérité de CRMlead)
  *   Session du Compte Lead : une connexion (authorize sans prompt) pose le cookie « fake_lead_sid » ;
  *     authorize avec prompt=none rend un code pour sa personne, sans écran, ou, sans lui,
  *     error=login_required (comme ERPlead) ; /oauth/logout l'efface. GET /test/authorizes relit les
@@ -119,12 +121,15 @@ function idTokenFor(u, nonce, sid) {
     org_role: u.org_role,
     lead: {
       // Comme ERPlead (table plans) : rangs 0, 10 et 20, une place en Pro, cinq en Pro+.
-      plan:
-        u.plan === "proplus"
+      plan: {
+        ...(u.plan === "proplus"
           ? { code: "pro_plus", name: "Pro+", rank: 20, seats: 5 }
           : u.plan === "pro"
             ? { code: "pro", name: "Pro", rank: 10, seats: 1 }
-            : { code: "free", name: "Gratuit", rank: 0, seats: 1 },
+            : { code: "free", name: "Gratuit", rank: 0, seats: 1 }),
+        ...(u.plan_source ? { source: u.plan_source } : {}),
+        ...(u.plan_until ? { valid_until: u.plan_until } : {}),
+      },
       apps: {
         scanlead: {
           access: true,
@@ -155,7 +160,21 @@ function idTokenFor(u, nonce, sid) {
           upgrade_url: "http://localhost:3100/fr/app/settings/plan",
         },
       },
-      subscriptions: [],
+      // Héritage de la transition : l'abonnement CRMlead d'avant la bascule donne encore la formule.
+      subscriptions:
+        u.plan_source === "family"
+          ? [
+              {
+                app: "crmlead",
+                plan: "team",
+                lead_plan: u.plan === "pro" ? "pro" : "pro_plus",
+                status: "active",
+                current_period_end: u.plan_until ?? null,
+                inherited: true,
+                family_until: u.plan_until ?? null,
+              },
+            ]
+          : [],
     },
   });
 }

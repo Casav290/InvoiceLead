@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gt, isNull, ne, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, isNotNull, isNull, ne, sql } from "drizzle-orm";
 import { randomToken, sha256Hex } from "./auth/crypto";
 import type { Db } from "./db";
 import {
@@ -15,6 +15,7 @@ import {
   supplierBills,
   users,
 } from "./db/schema";
+import { touchMembership } from "./last-seen";
 import { featureAccess, type OrgPlan, planColumns, seatsOf } from "./plans";
 import {
   APP_ROLES,
@@ -22,6 +23,7 @@ import {
   hasAppAccess,
   isFiduciary,
   isManager,
+  isRemoved,
   type Member,
 } from "./roles";
 
@@ -31,14 +33,22 @@ export const INVITATION_DAYS = 14;
 
 async function membershipOf(database: Db, organizationId: string, userId: string) {
   const [row] = await database
-    .select({ role: memberships.role, appRole: memberships.appRole })
+    .select({
+      role: memberships.role,
+      appRole: memberships.appRole,
+      removedAt: memberships.removedAt,
+    })
     .from(memberships)
     .where(and(eq(memberships.organizationId, organizationId), eq(memberships.userId, userId)))
     .limit(1);
   return row ?? null;
 }
 
-/** Membres de l'entreprise (fiduciaires à part) et invitations en attente. */
+/**
+ * Membres de l'entreprise, personnes retirées par un responsable (« Retirer », hors des places tant
+ * qu'elles ne sont pas rétablies), fiduciaires à part et invitations en attente. Chaque personne avec
+ * sa dernière venue (sur l'adhésion).
+ */
 export async function listTeam(database: Db, organizationId: string) {
   const rows = await database
     .select({
@@ -48,6 +58,8 @@ export async function listTeam(database: Db, organizationId: string) {
       role: memberships.role,
       appRole: memberships.appRole,
       createdAt: memberships.createdAt,
+      lastSeenAt: memberships.lastSeenAt,
+      removedAt: memberships.removedAt,
     })
     .from(memberships)
     .innerJoin(users, eq(memberships.userId, users.id))
@@ -65,7 +77,8 @@ export async function listTeam(database: Db, organizationId: string) {
     )
     .orderBy(asc(fiduciaryInvitations.createdAt));
   return {
-    members: rows.filter((r) => !isFiduciary(r)),
+    members: rows.filter((r) => !isFiduciary(r) && !isRemoved(r)),
+    removed: rows.filter((r) => !isFiduciary(r) && isRemoved(r)),
     fiduciaries: rows.filter(isFiduciary),
     invitations,
   };
@@ -112,7 +125,7 @@ export async function setAppRole(
   appRole: string,
 ): Promise<"saved" | "forbidden" | "invalid"> {
   const me = await membershipOf(database, who.organizationId, who.userId);
-  if (!me || !isManager(me)) return "forbidden";
+  if (!me || !activeManager(me)) return "forbidden";
   if (!(APP_ROLES as string[]).includes(appRole)) return "invalid";
   const target = await membershipOf(database, who.organizationId, targetUserId);
   if (!target || isManager(target) || isFiduciary(target)) return "invalid";
@@ -133,6 +146,93 @@ export async function setAppRole(
   return "saved";
 }
 
+/** Responsable (administrateur ou responsable Lead) qui n'a pas été retiré lui-même. */
+const activeManager = (m: Member) => isManager(m) && !isRemoved(m);
+
+/**
+ * « Retirer » : réservé aux responsables, jamais sur soi ; l'administrateur Lead ne peut être retiré
+ * que par un administrateur (un responsable ne met pas dehors celui qui gère l'abonnement). Les
+ * fiduciaires ont leur propre « Retirer l'accès » (removeFiduciary). La même règle sert à l'écran et
+ * au serveur.
+ */
+export function canRemove(
+  viewer: Member & { userId: string },
+  target: Member & { userId: string },
+): boolean {
+  if (!activeManager(viewer) || viewer.userId === target.userId) return false;
+  if (isFiduciary(target)) return false;
+  return target.role !== "admin" || viewer.role === "admin";
+}
+
+/**
+ * Retire une personne de l'entreprise dans InvoiceLead (deux temps à l'écran, ici l'effet) : sa place
+ * se libère tout de suite, ses sessions dans cette entreprise tombent, et le retrait est gardé (la
+ * connexion suivante ne le lève pas : attachLeadIdentity ne touche qu'au rôle Lead) tant qu'un
+ * responsable ne la rétablit pas. Ses données restent à l'entreprise.
+ */
+export async function removeMember(
+  database: Db,
+  who: Who,
+  targetUserId: string,
+): Promise<"removed" | "forbidden" | "self" | "invalid"> {
+  const me = await membershipOf(database, who.organizationId, who.userId);
+  if (!me || !activeManager(me)) return "forbidden";
+  if (targetUserId === who.userId) return "self";
+  if (!UUID_RE.test(targetUserId)) return "invalid";
+  const target = await membershipOf(database, who.organizationId, targetUserId);
+  if (!target || isRemoved(target) || isFiduciary(target)) return "invalid";
+  if (!canRemove({ ...me, userId: who.userId }, { ...target, userId: targetUserId }))
+    return "forbidden";
+  await database
+    .update(memberships)
+    .set({ removedAt: new Date(), removedBy: who.userId })
+    .where(
+      and(eq(memberships.organizationId, who.organizationId), eq(memberships.userId, targetUserId)),
+    );
+  await database
+    .delete(sessions)
+    .where(and(eq(sessions.organizationId, who.organizationId), eq(sessions.userId, targetUserId)));
+  await database.insert(auditLog).values({
+    organizationId: who.organizationId,
+    userId: who.userId,
+    action: "team.member.remove",
+    entity: "user",
+    entityId: targetUserId,
+  });
+  return "removed";
+}
+
+/** « Rétablir » une personne retirée : un responsable ; elle reprend une place s'il en reste. */
+export async function restoreMember(
+  database: Db,
+  who: Who,
+  targetUserId: string,
+): Promise<"restored" | "forbidden" | "invalid"> {
+  const me = await membershipOf(database, who.organizationId, who.userId);
+  if (!me || !activeManager(me)) return "forbidden";
+  if (!UUID_RE.test(targetUserId)) return "invalid";
+  const restored = await database
+    .update(memberships)
+    .set({ removedAt: null, removedBy: null })
+    .where(
+      and(
+        eq(memberships.organizationId, who.organizationId),
+        eq(memberships.userId, targetUserId),
+        isNotNull(memberships.removedAt),
+      ),
+    )
+    .returning({ userId: memberships.userId });
+  if (restored.length === 0) return "invalid";
+  await database.insert(auditLog).values({
+    organizationId: who.organizationId,
+    userId: who.userId,
+    action: "team.member.restore",
+    entity: "user",
+    entityId: targetUserId,
+  });
+  return "restored";
+}
+
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /** Crée une invitation de fiduciaire. Rend le jeton en clair, à mettre dans le lien, une seule fois. */
@@ -142,7 +242,7 @@ export async function inviteFiduciary(
   rawEmail: string,
 ): Promise<{ token: string; email: string } | "forbidden" | "invalid"> {
   const me = await membershipOf(database, who.organizationId, who.userId);
-  if (!me || !isManager(me)) return "forbidden";
+  if (!me || !activeManager(me)) return "forbidden";
   const email = rawEmail.trim().toLowerCase();
   if (!EMAIL_RE.test(email) || email.length > 254) return "invalid";
   const token = randomToken();
@@ -220,7 +320,7 @@ export async function removeFiduciary(
   targetUserId: string,
 ): Promise<"removed" | "forbidden" | "invalid"> {
   const me = await membershipOf(database, who.organizationId, who.userId);
-  if (!me || !isManager(me)) return "forbidden";
+  if (!me || !activeManager(me)) return "forbidden";
   const deleted = await database
     .delete(memberships)
     .where(
@@ -251,7 +351,7 @@ export async function cancelInvitation(
   invitationId: string,
 ): Promise<"cancelled" | "forbidden"> {
   const me = await membershipOf(database, who.organizationId, who.userId);
-  if (!me || !isManager(me)) return "forbidden";
+  if (!me || !activeManager(me)) return "forbidden";
   await database
     .delete(fiduciaryInvitations)
     .where(
@@ -276,7 +376,11 @@ export async function listUserOrganizations(database: Db, userId: string) {
     .from(memberships)
     .innerJoin(organizations, eq(memberships.organizationId, organizations.id))
     .where(
-      and(eq(memberships.userId, userId), sql`coalesce(${memberships.appRole}, 'all') <> 'none'`),
+      and(
+        eq(memberships.userId, userId),
+        isNull(memberships.removedAt),
+        sql`coalesce(${memberships.appRole}, 'all') <> 'none'`,
+      ),
     )
     .orderBy(sql`${memberships.role} = 'fiduciary'`, asc(organizations.name));
 }
@@ -302,6 +406,7 @@ export async function switchOrganization(
     .update(users)
     .set({ lastOrganizationId: organizationId })
     .where(eq(users.id, userId));
+  await touchMembership(database, organizationId, userId);
   return true;
 }
 
@@ -561,6 +666,7 @@ export async function leadOrganizationOf(
       leadOrg: organizations.leadOrg,
       appRole: memberships.appRole,
       role: memberships.role,
+      removedAt: memberships.removedAt,
     })
     .from(memberships)
     .innerJoin(organizations, eq(memberships.organizationId, organizations.id))

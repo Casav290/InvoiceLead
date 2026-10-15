@@ -309,6 +309,13 @@
       "when": 1791894785134,
       "tag": "0043_session_lead_sid",
       "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1792048926653,
+      "tag": "0044_member_seats",
+      "breakpoints": true
     }
   ]
 }

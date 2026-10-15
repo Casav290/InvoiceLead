@@ -16,7 +16,10 @@ export type PlanCard = {
   yearly: number | null;
   current: boolean;
   preselected: boolean;
-  /** Libellé du bouton « Passer à … » ; absent : pas de bouton sur cette carte. */
+  /**
+   * Libellé du bouton « Passer à … » ; absent : pas de bouton sur cette carte (formule égale ou
+   * inférieure à la formule acquise, personne qui n'administre pas, abonnement déjà pris ici).
+   */
   action: string | null;
 };
 
@@ -125,6 +128,7 @@ export function PlanChooser({
                     className="w-full"
                     variant={card.key === "proPlus" ? "primary" : "secondary"}
                     data-testid={`plan-checkout-${card.plan}`}
+                    data-plan-offer={card.plan}
                   >
                     {card.action}
                   </Button>

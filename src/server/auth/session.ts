@@ -6,6 +6,7 @@ import { SESSION_COOKIE } from "@/lib/cookies";
 import { type Db, db } from "../db";
 import { memberships, organizations, sessions, users } from "../db/schema";
 import { env } from "../env";
+import { SEEN_EVERY_MS, touchMembership } from "../last-seen";
 import { refresh as leadRefresh } from "../lead-id/leadId";
 import { decrypt, encrypt, randomToken, sha256Hex } from "./crypto";
 
@@ -73,6 +74,9 @@ export async function createSession(
   });
   // Ménage opportuniste des sessions échues.
   await database.delete(sessions).where(lt(sessions.expiresAt, new Date()));
+  // Une session s'ouvre à chaque arrivée : la dernière venue de la personne dans cette entreprise,
+  // gardée sur son adhésion (Réglages → Équipe), même après la fin de la session.
+  await touchMembership(database, input.organizationId, input.userId);
   return { id, token, expiresAt };
 }
 
@@ -138,6 +142,10 @@ export async function revalidateSession(
     .where(and(eq(sessions.id, session.id), lt(sessions.lastSeenAt, limit)))
     .returning({ refreshTokenEnc: sessions.refreshTokenEnc });
   if (!claimed) return true;
+  // La personne est là : sa dernière venue suit, au plus une fois par heure.
+  await touchMembership(database, session.organizationId, user.id, SEEN_EVERY_MS).catch(
+    () => undefined,
+  );
   const token = claimed.refreshTokenEnc
     ? decrypt(claimed.refreshTokenEnc, env().SESSION_SECRET, REFRESH_PURPOSE)
     : null;
@@ -184,7 +192,11 @@ export async function findSession(database: Db, token: string) {
       session: sessions,
       user: users,
       organization: organizations,
-      membership: { role: memberships.role, appRole: memberships.appRole },
+      membership: {
+        role: memberships.role,
+        appRole: memberships.appRole,
+        removedAt: memberships.removedAt,
+      },
     })
     .from(sessions)
     .innerJoin(users, eq(sessions.userId, users.id))

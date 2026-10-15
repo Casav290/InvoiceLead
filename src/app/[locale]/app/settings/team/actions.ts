@@ -18,6 +18,8 @@ import {
   inviteFiduciary,
   listTeam,
   removeFiduciary,
+  removeMember,
+  restoreMember,
   seated,
   setAppRole,
 } from "@/server/team";
@@ -177,4 +179,35 @@ export async function cancelInvitationAction(form: FormData) {
   const path = `/${locale}/app/settings/team`;
   revalidatePath(path);
   redirect(path);
+}
+
+/**
+ * « Retirer », second temps (la confirmation a nommé la personne) : un responsable, jamais sur soi
+ * (removeMember). Sa place se libère, ses sessions tombent, le retrait reste à la reconnexion.
+ */
+export async function removeMemberAction(form: FormData) {
+  const locale = pickLocale(form.get("locale"));
+  const session = await requirePermission(locale, "company");
+  const result = await removeMember(
+    db(),
+    { organizationId: session.organization.id, userId: session.user.id },
+    String(form.get("userId") ?? ""),
+  );
+  const path = `/${locale}/app/settings/team`;
+  revalidatePath(path);
+  redirect(result === "removed" ? `${path}?retired=1` : `${path}?error=${result}`);
+}
+
+/** « Rétablir » une personne retirée : un responsable ; elle reprend une place s'il en reste. */
+export async function restoreMemberAction(form: FormData) {
+  const locale = pickLocale(form.get("locale"));
+  const session = await requirePermission(locale, "company");
+  const result = await restoreMember(
+    db(),
+    { organizationId: session.organization.id, userId: session.user.id },
+    String(form.get("userId") ?? ""),
+  );
+  const path = `/${locale}/app/settings/team`;
+  revalidatePath(path);
+  redirect(result === "restored" ? `${path}?restored=1` : `${path}?error=${result}`);
 }

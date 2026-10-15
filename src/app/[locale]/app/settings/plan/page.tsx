@@ -9,7 +9,16 @@ import { requireAppSession } from "@/server/auth/guard";
 import { billingConfigured, GRANTING, portalConfigured } from "@/server/billing/stripe";
 import { subscriptionOf } from "@/server/billing/subscriptions";
 import { db } from "@/server/db";
-import { billingTier, tierOf } from "@/server/plans";
+import {
+  acquiredTier,
+  billingTier,
+  leadOwnPlan,
+  offerAbove,
+  planCode,
+  type Tier,
+  tierOf,
+} from "@/server/plans";
+import { LEAD_ACCOUNT_URL } from "@/server/refusal";
 
 type Props = {
   params: Promise<{ locale: string }>;
@@ -24,6 +33,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 const ERRORS = ["admin", "unavailable", "invalid", "already", "stripe", "noCustomer"];
 const day = (d: Date | string) => formatDate(new Date(d).toISOString().slice(0, 10));
+const RANK: Record<Tier, number> = { free: 0, pro: 1, proplus: 2 };
 
 type Inherited = { app: string; until: string };
 
@@ -47,6 +57,12 @@ function inheritedOf(entitlements: unknown): Inherited | null {
  * Formule InvoiceLead : la formule actuelle et d'où elle vient, les trois formules avec leurs prix,
  * « Passer à Pro / Pro+ » (Stripe Checkout) et « Gérer l'abonnement » (portail Stripe) pour
  * l'administrateur. Un abonnement pris ici ne vaut que pour InvoiceLead.
+ *
+ * Seules les formules STRICTEMENT au-dessus de la formule acquise sont offertes (acquiredTier :
+ * abonnement pris ici et formule propre du Compte Lead, jamais l'héritage) ; une formule propre du
+ * Compte Lead est dite avec son origine et sa date de fin. Contrat de page (banc check-offers.mjs) :
+ * data-plan-current (formule appliquée) et data-plan-acquired sur la formule actuelle, data-plan-offer
+ * sur chaque bouton d'achat.
  */
 export default async function PlanSettingsPage({ params, searchParams }: Props) {
   const { locale } = await params;
@@ -60,9 +76,13 @@ export default async function PlanSettingsPage({ params, searchParams }: Props) 
   const tPlan = await getTranslations({ locale, namespace: "app.plan" });
   const tier = tierOf(organization);
   const own = billingTier(organization);
+  const acquired = acquiredTier(organization);
   const sub = await subscriptionOf(db(), organization.id);
   const open = !!sub && (GRANTING as readonly string[]).includes(sub.status);
   const inherited = own === "free" ? inheritedOf(organization.entitlements) : null;
+  // Formule propre du Compte Lead au-dessus de l'abonnement pris ici : elle se gère dans ERPlead.
+  const lead = leadOwnPlan(organization);
+  const fromLead = !open && lead && RANK[lead.tier] > RANK[own] ? lead : null;
   const tierName = tPlan(tier);
   const canBuy = isAdmin && billingConfigured() && !open;
   const wanted = q.plan === "pro" || q.plan === "pro_plus" ? q.plan : null;
@@ -80,8 +100,11 @@ export default async function PlanSettingsPage({ params, searchParams }: Props) 
       yearly: card.yearly,
       current: cardTier === tier,
       preselected: card.plan !== null && card.plan === wanted,
+      // Jamais une formule égale ou inférieure à la formule acquise (le serveur refuse de même).
       action:
-        canBuy && card.plan ? tPlan(card.plan === "pro_plus" ? "upgradePlus" : "upgrade") : null,
+        canBuy && card.plan && offerAbove(organization, card.plan)
+          ? tPlan(card.plan === "pro_plus" ? "upgradePlus" : "upgrade")
+          : null,
     };
   });
 
@@ -103,11 +126,15 @@ export default async function PlanSettingsPage({ params, searchParams }: Props) 
         : sub.currentPeriodEnd
           ? t("status.renews", { interval: sub.interval, date: day(sub.currentPeriodEnd) })
           : null
-    : inherited
-      ? t("status.inherited", { app: inherited.app, plan: tierName, date: day(inherited.until) })
-      : tier === "free"
-        ? t("status.free")
-        : null;
+    : fromLead
+      ? fromLead.until
+        ? t("status.lead", { plan: tPlan(fromLead.tier), date: day(fromLead.until) })
+        : t("status.leadOpen", { plan: tPlan(fromLead.tier) })
+      : inherited
+        ? t("status.inherited", { app: inherited.app, plan: tierName, date: day(inherited.until) })
+        : tier === "free"
+          ? t("status.free")
+          : null;
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-10 sm:px-8">
@@ -130,7 +157,11 @@ export default async function PlanSettingsPage({ params, searchParams }: Props) 
           role="alert"
           className="mt-6 border border-hot-fg bg-hot-bg px-4 py-3 text-[13px] text-hot-fg"
         >
-          {t(`errors.${q.error}`)}
+          {/* Refus d'une formule déjà acquise sans abonnement pris ici (formule du Compte Lead) :
+              rien à gérer au portail, la formule est simplement déjà là. */}
+          {q.error === "already" && !open && acquired !== "free"
+            ? t("errors.alreadyPlan", { plan: tPlan(acquired) })
+            : t(`errors.${q.error}`)}
         </p>
       ) : null}
 
@@ -139,9 +170,20 @@ export default async function PlanSettingsPage({ params, searchParams }: Props) 
         data-testid="plan-current"
         data-tier={tier}
         data-source={open ? "own" : inherited ? "family" : tier === "free" ? "free" : "lead"}
+        data-plan-current={planCode(tier)}
+        data-plan-acquired={planCode(acquired)}
       >
         <p className="text-[16px] font-bold">{t("current", { plan: tierName })}</p>
         {status ? <p className="mt-1 text-ink-2">{status}</p> : null}
+        {fromLead ? (
+          <a
+            href={LEAD_ACCOUNT_URL}
+            className="mt-2 inline-block font-semibold text-accent-dark underline"
+            data-testid="plan-lead-account"
+          >
+            {t("leadAccount")}
+          </a>
+        ) : null}
         {open && isAdmin && portalConfigured() ? (
           <form method="post" action="/api/billing/portal" className="mt-4">
             <input type="hidden" name="locale" value={locale} />

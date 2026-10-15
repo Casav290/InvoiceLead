@@ -1,4 +1,4 @@
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, isNull } from "drizzle-orm";
 import { getTranslations } from "next-intl/server";
 import { autopilotSummary } from "./autopilot";
 import type { Db } from "./db";
@@ -29,6 +29,8 @@ export async function sendAutopilotDigests(database: Db, today: string): Promise
         and(
           eq(memberships.organizationId, org.id),
           inArray(memberships.role, ["admin", "manager"]),
+          // Un responsable retiré (« Retirer ») n'agit plus pour l'entreprise.
+          isNull(memberships.removedAt),
         ),
       );
     for (const a of admins) {

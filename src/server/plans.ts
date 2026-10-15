@@ -183,10 +183,15 @@ export type Access = {
  * Formule du Compte Lead : son code (« pro_plus », « pro », toute autre valeur Gratuit), sinon son
  * rang (20 et plus Pro+, 10 et plus Pro), sinon la formule enregistrée à la connexion (lead_plan).
  * Jusqu'au 13.10.2026, le rang était lu comme 1 Pro et 2 Pro+ : un Pro d'ERPlead (rang 10) devenait
- * Pro+ ici.
+ * Pro+ ici. Une date de fin (`valid_until`, calculée par ERPlead : fin de période et trois jours de
+ * grâce, ou fin de l'héritage) passée ramène à Gratuit sans attendre la relecture des droits.
  */
-function leadTier(org: OrgPlan): Tier {
-  const plan = (org.entitlements as { plan?: { code?: unknown; rank?: unknown } } | null)?.plan;
+function leadTier(org: OrgPlan, now = Date.now()): Tier {
+  const plan = (
+    org.entitlements as { plan?: { code?: unknown; rank?: unknown; valid_until?: unknown } } | null
+  )?.plan;
+  const until = typeof plan?.valid_until === "string" ? Date.parse(plan.valid_until) : Number.NaN;
+  if (Number.isFinite(until) && until <= now) return "free";
   const code = plan?.code;
   if (typeof code === "string" && code) {
     return code === "pro_plus" ? "proplus" : code === "pro" ? "pro" : "free";
@@ -219,8 +224,54 @@ export function billingTier(org: OrgPlan, now = Date.now()): Tier {
  */
 export function tierOf(org: OrgPlan, now = Date.now()): Tier {
   const local = billingTier(org, now);
-  const lead = planTooOld(org, now) ? "free" : leadTier(org);
+  const lead = planTooOld(org, now) ? "free" : leadTier(org, now);
   return RANK[local] >= RANK[lead] ? local : lead;
+}
+
+/** Code de la formule tel que le Compte Lead et Stripe l'écrivent (contrat data-plan-* des pages). */
+export function planCode(tier: Tier): "free" | "pro" | "pro_plus" {
+  return tier === "proplus" ? "pro_plus" : tier;
+}
+
+/**
+ * Formule PROPRE lue au Compte Lead (plan.source autre que « family » : abonnement InvoiceLead déclaré,
+ * formule offerte ou réglée dans ERPlead), avec sa date de fin si elle en a une ; null en Gratuit, pour
+ * un héritage de la transition ou une formule trop ancienne pour être crue. La page Formule dit son
+ * origine et sa date : elle ne se gère pas ici.
+ */
+export function leadOwnPlan(
+  org: OrgPlan,
+  now = Date.now(),
+): { tier: Tier; until: Date | null } | null {
+  const plan = (org.entitlements as { plan?: { source?: unknown; valid_until?: unknown } } | null)
+    ?.plan;
+  if (plan?.source === "family" || planTooOld(org, now)) return null;
+  const tier = leadTier(org, now);
+  if (tier === "free") return null;
+  const until = typeof plan?.valid_until === "string" ? new Date(plan.valid_until) : null;
+  return { tier, until: until && Number.isFinite(until.getTime()) ? until : null };
+}
+
+/**
+ * Formule déjà acquise par l'entreprise dans InvoiceLead (même règle que Greetlead `acquiredTier`) :
+ * la meilleure de l'abonnement pris ici et de la formule propre lue au Compte Lead ; jamais l'héritage
+ * de la transition (un client qui hérite de Pro jusqu'à la fin de sa période doit pouvoir s'abonner).
+ * Aucune offre égale ou inférieure n'est faite, ni à l'écran ni au serveur (createCheckout).
+ */
+export function acquiredTier(org: OrgPlan, now = Date.now()): Tier {
+  const local = billingTier(org, now);
+  const lead = leadOwnPlan(org, now)?.tier ?? "free";
+  return RANK[local] >= RANK[lead] ? local : lead;
+}
+
+/** L'offre (pro, pro_plus) apporte-t-elle plus que la formule acquise ? */
+export function offerAbove(org: OrgPlan, plan: "pro" | "pro_plus", now = Date.now()): boolean {
+  return RANK[plan === "pro_plus" ? "proplus" : "pro"] > RANK[acquiredTier(org, now)];
+}
+
+/** Les formules à proposer : celles strictement au-dessus de la formule acquise, dans l'ordre. */
+export function planOffers(org: OrgPlan, now = Date.now()): ("pro" | "pro_plus")[] {
+  return (["pro", "pro_plus"] as const).filter((plan) => offerAbove(org, plan, now));
 }
 
 /**

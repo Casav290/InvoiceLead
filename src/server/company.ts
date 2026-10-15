@@ -267,7 +267,11 @@ export function parseCompanyForm(
 
 async function memberOf(database: Db, organizationId: string, userId: string) {
   const [row] = await database
-    .select({ role: memberships.role, appRole: memberships.appRole })
+    .select({
+      role: memberships.role,
+      appRole: memberships.appRole,
+      removedAt: memberships.removedAt,
+    })
     .from(memberships)
     .where(and(eq(memberships.organizationId, organizationId), eq(memberships.userId, userId)))
     .limit(1);
