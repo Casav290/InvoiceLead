@@ -1756,7 +1756,8 @@
       "removeErrors": {
         "self": "Vous ne pouvez pas vous retirer vous-même.",
         "forbidden": "Seuls les responsables retirent une personne, et seul un administrateur retire l'administrateur.",
-        "invalid": "Cette personne n'est plus dans l'équipe, ou elle a déjà été retirée."
+        "invalid": "Cette personne n'est plus dans l'équipe, ou elle a déjà été retirée.",
+        "full": "Plus de place libre pour rétablir cette personne : retirez d'abord quelqu'un{next, select, proplus { ou passez à Pro+, qui compte {plus} places} other {}}."
       }
     },
     "invite": {

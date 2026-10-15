@@ -12,6 +12,7 @@ import { db } from "@/server/db";
 import {
   acquiredTier,
   billingTier,
+  leadInherited,
   leadOwnPlan,
   offerAbove,
   planCode,
@@ -34,24 +35,6 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 const ERRORS = ["admin", "unavailable", "invalid", "already", "stripe", "noCustomer"];
 const day = (d: Date | string) => formatDate(new Date(d).toISOString().slice(0, 10));
 const RANK: Record<Tier, number> = { free: 0, pro: 1, proplus: 2 };
-
-type Inherited = { app: string; until: string };
-
-/**
- * Abonnement hérité que le Compte Lead accorde encore (abonnement payé ailleurs avant le
- * 13.10.2026, jusqu'à la fin de sa période déjà payée) : l'application et la date de fin.
- */
-function inheritedOf(entitlements: unknown): Inherited | null {
-  const e = entitlements as {
-    plan?: { source?: string; valid_until?: string | null };
-    apps?: Record<string, { name?: string }>;
-    subscriptions?: { app?: string; inherited?: boolean; family_until?: string | null }[];
-  } | null;
-  if (e?.plan?.source !== "family" || !e.plan.valid_until) return null;
-  const row = e.subscriptions?.find((s) => s.inherited);
-  const code = row?.app ?? "";
-  return { app: e.apps?.[code]?.name ?? code, until: e.plan.valid_until };
-}
 
 /**
  * Formule InvoiceLead : la formule actuelle et d'où elle vient, les trois formules avec leurs prix,
@@ -79,7 +62,8 @@ export default async function PlanSettingsPage({ params, searchParams }: Props) 
   const acquired = acquiredTier(organization);
   const sub = await subscriptionOf(db(), organization.id);
   const open = !!sub && (GRANTING as readonly string[]).includes(sub.status);
-  const inherited = own === "free" ? inheritedOf(organization.entitlements) : null;
+  // Héritage encore valable (leadInherited : rien après sa date de fin, où l'entreprise est en Gratuit).
+  const inherited = own === "free" ? leadInherited(organization) : null;
   // Formule propre du Compte Lead au-dessus de l'abonnement pris ici : elle se gère dans ERPlead.
   const lead = leadOwnPlan(organization);
   const fromLead = !open && lead && RANK[lead.tier] > RANK[own] ? lead : null;

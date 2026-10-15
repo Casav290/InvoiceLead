@@ -1756,7 +1756,8 @@
       "removeErrors": {
         "self": "You cannot remove yourself.",
         "forbidden": "Only managers remove someone, and only an administrator removes the administrator.",
-        "invalid": "This person is no longer in the team, or has already been removed."
+        "invalid": "This person is no longer in the team, or has already been removed.",
+        "full": "No seat left to restore this person: remove someone first{next, select, proplus { or upgrade to Pro+, which includes {plus} seats} other {}}."
       }
     },
     "invite": {

@@ -4,7 +4,7 @@ import type { Db } from "./db";
 import { organizations } from "./db/schema";
 import { env } from "./env";
 import { appToken, type LeadEntitlements } from "./lead-id/leadId";
-import { PLAN_FRESH_MS, planAge, planColumns } from "./plans";
+import { leadPlanUntil, PLAN_FRESH_MS, planAge, planColumns } from "./plans";
 
 /**
  * La formule d'une entreprise n'est écrite qu'à la connexion web. Une entreprise qui n'utilise plus
@@ -49,15 +49,27 @@ async function fetchEntitlements(leadOrg: string): Promise<LeadEntitlements | nu
 }
 
 /**
- * Relit la formule au Compte Lead si celle enregistrée a plus de 12 h, et l'enregistre. Rend
- * l'entreprise à jour, ou telle quelle quand la formule est récente ou le Compte Lead muet.
+ * La formule du Compte Lead a passé sa date de fin (valid_until) depuis sa dernière lecture : elle
+ * vaut Gratuit ici (leadPlanEnded), mais ERPlead l'a peut-être renouvelée entre-temps. Une fois relue
+ * après cette date, plus rien à relire avant 12 h, même si elle reste échue.
+ */
+function endedSinceRead(org: Refreshable, now: number): boolean {
+  const until = leadPlanUntil(org);
+  return Number.isFinite(until) && until <= now && now - planAge(org, now) < until;
+}
+
+/**
+ * Relit la formule au Compte Lead si celle enregistrée a plus de 12 h, ou si sa date de fin est passée
+ * depuis sa lecture, et l'enregistre. Rend l'entreprise à jour, ou telle quelle quand la formule est
+ * récente ou le Compte Lead muet.
  */
 export async function refreshPlan<T extends Refreshable>(
   database: Db,
   org: T,
   now = Date.now(),
 ): Promise<T> {
-  if (!org.leadOrg || planAge(org, now) <= PLAN_FRESH_MS) return org;
+  if (!org.leadOrg) return org;
+  if (planAge(org, now) <= PLAN_FRESH_MS && !endedSinceRead(org, now)) return org;
   const last = attempts.get(org.id);
   if (last !== undefined && now - last < RETRY_MS) return org;
   attempts.set(org.id, now);

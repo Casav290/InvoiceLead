@@ -1150,6 +1150,32 @@ describe("formule relue au Compte Lead", () => {
     expect(await fiduciaryMembers()).toHaveLength(1);
   });
 
+  it("une formule du Compte Lead échue depuis sa lecture est relue sans attendre 12 h, une seule fois", async () => {
+    const { org } = await company(2);
+    // Lue il y a 2 h, échue il y a 1 h (fin de période et grâce) : ERPlead l'a peut-être renouvelée.
+    const ended = new Date(Date.now() - 3_600_000).toISOString();
+    await db
+      .update(organizations)
+      .set({ entitlements: { plan: { ...leadPlan(2), valid_until: ended } } })
+      .where(eq(organizations.id, org.id));
+    const row = await aged(org.id, 2);
+    expect(tierOf(row)).toBe("free");
+    const lead = leadAnswers(2);
+    vi.stubGlobal("fetch", lead);
+    const after = await refreshPlan(db, row);
+    expect(lead).toHaveBeenCalled();
+    expect(tierOf(after)).toBe("proplus");
+    // Lue APRÈS sa date de fin (la relecture a déjà eu lieu) : pas de nouvelle lecture avant 12 h.
+    lead.mockClear();
+    await db
+      .update(organizations)
+      .set({ entitlements: { plan: { ...leadPlan(2), valid_until: ended } } })
+      .where(eq(organizations.id, org.id));
+    const read = await aged(org.id, 0.5);
+    expect(await refreshPlan(db, read)).toBe(read);
+    expect(lead).not.toHaveBeenCalled();
+  });
+
   it("une formule récente n'est pas relue", async () => {
     const { org } = await company(1);
     const row = await aged(org.id, 2);

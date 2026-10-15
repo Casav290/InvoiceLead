@@ -194,6 +194,37 @@ describe("1. offres : jamais une formule égale ou inférieure à la formule acq
     expect(leadOwnPlan(orgPlan(lead(0)))).toBeNull();
   });
 
+  it("formule du Compte Lead échue (valid_until passée) : Gratuit aussi pour les places et sans texte d'héritage", async () => {
+    const { leadInherited, leadPlanEnded, seatsOf, tierOf } = await import("@/server/plans");
+    // Droits lus il y a 2 h (relecture à 12 h) : héritage de Pro+ payé dans CRMlead.
+    const heir = (until: Date) => ({
+      ...orgPlan({
+        ...lead(2, "family", until),
+        subscriptions: [{ app: "crmlead", inherited: true, family_until: until.toISOString() }],
+      }),
+      entitlementsAt: new Date(Date.now() - 2 * 3_600_000),
+    });
+    const soon = new Date(Date.now() + 9 * DAY);
+    const running = heir(soon);
+    expect(leadPlanEnded(running)).toBe(false);
+    expect(tierOf(running)).toBe("proplus");
+    expect(seatsOf(running)).toBe(5);
+    expect(leadInherited(running)).toEqual({ app: "CRMlead", until: soon.toISOString() });
+    // Échu il y a une heure : Gratuit partout, plus de places de Pro+ ni de « Jusqu'au … ».
+    const ended = heir(new Date(Date.now() - 3_600_000));
+    expect(leadPlanEnded(ended)).toBe(true);
+    expect(tierOf(ended)).toBe("free");
+    expect(seatsOf(ended)).toBe(1);
+    expect(leadInherited(ended)).toBeNull();
+    // Formule propre échue : de même pour les places.
+    const own = orgPlan(lead(2, "own", new Date(Date.now() - 3_600_000)));
+    expect(seatsOf(own)).toBe(1);
+    // Formule trop ancienne pour être crue : pas de texte d'héritage non plus.
+    expect(
+      leadInherited({ ...running, entitlementsAt: new Date(Date.now() - 80 * 3_600_000) }),
+    ).toBe(null);
+  });
+
   it("createCheckout refuse une formule non supérieure, sans aucun appel à Stripe", async () => {
     const { createCheckout } = await import("@/server/billing/subscriptions");
     const { BillingError } = await import("@/server/billing/stripe");
@@ -378,6 +409,129 @@ describe("2. places : « Retirer », dernière venue", () => {
       "team.member.remove",
       "team.member.restore",
     ]);
+  });
+
+  it("« Rétablir » ne prend la place de personne : Pro à 2 places, la nouvelle venue garde la sienne", async () => {
+    const { removeMember, restoreMember, listTeam, seated, hasSeat, setAppRole } = await import(
+      "@/server/team"
+    );
+    const { seatsOf } = await import("@/server/plans");
+    const { auditLog, memberships } = await import("@/server/db/schema");
+    const two = { ...lead(1), plan: { ...leadPlan(1), seats: 2 } } as LeadClaims["lead"];
+    const member = (name: string) =>
+      person({
+        sub: `sub-${name}`,
+        email: `${name}@atelier.test`,
+        name,
+        org_role: "user",
+        lead: two,
+      });
+    const ada = await person({ lead: two });
+    const bob = await member("bob");
+    const org = ada.organization.id;
+    const who = (u: { user: { id: string } }) => ({ organizationId: org, userId: u.user.id });
+    const joined = (userId: string, at: string) =>
+      db
+        .update(memberships)
+        .set({ createdAt: new Date(at) })
+        .where(and(eq(memberships.organizationId, org), eq(memberships.userId, userId)));
+    await joined(ada.user.id, "2026-01-01T08:00:00Z");
+    await joined(bob.user.id, "2026-02-01T08:00:00Z");
+    // On retire Bob pour faire entrer Dan, qui arrive sur la place libérée.
+    expect(await removeMember(db, who(ada), bob.user.id)).toBe("removed");
+    const dan = await member("dan");
+    const row = await orgRow(org);
+    expect(seatsOf(row)).toBe(2);
+    expect(await hasSeat(db, row, dan.user.id)).toBe(true);
+    // Plus de place libre : Bob, arrivé avant Dan, ne lui prend pas la sienne.
+    expect(await restoreMember(db, who(ada), bob.user.id)).toBe("full");
+    expect(await hasSeat(db, row, dan.user.id)).toBe(true);
+    expect(await hasSeat(db, row, bob.user.id)).toBe(false);
+    const listed = await listTeam(db, org);
+    expect(listed.removed.map((m) => m.email)).toEqual(["bob@atelier.test"]);
+    expect([...seated(listed.members, 2)]).toEqual([ada.user.id, dan.user.id]);
+    const restores = () =>
+      db
+        .select({ entityId: auditLog.entityId })
+        .from(auditLog)
+        .where(and(eq(auditLog.organizationId, org), eq(auditLog.action, "team.member.restore")));
+    expect(await restores()).toEqual([]);
+    // Une personne sans accès (« aucun ») n'occupe pas de place : elle se rétablit même ici.
+    const cleo = await member("cleo");
+    expect(await setAppRole(db, who(ada), cleo.user.id, "none")).toBe("saved");
+    expect(await removeMember(db, who(ada), cleo.user.id)).toBe("removed");
+    expect(await restoreMember(db, who(ada), cleo.user.id)).toBe("restored");
+    expect(await hasSeat(db, row, dan.user.id)).toBe(true);
+    // Dan retiré à son tour, une place se libère : un seul des deux rétablissements simultanés passe.
+    expect(await setAppRole(db, who(ada), cleo.user.id, "all")).toBe("saved");
+    expect(await removeMember(db, who(ada), cleo.user.id)).toBe("removed");
+    expect(await removeMember(db, who(ada), dan.user.id)).toBe("removed");
+    const both = await Promise.all([
+      restoreMember(db, who(ada), bob.user.id),
+      restoreMember(db, who(ada), cleo.user.id),
+    ]);
+    expect([...both].sort()).toEqual(["full", "restored"]);
+    const back = (await listTeam(db, org)).members;
+    expect(back).toHaveLength(2);
+    expect(seated(back, 2).size).toBe(2);
+    // Le refus dit quoi faire (fr, de, en) : Pro+ seulement en dessous de Pro+.
+    for (const messages of [fr, de, en]) {
+      const tr = createTranslator({ locale: "fr", messages, namespace: "app.team" });
+      const below = tr("removeErrors.full", { next: "proplus", plus: 5 });
+      const top = tr("removeErrors.full", { next: "none", plus: 5 });
+      expect(below).toContain("Pro+");
+      expect(below).toContain("5");
+      expect(top).not.toContain("Pro+");
+      expect(top.length).toBeGreaterThan(20);
+    }
+    expect(
+      createTranslator({ locale: "fr", messages: fr, namespace: "app.team" })("removeErrors.full", {
+        next: "proplus",
+        plus: 5,
+      }),
+    ).toBe(
+      "Plus de place libre pour rétablir cette personne\u202f: retirez d'abord quelqu'un ou passez à Pro+, qui compte 5 places.",
+    );
+  });
+
+  it("deux retraits en même temps : deux administrateurs ne se retirent pas l'un l'autre, un seul retrait par personne", async () => {
+    const { removeMember, listTeam } = await import("@/server/team");
+    const { auditLog } = await import("@/server/db/schema");
+    const { ada, bob, max, org, who } = await team();
+    const zoe = await person({
+      sub: "sub-zoe",
+      email: "zoe@atelier.test",
+      name: "Zoe",
+      org_role: "admin",
+      lead: lead(2),
+    });
+    // Deux connexions ouvertes d'avance : les deux retraits partent vraiment en même temps.
+    await Promise.all([1, 2].map(() => db.execute(sql`select pg_sleep(0.05)`)));
+    const crossed = await Promise.all([
+      removeMember(db, who(ada), zoe.user.id),
+      removeMember(db, who(zoe), ada.user.id),
+    ]);
+    expect([...crossed].sort()).toEqual(["forbidden", "removed"]);
+    const admins = (await listTeam(db, org)).members.filter((m) => m.role === "admin");
+    expect(admins).toHaveLength(1);
+    const left = { user: { id: admins[0]?.userId ?? "" } };
+    // La même personne retirée deux fois en même temps : un seul retrait, une seule ligne au journal.
+    const twice = await Promise.all([
+      removeMember(db, who(left), bob.user.id),
+      removeMember(db, who(max), bob.user.id),
+    ]);
+    expect([...twice].sort()).toEqual(["invalid", "removed"]);
+    const journal = await db
+      .select({ by: auditLog.userId })
+      .from(auditLog)
+      .where(
+        and(
+          eq(auditLog.organizationId, org),
+          eq(auditLog.action, "team.member.remove"),
+          eq(auditLog.entityId, bob.user.id),
+        ),
+      );
+    expect(journal).toHaveLength(1);
   });
 
   it("un responsable retiré n'a plus aucun droit, ni entreprise où passer", async () => {

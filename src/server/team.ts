@@ -165,72 +165,122 @@ export function canRemove(
 }
 
 /**
+ * Verrou des changements d'équipe d'une entreprise (« Retirer », « Rétablir »), jusqu'à la fin de la
+ * transaction : chaque demande relit les adhésions après la précédente. Sans lui, deux
+ * administrateurs qui se retirent l'un l'autre au même instant se voyaient encore présents tous les
+ * deux et sortaient tous les deux (une condition dans l'UPDATE ne suffit pas : en READ COMMITTED,
+ * elle ne verrouille pas la ligne de la personne qui retire), et deux « Rétablir » simultanés
+ * prenaient la même place libre.
+ */
+async function lockTeam(database: Db, organizationId: string) {
+  await database.execute(sql`select pg_advisory_xact_lock(hashtext(${`team:${organizationId}`}))`);
+}
+
+/**
  * Retire une personne de l'entreprise dans InvoiceLead (deux temps à l'écran, ici l'effet) : sa place
  * se libère tout de suite, ses sessions dans cette entreprise tombent, et le retrait est gardé (la
  * connexion suivante ne le lève pas : attachLeadIdentity ne touche qu'au rôle Lead) tant qu'un
- * responsable ne la rétablit pas. Ses données restent à l'entreprise.
+ * responsable ne la rétablit pas. Ses données restent à l'entreprise. Les droits de la personne qui
+ * retire et l'état de la cible sont relus sous le verrou de l'équipe (lockTeam) : un seul retrait
+ * par personne, et jamais deux responsables qui se retirent l'un l'autre.
  */
 export async function removeMember(
   database: Db,
   who: Who,
   targetUserId: string,
 ): Promise<"removed" | "forbidden" | "self" | "invalid"> {
-  const me = await membershipOf(database, who.organizationId, who.userId);
-  if (!me || !activeManager(me)) return "forbidden";
-  if (targetUserId === who.userId) return "self";
-  if (!UUID_RE.test(targetUserId)) return "invalid";
-  const target = await membershipOf(database, who.organizationId, targetUserId);
-  if (!target || isRemoved(target) || isFiduciary(target)) return "invalid";
-  if (!canRemove({ ...me, userId: who.userId }, { ...target, userId: targetUserId }))
-    return "forbidden";
-  await database
-    .update(memberships)
-    .set({ removedAt: new Date(), removedBy: who.userId })
-    .where(
-      and(eq(memberships.organizationId, who.organizationId), eq(memberships.userId, targetUserId)),
-    );
-  await database
-    .delete(sessions)
-    .where(and(eq(sessions.organizationId, who.organizationId), eq(sessions.userId, targetUserId)));
-  await database.insert(auditLog).values({
-    organizationId: who.organizationId,
-    userId: who.userId,
-    action: "team.member.remove",
-    entity: "user",
-    entityId: targetUserId,
+  return database.transaction(async (transaction) => {
+    const tx = transaction as unknown as Db;
+    await lockTeam(tx, who.organizationId);
+    const me = await membershipOf(tx, who.organizationId, who.userId);
+    if (!me || !activeManager(me)) return "forbidden";
+    if (targetUserId === who.userId) return "self";
+    if (!UUID_RE.test(targetUserId)) return "invalid";
+    const target = await membershipOf(tx, who.organizationId, targetUserId);
+    if (!target || isRemoved(target) || isFiduciary(target)) return "invalid";
+    if (!canRemove({ ...me, userId: who.userId }, { ...target, userId: targetUserId }))
+      return "forbidden";
+    const removed = await tx
+      .update(memberships)
+      .set({ removedAt: new Date(), removedBy: who.userId })
+      .where(
+        and(
+          eq(memberships.organizationId, who.organizationId),
+          eq(memberships.userId, targetUserId),
+          isNull(memberships.removedAt),
+        ),
+      )
+      .returning({ userId: memberships.userId });
+    if (removed.length === 0) return "invalid";
+    await tx
+      .delete(sessions)
+      .where(
+        and(eq(sessions.organizationId, who.organizationId), eq(sessions.userId, targetUserId)),
+      );
+    await tx.insert(auditLog).values({
+      organizationId: who.organizationId,
+      userId: who.userId,
+      action: "team.member.remove",
+      entity: "user",
+      entityId: targetUserId,
+    });
+    return "removed";
   });
-  return "removed";
 }
 
-/** « Rétablir » une personne retirée : un responsable ; elle reprend une place s'il en reste. */
+/**
+ * « Rétablir » une personne retirée : un responsable ; elle reprend une place s'il en reste une libre,
+ * jamais celle d'une autre. Les places vont aux responsables d'abord, puis par ancienneté (seated) :
+ * sans ce contrôle, une personne rétablie plus ancienne que celle arrivée entre-temps sur la place
+ * libérée la lui prenait, et celle-ci tombait sur le refus « places ». Plus de place libre : « full »
+ * (retirer quelqu'un d'abord, ou une formule avec plus de places). Une personne sans accès
+ * (« aucun ») n'occupe pas de place et se rétablit toujours. Sous le verrou de l'équipe (lockTeam) :
+ * deux « Rétablir » simultanés ne prennent pas la même place.
+ */
 export async function restoreMember(
   database: Db,
   who: Who,
   targetUserId: string,
-): Promise<"restored" | "forbidden" | "invalid"> {
-  const me = await membershipOf(database, who.organizationId, who.userId);
-  if (!me || !activeManager(me)) return "forbidden";
-  if (!UUID_RE.test(targetUserId)) return "invalid";
-  const restored = await database
-    .update(memberships)
-    .set({ removedAt: null, removedBy: null })
-    .where(
-      and(
-        eq(memberships.organizationId, who.organizationId),
-        eq(memberships.userId, targetUserId),
-        isNotNull(memberships.removedAt),
-      ),
-    )
-    .returning({ userId: memberships.userId });
-  if (restored.length === 0) return "invalid";
-  await database.insert(auditLog).values({
-    organizationId: who.organizationId,
-    userId: who.userId,
-    action: "team.member.restore",
-    entity: "user",
-    entityId: targetUserId,
+): Promise<"restored" | "forbidden" | "invalid" | "full"> {
+  return database.transaction(async (transaction) => {
+    const tx = transaction as unknown as Db;
+    await lockTeam(tx, who.organizationId);
+    const me = await membershipOf(tx, who.organizationId, who.userId);
+    if (!me || !activeManager(me)) return "forbidden";
+    if (!UUID_RE.test(targetUserId)) return "invalid";
+    const target = await membershipOf(tx, who.organizationId, targetUserId);
+    if (!target || !isRemoved(target) || isFiduciary(target)) return "invalid";
+    if (hasAppAccess({ ...target, removedAt: null })) {
+      const [org] = await tx
+        .select(planColumns)
+        .from(organizations)
+        .where(eq(organizations.id, who.organizationId));
+      if (!org) return "invalid";
+      const seats = seatsOf(org);
+      const { members } = await listTeam(tx, who.organizationId);
+      if (seated(members, seats).size >= seats) return "full";
+    }
+    const restored = await tx
+      .update(memberships)
+      .set({ removedAt: null, removedBy: null })
+      .where(
+        and(
+          eq(memberships.organizationId, who.organizationId),
+          eq(memberships.userId, targetUserId),
+          isNotNull(memberships.removedAt),
+        ),
+      )
+      .returning({ userId: memberships.userId });
+    if (restored.length === 0) return "invalid";
+    await tx.insert(auditLog).values({
+      organizationId: who.organizationId,
+      userId: who.userId,
+      action: "team.member.restore",
+      entity: "user",
+      entityId: targetUserId,
+    });
+    return "restored";
   });
-  return "restored";
 }
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;

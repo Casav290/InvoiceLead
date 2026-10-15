@@ -34,7 +34,8 @@ type Props = {
   }>;
 };
 
-const REMOVE_ERRORS = ["self", "forbidden", "invalid"];
+/** Refus de « Retirer » (self, forbidden, invalid) et de « Rétablir » (forbidden, invalid, full). */
+const REMOVE_ERRORS = ["self", "forbidden", "invalid", "full"];
 const isoDay = (d: Date) => formatDate(d.toISOString().slice(0, 10));
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -121,8 +122,14 @@ export default async function TeamPage({ params, searchParams }: Props) {
         <p
           role="alert"
           className="mt-6 border border-hot-fg bg-hot-bg px-4 py-3 text-[13px] text-hot-fg"
+          data-testid="team-error"
         >
-          {t(`removeErrors.${removeError}`)}
+          {/* « full » : plus de place libre pour rétablir ; la formule qui en donne davantage, s'il y
+              en a une (jamais « passez à Pro+ » en Pro+). */}
+          {t(`removeErrors.${removeError}`, {
+            next: nextTier ?? "none",
+            plus: PLANS.proplus.seats,
+          })}
         </p>
       ) : null}
       {editable ? null : <p className="mt-6 text-[13px] text-ink-2">{t("managersOnly")}</p>}

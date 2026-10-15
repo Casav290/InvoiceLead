@@ -1756,7 +1756,8 @@
       "removeErrors": {
         "self": "Sie können sich nicht selbst entfernen.",
         "forbidden": "Nur verantwortliche Personen entfernen jemanden, und nur ein Administrator entfernt den Administrator.",
-        "invalid": "Diese Person ist nicht mehr im Team oder wurde bereits entfernt."
+        "invalid": "Diese Person ist nicht mehr im Team oder wurde bereits entfernt.",
+        "full": "Kein Platz mehr frei, um diese Person wieder aufzunehmen: Entfernen Sie zuerst jemanden{next, select, proplus { oder wechseln Sie zu Pro+ mit {plus} Plätzen} other {}}."
       }
     },
     "invite": {

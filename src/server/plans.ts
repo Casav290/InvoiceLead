@@ -179,19 +179,44 @@ export type Access = {
   limit: number;
 };
 
+/** La formule telle que le Compte Lead l'écrit dans les droits (`entitlements.plan`). */
+type LeadPlanClaim = {
+  code?: unknown;
+  rank?: unknown;
+  seats?: unknown;
+  source?: unknown;
+  valid_until?: unknown;
+};
+const leadPlanOf = (org: OrgPlan) =>
+  (org.entitlements as { plan?: LeadPlanClaim } | null)?.plan ?? null;
+
+/** Date de fin de la formule du Compte Lead en millisecondes ; NaN si elle n'en a pas. */
+export function leadPlanUntil(org: OrgPlan): number {
+  const until = leadPlanOf(org)?.valid_until;
+  return typeof until === "string" ? Date.parse(until) : Number.NaN;
+}
+
+/**
+ * La formule du Compte Lead a-t-elle passé sa date de fin (`valid_until`, calculée par ERPlead : fin
+ * de période et trois jours de grâce, ou fin de l'héritage) ? Elle ne vaut alors plus rien ici, sans
+ * attendre la relecture des droits : ni sa formule (leadTier), ni ses places (seatsOf), ni son texte
+ * d'héritage (leadInherited). Une seule règle, pour que la page Formule, la liste des places et les
+ * fonctions disent la même chose.
+ */
+export function leadPlanEnded(org: OrgPlan, now = Date.now()): boolean {
+  const until = leadPlanUntil(org);
+  return Number.isFinite(until) && until <= now;
+}
+
 /**
  * Formule du Compte Lead : son code (« pro_plus », « pro », toute autre valeur Gratuit), sinon son
  * rang (20 et plus Pro+, 10 et plus Pro), sinon la formule enregistrée à la connexion (lead_plan).
  * Jusqu'au 13.10.2026, le rang était lu comme 1 Pro et 2 Pro+ : un Pro d'ERPlead (rang 10) devenait
- * Pro+ ici. Une date de fin (`valid_until`, calculée par ERPlead : fin de période et trois jours de
- * grâce, ou fin de l'héritage) passée ramène à Gratuit sans attendre la relecture des droits.
+ * Pro+ ici. Échue (leadPlanEnded) : Gratuit.
  */
 function leadTier(org: OrgPlan, now = Date.now()): Tier {
-  const plan = (
-    org.entitlements as { plan?: { code?: unknown; rank?: unknown; valid_until?: unknown } } | null
-  )?.plan;
-  const until = typeof plan?.valid_until === "string" ? Date.parse(plan.valid_until) : Number.NaN;
-  if (Number.isFinite(until) && until <= now) return "free";
+  const plan = leadPlanOf(org);
+  if (leadPlanEnded(org, now)) return "free";
   const code = plan?.code;
   if (typeof code === "string" && code) {
     return code === "pro_plus" ? "proplus" : code === "pro" ? "pro" : "free";
@@ -243,13 +268,35 @@ export function leadOwnPlan(
   org: OrgPlan,
   now = Date.now(),
 ): { tier: Tier; until: Date | null } | null {
-  const plan = (org.entitlements as { plan?: { source?: unknown; valid_until?: unknown } } | null)
-    ?.plan;
+  const plan = leadPlanOf(org);
   if (plan?.source === "family" || planTooOld(org, now)) return null;
   const tier = leadTier(org, now);
   if (tier === "free") return null;
   const until = typeof plan?.valid_until === "string" ? new Date(plan.valid_until) : null;
   return { tier, until: until && Number.isFinite(until.getTime()) ? until : null };
+}
+
+/**
+ * Abonnement hérité que le Compte Lead accorde encore (plan.source « family » : abonnement payé dans
+ * une autre application Lead avant le 13.10.2026, jusqu'à la fin de sa période déjà payée) :
+ * l'application et la date de fin, pour la page Formule. null quand il n'y en a pas, quand sa date
+ * est passée (leadPlanEnded : l'entreprise est alors en Gratuit, et « Jusqu'au <date passée>, … vous
+ * donne aussi Gratuit » serait faux) ou quand les droits sont trop anciens pour être crus.
+ */
+export function leadInherited(
+  org: OrgPlan,
+  now = Date.now(),
+): { app: string; until: string } | null {
+  const e = org.entitlements as {
+    plan?: { source?: unknown; valid_until?: unknown };
+    apps?: Record<string, { name?: string }>;
+    subscriptions?: { app?: string; inherited?: boolean }[];
+  } | null;
+  const until = e?.plan?.valid_until;
+  if (e?.plan?.source !== "family" || typeof until !== "string" || !until) return null;
+  if (leadPlanEnded(org, now) || planTooOld(org, now)) return null;
+  const code = e.subscriptions?.find((s) => s.inherited)?.app ?? "";
+  return { app: e.apps?.[code]?.name ?? code, until };
 }
 
 /**
@@ -285,12 +332,14 @@ export function upgradeUrl(locale: string, tier?: Tier | null): string {
 
 /**
  * Places de l'entreprise dans InvoiceLead : celles de sa formule, ou davantage si le Compte Lead en
- * donne plus pour InvoiceLead.
+ * donne plus pour InvoiceLead. Les places du Compte Lead ne comptent plus quand ses droits sont trop
+ * anciens ou que sa formule est échue (leadPlanEnded) : une entreprise héritière de Pro+ revenue en
+ * Gratuit ne garde pas cinq places jusqu'à la relecture.
  */
-export function seatsOf(org: OrgPlan): number {
-  const own = PLANS[tierOf(org)].seats;
-  if (planTooOld(org)) return own;
-  const seats = Number((org.entitlements as { plan?: { seats?: unknown } } | null)?.plan?.seats);
+export function seatsOf(org: OrgPlan, now = Date.now()): number {
+  const own = PLANS[tierOf(org, now)].seats;
+  if (planTooOld(org, now) || leadPlanEnded(org, now)) return own;
+  const seats = Number(leadPlanOf(org)?.seats);
   return Number.isInteger(seats) && seats > 0 ? Math.max(seats, own) : own;
 }
 

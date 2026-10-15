@@ -217,6 +217,51 @@ test("Équipe : places, dernière venue, « Retirer » en deux temps, retrait ga
   await carlContext.close();
 });
 
+test("Équipe en Gratuit : « Rétablir » refusé sans place libre, la personne reste à part", async ({
+  page,
+  browser,
+}) => {
+  const run = Date.now();
+  const org = `org-s7-${run}`;
+  const person = (who: string, role = "user") => ({
+    sub: `sub-s7-${who}-${run}`,
+    email: `${who}-${run}@atelier.test`,
+    name: `${who[0]?.toUpperCase()}${who.slice(1)} Muster`,
+    org,
+    org_name: "Places Gratuit Sàrl",
+    org_role: role,
+    plan: "free" as const,
+  });
+  await login(page, "fr", person("ada", "admin"));
+  const bobContext = await browser.newContext();
+  const bob = await bobContext.newPage();
+  // Gratuit : une place, celle de l'administratrice ; Bob est refusé.
+  await login(bob, "fr", person("bob"), "**/fr/no-access?**");
+
+  await page.goto("/fr/app/settings/team");
+  const list = page.locator("[data-seat-list]");
+  await expect(list).toHaveAttribute("data-seats-used", "1");
+  await expect(list).toHaveAttribute("data-seats-max", "1");
+  const bobRow = page.getByTestId("team-member").filter({ hasText: `bob-${run}@atelier.test` });
+  await bobRow.locator("[data-seat-remove]").click();
+  await page
+    .getByTestId("remove-confirm")
+    .getByRole("button", { name: "Retirer Bob Muster" })
+    .click();
+  const removed = page.locator(`[data-seat-removed="bob-${run}@atelier.test"]`);
+  await expect(removed).toBeVisible();
+  // Plus de place libre : refus qui dit quoi faire, Bob reste à part, l'administratrice garde sa place.
+  await removed.getByRole("button", { name: "Rétablir" }).click();
+  await expect(page.getByTestId("team-error")).toHaveText(
+    "Plus de place libre pour rétablir cette personne\u202f: retirez d'abord quelqu'un ou passez à Pro+, qui compte 5 places.",
+  );
+  await expect(page.getByTestId("team-notice")).toHaveCount(0);
+  await expect(removed).toBeVisible();
+  await expect(list).toHaveAttribute("data-seats-used", "1");
+  await expect(list.locator(`[data-seat-holder="ada-${run}@atelier.test"]`)).toBeVisible();
+  await bobContext.close();
+});
+
 test("Refus « places » sans session : Changer de compte, Compte ERPlead, conseil selon la formule", async ({
   browser,
 }) => {
