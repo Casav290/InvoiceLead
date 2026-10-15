@@ -8,7 +8,7 @@ Quantum Liquid LLC, Gesellschaft nach dem Recht von Wyoming (Limited Liability C
 E-Mail: support@invoicelead.io
 Website: https://invoicelead.io
 
-InvoiceLead gehört zur Lead-Familie (Scanlead, CRMlead, ProjectLead), die von derselben Gesellschaft betrieben wird.
+InvoiceLead gehört zur Lead-Familie (ScanLead, CRMlead, ProjectLead), die von derselben Gesellschaft betrieben wird.
 
 ## Hosting
 

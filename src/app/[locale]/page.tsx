@@ -72,7 +72,7 @@ const FAMILY = [
 ] as const;
 
 const NAMES: Record<(typeof FAMILY)[number]["key"], string> = {
-  scanlead: "Scanlead",
+  scanlead: "ScanLead",
   crmlead: "CRMlead",
   projectlead: "ProjectLead",
   invoicelead: "InvoiceLead",

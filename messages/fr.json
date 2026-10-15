@@ -296,7 +296,7 @@
     },
     "family": {
       "title": "Un compte ERPlead pour toute la famille Lead.",
-      "body": "Connectez-vous avec Google, Apple ou votre adresse e-mail. Le même compte ouvre Scanlead, CRMlead, ProjectLead et Greetlead, et les applications se passent le relais. Chaque application a son propre abonnement.",
+      "body": "Connectez-vous avec Google, Apple ou votre adresse e-mail. Le même compte ouvre ScanLead, CRMlead, ProjectLead et Greetlead, et les applications se passent le relais. Chaque application a son propre abonnement.",
       "here": "Vous êtes ici",
       "apps": {
         "scanlead": "Capte les contacts des salons",
@@ -319,7 +319,7 @@
   },
   "auth": {
     "loginTitle": "Connexion à InvoiceLead",
-    "loginSubtitle": "InvoiceLead utilise votre Compte Lead, le même que pour Scanlead et CRMlead.",
+    "loginSubtitle": "InvoiceLead utilise votre Compte Lead, le même que pour ScanLead et CRMlead.",
     "signupTitle": "Créer votre compte",
     "signupSubtitle": "Le Compte Lead vous ouvre InvoiceLead et toutes les applications de la famille, en version gratuite. L'écran suivant propose « Créer un compte ».",
     "leadButton": "Se connecter avec mon compte Lead",
@@ -2242,7 +2242,7 @@
     "account": "Compte",
     "login": "Connexion",
     "signup": "Inscription",
-    "scanlead": "Scanlead, la capture de leads sur les salons",
+    "scanlead": "ScanLead, la capture de leads sur les salons",
     "crmlead": "CRMlead, le CRM qui suit vos contacts",
     "features": "Fonctions",
     "pricing": "Tarifs",
@@ -2345,7 +2345,7 @@
       },
       {
         "q": "Qu'est-ce que le Compte Lead ?",
-        "a": "Le compte unique de la famille Lead : le même identifiant pour InvoiceLead, Scanlead, CRMlead, ProjectLead et Greetlead. Chaque application a sa propre formule : un abonnement ne vaut que pour l'application où il est pris."
+        "a": "Le compte unique de la famille Lead : le même identifiant pour InvoiceLead, ScanLead, CRMlead, ProjectLead et Greetlead. Chaque application a sa propre formule : un abonnement ne vaut que pour l'application où il est pris."
       },
       {
         "q": "Ma fiduciaire peut-elle accéder à ma comptabilité ?",

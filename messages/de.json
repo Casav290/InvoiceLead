@@ -296,7 +296,7 @@
     },
     "family": {
       "title": "Ein ERPlead-Konto für die ganze Lead-Familie.",
-      "body": "Melden Sie sich mit Google, Apple oder Ihrer E-Mail-Adresse an. Dasselbe Konto öffnet Scanlead, CRMlead, ProjectLead und Greetlead, und die Apps arbeiten einander zu. Jede App hat ihr eigenes Abo.",
+      "body": "Melden Sie sich mit Google, Apple oder Ihrer E-Mail-Adresse an. Dasselbe Konto öffnet ScanLead, CRMlead, ProjectLead und Greetlead, und die Apps arbeiten einander zu. Jede App hat ihr eigenes Abo.",
       "here": "Sie sind hier",
       "apps": {
         "scanlead": "Erfasst Ihre Messekontakte",
@@ -319,7 +319,7 @@
   },
   "auth": {
     "loginTitle": "Bei InvoiceLead anmelden",
-    "loginSubtitle": "InvoiceLead verwendet Ihr Lead-Konto, dasselbe wie für Scanlead und CRMlead.",
+    "loginSubtitle": "InvoiceLead verwendet Ihr Lead-Konto, dasselbe wie für ScanLead und CRMlead.",
     "signupTitle": "Konto erstellen",
     "signupSubtitle": "Mit dem Lead-Konto nutzen Sie InvoiceLead und alle Anwendungen der Familie in der Gratis-Version. Im nächsten Schritt können Sie «Konto erstellen» wählen.",
     "leadButton": "Mit meinem Lead-Konto anmelden",
@@ -2242,7 +2242,7 @@
     "account": "Konto",
     "login": "Anmelden",
     "signup": "Registrieren",
-    "scanlead": "Scanlead, Leaderfassung an Messen",
+    "scanlead": "ScanLead, Leaderfassung an Messen",
     "crmlead": "CRMlead, das CRM für Ihre Kontakte",
     "features": "Funktionen",
     "pricing": "Preise",
@@ -2345,7 +2345,7 @@
       },
       {
         "q": "Was ist das Lead-Konto?",
-        "a": "Das gemeinsame Konto der Lead-Familie: dieselbe Anmeldung für InvoiceLead, Scanlead, CRMlead, ProjectLead und Greetlead. Jede App hat ihr eigenes Abo: Ein Abo gilt nur in der App, in der es abgeschlossen wurde."
+        "a": "Das gemeinsame Konto der Lead-Familie: dieselbe Anmeldung für InvoiceLead, ScanLead, CRMlead, ProjectLead und Greetlead. Jede App hat ihr eigenes Abo: Ein Abo gilt nur in der App, in der es abgeschlossen wurde."
       },
       {
         "q": "Kann meine Treuhand auf die Buchhaltung zugreifen?",

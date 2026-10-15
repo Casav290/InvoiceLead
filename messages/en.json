@@ -296,7 +296,7 @@
     },
     "family": {
       "title": "One ERPlead account for the whole Lead family.",
-      "body": "Sign in with Google, Apple or your email address. The same account opens Scanlead, CRMlead, ProjectLead and Greetlead, and the apps hand work on to each other. Each app has its own subscription.",
+      "body": "Sign in with Google, Apple or your email address. The same account opens ScanLead, CRMlead, ProjectLead and Greetlead, and the apps hand work on to each other. Each app has its own subscription.",
       "here": "You are here",
       "apps": {
         "scanlead": "Captures trade fair contacts",
@@ -319,7 +319,7 @@
   },
   "auth": {
     "loginTitle": "Log in to InvoiceLead",
-    "loginSubtitle": "InvoiceLead uses your Lead account, the same one as for Scanlead and CRMlead.",
+    "loginSubtitle": "InvoiceLead uses your Lead account, the same one as for ScanLead and CRMlead.",
     "signupTitle": "Create your account",
     "signupSubtitle": "Your Lead account gives you access to InvoiceLead and every app in the family, in their free versions. The next screen offers “Create an account”.",
     "leadButton": "Log in with my Lead account",
@@ -2242,7 +2242,7 @@
     "account": "Account",
     "login": "Log in",
     "signup": "Sign up",
-    "scanlead": "Scanlead, lead capture at trade fairs",
+    "scanlead": "ScanLead, lead capture at trade fairs",
     "crmlead": "CRMlead, the CRM that follows up your contacts",
     "features": "Features",
     "pricing": "Pricing",
@@ -2345,7 +2345,7 @@
       },
       {
         "q": "What is the Lead account?",
-        "a": "The single account for the Lead family: the same login for InvoiceLead, Scanlead, CRMlead, ProjectLead and Greetlead. Each app has its own plan: a subscription only applies in the app where it was taken."
+        "a": "The single account for the Lead family: the same login for InvoiceLead, ScanLead, CRMlead, ProjectLead and Greetlead. Each app has its own plan: a subscription only applies in the app where it was taken."
       },
       {
         "q": "Can my accountant access my accounts?",

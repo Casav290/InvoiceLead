@@ -128,7 +128,7 @@ function idTokenFor(u, nonce, sid) {
       apps: {
         scanlead: {
           access: true,
-          name: "Scanlead",
+          name: "ScanLead",
           url: "https://scanlead.io",
           status: "live",
           upgrade_url: "https://scanlead.io/billing",

@@ -1,6 +1,6 @@
 # InvoiceLead
 
-Devis, factures QR et comptabilité suisse pour indépendants et PME, dans la famille Lead (Scanlead,
+Devis, factures QR et comptabilité suisse pour indépendants et PME, dans la famille Lead (ScanLead,
 CRMlead, ProjectLead). Premier marché : la Suisse, en allemand et en français.
 
 Le plan de développement est dans [docs/PLAN.md](docs/PLAN.md).

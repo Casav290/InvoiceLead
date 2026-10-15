@@ -648,7 +648,7 @@ await step(
       lang: html.match(/<html lang="([^"]*)"/)?.[1],
       title: html.match(/<title>([^<]*)<\/title>/)?.[1],
       desc: html.match(/<meta name="description" content="([^"]*)"/)?.[1] ?? "",
-      crm: html.replace(/Scanlead, CRMlead, ProjectLead/g, "").includes("CRMlead"),
+      crm: html.replace(/Scan[Ll]ead, CRMlead, ProjectLead/g, "").includes("CRMlead"),
       tagline: html.includes("aucun lead sans suite"),
     });
     const preview = await ctx.request.get(`${IL}/de/signup`);
@@ -1196,7 +1196,7 @@ await step(
     const from = events.length;
     const c = await cctx.newPage();
     const first = await c.goto(`${CRM}/invitation?jeton=${token}&app=invoicelead&lang=fr`);
-    const html = (await first.text()).replace(/Scanlead, CRMlead, ProjectLead/g, "");
+    const html = (await first.text()).replace(/Scan[Ll]ead, CRMlead, ProjectLead/g, "");
     expect(!html.includes("CRMlead"), "premier octet de l'invitation : CRMlead");
     // Rechargée hors connexion : la page neutre, pas l'accueil de CRMlead gardé en cache.
     if (!cctx.serviceWorkers().some((w) => w.url().startsWith(CRM)))
