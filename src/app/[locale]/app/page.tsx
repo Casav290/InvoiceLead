@@ -10,6 +10,7 @@ import { requireAppSession } from "@/server/auth/guard";
 import { currentPlanUsage, markOf } from "@/server/current-plan";
 import { dashboardFigures } from "@/server/dashboard";
 import { db } from "@/server/db";
+import { inNativeApp } from "@/server/native";
 import { type Quota, tierOf, upgradeUrl } from "@/server/plans";
 
 const NEXT_STEPS = ["company", "contacts", "invoice"] as const;
@@ -39,6 +40,7 @@ export default async function DashboardPage({
   const t = await getTranslations({ locale, namespace: "app.dashboard" });
   const tp = await getTranslations({ locale, namespace: "app.plan" });
   const tier = tierOf(organization);
+  const app = await inNativeApp();
   const today = new Date().toISOString().slice(0, 10);
   const quotas = await currentPlanUsage(organization.id);
   const used = { invoices: quotas?.invoices.used ?? 0, contacts: quotas?.contacts.used ?? 0 };
@@ -114,7 +116,7 @@ export default async function DashboardPage({
           contactLimit: quotas?.contacts.limit ?? 0,
         })}{" "}
         {usageMark ? <ProBadge tier={usageMark} className="mr-1 align-[1px]" /> : null}
-        {tier !== "proplus" ? (
+        {tier !== "proplus" && !app ? (
           <a
             href={upgradeUrl(locale, tier === "pro" ? "proplus" : "pro")}
             className="font-semibold text-accent-dark underline"

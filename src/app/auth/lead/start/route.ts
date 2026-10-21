@@ -8,6 +8,7 @@ import {
   SESSION_COOKIE,
 } from "@/lib/cookies";
 import { hasProbeMarker, safeFrom, silentReturn } from "@/lib/lead-entry";
+import { isNativeAgent } from "@/lib/native";
 import {
   cookieBytes,
   hashState,
@@ -102,6 +103,7 @@ export async function GET(request: NextRequest) {
 
   const login = startLogin({
     ...(given ? { locale: given } : {}),
+    ...(isNativeAgent(request.headers.get("user-agent")) ? { app: true } : {}),
     ...(signup
       ? { prompt: "create" as const }
       : silent

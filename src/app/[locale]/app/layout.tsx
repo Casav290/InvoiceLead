@@ -4,6 +4,7 @@ import { leadAppItems } from "@/lib/lead-apps";
 import { APP_CODE } from "@/server/auth/attach";
 import { requireAppSession } from "@/server/auth/guard";
 import { db } from "@/server/db";
+import { inNativeApp } from "@/server/native";
 import { tierOf, upgradeUrl } from "@/server/plans";
 import { listUserOrganizations } from "@/server/team";
 
@@ -19,8 +20,9 @@ export default async function AppLayout({
   const orgs = await listUserOrganizations(db(), user.id);
   const tier = tierOf(organization);
   const tp = await getTranslations({ locale, namespace: "app.plan" });
+  // Dans l'app Android / iOS : pas de « Passer à Pro » (lib/native.ts).
   const upgrade =
-    tier === "proplus"
+    tier === "proplus" || (await inNativeApp())
       ? null
       : {
           href: upgradeUrl(locale, tier === "pro" ? "proplus" : "pro"),

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { type PlanCard, PlanChooser } from "@/components/settings/PlanChooser";
 import { SettingsNav } from "@/components/settings/SettingsNav";
@@ -9,6 +10,7 @@ import { requireAppSession } from "@/server/auth/guard";
 import { billingConfigured, GRANTING, portalConfigured } from "@/server/billing/stripe";
 import { subscriptionOf } from "@/server/billing/subscriptions";
 import { db } from "@/server/db";
+import { inNativeApp } from "@/server/native";
 import {
   acquiredTier,
   billingTier,
@@ -51,6 +53,8 @@ export default async function PlanSettingsPage({ params, searchParams }: Props) 
   const { locale } = await params;
   const q = await searchParams;
   const { organization, membership } = await requireAppSession(locale);
+  // Dans l'app Android / iOS : ni prix ni formule à prendre (lib/native.ts).
+  if (await inNativeApp()) redirect(`/${locale}/app/settings/company`);
   const isAdmin = membership.role === "admin";
 
   // Retour du paiement : /api/billing/return a déjà enregistré l'abonnement (checkout=done).

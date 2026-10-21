@@ -8,6 +8,7 @@ import { formatDate } from "@/lib/fiscal-year";
 import { formatAmount } from "@/lib/money";
 import { requireAppSession } from "@/server/auth/guard";
 import { db } from "@/server/db";
+import { inNativeApp } from "@/server/native";
 import { lockFor } from "@/server/plan-lock";
 import { featureAccess, quotaAccess, upgradeUrl } from "@/server/plans";
 import { listRecurring, runningRecurring } from "@/server/recurring";
@@ -30,6 +31,7 @@ export default async function RecurringPage({ params, searchParams }: Props) {
   const { created, error } = await searchParams;
   const t = await getTranslations({ locale, namespace: "app.recurring" });
   const tp = await getTranslations({ locale, namespace: "app.plan" });
+  const app = await inNativeApp();
   const rows = await listRecurring(db(), organization.id);
   // Formule gratuite : une récurrence active. Les autres attendent (reprise grisée, marque Pro).
   const slots = await quotaAccess(db(), organization, "recurring");
@@ -118,13 +120,15 @@ export default async function RecurringPage({ params, searchParams }: Props) {
                       ? t("heldCurrency", { currency })
                       : t("held", { limit: slots.limit })}
                   </span>
-                  <a
-                    href={upgradeUrl(locale, "pro")}
-                    rel="noopener"
-                    className="font-semibold text-accent-dark underline"
-                  >
-                    {tp("upgrade")}
-                  </a>
+                  {app ? null : (
+                    <a
+                      href={upgradeUrl(locale, "pro")}
+                      rel="noopener"
+                      className="font-semibold text-accent-dark underline"
+                    >
+                      {tp("upgrade")}
+                    </a>
+                  )}
                 </p>
               ) : null}
               <div className="mt-2 flex flex-wrap gap-2">

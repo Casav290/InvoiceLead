@@ -1,5 +1,6 @@
 import { getSession } from "@/server/auth/session";
 import { markOf } from "@/server/current-plan";
+import { inNativeApp } from "@/server/native";
 import { featureAccess } from "@/server/plans";
 import { SettingsTabs } from "./SettingsTabs";
 
@@ -7,5 +8,5 @@ import { SettingsTabs } from "./SettingsTabs";
 export async function SettingsNav() {
   const session = await getSession();
   const api = session ? markOf(featureAccess(session.organization, "api")) : null;
-  return <SettingsTabs marks={api ? { api } : {}} />;
+  return <SettingsTabs marks={api ? { api } : {}} hidden={(await inNativeApp()) ? ["plan"] : []} />;
 }

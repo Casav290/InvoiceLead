@@ -1,6 +1,7 @@
 import { getTranslations } from "next-intl/server";
 import { ProBadge } from "@/components/app/ProLock";
 import { Button } from "@/components/ui/button";
+import { inNativeApp } from "@/server/native";
 
 /**
  * Encart d'une page réservée à une formule : ce que la formule actuelle ne permet pas, la marque de
@@ -19,6 +20,8 @@ export async function PlanNotice({
   tier?: "pro" | "proplus";
 }) {
   const t = await getTranslations({ locale, namespace: "app.plan" });
+  // Dans l'app Android / iOS : rien à acheter (lib/native.ts), le message reste sans bouton.
+  const app = await inNativeApp();
   return (
     <div
       className="mt-6 flex flex-wrap items-center gap-3 border border-accent bg-accent-veil px-5 py-4"
@@ -27,11 +30,13 @@ export async function PlanNotice({
       <ProBadge tier={tier} />
       {/* 16rem au moins pour le texte : sur téléphone, le bouton passe à la ligne. */}
       <p className="min-w-[min(100%,16rem)] flex-1 text-[14px] text-ink">{message}</p>
-      <Button asChild size="sm">
-        <a href={href} rel="noopener">
-          {t(tier === "proplus" ? "upgradePlus" : "upgrade")}
-        </a>
-      </Button>
+      {app ? null : (
+        <Button asChild size="sm">
+          <a href={href} rel="noopener">
+            {t(tier === "proplus" ? "upgradePlus" : "upgrade")}
+          </a>
+        </Button>
+      )}
     </div>
   );
 }

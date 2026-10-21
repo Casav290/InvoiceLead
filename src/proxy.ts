@@ -8,6 +8,7 @@ import {
   SESSION_COOKIE,
 } from "./lib/cookies";
 import { entryRedirect } from "./lib/lead-entry";
+import { isNativeAgent } from "./lib/native";
 import { returnPage } from "./lib/return-page";
 
 const intl = createMiddleware(routing);
@@ -31,7 +32,41 @@ function decodedPath(pathname: string): string {
   }
 }
 
+/** Pages de présentation (accueil, tarifs, FAQ) : l'app Android / iOS ouvre l'application à leur place. */
+const NATIVE_TO_APP = new RegExp(
+  `^/(?:(${routing.locales.join("|")})(?:/(?:pricing|faq)(?:/.*)?)?/?)?$`,
+  "i",
+);
+
+/** Langue de l'app quand l'adresse n'en donne pas : celle choisie sur le site, sinon celle du téléphone. */
+function nativeLocale(request: NextRequest, fromPath: string | undefined): string {
+  const locales: readonly string[] = routing.locales;
+  const chosen = [fromPath, request.cookies.get("NEXT_LOCALE")?.value]
+    .map((l) => l?.toLowerCase())
+    .find((l) => l && locales.includes(l));
+  if (chosen) return chosen;
+  for (const part of (request.headers.get("accept-language") ?? "").split(",")) {
+    const l = part.trim().slice(0, 2).toLowerCase();
+    if (locales.includes(l)) return l;
+  }
+  return routing.defaultLocale;
+}
+
 export default function proxy(request: NextRequest) {
+  // L'app Android / iOS (lib/native.ts) n'a pas de pages de présentation : ni prix ni offre, Apple
+  // (règle 3.1.1) et Google Play l'exigent. Elle ouvre l'application (connexion si besoin, PROTECTED).
+  if (request.method === "GET" && isNativeAgent(request.headers.get("user-agent"))) {
+    const home = decodedPath(request.nextUrl.pathname).match(NATIVE_TO_APP);
+    if (home) {
+      const response = NextResponse.redirect(
+        new URL(`/${nativeLocale(request, home[1])}/app`, request.url),
+        303,
+      );
+      response.headers.set("Cache-Control", "no-store");
+      response.headers.set("Vary", "User-Agent");
+      return response;
+    }
+  }
   // Filtre rapide : sans cookie de session, l'application renvoie vers la connexion. Le chemin est
   // décodé (« /de/%61pp » est « /de/app » pour le routeur). La vraie vérification est faite par
   // chaque page, action serveur et route (requireAppSession) : ce filtre n'est qu'un raccourci.

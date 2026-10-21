@@ -23,12 +23,19 @@ export type SettingsMarks = Partial<Record<(typeof ITEMS)[number]["key"], "pro" 
  * InvoiceLead), paiements, ProjectLead (toutes formules), API. Un onglet marqué (fonction réservée)
  * reste un lien, grisé, avec sa marque.
  */
-export function SettingsTabs({ marks }: { marks: SettingsMarks }) {
+export function SettingsTabs({
+  marks,
+  hidden = [],
+}: {
+  marks: SettingsMarks;
+  /** Onglets absents (« plan » dans l'app Android / iOS, lib/native.ts). */
+  hidden?: readonly (typeof ITEMS)[number]["key"][];
+}) {
   const t = useTranslations("app.settingsNav");
   const pathname = usePathname();
   return (
     <nav aria-label={t("label")} className="mb-8 flex flex-wrap border-b border-line-strong">
-      {ITEMS.map((item) => {
+      {ITEMS.filter((item) => !hidden.includes(item.key)).map((item) => {
         const active = pathname.startsWith(item.href);
         const mark = marks[item.key];
         return (

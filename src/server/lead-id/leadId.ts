@@ -132,7 +132,7 @@ export async function verifyLeadJwt(token: string, audience: string, issuers: st
  * Étape 1 : l'adresse où envoyer la personne. Garder `state`, `nonce` et `verifier` côté
  * serveur (cookie httpOnly signé ou session) jusqu'au retour : ils prouvent que le retour est le sien.
  */
-export function startLogin(opts: { prompt?: 'none' | 'login' | 'create'; locale?: string; maxAge?: number } = {}): LoginStart {
+export function startLogin(opts: { prompt?: 'none' | 'login' | 'create'; locale?: string; maxAge?: number; app?: boolean } = {}): LoginStart {
   const verifier = b64url(randomBytes(48))
   const state = b64url(randomBytes(24))
   const nonce = b64url(randomBytes(24))
@@ -147,6 +147,9 @@ export function startLogin(opts: { prompt?: 'none' | 'login' | 'create'; locale?
   if (opts.prompt) q.set('prompt', opts.prompt)
   if (opts.maxAge != null) q.set('max_age', String(opts.maxAge))
   if (opts.locale) q.set('ui_locales', opts.locale)
+  // Depuis l'app Android / iOS : le Compte Lead n'y montre pas « Continuer avec Google » (refusé par
+  // Google dans une vue web, et Apple exigerait alors « Se connecter avec Apple », règle 4.8).
+  if (opts.app) q.set('platform', 'app')
   return { url: `${issuer()}/oauth/authorize?${q}`, state, nonce, verifier, ...(opts.maxAge != null ? { maxAge: opts.maxAge } : {}) }
 }
 

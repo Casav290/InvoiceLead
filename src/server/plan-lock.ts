@@ -1,5 +1,6 @@
 import { getTranslations } from "next-intl/server";
 import type { Lock } from "@/components/app/ProLock";
+import { inNativeApp } from "./native";
 import { type Access, type Tier, upgradeUrl } from "./plans";
 
 /**
@@ -16,9 +17,14 @@ export async function planLock(
   return {
     tier,
     reason,
-    upgrade: tier
-      ? { label: t(tier === "proplus" ? "upgradePlus" : "upgrade"), href: upgradeUrl(locale, tier) }
-      : null,
+    // Dans l'app Android / iOS : verrou sans lien d'achat (lib/native.ts).
+    upgrade:
+      tier && !(await inNativeApp())
+        ? {
+            label: t(tier === "proplus" ? "upgradePlus" : "upgrade"),
+            href: upgradeUrl(locale, tier),
+          }
+        : null,
   };
 }
 

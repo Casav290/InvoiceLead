@@ -11,6 +11,7 @@ import { db } from "@/server/db";
 import { emailConfigured, sendEmail } from "@/server/email";
 import { env } from "@/server/env";
 import { inviteMember } from "@/server/lead-id/members";
+import { inNativeApp } from "@/server/native";
 import { featureAccess, seatsOf, tierOf, tierWithMoreSeats, upgradeUrl } from "@/server/plans";
 import {
   cancelInvitation,
@@ -138,7 +139,10 @@ export async function inviteMemberAction(
   const full = {
     ...typed,
     error: "seatLimit" as const,
-    upgrade: upgradeUrl(locale, tierWithMoreSeats(tierOf(organization), seats)),
+    // Dans l'app Android / iOS : pas de lien d'achat (lib/native.ts).
+    upgrade: (await inNativeApp())
+      ? undefined
+      : upgradeUrl(locale, tierWithMoreSeats(tierOf(organization), seats)),
   };
   if (seated(members, seats).size >= seats) return full;
   const outcome = await inviteMember({
