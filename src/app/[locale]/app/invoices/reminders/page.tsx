@@ -1,13 +1,14 @@
 import type { Metadata } from "next";
-import { getTranslations } from "next-intl/server";
 import { LockNote, ProBadge, ProLock } from "@/components/app/ProLock";
 import { Button } from "@/components/ui/button";
 import { countryPack } from "@/countries";
 import { Link } from "@/i18n/navigation";
+import { formatAmountInput } from "@/lib/amount-input";
 import { formatDate } from "@/lib/fiscal-year";
 import { formatAmount } from "@/lib/money";
 import { requireAppSession } from "@/server/auth/guard";
 import { COURTESY_DAYS, expectedCollections, reminderSchedule } from "@/server/collections";
+import { getSessionCountryTranslations } from "@/server/country-translations";
 import { db } from "@/server/db";
 import { emailConfigured } from "@/server/email";
 import { lockFor, planLock } from "@/server/plan-lock";
@@ -23,7 +24,7 @@ type Props = {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
-  const t = await getTranslations({ locale, namespace: "app.reminders" });
+  const t = await getSessionCountryTranslations({ locale, namespace: "app.reminders" });
   return { title: t("title"), robots: { index: false } };
 }
 
@@ -38,7 +39,7 @@ export default async function RemindersPage({ params, searchParams }: Props) {
   const dates = countryPack(organization.country).dates;
   const slip = countryPack(organization.country).paymentSlip;
   const q = await searchParams;
-  const t = await getTranslations({ locale, namespace: "app.reminders" });
+  const t = await getSessionCountryTranslations({ locale, namespace: "app.reminders" });
   const today = new Date().toISOString().slice(0, 10);
   const rows = await dueReminders(db(), organization.id, today);
   const forecast = await expectedCollections(db(), organization.id, organization.currency, today);
@@ -47,7 +48,7 @@ export default async function RemindersPage({ params, searchParams }: Props) {
   const canEmail = emailConfigured();
   const hidden = <input type="hidden" name="locale" value={locale} />;
   const ok = q.result === "sent" || q.result === "recorded";
-  const tp = await getTranslations({ locale, namespace: "app.plan" });
+  const tp = await getSessionCountryTranslations({ locale, namespace: "app.plan" });
   // Formule gratuite : première relance à la main, 5 par mois ; les relances suivantes, l'envoi
   // automatique, les frais et les intérêts restent visibles, grisés, avec la marque Pro.
   const sends = await quotaAccess(db(), organization, "reminders");
@@ -85,7 +86,9 @@ export default async function RemindersPage({ params, searchParams }: Props) {
         <input
           name="fee"
           defaultValue={
-            organization.reminderFeeCents ? formatAmount(organization.reminderFeeCents) : ""
+            organization.reminderFeeCents
+              ? formatAmountInput(organization.reminderFeeCents, organization.country)
+              : ""
           }
           disabled={!canSetup}
           inputMode="decimal"

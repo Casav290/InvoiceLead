@@ -1,8 +1,8 @@
 "use client";
 
-import { useTranslations } from "next-intl";
 import { useActionState } from "react";
 import { addPaymentAction, type PaymentFormState } from "@/app/[locale]/app/invoices/actions";
+import { useCountryTranslations } from "@/components/app/CountryContext";
 import { SelectField, TextField } from "@/components/forms/fields";
 import { Button } from "@/components/ui/button";
 
@@ -21,7 +21,7 @@ export function PaymentForm({
   home?: string;
   initial: Record<string, string>;
 }) {
-  const t = useTranslations("app.invoices.payments");
+  const t = useCountryTranslations("app.invoices.payments");
   const [state, action, pending] = useActionState<PaymentFormState, FormData>(addPaymentAction, {
     status: "idle",
     round: 0,

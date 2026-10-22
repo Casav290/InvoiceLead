@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { getTranslations } from "next-intl/server";
 import { AccountingNav } from "@/components/accounting/AccountingNav";
 import { ProLock } from "@/components/app/ProLock";
 import { recordElsewhere } from "@/components/app/RecordElsewhere";
@@ -9,11 +8,13 @@ import { Button } from "@/components/ui/button";
 import { countryPack } from "@/countries";
 import { Link } from "@/i18n/navigation";
 import { accountName } from "@/lib/account-name";
+import { formatAmountInput } from "@/lib/amount-input";
 import { formatDate } from "@/lib/fiscal-year";
 import { formatAmount } from "@/lib/money";
 import { listAccounts } from "@/server/accounting";
 import { requireAppSession } from "@/server/auth/guard";
 import { getBill } from "@/server/bills";
+import { getSessionCountryTranslations } from "@/server/country-translations";
 import { db } from "@/server/db";
 import { lockFor } from "@/server/plan-lock";
 import { featureAccess } from "@/server/plans";
@@ -33,7 +34,7 @@ type Props = {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
-  const t = await getTranslations({ locale, namespace: "app.bills" });
+  const t = await getSessionCountryTranslations({ locale, namespace: "app.bills" });
   return { title: t("title"), robots: { index: false } };
 }
 
@@ -51,6 +52,8 @@ const ERRORS = [
 export default async function BillPage({ params, searchParams }: Props) {
   const { locale, id } = await params;
   const { organization, user } = await requireAppSession(locale);
+  // Dates au format du pays de l'entreprise (30.09.2026, 30/09/2026, 09/30/2026).
+  const dates = countryPack(organization.country).dates;
   const q = await searchParams;
   const bill = await getBill(db(), organization.id, id);
   if (!bill) {
@@ -65,7 +68,7 @@ export default async function BillPage({ params, searchParams }: Props) {
     if (elsewhere) return elsewhere;
     notFound();
   }
-  const t = await getTranslations({ locale, namespace: "app.bills" });
+  const t = await getSessionCountryTranslations({ locale, namespace: "app.bills" });
   const style = countryPack(organization.country).amounts;
   const chart = await listAccounts(db(), organization.id);
   const account = chart.find((a) => a.id === bill.accountId);
@@ -130,7 +133,7 @@ export default async function BillPage({ params, searchParams }: Props) {
       </h1>
       <p className="mt-2 text-[15px] text-ink-muted" data-testid="bill-status">
         {t(`status.${bill.status}`)} · {bill.currency} {formatAmount(bill.totalCents, style)} ·{" "}
-        {t("due", { date: formatDate(bill.dueDate) })}
+        {t("due", { date: formatDate(bill.dueDate, dates) })}
       </p>
       {notice ? (
         <p
@@ -194,7 +197,7 @@ export default async function BillPage({ params, searchParams }: Props) {
               issueDate: bill.issueDate,
               dueDate: bill.dueDate,
               currency: bill.currency,
-              total: formatAmount(bill.totalCents),
+              total: formatAmountInput(bill.totalCents, organization.country),
               vatCode: bill.vatCode ?? "",
               accountId: bill.accountId ?? "",
               description: bill.description ?? "",
@@ -211,7 +214,7 @@ export default async function BillPage({ params, searchParams }: Props) {
         <>
           <dl className="mt-6 grid grid-cols-[auto_1fr] gap-x-6 gap-y-1 border border-line-strong bg-panel px-5 py-4 text-[13px]">
             <dt className="text-ink-muted">{t("fields.issueDate")}</dt>
-            <dd className="tabular-nums">{formatDate(bill.issueDate)}</dd>
+            <dd className="tabular-nums">{formatDate(bill.issueDate, dates)}</dd>
             <dt className="text-ink-muted">{t("fields.account")}</dt>
             <dd>{account ? `${account.number} ${accountName(account, locale)}` : "–"}</dd>
             <dt className="text-ink-muted">{t("fields.iban")}</dt>
@@ -221,7 +224,7 @@ export default async function BillPage({ params, searchParams }: Props) {
             {bill.paidOn ? (
               <>
                 <dt className="text-ink-muted">{t("paidOn")}</dt>
-                <dd className="tabular-nums">{formatDate(bill.paidOn)}</dd>
+                <dd className="tabular-nums">{formatDate(bill.paidOn, dates)}</dd>
               </>
             ) : null}
           </dl>

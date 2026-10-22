@@ -87,13 +87,20 @@ export async function sendWithDefaults(
   const { getTranslations } = await import("next-intl/server");
   const { formatAmount } = await import("@/lib/money");
   const { formatDate } = await import("@/lib/fiscal-year");
-  const te = await getTranslations({ locale: invoice.language, namespace: "app.invoices.email" });
+  const { countryPack } = await import("@/countries");
+  const { forCountry } = await import("@/i18n/country");
+  // Langue de la pièce ; vocabulaire, dates et montants du pays de l'expéditeur.
+  const pack = countryPack(invoice.sender?.country);
+  const te = forCountry(
+    await getTranslations({ locale: invoice.language, namespace: "app.invoices.email" }),
+    pack.code,
+  );
   const values = {
     number: invoice.number ?? "",
     company: invoice.sender?.name ?? "",
-    amount: formatAmount(invoice.totalCents),
+    amount: formatAmount(invoice.totalCents, pack.amounts),
     currency: invoice.currency,
-    due: formatDate(invoice.dueDate),
+    due: formatDate(invoice.dueDate, pack.dates),
   };
   return sendDocument(
     database,

@@ -316,6 +316,17 @@ export type AcceptResult =
   | { status: "accepted"; organizationId: string; organizationName: string }
   | { status: "invalid" | "expired" | "wrongEmail" | "plan" };
 
+/** Pays de l'entreprise qui invite (vocabulaire de la page d'invitation), ou null. */
+export async function invitationCountry(database: Db, token: string): Promise<string | null> {
+  const [row] = await database
+    .select({ country: organizations.country })
+    .from(fiduciaryInvitations)
+    .innerJoin(organizations, eq(fiduciaryInvitations.organizationId, organizations.id))
+    .where(eq(fiduciaryInvitations.tokenHash, sha256Hex(token)))
+    .limit(1);
+  return row?.country ?? null;
+}
+
 /**
  * Acceptation par la fiduciaire, connectée avec son propre Compte Lead : l'adresse de l'invitation doit
  * être la sienne. Une personne déjà membre de l'entreprise garde son rôle. L'accès fiduciaire fait

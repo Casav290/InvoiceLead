@@ -1,8 +1,8 @@
 "use client";
 
-import { useTranslations } from "next-intl";
 import { useActionState, useRef } from "react";
 import { type AssistantState, askAction } from "@/app/[locale]/app/assistant/actions";
+import { useCountryTranslations } from "@/components/app/CountryContext";
 import { type Lock, ProLock } from "@/components/app/ProLock";
 import { Button } from "@/components/ui/button";
 import { Link } from "@/i18n/navigation";
@@ -34,8 +34,8 @@ export function AssistantBox({
   quota: { used: number; limit: number } | null;
   lock: Lock | null;
 }) {
-  const t = useTranslations("app.assistant");
-  const tp = useTranslations("app.plan");
+  const t = useCountryTranslations("app.assistant");
+  const tp = useCountryTranslations("app.plan");
   const [state, action, pending] = useActionState<AssistantState, FormData>(askAction, {
     round: 0,
   });

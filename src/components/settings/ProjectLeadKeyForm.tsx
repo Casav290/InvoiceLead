@@ -1,15 +1,15 @@
 "use client";
 
-import { useTranslations } from "next-intl";
 import { useActionState } from "react";
 import type { SecretState } from "@/app/[locale]/app/settings/api/actions";
 import { createProjectLeadKeyAction } from "@/app/[locale]/app/settings/projectlead/actions";
+import { useCountryTranslations } from "@/components/app/CountryContext";
 import { Button } from "@/components/ui/button";
 import { Revealed } from "./ApiForms";
 
 /** « Créer la clé ProjectLead » : un clic, la clé s'affiche une seule fois, prête à coller. */
 export function ProjectLeadKeyForm({ locale }: { locale: string }) {
-  const t = useTranslations("app.projectLead");
+  const t = useCountryTranslations("app.projectLead");
   const [state, action, pending] = useActionState<SecretState, FormData>(
     createProjectLeadKeyAction,
     { round: 0 },

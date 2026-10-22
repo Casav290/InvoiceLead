@@ -1,8 +1,8 @@
 "use client";
 
-import { useTranslations } from "next-intl";
 import { useActionState } from "react";
 import { type ReviewState, reviewVatAction } from "@/app/[locale]/app/accounting/actions";
+import { useCountryTranslations } from "@/components/app/CountryContext";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -18,7 +18,7 @@ export function VatReview({
   end: string;
   className?: string;
 }) {
-  const t = useTranslations("app.vat");
+  const t = useCountryTranslations("app.vat");
   const [state, action, pending] = useActionState<ReviewState, FormData>(reviewVatAction, {
     round: 0,
   });

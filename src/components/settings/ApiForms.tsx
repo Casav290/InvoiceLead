@@ -1,12 +1,12 @@
 "use client";
 
-import { useTranslations } from "next-intl";
 import { useActionState } from "react";
 import {
   createApiKeyAction,
   createWebhookAction,
   type SecretState,
 } from "@/app/[locale]/app/settings/api/actions";
+import { useCountryTranslations } from "@/components/app/CountryContext";
 import { Button } from "@/components/ui/button";
 
 const fieldClass =
@@ -39,7 +39,7 @@ export function Revealed({
 }
 
 export function ApiKeyForm({ locale }: { locale: string }) {
-  const t = useTranslations("app.apiSettings");
+  const t = useCountryTranslations("app.apiSettings");
   const [state, action, pending] = useActionState<SecretState, FormData>(createApiKeyAction, {
     round: 0,
   });
@@ -73,7 +73,7 @@ export function ApiKeyForm({ locale }: { locale: string }) {
 }
 
 export function WebhookForm({ locale, events }: { locale: string; events: readonly string[] }) {
-  const t = useTranslations("app.apiSettings");
+  const t = useCountryTranslations("app.apiSettings");
   const [state, action, pending] = useActionState<SecretState, FormData>(createWebhookAction, {
     round: 0,
   });

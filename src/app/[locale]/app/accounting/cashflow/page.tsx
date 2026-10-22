@@ -1,18 +1,18 @@
 import type { Metadata } from "next";
-import { getTranslations } from "next-intl/server";
 import { AccountingNav } from "@/components/accounting/AccountingNav";
 import { countryPack } from "@/countries";
 import { formatDate } from "@/lib/fiscal-year";
 import { formatAmount } from "@/lib/money";
 import { requirePermission } from "@/server/auth/guard";
 import { cashForecast } from "@/server/cashflow";
+import { getSessionCountryTranslations } from "@/server/country-translations";
 import { db } from "@/server/db";
 
 type Props = { params: Promise<{ locale: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
-  const t = await getTranslations({ locale, namespace: "app.cashflow" });
+  const t = await getSessionCountryTranslations({ locale, namespace: "app.cashflow" });
   return { title: t("title"), robots: { index: false } };
 }
 
@@ -20,7 +20,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function CashflowPage({ params }: Props) {
   const { locale } = await params;
   const { organization } = await requirePermission(locale, "accounting");
-  const t = await getTranslations({ locale, namespace: "app.cashflow" });
+  // Dates au format du pays de l'entreprise (30.09.2026, 30/09/2026, 09/30/2026).
+  const dates = countryPack(organization.country).dates;
+  const t = await getSessionCountryTranslations({ locale, namespace: "app.cashflow" });
   const today = new Date().toISOString().slice(0, 10);
   const f = await cashForecast(db(), organization.id, today);
   const style = countryPack(organization.country).amounts;
@@ -49,7 +51,7 @@ export default async function CashflowPage({ params }: Props) {
           <p className="mt-1 text-[15px] font-semibold">
             {f.shortfall
               ? t("shortfall", {
-                  date: formatDate(f.shortfall.weekStart),
+                  date: formatDate(f.shortfall.weekStart, dates),
                   amount: `${f.currency} ${money(f.shortfall.closingCents)}`,
                 })
               : t("noShortfall", {
@@ -72,7 +74,7 @@ export default async function CashflowPage({ params }: Props) {
           <tbody>
             {f.weeks.map((w) => (
               <tr key={w.weekStart} className="border-b border-line-soft last:border-b-0">
-                <td className="px-3 py-2">{formatDate(w.weekStart)}</td>
+                <td className="px-3 py-2">{formatDate(w.weekStart, dates)}</td>
                 <td className="px-3 py-2 text-right tabular-nums">
                   {w.inCents ? money(w.inCents) : ""}
                 </td>

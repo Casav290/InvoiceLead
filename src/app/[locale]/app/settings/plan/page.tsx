@@ -4,11 +4,13 @@ import { getTranslations } from "next-intl/server";
 import { type PlanCard, PlanChooser } from "@/components/settings/PlanChooser";
 import { SettingsNav } from "@/components/settings/SettingsNav";
 import { Button } from "@/components/ui/button";
+import { countryPack } from "@/countries";
 import { formatDate } from "@/lib/fiscal-year";
 import { AVAILABLE, PRICE_CARDS } from "@/lib/pricing";
 import { requireAppSession } from "@/server/auth/guard";
 import { billingConfigured, GRANTING, portalConfigured } from "@/server/billing/stripe";
 import { subscriptionOf } from "@/server/billing/subscriptions";
+import { getSessionCountryTranslations } from "@/server/country-translations";
 import { db } from "@/server/db";
 import { inNativeApp } from "@/server/native";
 import {
@@ -30,12 +32,11 @@ type Props = {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
-  const t = await getTranslations({ locale, namespace: "app.billing" });
+  const t = await getSessionCountryTranslations({ locale, namespace: "app.billing" });
   return { title: t("title"), robots: { index: false } };
 }
 
 const ERRORS = ["admin", "unavailable", "invalid", "already", "stripe", "noCustomer"];
-const day = (d: Date | string) => formatDate(new Date(d).toISOString().slice(0, 10));
 const RANK: Record<Tier, number> = { free: 0, pro: 1, proplus: 2 };
 
 /**
@@ -53,14 +54,17 @@ export default async function PlanSettingsPage({ params, searchParams }: Props) 
   const { locale } = await params;
   const q = await searchParams;
   const { organization, membership } = await requireAppSession(locale);
+  // Dates au format du pays de l'entreprise (30.09.2026, 30/09/2026, 09/30/2026).
+  const dates = countryPack(organization.country).dates;
+  const day = (d: Date | string) => formatDate(new Date(d).toISOString().slice(0, 10), dates);
   // Dans l'app Android / iOS : ni prix ni formule à prendre (lib/native.ts).
   if (await inNativeApp()) redirect(`/${locale}/app/settings/company`);
   const isAdmin = membership.role === "admin";
 
   // Retour du paiement : /api/billing/return a déjà enregistré l'abonnement (checkout=done).
-  const t = await getTranslations({ locale, namespace: "app.billing" });
+  const t = await getSessionCountryTranslations({ locale, namespace: "app.billing" });
   const tp = await getTranslations({ locale, namespace: "pricing" });
-  const tPlan = await getTranslations({ locale, namespace: "app.plan" });
+  const tPlan = await getSessionCountryTranslations({ locale, namespace: "app.plan" });
   const tier = tierOf(organization);
   const own = billingTier(organization);
   const acquired = acquiredTier(organization);

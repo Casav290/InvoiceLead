@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { getTranslations } from "next-intl/server";
 import { AccountingUnavailable } from "@/components/accounting/AccountingUnavailable";
 import { fieldClass } from "@/components/forms/fields";
 import { SettingsNav } from "@/components/settings/SettingsNav";
@@ -16,6 +15,7 @@ import { accountName } from "@/lib/account-name";
 import { listAccounts } from "@/server/accounting";
 import { requireAppSession } from "@/server/auth/guard";
 import { canSetUpAccounting } from "@/server/company";
+import { getSessionCountryTranslations } from "@/server/country-translations";
 import { db } from "@/server/db";
 import type { Account } from "@/server/db/schema";
 import { installChartAction } from "./actions";
@@ -27,7 +27,7 @@ type Props = {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
-  const t = await getTranslations({ locale, namespace: "app.accounts" });
+  const t = await getSessionCountryTranslations({ locale, namespace: "app.accounts" });
   return { title: t("title"), robots: { index: false } };
 }
 
@@ -35,7 +35,7 @@ export default async function AccountsPage({ params, searchParams }: Props) {
   const { locale } = await params;
   const { user, organization } = await requireAppSession(locale);
   if (!countryPack(organization.country).accounting) {
-    const tc = await getTranslations({ locale, namespace: "app.company.countries" });
+    const tc = await getSessionCountryTranslations({ locale, namespace: "app.company.countries" });
     return (
       <div className="mx-auto max-w-3xl px-4 pt-10 sm:px-8">
         <SettingsNav />
@@ -45,7 +45,7 @@ export default async function AccountsPage({ params, searchParams }: Props) {
   }
   const { saved, installed } = await searchParams;
   const editable = await canSetUpAccounting(db(), organization.id, user.id);
-  const t = await getTranslations({ locale, namespace: "app.accounts" });
+  const t = await getSessionCountryTranslations({ locale, namespace: "app.accounts" });
   const rows = await listAccounts(db(), organization.id);
   const byClass = new Map<string, Account[]>();
   for (const a of rows) {

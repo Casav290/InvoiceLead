@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { getTranslations } from "next-intl/server";
 import { PlanNotice } from "@/components/app/PlanNotice";
 import { Button } from "@/components/ui/button";
 import { countryPack } from "@/countries";
@@ -7,6 +6,7 @@ import { formatQuantity } from "@/lib/invoice-math";
 import { formatAmount } from "@/lib/money";
 import { requireAppSession } from "@/server/auth/guard";
 import { safeNext } from "@/server/auth/login-cookie";
+import { getSessionCountryTranslations } from "@/server/country-translations";
 import { decodeHandoff, handoffTotalCents } from "@/server/crmlead";
 import { db } from "@/server/db";
 import { upgradeUrl } from "@/server/plans";
@@ -22,7 +22,7 @@ type Props = {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
-  const t = await getTranslations({ locale, namespace: "app.crmImport" });
+  const t = await getSessionCountryTranslations({ locale, namespace: "app.crmImport" });
   return { title: t("title"), robots: { index: false } };
 }
 
@@ -31,8 +31,8 @@ export default async function CrmImportPage({ params, searchParams }: Props) {
   const { locale } = await params;
   const { organization, membership, user } = await requireAppSession(locale);
   const q = await searchParams;
-  const t = await getTranslations({ locale, namespace: "app.crmImport" });
-  const tu = await getTranslations({ locale, namespace: "app.invoices.units" });
+  const t = await getSessionCountryTranslations({ locale, namespace: "app.crmImport" });
+  const tu = await getSessionCountryTranslations({ locale, namespace: "app.invoices.units" });
   const handoff = decodeHandoff(q.d);
   const allowed = can(membership, "billing");
   // Session dans une entreprise où la personne ne facture pas (fiduciaire passée chez un client) : le

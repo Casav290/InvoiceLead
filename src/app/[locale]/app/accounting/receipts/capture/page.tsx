@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { getTranslations } from "next-intl/server";
 import { ProLock } from "@/components/app/ProLock";
 import { CaptureButton } from "@/components/receipts/CaptureButton";
 import { countryPack } from "@/countries";
@@ -8,6 +7,7 @@ import { formatDate } from "@/lib/fiscal-year";
 import { formatAmount } from "@/lib/money";
 import { aiConfigured } from "@/server/ai";
 import { requireAppSession } from "@/server/auth/guard";
+import { getSessionCountryTranslations } from "@/server/country-translations";
 import { db } from "@/server/db";
 import { lockFor } from "@/server/plan-lock";
 import { quotaAccess } from "@/server/plans";
@@ -21,7 +21,7 @@ type Props = {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
-  const t = await getTranslations({ locale, namespace: "app.capture" });
+  const t = await getSessionCountryTranslations({ locale, namespace: "app.capture" });
   return { title: t("title"), robots: { index: false } };
 }
 
@@ -33,11 +33,11 @@ export default async function CapturePage({ params, searchParams }: Props) {
   const { locale } = await params;
   const { organization } = await requireAppSession(locale);
   const q = await searchParams;
-  const t = await getTranslations({ locale, namespace: "app.capture" });
+  const t = await getSessionCountryTranslations({ locale, namespace: "app.capture" });
   const style = countryPack(organization.country).amounts;
   const recent = (await listReceipts(db(), organization.id)).slice(0, 5);
   const last = q.last ? recent.find((r) => r.id === q.last) : undefined;
-  const tp = await getTranslations({ locale, namespace: "app.plan" });
+  const tp = await getSessionCountryTranslations({ locale, namespace: "app.plan" });
   const reads = await quotaAccess(db(), organization, "aiReads");
   const usedUp = tp("used.aiReads", { limit: reads.limit, plan: reads.tier });
   const lock = aiConfigured() ? await lockFor(locale, reads, usedUp) : null;

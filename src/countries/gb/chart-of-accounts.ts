@@ -63,7 +63,7 @@ export const CHART_ACCOUNTS_GB: readonly TemplateAccount[] = [
   a("2201", "Purchase tax control (input VAT)", "TVA déductible", "Vorsteuer", "liability", {
     role: "vat_input_material",
   }),
-  a("2202", "VAT liability", "TVA à payer", "MWST-Zahllast", "liability", {
+  a("2202", "VAT liability", "TVA à payer", "USt-Zahllast", "liability", {
     role: "vat_settlement",
   }),
   a(

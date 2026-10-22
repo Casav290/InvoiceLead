@@ -29,6 +29,12 @@ export type CountryPack = {
   tax: "vat" | "salesTax";
   /** Comptabilité en partie double, décompte TVA et import bancaire camt disponibles. */
   accounting: boolean;
+  /**
+   * Codes proposés dans les listes (articles, lignes, comptes, banque, frais) : ceux qui ont un taux
+   * à eux dans le pays. En Allemagne l'hébergement suit le taux réduit, au Royaume-Uni le taux normal,
+   * aux États-Unis tout ce qui est taxable suit le taux combiné : pas de ligne « hébergement ».
+   */
+  vatCodes: readonly VatCode[];
   /** Taux d'un code à une date ; `localRateBp` est le taux propre à l'entreprise (sales tax). */
   vatRateBp: (code: VatCode, serviceDate: string, localRateBp?: number | null) => number;
 };
@@ -36,6 +42,7 @@ export type CountryPack = {
 const PACKS: Record<Country, CountryPack> = {
   CH: {
     code: "CH",
+    vatCodes: ["normal", "reduced", "lodging", "exempt", "export"],
     currency: "CHF",
     paymentSlip: "qr-bill",
     amounts: "ch",
@@ -47,6 +54,7 @@ const PACKS: Record<Country, CountryPack> = {
   },
   DE: {
     code: "DE",
+    vatCodes: ["normal", "reduced", "exempt", "export"],
     currency: "EUR",
     paymentSlip: "epc-qr",
     amounts: "de",
@@ -58,6 +66,7 @@ const PACKS: Record<Country, CountryPack> = {
   },
   FR: {
     code: "FR",
+    vatCodes: ["normal", "lodging", "reduced", "exempt", "export"],
     currency: "EUR",
     paymentSlip: "epc-qr",
     amounts: "fr",
@@ -69,6 +78,7 @@ const PACKS: Record<Country, CountryPack> = {
   },
   GB: {
     code: "GB",
+    vatCodes: ["normal", "reduced", "exempt", "export"],
     currency: "GBP",
     paymentSlip: "none",
     amounts: "en",
@@ -80,6 +90,7 @@ const PACKS: Record<Country, CountryPack> = {
   },
   US: {
     code: "US",
+    vatCodes: ["normal", "exempt", "export"],
     currency: "USD",
     paymentSlip: "none",
     amounts: "en",
@@ -93,6 +104,16 @@ const PACKS: Record<Country, CountryPack> = {
 
 export function isCountry(value: unknown): value is Country {
   return (COUNTRIES as readonly unknown[]).includes(value);
+}
+
+/**
+ * Codes TVA à proposer pour ce pays ; le code déjà enregistré reste dans la liste même s'il n'est plus
+ * proposé (une ligne « hébergement » saisie avant un changement de pays).
+ */
+export function offeredVatCodes(country: string | null | undefined, current?: string | null) {
+  const codes: string[] = [...countryPack(country).vatCodes];
+  if (current && !codes.includes(current)) codes.push(current);
+  return codes;
 }
 
 /** Pack d'un pays ; un pays inconnu retombe sur la Suisse. */

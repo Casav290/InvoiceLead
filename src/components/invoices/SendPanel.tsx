@@ -1,6 +1,5 @@
 "use client";
 
-import { useTranslations } from "next-intl";
 import { useActionState } from "react";
 import {
   type LinkState,
@@ -8,6 +7,7 @@ import {
   sendDocumentAction,
   shareLinkAction,
 } from "@/app/[locale]/app/invoices/actions";
+import { useCountryTranslations } from "@/components/app/CountryContext";
 import { fieldClass, TextField } from "@/components/forms/fields";
 import { Button } from "@/components/ui/button";
 
@@ -27,7 +27,7 @@ export function SendPanel({
   sentInfo: string | null;
   defaults: { to: string; subject: string; message: string };
 }) {
-  const t = useTranslations("app.invoices.email");
+  const t = useCountryTranslations("app.invoices.email");
   const [state, send, sending] = useActionState<SendFormState, FormData>(sendDocumentAction, {
     status: "idle",
     round: 0,

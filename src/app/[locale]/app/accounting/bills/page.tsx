@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { getTranslations } from "next-intl/server";
 import { AccountingNav } from "@/components/accounting/AccountingNav";
 import { ProLock } from "@/components/app/ProLock";
 import { ScanTicket } from "@/components/app/ScanTicket";
@@ -11,6 +10,7 @@ import { formatAmount } from "@/lib/money";
 import { aiConfigured } from "@/server/ai";
 import { requireAppSession } from "@/server/auth/guard";
 import { listBills } from "@/server/bills";
+import { getSessionCountryTranslations } from "@/server/country-translations";
 import { db } from "@/server/db";
 import { lockFor } from "@/server/plan-lock";
 import { quotaAccess } from "@/server/plans";
@@ -30,7 +30,7 @@ type Props = {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
-  const t = await getTranslations({ locale, namespace: "app.bills" });
+  const t = await getSessionCountryTranslations({ locale, namespace: "app.bills" });
   return { title: t("title"), robots: { index: false } };
 }
 
@@ -45,15 +45,17 @@ const PHOTO_ERRORS = ["quota", "type", "size", "duplicate", "unread"];
 export default async function BillsPage({ params, searchParams }: Props) {
   const { locale } = await params;
   const { organization, membership } = await requireAppSession(locale);
+  // Dates au format du pays de l'entreprise (30.09.2026, 30/09/2026, 09/30/2026).
+  const dates = countryPack(organization.country).dates;
   const q = await searchParams;
-  const t = await getTranslations({ locale, namespace: "app.bills" });
+  const t = await getSessionCountryTranslations({ locale, namespace: "app.bills" });
   const style = countryPack(organization.country).amounts;
   const today = new Date().toISOString().slice(0, 10);
   const bills = await listBills(db(), organization.id);
   const toPay = bills.filter((b) => b.status === "approved");
   const hidden = <input type="hidden" name="locale" value={locale} />;
   // Photo lue par l'IA : même compteur que les justificatifs et les tickets (Gratuit 20 par mois).
-  const tp = await getTranslations({ locale, namespace: "app.plan" });
+  const tp = await getSessionCountryTranslations({ locale, namespace: "app.plan" });
   const reads = await quotaAccess(db(), organization, "aiReads");
   const usedUp = tp("used.aiReads", { limit: reads.limit, plan: reads.tier });
   const photoLock = await lockFor(locale, reads, usedUp);
@@ -234,7 +236,7 @@ export default async function BillsPage({ params, searchParams }: Props) {
                     <span
                       className={`tabular-nums ${g !== "paid" && b.dueDate < today ? "font-semibold text-hot-fg" : "text-ink-2"}`}
                     >
-                      {t("due", { date: formatDate(b.dueDate) })}
+                      {t("due", { date: formatDate(b.dueDate, dates) })}
                     </span>
                     <span className="font-extrabold tabular-nums">
                       {b.currency !== organization.currency ? `${b.currency} ` : ""}

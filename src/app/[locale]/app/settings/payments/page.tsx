@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
-import { getTranslations } from "next-intl/server";
 import { SettingsNav } from "@/components/settings/SettingsNav";
 import { Button } from "@/components/ui/button";
 import { requireAppSession } from "@/server/auth/guard";
+import { getSessionCountryTranslations } from "@/server/country-translations";
 import { can } from "@/server/roles";
 import { stripeConfigured } from "@/server/stripe";
 import { disconnectStripeAction } from "./actions";
@@ -14,7 +14,7 @@ type Props = {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
-  const t = await getTranslations({ locale, namespace: "app.onlinePayments" });
+  const t = await getSessionCountryTranslations({ locale, namespace: "app.onlinePayments" });
   return { title: t("title"), robots: { index: false } };
 }
 
@@ -25,7 +25,7 @@ export default async function PaymentsSettingsPage({ params, searchParams }: Pro
   const { locale } = await params;
   const { organization, membership } = await requireAppSession(locale);
   const q = await searchParams;
-  const t = await getTranslations({ locale, namespace: "app.onlinePayments" });
+  const t = await getSessionCountryTranslations({ locale, namespace: "app.onlinePayments" });
   const editable = can(membership, "company");
   const account = organization.stripeAccountId;
   const notice = q.connected ? t("connected") : q.disconnected ? t("disconnected") : null;

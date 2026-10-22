@@ -1,6 +1,6 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { useCountryTranslations } from "@/components/app/CountryContext";
 import { ProBadge } from "@/components/app/ProLock";
 import { Link, usePathname } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
@@ -20,7 +20,7 @@ export type TabMarks = Partial<Record<(typeof ITEMS)[number]["key"], "pro" | "pr
 
 /** Onglets de la comptabilité ; un onglet marqué reste un lien, grisé, avec sa marque. */
 export function AccountingTabs({ marks, country }: { marks: TabMarks; country?: string }) {
-  const t = useTranslations("app.accountingHome.tabs");
+  const t = useCountryTranslations("app.accountingHome.tabs");
   const pathname = usePathname();
   return (
     <nav aria-label={t("label")} className="mb-8 flex flex-wrap border-b border-line-strong">

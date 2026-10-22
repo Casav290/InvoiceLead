@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 import { useActionState, useState } from "react";
 import { type CompanyFormState, saveCompany } from "@/app/[locale]/app/settings/company/actions";
 import { Button } from "@/components/ui/button";
+import { forCountry } from "@/i18n/country";
 import { cn } from "@/lib/utils";
 
 const LEGAL_FORMS: Record<string, string[]> = {
@@ -30,7 +31,7 @@ export function CompanyForm({
   initial: Record<string, string>;
   editable: boolean;
 }) {
-  const t = useTranslations("app.company");
+  const tBase = useTranslations("app.company");
   const [state, action, pending] = useActionState<CompanyFormState, FormData>(saveCompany, {
     status: "idle",
     round: 0,
@@ -39,6 +40,8 @@ export function CompanyForm({
   // Le pays change les champs proposés : IDE ou USt-IdNr., QR-IBAN et TDFN seulement en Suisse.
   const [country, setCountry] = useState(values.country || "CH");
   const swiss = country === "CH";
+  // Libellés du pays choisi (src/i18n/country.ts), qui changent avec la liste.
+  const t = forCountry(tBase, country);
   const us = country === "US";
   const error = (name: string) =>
     state.errors?.[

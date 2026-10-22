@@ -1,13 +1,14 @@
 import type { Metadata } from "next";
-import { getTranslations } from "next-intl/server";
 import { ProLock } from "@/components/app/ProLock";
 import { ApiKeyForm, WebhookForm } from "@/components/settings/ApiForms";
 import { SettingsNav } from "@/components/settings/SettingsNav";
 import { Button } from "@/components/ui/button";
+import { countryPack } from "@/countries";
 import { Link } from "@/i18n/navigation";
 import { formatDate } from "@/lib/fiscal-year";
 import { listApiKeys } from "@/server/api-keys";
 import { requireAppSession } from "@/server/auth/guard";
+import { getSessionCountryTranslations } from "@/server/country-translations";
 import { db } from "@/server/db";
 import { env } from "@/server/env";
 import { lockFor } from "@/server/plan-lock";
@@ -23,11 +24,9 @@ type Props = {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
-  const t = await getTranslations({ locale, namespace: "app.apiSettings" });
+  const t = await getSessionCountryTranslations({ locale, namespace: "app.apiSettings" });
   return { title: t("title"), robots: { index: false } };
 }
-
-const day = (d: Date | null) => (d ? formatDate(d.toISOString().slice(0, 10)) : null);
 
 /**
  * Clés d'API et webhooks de l'entreprise (formule Pro+). En dessous, les formulaires restent
@@ -37,8 +36,11 @@ const day = (d: Date | null) => (d ? formatDate(d.toISOString().slice(0, 10)) : 
 export default async function ApiSettingsPage({ params, searchParams }: Props) {
   const { locale } = await params;
   const { organization, membership } = await requireAppSession(locale);
+  // Dates au format du pays de l'entreprise (30.09.2026, 30/09/2026, 09/30/2026).
+  const dates = countryPack(organization.country).dates;
+  const day = (d: Date | null) => (d ? formatDate(d.toISOString().slice(0, 10), dates) : null);
   const q = await searchParams;
-  const t = await getTranslations({ locale, namespace: "app.apiSettings" });
+  const t = await getSessionCountryTranslations({ locale, namespace: "app.apiSettings" });
   const lock = await lockFor(locale, featureAccess(organization, "api"), t("plan"));
   const editable = can(membership, "company");
   const keys = await listApiKeys(db(), organization.id, "full");

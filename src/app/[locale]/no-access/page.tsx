@@ -7,6 +7,7 @@ import { accessProblem, appPage, requireSession } from "@/server/auth/guard";
 import { getSession } from "@/server/auth/session";
 import { billingConfigured, GRANTING, portalConfigured } from "@/server/billing/stripe";
 import { subscriptionOf } from "@/server/billing/subscriptions";
+import { getSessionCountryTranslations } from "@/server/country-translations";
 import { db } from "@/server/db";
 import { offerAbove, PLANS, seatsOf, tierOf } from "@/server/plans";
 import {
@@ -66,7 +67,8 @@ export default async function NoAccessPage({
   // rien d'autre. Changer d'entreprise d'ici y ramène.
   const next = appPage(locale, one(q.next));
   const places = one(q.raison) === "places";
-  const t = await getTranslations({ locale, namespace: "app.noAccess" });
+  // Vocabulaire du pays de l'entreprise de la session (Steuerberatung hors de Suisse).
+  const t = await getSessionCountryTranslations({ locale, namespace: "app.noAccess" });
   // Sans session : le refus « places » se lit tel quel (lien gardé, autre navigateur, arrivée refusée
   // sans session) ; toute autre raison repasse par le Compte Lead.
   const session =

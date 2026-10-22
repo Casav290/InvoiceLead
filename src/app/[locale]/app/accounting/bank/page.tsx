@@ -1,10 +1,8 @@
 import type { Metadata } from "next";
-import { getTranslations } from "next-intl/server";
 import { AccountingNav } from "@/components/accounting/AccountingNav";
 import { ProLock } from "@/components/app/ProLock";
 import { Button } from "@/components/ui/button";
-import { countryPack } from "@/countries";
-import { VAT_CODES } from "@/countries/ch/vat";
+import { countryPack, offeredVatCodes } from "@/countries";
 import { Link } from "@/i18n/navigation";
 import { accountName } from "@/lib/account-name";
 import { formatDate } from "@/lib/fiscal-year";
@@ -14,6 +12,7 @@ import { aiConfigured } from "@/server/ai";
 import { requireAppSession } from "@/server/auth/guard";
 import { CONFIDENT, listBankTransactions } from "@/server/bank";
 import { listRules } from "@/server/booking-rules";
+import { getSessionCountryTranslations } from "@/server/country-translations";
 import { db } from "@/server/db";
 import { listInvoices } from "@/server/invoices";
 import { lockFor } from "@/server/plan-lock";
@@ -41,7 +40,7 @@ type Props = {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
-  const t = await getTranslations({ locale, namespace: "app.bank" });
+  const t = await getSessionCountryTranslations({ locale, namespace: "app.bank" });
   return { title: t("title"), robots: { index: false } };
 }
 
@@ -66,8 +65,8 @@ export default async function BankPage({ params, searchParams }: Props) {
   // Allemagne : USt et ses taux, pas les libellés suisses (MWST).
   const vatKey = organization.country === "DE" ? "vatDe" : "vat";
   const q = await searchParams;
-  const t = await getTranslations({ locale, namespace: "app.bank" });
-  const tp = await getTranslations({ locale, namespace: "app.plan" });
+  const t = await getSessionCountryTranslations({ locale, namespace: "app.bank" });
+  const tp = await getSessionCountryTranslations({ locale, namespace: "app.plan" });
   // Formule gratuite : un relevé par mois, pilote automatique compris ; ensuite l'import est grisé.
   const imports = await quotaAccess(db(), organization, "bankImports");
   const importLock = await lockFor(
@@ -321,7 +320,10 @@ export default async function BankPage({ params, searchParams }: Props) {
                         className="mt-1 block h-9 border border-line-strong bg-panel px-2 text-[13px] font-normal"
                       >
                         <option value="">{t("noVat")}</option>
-                        {VAT_CODES.map((c) => (
+                        {offeredVatCodes(
+                          organization.country,
+                          p?.kind === "account" ? p.vatCode : null,
+                        ).map((c) => (
                           <option key={c} value={c}>
                             {t(`${vatKey}.${c}`)}
                           </option>

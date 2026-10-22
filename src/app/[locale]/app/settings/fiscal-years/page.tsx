@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { getTranslations } from "next-intl/server";
 import { AccountingUnavailable } from "@/components/accounting/AccountingUnavailable";
 import { fieldClass } from "@/components/forms/fields";
 import { SettingsNav } from "@/components/settings/SettingsNav";
@@ -10,6 +9,7 @@ import { listFiscalYears } from "@/server/accounting";
 import { requireAppSession } from "@/server/auth/guard";
 import { closingChecks } from "@/server/closing";
 import { canSetUpAccounting } from "@/server/company";
+import { getSessionCountryTranslations } from "@/server/country-translations";
 import { db } from "@/server/db";
 import {
   closeFiscalYearAction,
@@ -24,15 +24,17 @@ type Props = {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
-  const t = await getTranslations({ locale, namespace: "app.fiscalYears" });
+  const t = await getSessionCountryTranslations({ locale, namespace: "app.fiscalYears" });
   return { title: t("title"), robots: { index: false } };
 }
 
 export default async function FiscalYearsPage({ params, searchParams }: Props) {
   const { locale } = await params;
   const { user, organization } = await requireAppSession(locale);
+  // Dates au format du pays de l'entreprise (30.09.2026, 30/09/2026, 09/30/2026).
+  const dates = countryPack(organization.country).dates;
   if (!countryPack(organization.country).accounting) {
-    const tc = await getTranslations({ locale, namespace: "app.company.countries" });
+    const tc = await getSessionCountryTranslations({ locale, namespace: "app.company.countries" });
     return (
       <div className="mx-auto max-w-3xl px-4 pt-10 sm:px-8">
         <SettingsNav />
@@ -42,7 +44,7 @@ export default async function FiscalYearsPage({ params, searchParams }: Props) {
   }
   const { opened, error, closed, closeError } = await searchParams;
   const editable = await canSetUpAccounting(db(), organization.id, user.id);
-  const t = await getTranslations({ locale, namespace: "app.fiscalYears" });
+  const t = await getSessionCountryTranslations({ locale, namespace: "app.fiscalYears" });
   const years = await listFiscalYears(db(), organization.id);
   const latest = years[0];
   // Seul le plus ancien exercice ouvert peut être clôturé, et seulement une fois terminé.
@@ -55,7 +57,7 @@ export default async function FiscalYearsPage({ params, searchParams }: Props) {
   const today = new Date().toISOString().slice(0, 10);
   const suggestedStart = fiscalYearContaining(today, organization.fiscalYearStartMonth).start;
   const period = (start: string, end: string) =>
-    t("period", { start: formatDate(start), end: formatDate(end) });
+    t("period", { start: formatDate(start, dates), end: formatDate(end, dates) });
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-10 sm:px-8">
@@ -157,7 +159,10 @@ export default async function FiscalYearsPage({ params, searchParams }: Props) {
                 {t("openNext")}
               </Button>
               <span className="text-[13px] text-ink-muted">
-                {t("nextPeriod", { start: formatDate(next.start), end: formatDate(next.end) })}
+                {t("nextPeriod", {
+                  start: formatDate(next.start, dates),
+                  end: formatDate(next.end, dates),
+                })}
               </span>
             </form>
           ) : null}

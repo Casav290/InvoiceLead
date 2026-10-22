@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
-import { getTranslations } from "next-intl/server";
 import { AssistantBox } from "@/components/assistant/AssistantBox";
 import { requireAppSession } from "@/server/auth/guard";
+import { getSessionCountryTranslations } from "@/server/country-translations";
 import { db } from "@/server/db";
 import { planLock } from "@/server/plan-lock";
 import { quotaAccess } from "@/server/plans";
@@ -10,7 +10,7 @@ type Props = { params: Promise<{ locale: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
-  const t = await getTranslations({ locale, namespace: "app.assistant" });
+  const t = await getSessionCountryTranslations({ locale, namespace: "app.assistant" });
   return { title: t("title"), robots: { index: false } };
 }
 
@@ -18,8 +18,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function AssistantPage({ params }: Props) {
   const { locale } = await params;
   const { organization } = await requireAppSession(locale);
-  const t = await getTranslations({ locale, namespace: "app.assistant" });
-  const tp = await getTranslations({ locale, namespace: "app.plan" });
+  const t = await getSessionCountryTranslations({ locale, namespace: "app.assistant" });
+  const tp = await getSessionCountryTranslations({ locale, namespace: "app.plan" });
   const access = await quotaAccess(db(), organization, "assistant");
   const limited = Number.isFinite(access.limit);
   // Verrou prêt pour le moment où la dernière question du mois est posée.

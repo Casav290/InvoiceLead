@@ -1,6 +1,6 @@
-import { getTranslations } from "next-intl/server";
 import { ProBadge } from "@/components/app/ProLock";
 import { Button } from "@/components/ui/button";
+import { getSessionCountryTranslations } from "@/server/country-translations";
 import { inNativeApp } from "@/server/native";
 
 /**
@@ -19,7 +19,7 @@ export async function PlanNotice({
   href: string;
   tier?: "pro" | "proplus";
 }) {
-  const t = await getTranslations({ locale, namespace: "app.plan" });
+  const t = await getSessionCountryTranslations({ locale, namespace: "app.plan" });
   // Dans l'app Android / iOS : rien à acheter (lib/native.ts), le message reste sans bouton.
   const app = await inNativeApp();
   return (

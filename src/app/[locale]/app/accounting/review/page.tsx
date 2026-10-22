@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { getTranslations } from "next-intl/server";
 import { AccountingNav } from "@/components/accounting/AccountingNav";
 import { ProLock } from "@/components/app/ProLock";
 import { RecordElsewhere } from "@/components/app/RecordElsewhere";
@@ -12,6 +11,7 @@ import { formatAmount } from "@/lib/money";
 import { listAccounts } from "@/server/accounting";
 import { requireAppSession } from "@/server/auth/guard";
 import { findAnomalies, reviewQueue } from "@/server/autopilot";
+import { getSessionCountryTranslations } from "@/server/country-translations";
 import { db } from "@/server/db";
 import { lockFor } from "@/server/plan-lock";
 import { featureAccess } from "@/server/plans";
@@ -35,7 +35,7 @@ type Props = {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
-  const t = await getTranslations({ locale, namespace: "app.review" });
+  const t = await getSessionCountryTranslations({ locale, namespace: "app.review" });
   return { title: t("title"), robots: { index: false } };
 }
 
@@ -46,6 +46,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function ReviewPage({ params, searchParams }: Props) {
   const { locale } = await params;
   const { organization, membership, user } = await requireAppSession(locale);
+  // Dates au format du pays de l'entreprise (30.09.2026, 30/09/2026, 09/30/2026).
+  const dates = countryPack(organization.country).dates;
   const q = await searchParams;
   // Lien du récapitulatif du lundi : il parle d'une entreprise précise. Session ouverte dans une autre
   // de ses entreprises : proposer d'y passer, puis la même page. Une entreprise où la personne n'entre
@@ -62,7 +64,7 @@ export default async function ReviewPage({ params, searchParams }: Props) {
         />
       );
   }
-  const t = await getTranslations({ locale, namespace: "app.review" });
+  const t = await getSessionCountryTranslations({ locale, namespace: "app.review" });
   const style = countryPack(organization.country).amounts;
   const [queue, anomalies, chart] = await Promise.all([
     reviewQueue(db(), organization.id),
@@ -170,7 +172,9 @@ export default async function ReviewPage({ params, searchParams }: Props) {
                   className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-line-soft px-5 py-3 text-[13px]"
                   data-testid="review-row"
                 >
-                  <span className="tabular-nums text-ink-2">{formatDate(r.bookingDate)}</span>
+                  <span className="tabular-nums text-ink-2">
+                    {formatDate(r.bookingDate, dates)}
+                  </span>
                   <span className="min-w-0 flex-1 [overflow-wrap:anywhere]">
                     <span className="font-semibold">{r.counterparty ?? r.text ?? "–"}</span>
                     <span className="block text-[12px] text-ink-muted">
@@ -215,7 +219,7 @@ export default async function ReviewPage({ params, searchParams }: Props) {
                 className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-line-soft px-5 py-3 text-[13px] last:border-b-0"
                 data-testid="anomaly-row"
               >
-                <span className="tabular-nums text-ink-2">{formatDate(a.date)}</span>
+                <span className="tabular-nums text-ink-2">{formatDate(a.date, dates)}</span>
                 <span className="min-w-0 flex-1 [overflow-wrap:anywhere]">
                   <span className="font-semibold">{a.counterparty ?? "–"}</span>
                   <span className="block text-[12px] text-ink-muted">

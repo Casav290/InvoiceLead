@@ -825,6 +825,28 @@ export async function convertQuoteToInvoice(
   return converted;
 }
 
+/**
+ * Textes des lignes d'acompte, dans la langue de la pièce ; hors de Suisse, « Angebot » et « devis »
+ * à la place de l'« Offerte » et de l'« offre » suisses (src/i18n/country.ts).
+ */
+function depositText(language: string, country: string | null | undefined) {
+  const text = DEPOSIT_TEXT[documentLanguage(language)];
+  if (!country || country === "CH") return text;
+  const lang = documentLanguage(language);
+  if (lang === "de")
+    return {
+      ...text,
+      line: (percent: string, quote: string) => `Anzahlung ${percent} % gemäss Angebot ${quote}`,
+    };
+  if (lang === "fr")
+    return {
+      ...text,
+      line: (percent: string, quote: string) =>
+        `Acompte de ${percent}\u202f% selon le devis ${quote}`,
+    };
+  return text;
+}
+
 const DEPOSIT_TEXT = {
   de: {
     line: (percent: string, quote: string) => `Anzahlung ${percent} % gemäss Offerte ${quote}`,
@@ -939,7 +961,7 @@ export async function createDepositInvoice(
   const total = depositLines.reduce((s, g) => s + g.cents, 0);
   if (total === 0) return "percent";
   if (alreadyNet + total > quote.netCents) return "tooHigh";
-  const text = DEPOSIT_TEXT[documentLanguage(quote.language)];
+  const text = depositText(quote.language, quote.sender?.country);
   const shown = String(Math.round(percent * 100) / 100);
   const result = await writeInvoice(
     database,

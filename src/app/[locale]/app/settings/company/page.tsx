@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
-import { getTranslations } from "next-intl/server";
 import { CompanyForm } from "@/components/settings/CompanyForm";
 import { SettingsNav } from "@/components/settings/SettingsNav";
 import { Button } from "@/components/ui/button";
 import { formatIban, formatUid } from "@/lib/swiss-ids";
 import { requireAppSession } from "@/server/auth/guard";
 import { canEditSettings } from "@/server/company";
+import { getSessionCountryTranslations } from "@/server/country-translations";
 import { db } from "@/server/db";
 import { removeLogoAction, uploadLogoAction } from "./actions";
 
@@ -16,7 +16,7 @@ type Params = {
 
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { locale } = await params;
-  const t = await getTranslations({ locale, namespace: "app.company" });
+  const t = await getSessionCountryTranslations({ locale, namespace: "app.company" });
   return { title: t("title"), robots: { index: false } };
 }
 
@@ -25,7 +25,7 @@ export default async function CompanySettingsPage({ params, searchParams }: Para
   const logoResult = (await searchParams)?.logo;
   const { user, organization: o } = await requireAppSession(locale);
   const editable = await canEditSettings(db(), o.id, user.id);
-  const t = await getTranslations({ locale, namespace: "app.company" });
+  const t = await getSessionCountryTranslations({ locale, namespace: "app.company" });
   const initial: Record<string, string> = {
     legalName: o.legalName ?? o.name,
     legalForm: o.legalForm ?? "",

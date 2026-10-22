@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { getTranslations } from "next-intl/server";
 import { AppMark } from "@/components/brand/AppMark";
 import { Elapsed } from "@/components/time/Elapsed";
 import { Button } from "@/components/ui/button";
@@ -8,6 +7,7 @@ import { Link } from "@/i18n/navigation";
 import { addDays, formatDate } from "@/lib/fiscal-year";
 import { PROJECTLEAD_URL } from "@/lib/lead-apps";
 import { requireAppSession } from "@/server/auth/guard";
+import { getSessionCountryTranslations } from "@/server/country-translations";
 import { db } from "@/server/db";
 import { formatMinutes, listEntries, listProjects, runningTimer } from "@/server/time";
 import { addEntryAction, deleteEntryAction, startTimerAction, stopTimerAction } from "./actions";
@@ -19,7 +19,7 @@ type Props = {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
-  const t = await getTranslations({ locale, namespace: "app.time" });
+  const t = await getSessionCountryTranslations({ locale, namespace: "app.time" });
   return { title: t("title"), robots: { index: false } };
 }
 
@@ -30,7 +30,7 @@ export default async function TimePage({ params, searchParams }: Props) {
   const { locale } = await params;
   const { organization, user } = await requireAppSession(locale);
   const q = await searchParams;
-  const t = await getTranslations({ locale, namespace: "app.time" });
+  const t = await getSessionCountryTranslations({ locale, namespace: "app.time" });
   const today = new Date().toISOString().slice(0, 10);
   const who = { organizationId: organization.id, userId: user.id };
   const [projects, running, entries] = await Promise.all([

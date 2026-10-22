@@ -1,13 +1,13 @@
 "use client";
 
-import { useTranslations } from "next-intl";
 import { useActionState } from "react";
 import { type AccountFormState, saveAccount } from "@/app/[locale]/app/settings/accounts/actions";
+import { useCountry, useCountryTranslations } from "@/components/app/CountryContext";
 import { FormSection, SelectField, TextField } from "@/components/forms/fields";
 import { Button } from "@/components/ui/button";
+import { offeredVatCodes } from "@/countries";
 
 const TYPES = ["asset", "liability", "equity", "revenue", "expense", "closing"];
-const VAT_CODES = ["normal", "reduced", "lodging", "exempt", "export"];
 
 export function AccountForm({
   locale,
@@ -20,7 +20,8 @@ export function AccountForm({
   initial: Record<string, string>;
   system?: boolean;
 }) {
-  const t = useTranslations("app.accounts");
+  const t = useCountryTranslations("app.accounts");
+  const country = useCountry();
   const [state, action, pending] = useActionState<AccountFormState, FormData>(saveAccount, {
     status: "idle",
     round: 0,
@@ -103,7 +104,10 @@ export function AccountForm({
           defaultValue={values.vatCode}
           error={err("vatCode")}
           placeholder={t("noVat")}
-          options={VAT_CODES.map((v) => ({ value: v, label: t(`vatCodes.${v}`) }))}
+          options={offeredVatCodes(country, values.vatCode).map((v) => ({
+            value: v,
+            label: t(`vatCodes.${v}`),
+          }))}
         />
         <div className="self-end">
           <label className="flex items-center gap-3">

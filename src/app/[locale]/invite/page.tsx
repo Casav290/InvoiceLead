@@ -1,8 +1,11 @@
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { Button } from "@/components/ui/button";
+import { forCountry } from "@/i18n/country";
 import { INVITE_TOKEN, pickLocale } from "@/server/auth/login-cookie";
 import { getSession } from "@/server/auth/session";
+import { db } from "@/server/db";
+import { invitationCountry } from "@/server/team";
 import { acceptInvitationAction } from "./actions";
 
 type Props = {
@@ -22,8 +25,12 @@ const ERRORS = ["invalid", "expired", "wrongEmail", "plan"];
 export default async function InvitePage({ params, searchParams }: Props) {
   const locale = pickLocale((await params).locale);
   const q = await searchParams;
-  const t = await getTranslations({ locale, namespace: "app.invite" });
   const token = q.token && INVITE_TOKEN.test(q.token) ? q.token : null;
+  // Vocabulaire du pays de l'entreprise qui invite (Steuerberatung hors de Suisse).
+  const t = forCountry(
+    await getTranslations({ locale, namespace: "app.invite" }),
+    token ? await invitationCountry(db(), token) : null,
+  );
   const session = await getSession();
   const error = !token ? "invalid" : q.error && ERRORS.includes(q.error) ? q.error : null;
 

@@ -1,14 +1,13 @@
 "use client";
 
-import { useTranslations } from "next-intl";
 import { useActionState } from "react";
 import { type BillFormState, saveBillAction } from "@/app/[locale]/app/accounting/bills/actions";
+import { useCountry, useCountryTranslations } from "@/components/app/CountryContext";
 import { type Lock, LockNote } from "@/components/app/ProLock";
 import { FormSection, SelectField, TextField } from "@/components/forms/fields";
 import { Button } from "@/components/ui/button";
+import { offeredVatCodes } from "@/countries";
 import { CURRENCIES } from "@/lib/currencies";
-
-const VAT_CODES = ["normal", "reduced", "lodging", "exempt"];
 
 /** Saisie ou correction d'une facture fournisseur en brouillon. */
 export function BillForm({
@@ -30,8 +29,13 @@ export function BillForm({
   /** Formule sans multidevise : devises étrangères grisées (sauf celle déjà enregistrée). */
   currencyLock?: Lock | null;
 }) {
-  const t = useTranslations("app.bills");
-  const tv = useTranslations("app.bank.vat");
+  const t = useCountryTranslations("app.bills");
+  const tv = useCountryTranslations("app.bank.vat");
+  const country = useCountry();
+  // Taux d'achat du pays (pas d'exportation) ; aux États-Unis, la sales tax payée n'est pas
+  // récupérable : pas de liste.
+  const vatCodes = offeredVatCodes(country).filter((c) => c !== "export");
+  if (initial.vatCode && !vatCodes.includes(initial.vatCode)) vatCodes.push(initial.vatCode);
   const [state, action, pending] = useActionState<BillFormState, FormData>(saveBillAction, {
     status: "idle",
     round: 0,
@@ -147,14 +151,14 @@ export function BillForm({
           defaultValue={v.total}
           error={err("total")}
         />
-        {vatRegistered ? (
+        {vatRegistered && country !== "US" ? (
           <SelectField
             id="bill-vat"
             name="vatCode"
             label={t("fields.vatCode")}
             defaultValue={v.vatCode}
             placeholder={t("noVat")}
-            options={VAT_CODES.map((c) => ({ value: c, label: tv(c) }))}
+            options={vatCodes.map((c) => ({ value: c, label: tv(c) }))}
           />
         ) : null}
         <SelectField

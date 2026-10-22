@@ -1,14 +1,14 @@
 "use client";
 
-import { useTranslations } from "next-intl";
 import { useActionState } from "react";
 import { type InviteState, inviteFiduciaryAction } from "@/app/[locale]/app/settings/team/actions";
+import { useCountryTranslations } from "@/components/app/CountryContext";
 import { fieldClass } from "@/components/forms/fields";
 import { Button } from "@/components/ui/button";
 
 /** Invitation d'une fiduciaire : e-mail envoyé si possible, lien affiché une fois pour le transmettre. */
 export function FiduciaryInvite({ locale, days }: { locale: string; days: number }) {
-  const t = useTranslations("app.team");
+  const t = useCountryTranslations("app.team");
   const [state, invite, pending] = useActionState<InviteState, FormData>(inviteFiduciaryAction, {
     round: 0,
   });

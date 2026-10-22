@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
-import { getTranslations } from "next-intl/server";
 import { fieldClass } from "@/components/forms/fields";
 import { Button } from "@/components/ui/button";
 import { requireAppSession } from "@/server/auth/guard";
+import { getSessionCountryTranslations } from "@/server/country-translations";
 import { FEEDBACK_KINDS } from "@/server/feedback";
 import { sendFeedbackAction } from "./actions";
 
@@ -13,7 +13,7 @@ type Props = {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
-  const t = await getTranslations({ locale, namespace: "app.feedback" });
+  const t = await getSessionCountryTranslations({ locale, namespace: "app.feedback" });
   return { title: t("title"), robots: { index: false } };
 }
 
@@ -21,7 +21,7 @@ export default async function FeedbackPage({ params, searchParams }: Props) {
   const { locale } = await params;
   await requireAppSession(locale);
   const q = await searchParams;
-  const t = await getTranslations({ locale, namespace: "app.feedback" });
+  const t = await getSessionCountryTranslations({ locale, namespace: "app.feedback" });
   return (
     <div className="mx-auto max-w-2xl px-4 py-10 sm:px-8">
       <h1 className="text-[28px] leading-tight">{t("title")}</h1>

@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { getTranslations } from "next-intl/server";
 import { recordElsewhere } from "@/components/app/RecordElsewhere";
 import { ContactForm } from "@/components/contacts/ContactForm";
 import { Button } from "@/components/ui/button";
 import { formatUid } from "@/lib/swiss-ids";
 import { requireAppSession } from "@/server/auth/guard";
 import { getContact } from "@/server/contacts";
+import { getSessionCountryTranslations } from "@/server/country-translations";
 import { db } from "@/server/db";
 import { archiveContactAction } from "../actions";
 
@@ -14,7 +14,7 @@ type Props = { params: Promise<{ locale: string; id: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
-  const t = await getTranslations({ locale, namespace: "app.contacts" });
+  const t = await getSessionCountryTranslations({ locale, namespace: "app.contacts" });
   return { title: t("edit"), robots: { index: false } };
 }
 
@@ -35,7 +35,7 @@ export default async function ContactPage({ params }: Props) {
     if (elsewhere) return elsewhere;
   }
   if (!contact || contact.archivedAt) notFound();
-  const t = await getTranslations({ locale, namespace: "app.contacts" });
+  const t = await getSessionCountryTranslations({ locale, namespace: "app.contacts" });
   const initial: Record<string, string> = {
     kind: contact.kind,
     isCustomer: contact.isCustomer ? "on" : "",

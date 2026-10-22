@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { getTranslations } from "next-intl/server";
 import { AccountingNav } from "@/components/accounting/AccountingNav";
 import { VatReview } from "@/components/accounting/VatReview";
 import { PlanNotice } from "@/components/app/PlanNotice";
@@ -37,6 +36,7 @@ import { formatAmount } from "@/lib/money";
 import { listFiscalYears } from "@/server/accounting";
 import { aiConfigured } from "@/server/ai";
 import { requireAppSession } from "@/server/auth/guard";
+import { getSessionCountryTranslations } from "@/server/country-translations";
 import { db } from "@/server/db";
 import type { VatAnomaly, VatFigures } from "@/server/db/schema";
 import { lockedReason, lockFor } from "@/server/plan-lock";
@@ -51,7 +51,7 @@ type Props = {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
-  const t = await getTranslations({ locale, namespace: "app.vat" });
+  const t = await getSessionCountryTranslations({ locale, namespace: "app.vat" });
   return { title: t("title"), robots: { index: false } };
 }
 
@@ -61,7 +61,7 @@ export default async function VatPage({ params, searchParams }: Props) {
   const { locale } = await params;
   const { organization } = await requireAppSession(locale);
   const q = await searchParams;
-  const t = await getTranslations({ locale, namespace: "app.vat" });
+  const t = await getSessionCountryTranslations({ locale, namespace: "app.vat" });
   const today = new Date().toISOString().slice(0, 10);
   const years = await listFiscalYears(db(), organization.id);
   const firstStart = years.at(-1)?.startDate ?? `${today.slice(0, 4)}-01-01`;

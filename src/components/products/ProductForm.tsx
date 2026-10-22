@@ -1,13 +1,13 @@
 "use client";
 
-import { useTranslations } from "next-intl";
 import { useActionState } from "react";
 import { type ProductFormState, saveProduct } from "@/app/[locale]/app/products/actions";
+import { useCountry, useCountryTranslations } from "@/components/app/CountryContext";
 import { FormSection, SelectField, TextField } from "@/components/forms/fields";
 import { Button } from "@/components/ui/button";
+import { offeredVatCodes } from "@/countries";
 
 const UNITS = ["hour", "day", "piece", "flat", "km", "month"];
-const VAT_CODES = ["normal", "reduced", "lodging", "exempt", "export"];
 
 export function ProductForm({
   locale,
@@ -20,7 +20,8 @@ export function ProductForm({
   currency?: string;
   initial: Record<string, string>;
 }) {
-  const t = useTranslations("app.products");
+  const t = useCountryTranslations("app.products");
+  const country = useCountry();
   const [state, action, pending] = useActionState<ProductFormState, FormData>(saveProduct, {
     status: "idle",
     round: 0,
@@ -90,7 +91,10 @@ export function ProductForm({
           label={t("fields.vatCode")}
           defaultValue={values.vatCode}
           error={err("vatCode")}
-          options={VAT_CODES.map((v) => ({ value: v, label: t(`vatCodes.${v}`) }))}
+          options={offeredVatCodes(country, values.vatCode).map((v) => ({
+            value: v,
+            label: t(`vatCodes.${v}`),
+          }))}
         />
       </FormSection>
       <Button type="submit" disabled={pending} data-testid="product-save">

@@ -22,11 +22,14 @@ import { SendPanel } from "@/components/invoices/SendPanel";
 import { Button } from "@/components/ui/button";
 import { countryPack } from "@/countries";
 import { buildCii } from "@/countries/de/cii";
+import { forCountry } from "@/i18n/country";
 import { Link } from "@/i18n/navigation";
+import { formatAmountInput } from "@/lib/amount-input";
 import { formatDate } from "@/lib/fiscal-year";
 import { formatQuantity } from "@/lib/invoice-math";
 import { formatAmount } from "@/lib/money";
 import { requireAppSession } from "@/server/auth/guard";
+import { getSessionCountryTranslations } from "@/server/country-translations";
 import { db } from "@/server/db";
 import { emailConfigured } from "@/server/email";
 import { invoiceOptions } from "@/server/invoice-options";
@@ -71,7 +74,7 @@ const ERRORS = [
  * Pro ; le serveur refuse aussi une demande forgée.
  */
 async function currencyLock(locale: string, organization: OrgPlan): Promise<Lock | null> {
-  const t = await getTranslations({ locale, namespace: "app.invoices" });
+  const t = await getSessionCountryTranslations({ locale, namespace: "app.invoices" });
   return lockFor(locale, featureAccess(organization, "multiCurrency"), t("currencyPlan"));
 }
 
@@ -80,13 +83,18 @@ async function emailDefaults(
   invoice: import("@/server/db/schema").Invoice,
   to: string | null,
 ): Promise<{ to: string; subject: string; message: string }> {
-  const te = await getTranslations({ locale: invoice.language, namespace: "app.invoices.email" });
+  // Langue de la pièce, vocabulaire et dates du pays de l'expéditeur (Angebot en Allemagne).
+  const country = invoice.sender?.country;
+  const te = forCountry(
+    await getTranslations({ locale: invoice.language, namespace: "app.invoices.email" }),
+    country,
+  );
   const values = {
     number: invoice.number ?? "",
     company: invoice.sender?.name ?? "",
-    amount: formatAmount(invoice.totalCents, countryPack(invoice.sender?.country).amounts),
+    amount: formatAmount(invoice.totalCents, countryPack(country).amounts),
     currency: invoice.currency,
-    due: formatDate(invoice.dueDate),
+    due: formatDate(invoice.dueDate, countryPack(country).dates),
   };
   return {
     to: to ?? "",
@@ -100,7 +108,7 @@ export async function documentMetadata(
   kind: DocumentKind,
   key: "title" | "new" | "edit",
 ): Promise<Metadata> {
-  const tk = await getTranslations({ locale, namespace: namespaceOf(kind) });
+  const tk = await getSessionCountryTranslations({ locale, namespace: namespaceOf(kind) });
   return { title: tk(key), robots: { index: false } };
 }
 
@@ -114,8 +122,9 @@ export async function DocumentListPage({
   deleted?: string;
 }) {
   const { organization } = await requireAppSession(locale);
-  const t = await getTranslations({ locale, namespace: "app.invoices" });
-  const tk = await getTranslations({ locale, namespace: namespaceOf(kind) });
+  const dates = countryPack(organization.country).dates;
+  const t = await getSessionCountryTranslations({ locale, namespace: "app.invoices" });
+  const tk = await getSessionCountryTranslations({ locale, namespace: namespaceOf(kind) });
   const rows = await listInvoices(db(), organization.id, kind);
   const section = sectionOf(kind);
   const today = new Date().toISOString().slice(0, 10);
@@ -200,7 +209,7 @@ export async function DocumentListPage({
                   </td>
                   <td className="px-4 py-3 [overflow-wrap:anywhere]">{r.contactName}</td>
                   <td className="hidden px-4 py-3 text-ink-2 tabular-nums sm:table-cell">
-                    {formatDate(r.issueDate)}
+                    {formatDate(r.issueDate, dates)}
                   </td>
                   <td className="hidden px-4 py-3 text-ink-2 md:table-cell">
                     {kind === "invoice" && r.status === "issued"
@@ -243,9 +252,9 @@ export async function NewDocumentPage({
   contact?: string;
 }) {
   const { organization } = await requireAppSession(locale);
-  const t = await getTranslations({ locale, namespace: "app.invoices" });
-  const tk = await getTranslations({ locale, namespace: namespaceOf(kind) });
-  const options = await invoiceOptions(db(), organization.id);
+  const t = await getSessionCountryTranslations({ locale, namespace: "app.invoices" });
+  const tk = await getSessionCountryTranslations({ locale, namespace: namespaceOf(kind) });
+  const options = await invoiceOptions(db(), organization.id, organization.country);
   const chosen = options.contacts.find((c) => c.id === contact);
   const today = new Date().toISOString().slice(0, 10);
   return (
@@ -321,8 +330,8 @@ export async function DocumentDetailPage({
   }
   if (found?.invoice.kind !== kind) notFound();
   const { invoice, lines, related } = found;
-  const t = await getTranslations({ locale, namespace: "app.invoices" });
-  const tk = await getTranslations({ locale, namespace: namespaceOf(kind) });
+  const t = await getSessionCountryTranslations({ locale, namespace: "app.invoices" });
+  const tk = await getSessionCountryTranslations({ locale, namespace: namespaceOf(kind) });
   const draft = invoice.status === "draft";
   const today = new Date().toISOString().slice(0, 10);
   const billed = kind === "invoice" && invoice.status === "issued";
@@ -333,6 +342,7 @@ export async function DocumentDetailPage({
   const deposits =
     kind === "quote" && !draft ? await depositInvoices(db(), organization.id, invoice.id) : [];
   const amounts = countryPack(organization.country).amounts;
+  const dates = countryPack(organization.country).dates;
   // Allemagne : XRechnung pour les factures et avoirs émis.
   const xrechnung =
     organization.country === "DE" && kind !== "quote" && !draft
@@ -345,7 +355,7 @@ export async function DocumentDetailPage({
       <input type="hidden" name="kind" value={kind} />
     </>
   );
-  const tp = await getTranslations({ locale, namespace: "app.plan" });
+  const tp = await getSessionCountryTranslations({ locale, namespace: "app.plan" });
   // Brouillon en devise étrangère sans la multidevise (créé en Pro) : « Émettre » est grisé, le
   // brouillon reste modifiable et s'émet une fois repassé dans la monnaie de l'entreprise.
   const foreign = invoice.currency !== organization.currency && kind !== "credit_note";
@@ -470,7 +480,7 @@ export async function DocumentDetailPage({
       <p className="w-full text-[12px] text-ink-muted">{t("deposit.hint")}</p>
     </form>
   );
-  const tc = await getTranslations({ locale, namespace: "app.crmImport" });
+  const tc = await getSessionCountryTranslations({ locale, namespace: "app.crmImport" });
   const notice = query.paid
     ? t("payments.saved")
     : query.waived
@@ -562,7 +572,7 @@ export async function DocumentDetailPage({
             localRateBp={organization.salesTaxRateBp}
             currencyLock={await currencyLock(locale, organization)}
             storedCurrency={invoice.currency}
-            {...(await invoiceOptions(db(), organization.id))}
+            {...(await invoiceOptions(db(), organization.id, organization.country))}
             initial={{
               contactId: invoice.contactId,
               language: invoice.language,
@@ -578,7 +588,9 @@ export async function DocumentDetailPage({
               "line.description": lines.map((l) => l.description),
               "line.quantity": lines.map((l) => formatQuantity(l.quantityMilli)),
               "line.unit": lines.map((l) => l.unit),
-              "line.unitPrice": lines.map((l) => formatAmount(l.unitPriceCents)),
+              "line.unitPrice": lines.map((l) =>
+                formatAmountInput(l.unitPriceCents, organization.country),
+              ),
               "line.vatCode": lines.map((l) => l.vatCode ?? "normal"),
             }}
           />
@@ -733,7 +745,7 @@ export async function DocumentDetailPage({
               invoice.sentAt
                 ? t("email.sentInfo", {
                     to: invoice.sentTo ?? "",
-                    date: formatDate(invoice.sentAt.toISOString().slice(0, 10)),
+                    date: formatDate(invoice.sentAt.toISOString().slice(0, 10), dates),
                   }) + (invoice.viewedAt ? ` ${t("email.viewed")}` : "")
                 : null
             }
@@ -794,7 +806,7 @@ export async function DocumentDetailPage({
                       key={p.id}
                       className="flex flex-wrap items-center gap-3 border-b border-line-soft px-5 py-2 text-[13px] last:border-b-0"
                     >
-                      <span className="tabular-nums">{formatDate(p.paidOn)}</span>
+                      <span className="tabular-nums">{formatDate(p.paidOn, dates)}</span>
                       <span className="text-ink-2">{t(`payments.methods.${p.method}`)}</span>
                       {p.note ? (
                         <span className="text-ink-muted [overflow-wrap:anywhere]">{p.note}</span>
@@ -822,7 +834,7 @@ export async function DocumentDetailPage({
                     <li key={r.id}>
                       {t("reminderLine", {
                         level: r.level,
-                        date: formatDate(r.sentAt.toISOString().slice(0, 10)),
+                        date: formatDate(r.sentAt.toISOString().slice(0, 10), dates),
                         channel: r.channel,
                       })}
                     </li>
@@ -835,7 +847,10 @@ export async function DocumentDetailPage({
                   home={organization.currency}
                   locale={locale}
                   invoiceId={invoice.id}
-                  initial={{ paidOn: today, amount: formatAmount(balance.openCents) }}
+                  initial={{
+                    paidOn: today,
+                    amount: formatAmountInput(balance.openCents, organization.country),
+                  }}
                 />
               ) : null}
             </section>
@@ -854,7 +869,7 @@ export async function DocumentDetailPage({
               </summary>
               {model ? (
                 <p className="mt-3 text-[13px] text-ink-2" data-testid="recurring-model">
-                  {t("recurring.already", { date: formatDate(model.nextDate) })}{" "}
+                  {t("recurring.already", { date: formatDate(model.nextDate, dates) })}{" "}
                   <Link
                     href="/app/invoices/recurring"
                     className="font-semibold text-accent-dark underline"

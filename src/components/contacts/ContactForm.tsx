@@ -1,8 +1,8 @@
 "use client";
 
-import { useTranslations } from "next-intl";
 import { useActionState } from "react";
 import { type ContactFormState, saveContact } from "@/app/[locale]/app/contacts/actions";
+import { useCountryTranslations } from "@/components/app/CountryContext";
 import { FormSection, SelectField, TextField } from "@/components/forms/fields";
 import { Button } from "@/components/ui/button";
 
@@ -19,7 +19,7 @@ export function ContactForm({
   id?: string;
   initial: Record<string, string>;
 }) {
-  const t = useTranslations("app.contacts");
+  const t = useCountryTranslations("app.contacts");
   const [state, action, pending] = useActionState<ContactFormState, FormData>(saveContact, {
     status: "idle",
     round: 0,

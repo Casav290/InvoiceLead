@@ -20,3 +20,15 @@ Avant d'ouvrir un pays, un professionnel local relit le plan comptable, les corr
 Les dépôts électroniques ne sont pas branchés : le fichier eCH-0217 se télécharge depuis le décompte validé et se dépose à la main sur le portail de l'AFC, ELSTER pour l'UStVA, une plateforme agréée (PDP) pour la France, l'API Making Tax Digital de HMRC (InvoiceLead doit être enregistré comme logiciel reconnu), et les portails des États américains. Les chiffres sont prêts à reporter.
 
 Limites connues : aux États-Unis, un seul taux de sales tax par entreprise (pas encore de taux par lieu de livraison ni de nexus multi-États) ; au Royaume-Uni, le taux zéro et l'exonération partagent le même code ; en France, les exportations sont regroupées en E2 et un rappel demande de les ventiler.
+
+## Libellés selon le pays de l'entreprise
+
+La langue de l'interface (de, fr, en) ne dit pas le pays : une entreprise allemande lit l'allemand d'Allemagne,
+une entreprise américaine parle de sales tax. Chaque message de `app.*` est rédigé pour la Suisse et peut porter
+des variantes suffixées, lues par `forCountry` (`src/i18n/country.ts`) : d'abord celle du pays (`netDe`, `netFr`,
+`netGb`, `netUs`), puis `netIntl` pour toute entreprise hors de Suisse (Angebot, Ausgaben, USt, Steuerberatung,
+Cent ; devis et expert-comptable en français). Hors de Suisse, les guillemets «…» de l'allemand deviennent „…“.
+Une entreprise suisse lit toujours le message de base. Pages serveur : `getSessionCountryTranslations` ; composants
+client : `useCountryTranslations` (pays fourni par la mise en page de l'application) ; PDF, e-mails et vue en
+ligne d'une pièce : pays de l'expéditeur. Les taux proposés dans les listes sont ceux du pays
+(`countryPack(pays).vatCodes`, `offeredVatCodes`). Contrôle : `tests/unit/country-labels.test.ts`.

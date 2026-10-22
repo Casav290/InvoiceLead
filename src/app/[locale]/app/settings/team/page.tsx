@@ -1,13 +1,14 @@
 import type { Metadata } from "next";
-import { getTranslations } from "next-intl/server";
 import { LockNote, ProBadge, ProLock } from "@/components/app/ProLock";
 import { fieldClass } from "@/components/forms/fields";
 import { FiduciaryInvite } from "@/components/settings/FiduciaryInvite";
 import { MemberInvite } from "@/components/settings/MemberInvite";
 import { SettingsNav } from "@/components/settings/SettingsNav";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { countryPack } from "@/countries";
 import { formatDate } from "@/lib/fiscal-year";
 import { requireAppSession } from "@/server/auth/guard";
+import { getSessionCountryTranslations } from "@/server/country-translations";
 import { db } from "@/server/db";
 import { lockFor, planLock } from "@/server/plan-lock";
 import { featureAccess, PLANS, seatsOf, tierOf, tierWithMoreSeats } from "@/server/plans";
@@ -36,11 +37,10 @@ type Props = {
 
 /** Refus de « Retirer » (self, forbidden, invalid) et de « Rétablir » (forbidden, invalid, full). */
 const REMOVE_ERRORS = ["self", "forbidden", "invalid", "full"];
-const isoDay = (d: Date) => formatDate(d.toISOString().slice(0, 10));
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
-  const t = await getTranslations({ locale, namespace: "app.team" });
+  const t = await getSessionCountryTranslations({ locale, namespace: "app.team" });
   return { title: t("title"), robots: { index: false } };
 }
 
@@ -58,8 +58,11 @@ const head =
 export default async function TeamPage({ params, searchParams }: Props) {
   const { locale } = await params;
   const { organization, membership, user } = await requireAppSession(locale);
+  // Dates au format du pays de l'entreprise (30.09.2026, 30/09/2026, 09/30/2026).
+  const dates = countryPack(organization.country).dates;
+  const isoDay = (d: Date) => formatDate(d.toISOString().slice(0, 10), dates);
   const q = await searchParams;
-  const t = await getTranslations({ locale, namespace: "app.team" });
+  const t = await getSessionCountryTranslations({ locale, namespace: "app.team" });
   const editable = can(membership, "company");
   const { members, removed, fiduciaries, invitations } = await listTeam(db(), organization.id);
   const seats = seatsOf(organization);
@@ -345,7 +348,7 @@ export default async function TeamPage({ params, searchParams }: Props) {
             >
               <p className="min-w-0 flex-1 text-[13px] text-ink-2 [overflow-wrap:anywhere]">
                 <span className="font-semibold text-ink">{i.email}</span> ·{" "}
-                {t("pending", { date: formatDate(i.expiresAt.toISOString().slice(0, 10)) })}
+                {t("pending", { date: formatDate(i.expiresAt.toISOString().slice(0, 10), dates) })}
               </p>
               {editable ? (
                 <form action={cancelInvitationAction}>

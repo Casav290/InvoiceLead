@@ -1,6 +1,6 @@
-import { getTranslations } from "next-intl/server";
 import { switchOrgAction } from "@/app/[locale]/app/org-actions";
 import { Button } from "@/components/ui/button";
+import { getSessionCountryTranslations } from "@/server/country-translations";
 import { db } from "@/server/db";
 import { type OrganizationAccess, type RecordKind, recordOrganization } from "@/server/team";
 
@@ -24,7 +24,7 @@ export async function RecordElsewhere({
   testId?: string;
 }) {
   if (organization.suspended) {
-    const tn = await getTranslations({ locale, namespace: "app.noAccess" });
+    const tn = await getSessionCountryTranslations({ locale, namespace: "app.noAccess" });
     return (
       <div
         className="mx-auto max-w-3xl px-4 py-10 sm:px-8"
@@ -38,7 +38,7 @@ export async function RecordElsewhere({
       </div>
     );
   }
-  const t = await getTranslations({ locale, namespace: "app.orgSwitch" });
+  const t = await getSessionCountryTranslations({ locale, namespace: "app.orgSwitch" });
   return (
     <div className="mx-auto max-w-3xl px-4 py-10 sm:px-8" data-testid={testId}>
       <p className="text-[15px] text-ink-2">{t(message, { org: organization.name })}</p>

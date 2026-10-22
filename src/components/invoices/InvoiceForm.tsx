@@ -1,12 +1,12 @@
 "use client";
 
-import { useTranslations } from "next-intl";
 import { useActionState, useId, useState } from "react";
 import { type InvoiceFormState, saveInvoice } from "@/app/[locale]/app/invoices/actions";
+import { useCountryTranslations } from "@/components/app/CountryContext";
 import { type Lock, LockNote } from "@/components/app/ProLock";
 import { FormSection, fieldClass, SelectField, TextField } from "@/components/forms/fields";
 import { Button } from "@/components/ui/button";
-import { countryPack } from "@/countries";
+import { countryPack, offeredVatCodes } from "@/countries";
 import { formatRate, type VatCode } from "@/countries/ch/vat";
 import { parseAmountToCents } from "@/lib/amount-input";
 import { CURRENCIES } from "@/lib/currencies";
@@ -14,7 +14,6 @@ import { computeTotals, parseQuantityToMilli } from "@/lib/invoice-math";
 import { formatAmount } from "@/lib/money";
 
 const UNITS = ["hour", "day", "piece", "flat", "km", "month"];
-const VAT_CODES = ["normal", "reduced", "lodging", "exempt", "export"];
 
 export type ContactOption = { id: string; name: string; language: string };
 export type ProductOption = {
@@ -91,8 +90,8 @@ export function InvoiceForm({
   /** Devise déjà enregistrée du brouillon : elle reste choisissable. */
   storedCurrency?: string;
 }) {
-  const t = useTranslations("app.invoices");
-  const tk = useTranslations(kind === "quote" ? "app.quotes" : "app.invoices");
+  const t = useCountryTranslations("app.invoices");
+  const tk = useCountryTranslations(kind === "quote" ? "app.quotes" : "app.invoices");
   const [state, action, pending] = useActionState<InvoiceFormState, FormData>(saveInvoice, {
     status: "idle",
     round: 0,
@@ -160,7 +159,7 @@ function InvoiceFormBody({
   localRateBp: number | null;
   currencyLock: Lock | null;
   storedCurrency?: string;
-  t: ReturnType<typeof useTranslations>;
+  t: ReturnType<typeof useCountryTranslations>;
 }) {
   const pack = countryPack(country);
   // États-Unis : sales tax, pas de TVA, dans les libellés.
@@ -522,7 +521,7 @@ function InvoiceFormBody({
                       onChange={(e) => update(r.key, { vatCode: e.target.value })}
                       className={fieldClass}
                     >
-                      {VAT_CODES.map((c) => (
+                      {offeredVatCodes(country, r.vatCode).map((c) => (
                         <option key={c} value={c}>
                           {t(`${us ? "vatCodesUs" : "vatCodes"}.${c}`)} (
                           {formatRate(rateOf(c), locale)})

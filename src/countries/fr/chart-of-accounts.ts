@@ -64,7 +64,7 @@ export const CHART_ACCOUNTS_FR: readonly TemplateAccount[] = [
   ),
   a("431000", "Sécurité sociale", "Sozialversicherungen", "liability"),
   a("444000", "État, impôts sur les bénéfices", "Gewinnsteuern", "liability", { only: CO }),
-  a("445510", "TVA à décaisser", "MWST-Zahllast", "liability", { role: "vat_settlement" }),
+  a("445510", "TVA à décaisser", "USt-Zahllast", "liability", { role: "vat_settlement" }),
   a("445620", "TVA déductible sur immobilisations", "Vorsteuer auf Anlagen", "asset", {
     role: "vat_input_invest",
   }),
@@ -77,7 +77,7 @@ export const CHART_ACCOUNTS_FR: readonly TemplateAccount[] = [
       role: "vat_input_material",
     },
   ),
-  a("445710", "TVA collectée", "Geschuldete MWST", "liability", { role: "vat_output" }),
+  a("445710", "TVA collectée", "Geschuldete USt", "liability", { role: "vat_output" }),
   a("455000", "Associés, comptes courants", "Gesellschafterkonten", "liability", { only: CO }),
   a(
     "467000",

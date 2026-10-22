@@ -1,4 +1,4 @@
-import { getTranslations } from "next-intl/server";
+import { getSessionCountryTranslations } from "@/server/country-translations";
 
 const field = "h-10 w-full border border-line-strong bg-panel px-3 text-[14px]";
 
@@ -17,7 +17,7 @@ export async function ProjectFields({
   country?: string;
   values?: { contactId?: string; name?: string; hourlyRate?: string; budgetHours?: string };
 }) {
-  const t = await getTranslations({ locale, namespace: "app.time" });
+  const t = await getSessionCountryTranslations({ locale, namespace: "app.time" });
   return (
     <>
       <label className="block">

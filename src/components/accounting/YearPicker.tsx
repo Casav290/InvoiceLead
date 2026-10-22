@@ -1,6 +1,6 @@
-import { getTranslations } from "next-intl/server";
 import { Button } from "@/components/ui/button";
-import { formatDate } from "@/lib/fiscal-year";
+import { type DateStyle, formatDate } from "@/lib/fiscal-year";
+import { getSessionCountryTranslations } from "@/server/country-translations";
 import type { FiscalYear } from "@/server/db/schema";
 
 /** Choix de l'exercice affiché (formulaire GET, sans JavaScript). */
@@ -8,13 +8,16 @@ export async function YearPicker({
   locale,
   years,
   selected,
+  dates,
 }: {
   locale: string;
   years: FiscalYear[];
   selected?: string;
+  /** Format des dates du pays de l'entreprise. */
+  dates: DateStyle;
 }) {
   if (years.length < 2) return null;
-  const t = await getTranslations({ locale, namespace: "app.accountingHome" });
+  const t = await getSessionCountryTranslations({ locale, namespace: "app.accountingHome" });
   return (
     <form className="flex max-w-full flex-wrap items-center gap-2">
       <label htmlFor="report-year" className="text-[13px] font-semibold">
@@ -28,7 +31,7 @@ export async function YearPicker({
       >
         {years.map((y) => (
           <option key={y.id} value={y.id}>
-            {formatDate(y.startDate)} – {formatDate(y.endDate)}
+            {formatDate(y.startDate, dates)} – {formatDate(y.endDate, dates)}
           </option>
         ))}
       </select>

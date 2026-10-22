@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { getTranslations } from "next-intl/server";
 import { ProjectFields } from "@/components/time/ProjectFields";
 import { Button } from "@/components/ui/button";
 import { countryPack } from "@/countries";
@@ -7,6 +6,7 @@ import { Link } from "@/i18n/navigation";
 import { formatAmount } from "@/lib/money";
 import { requireAppSession } from "@/server/auth/guard";
 import { listContacts } from "@/server/contacts";
+import { getSessionCountryTranslations } from "@/server/country-translations";
 import { db } from "@/server/db";
 import { formatMinutes, listProjects } from "@/server/time";
 import { saveProjectAction } from "../actions";
@@ -18,7 +18,7 @@ type Props = {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
-  const t = await getTranslations({ locale, namespace: "app.time" });
+  const t = await getSessionCountryTranslations({ locale, namespace: "app.time" });
   return { title: t("projects"), robots: { index: false } };
 }
 
@@ -27,7 +27,7 @@ export default async function ProjectsPage({ params, searchParams }: Props) {
   const { locale } = await params;
   const { organization } = await requireAppSession(locale);
   const q = await searchParams;
-  const t = await getTranslations({ locale, namespace: "app.time" });
+  const t = await getSessionCountryTranslations({ locale, namespace: "app.time" });
   const style = countryPack(organization.country).amounts;
   const archived = q.archived === "1";
   const [rows, contacts] = await Promise.all([

@@ -1,6 +1,6 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { useCountryTranslations } from "@/components/app/CountryContext";
 import { Link, usePathname } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 
@@ -17,7 +17,7 @@ const ITEMS = [
 ] as const;
 
 export function AppNav() {
-  const t = useTranslations("app.nav");
+  const t = useCountryTranslations("app.nav");
   const pathname = usePathname();
   return (
     <nav className="order-last flex w-full items-stretch overflow-x-auto border-t border-line xl:order-none xl:w-auto xl:overflow-visible xl:border-t-0">

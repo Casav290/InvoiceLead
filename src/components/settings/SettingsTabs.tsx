@@ -1,6 +1,6 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { useCountryTranslations } from "@/components/app/CountryContext";
 import { ProBadge } from "@/components/app/ProLock";
 import { Link, usePathname } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
@@ -31,7 +31,7 @@ export function SettingsTabs({
   /** Onglets absents (« plan » dans l'app Android / iOS, lib/native.ts). */
   hidden?: readonly (typeof ITEMS)[number]["key"][];
 }) {
-  const t = useTranslations("app.settingsNav");
+  const t = useCountryTranslations("app.settingsNav");
   const pathname = usePathname();
   return (
     <nav aria-label={t("label")} className="mb-8 flex flex-wrap border-b border-line-strong">

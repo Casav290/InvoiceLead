@@ -1,13 +1,14 @@
 import type { Metadata } from "next";
-import { getTranslations } from "next-intl/server";
 import { AppMark } from "@/components/brand/AppMark";
 import { ProjectLeadKeyForm } from "@/components/settings/ProjectLeadKeyForm";
 import { SettingsNav } from "@/components/settings/SettingsNav";
 import { Button } from "@/components/ui/button";
+import { countryPack } from "@/countries";
 import { formatDate } from "@/lib/fiscal-year";
 import { PROJECTLEAD_URL } from "@/lib/lead-apps";
 import { listApiKeys } from "@/server/api-keys";
 import { requireAppSession } from "@/server/auth/guard";
+import { getSessionCountryTranslations } from "@/server/country-translations";
 import { db } from "@/server/db";
 import { env } from "@/server/env";
 import { PLANS, tierOf } from "@/server/plans";
@@ -21,11 +22,9 @@ type Props = {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
-  const t = await getTranslations({ locale, namespace: "app.projectLead" });
+  const t = await getSessionCountryTranslations({ locale, namespace: "app.projectLead" });
   return { title: t("title"), robots: { index: false } };
 }
-
-const day = (d: Date | null) => (d ? formatDate(d.toISOString().slice(0, 10)) : null);
 
 /**
  * Relier ProjectLead, dans toutes les formules : une clé réservée à ProjectLead (contacts et
@@ -35,8 +34,11 @@ const day = (d: Date | null) => (d ? formatDate(d.toISOString().slice(0, 10)) : 
 export default async function ProjectLeadSettingsPage({ params, searchParams }: Props) {
   const { locale } = await params;
   const { organization, membership } = await requireAppSession(locale);
+  // Dates au format du pays de l'entreprise (30.09.2026, 30/09/2026, 09/30/2026).
+  const dates = countryPack(organization.country).dates;
+  const day = (d: Date | null) => (d ? formatDate(d.toISOString().slice(0, 10), dates) : null);
   const q = await searchParams;
-  const t = await getTranslations({ locale, namespace: "app.projectLead" });
+  const t = await getSessionCountryTranslations({ locale, namespace: "app.projectLead" });
   const editable = can(membership, "company");
   const keys = await listApiKeys(db(), organization.id, "projectlead");
   const free = tierOf(organization) === "free";

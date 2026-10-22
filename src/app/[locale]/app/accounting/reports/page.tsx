@@ -11,6 +11,7 @@ import { formatDate } from "@/lib/fiscal-year";
 import { formatAmount } from "@/lib/money";
 import { listFiscalYears } from "@/server/accounting";
 import { requireAppSession } from "@/server/auth/guard";
+import { getSessionCountryTranslations } from "@/server/country-translations";
 import { db } from "@/server/db";
 import {
   type AccountBalance,
@@ -27,7 +28,7 @@ type Props = {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
-  const t = await getTranslations({ locale, namespace: "app.reports" });
+  const t = await getSessionCountryTranslations({ locale, namespace: "app.reports" });
   return { title: t("title"), robots: { index: false } };
 }
 
@@ -37,9 +38,11 @@ const th =
 export default async function ReportsPage({ params, searchParams }: Props) {
   const { locale } = await params;
   const { organization } = await requireAppSession(locale);
+  // Dates au format du pays de l'entreprise (30.09.2026, 30/09/2026, 09/30/2026).
+  const dates = countryPack(organization.country).dates;
   const style = countryPack(organization.country).amounts;
   const q = await searchParams;
-  const t = await getTranslations({ locale, namespace: "app.reports" });
+  const t = await getSessionCountryTranslations({ locale, namespace: "app.reports" });
   const tc = await getTranslations({
     locale,
     namespace: `app.accounts.${chartPack(organization.country).classLabels}`,
@@ -85,11 +88,14 @@ export default async function ReportsPage({ params, searchParams }: Props) {
           <h1 className="text-[28px] leading-tight">{t("title")}</h1>
           {year ? (
             <p className="mt-1 text-[14px] text-ink-muted">
-              {t("period", { start: formatDate(year.startDate), end: formatDate(year.endDate) })}
+              {t("period", {
+                start: formatDate(year.startDate, dates),
+                end: formatDate(year.endDate, dates),
+              })}
             </p>
           ) : null}
         </div>
-        <YearPicker locale={locale} years={years} selected={year?.id} />
+        <YearPicker locale={locale} years={years} dates={dates} selected={year?.id} />
       </div>
       <p className="mt-2 text-[13px] text-ink-muted">{t("provisional")}</p>
       {year && (organization.country === "DE" || organization.country === "FR") ? (

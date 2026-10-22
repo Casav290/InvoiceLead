@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
-import { getTranslations } from "next-intl/server";
 import { LockNote, ProBadge } from "@/components/app/ProLock";
 import { Button } from "@/components/ui/button";
 import { Link } from "@/i18n/navigation";
 import { requireAppSession } from "@/server/auth/guard";
 import { listContacts } from "@/server/contacts";
+import { getSessionCountryTranslations } from "@/server/country-translations";
 import { db } from "@/server/db";
 import { lockFor } from "@/server/plan-lock";
 import { quotaAccess } from "@/server/plans";
@@ -16,7 +16,7 @@ type Props = {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
-  const t = await getTranslations({ locale, namespace: "app.contacts" });
+  const t = await getSessionCountryTranslations({ locale, namespace: "app.contacts" });
   return { title: t("title"), robots: { index: false } };
 }
 
@@ -24,7 +24,7 @@ export default async function ContactsPage({ params, searchParams }: Props) {
   const { locale } = await params;
   const { organization } = await requireAppSession(locale);
   const { q = "", saved, archived } = await searchParams;
-  const t = await getTranslations({ locale, namespace: "app.contacts" });
+  const t = await getSessionCountryTranslations({ locale, namespace: "app.contacts" });
   const rows = await listContacts(db(), organization.id, q.slice(0, 100));
   // Formule gratuite : 50 contacts ; ensuite « Nouveau contact » est grisé (les fiches restent).
   const live = await quotaAccess(db(), organization, "contacts");

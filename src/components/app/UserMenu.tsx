@@ -1,9 +1,9 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { useTranslations } from "next-intl";
 import { DropdownMenu } from "radix-ui";
 import { useRef } from "react";
+import { useCountryTranslations } from "@/components/app/CountryContext";
 import { Link } from "@/i18n/navigation";
 
 export function UserMenu({
@@ -19,7 +19,7 @@ export function UserMenu({
   locale: string;
   upgrade?: { href: string; label: string } | null;
 }) {
-  const t = useTranslations("app.user");
+  const t = useCountryTranslations("app.user");
   // Le formulaire reste hors du menu : le contenu du menu disparaît à sa fermeture.
   const logoutForm = useRef<HTMLFormElement>(null);
   const pathname = usePathname();

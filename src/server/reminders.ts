@@ -1,5 +1,7 @@
 import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { getTranslations } from "next-intl/server";
+import { countryPack } from "@/countries";
+import { forCountry } from "@/i18n/country";
 import { formatDate } from "@/lib/fiscal-year";
 import { formatAmount } from "@/lib/money";
 import {
@@ -256,17 +258,19 @@ async function deliverReminder(
   if (found && due.email) {
     const { invoice, lines, related } = found;
     try {
-      const t = await getTranslations({
-        locale: invoice.language,
-        namespace: "app.reminders.email",
-      });
+      // Langue de la facture ; vocabulaire, dates et montants du pays de l'expéditeur.
+      const pack = countryPack(invoice.sender?.country);
+      const t = forCountry(
+        await getTranslations({ locale: invoice.language, namespace: "app.reminders.email" }),
+        pack.code,
+      );
       const token = await enableShareLink(database, who.organizationId, invoiceId);
       const pdf = await buildDocumentPdf(invoice, lines, related);
       const values = {
         number: invoice.number ?? "",
-        amount: formatAmount(due.totalDueCents),
+        amount: formatAmount(due.totalDueCents, pack.amounts),
         currency: invoice.currency,
-        due: formatDate(invoice.dueDate),
+        due: formatDate(invoice.dueDate, pack.dates),
         company: invoice.sender?.name ?? "",
       };
       // Détail des frais et intérêts réclamés, sous le texte de la relance.
@@ -275,9 +279,9 @@ async function deliverReminder(
         charged > 0
           ? `\n\n${t("charges", {
               currency: invoice.currency,
-              open: formatAmount(due.openCents),
-              charges: formatAmount(charged),
-              total: formatAmount(due.totalDueCents),
+              open: formatAmount(due.openCents, pack.amounts),
+              charges: formatAmount(charged, pack.amounts),
+              total: formatAmount(due.totalDueCents, pack.amounts),
             })}`
           : "";
       await sendEmail({

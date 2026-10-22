@@ -467,6 +467,26 @@ export type ValidateVatResult = "validated" | "blocked" | "noFiscalYear" | "noCh
  * Validation humaine : les chiffres sont figés, la TVA due et l'impôt préalable sont virés sur le
  * compte de décompte TVA (2201) à la fin de la période, et la période se ferme au journal.
  */
+/** Libellé de l'écriture de virement de la TVA, dans le vocabulaire du pays de l'entreprise. */
+async function vatEntryText(database: Db, organizationId: string): Promise<string> {
+  const [org] = await database
+    .select({ country: organizations.country })
+    .from(organizations)
+    .where(eq(organizations.id, organizationId));
+  switch (org?.country) {
+    case "DE":
+      return "Umsatzsteuer-Voranmeldung";
+    case "FR":
+      return "Déclaration de TVA (CA3)";
+    case "GB":
+      return "VAT Return";
+    case "US":
+      return "Sales tax";
+    default:
+      return "MWST-Abrechnung / Décompte TVA";
+  }
+}
+
 export async function validateVatReturn(
   database: Db,
   who: Who,
@@ -513,7 +533,7 @@ export async function validateVatReturn(
       if (postings.length >= 2) {
         const entry = await appendEntry(tdb, who, {
           entryDate: end,
-          description: `MWST-Abrechnung / Décompte TVA ${start} – ${end}`,
+          description: `${await vatEntryText(tdb, who.organizationId)} ${start} – ${end}`,
           sourceType: "vat",
           postings,
         });

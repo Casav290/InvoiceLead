@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { getTranslations } from "next-intl/server";
 import { LockNote, ProBadge } from "@/components/app/ProLock";
 import { Button } from "@/components/ui/button";
 import { countryPack } from "@/countries";
@@ -7,6 +6,7 @@ import { Link } from "@/i18n/navigation";
 import { formatDate } from "@/lib/fiscal-year";
 import { formatAmount } from "@/lib/money";
 import { requireAppSession } from "@/server/auth/guard";
+import { getSessionCountryTranslations } from "@/server/country-translations";
 import { db } from "@/server/db";
 import { inNativeApp } from "@/server/native";
 import { lockFor } from "@/server/plan-lock";
@@ -21,16 +21,18 @@ type Props = {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
-  const t = await getTranslations({ locale, namespace: "app.recurring" });
+  const t = await getSessionCountryTranslations({ locale, namespace: "app.recurring" });
   return { title: t("title"), robots: { index: false } };
 }
 
 export default async function RecurringPage({ params, searchParams }: Props) {
   const { locale } = await params;
   const { organization } = await requireAppSession(locale);
+  // Dates au format du pays de l'entreprise (30.09.2026, 30/09/2026, 09/30/2026).
+  const dates = countryPack(organization.country).dates;
   const { created, error } = await searchParams;
-  const t = await getTranslations({ locale, namespace: "app.recurring" });
-  const tp = await getTranslations({ locale, namespace: "app.plan" });
+  const t = await getSessionCountryTranslations({ locale, namespace: "app.recurring" });
+  const tp = await getSessionCountryTranslations({ locale, namespace: "app.plan" });
   const app = await inNativeApp();
   const rows = await listRecurring(db(), organization.id);
   // Formule gratuite : une récurrence active. Les autres attendent (reprise grisée, marque Pro).
@@ -102,7 +104,7 @@ export default async function RecurringPage({ params, searchParams }: Props) {
               <p className="mt-1 text-[12px] text-ink-2">
                 {t("line", {
                   interval: r.intervalMonths,
-                  next: formatDate(r.nextDate),
+                  next: formatDate(r.nextDate, dates),
                   model: number ?? t("draftModel"),
                 })}
                 {r.autoSend ? ` · ${t("autoSend")}` : ` · ${t("draftOnly")}`}

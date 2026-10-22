@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { getTranslations } from "next-intl/server";
 import { AccountingNav } from "@/components/accounting/AccountingNav";
 import { YearPicker } from "@/components/accounting/YearPicker";
 import { recordElsewhere } from "@/components/app/RecordElsewhere";
@@ -11,6 +10,7 @@ import { formatDate } from "@/lib/fiscal-year";
 import { formatAmount } from "@/lib/money";
 import { listFiscalYears } from "@/server/accounting";
 import { requireAppSession } from "@/server/auth/guard";
+import { getSessionCountryTranslations } from "@/server/country-translations";
 import { db } from "@/server/db";
 import { accountLedger } from "@/server/reports";
 
@@ -21,16 +21,18 @@ type Props = {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
-  const t = await getTranslations({ locale, namespace: "app.reports" });
+  const t = await getSessionCountryTranslations({ locale, namespace: "app.reports" });
   return { title: t("ledger"), robots: { index: false } };
 }
 
 export default async function LedgerPage({ params, searchParams }: Props) {
   const { locale, accountId } = await params;
   const { organization, user } = await requireAppSession(locale);
+  // Dates au format du pays de l'entreprise (30.09.2026, 30/09/2026, 09/30/2026).
+  const dates = countryPack(organization.country).dates;
   const style = countryPack(organization.country).amounts;
   const q = await searchParams;
-  const t = await getTranslations({ locale, namespace: "app.reports" });
+  const t = await getSessionCountryTranslations({ locale, namespace: "app.reports" });
   const years = await listFiscalYears(db(), organization.id);
   const year = years.find((y) => y.id === q.year) ?? years[0];
   const ledger = year ? await accountLedger(db(), organization.id, year.id, accountId) : null;
@@ -66,7 +68,7 @@ export default async function LedgerPage({ params, searchParams }: Props) {
         <h1 className="text-[28px] leading-tight [overflow-wrap:anywhere]">
           {account.number} {accountName(account, locale)}
         </h1>
-        <YearPicker locale={locale} years={years} selected={year.id} />
+        <YearPicker locale={locale} years={years} dates={dates} selected={year.id} />
       </div>
       {lines.length === 0 ? (
         <p className="mt-8 border border-line-strong bg-panel px-5 py-8 text-center text-[14px] text-ink-muted">
@@ -92,7 +94,7 @@ export default async function LedgerPage({ params, searchParams }: Props) {
               {lines.map((l, i) => (
                 <tr key={`${l.entryId}-${i}`} className="border-b border-line-soft last:border-b-0">
                   <td className="px-3 py-1.5 whitespace-nowrap tabular-nums">
-                    {formatDate(l.entryDate)}
+                    {formatDate(l.entryDate, dates)}
                   </td>
                   <td className="px-3 py-1.5 tabular-nums">{l.number}</td>
                   <td className="px-3 py-1.5 [overflow-wrap:anywhere]">{l.description}</td>

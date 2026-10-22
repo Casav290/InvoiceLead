@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { getTranslations } from "next-intl/server";
 import { AccountingNav } from "@/components/accounting/AccountingNav";
 import { Button } from "@/components/ui/button";
 import { countryPack } from "@/countries";
@@ -9,6 +8,7 @@ import { formatDate } from "@/lib/fiscal-year";
 import { formatAmount } from "@/lib/money";
 import { listAccounts, listFiscalYears } from "@/server/accounting";
 import { requireAppSession } from "@/server/auth/guard";
+import { getSessionCountryTranslations } from "@/server/country-translations";
 import { db } from "@/server/db";
 import { countUnposted, listJournal, verifyChain } from "@/server/ledger";
 import { postPendingAction } from "./actions";
@@ -20,16 +20,18 @@ type Props = {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
-  const t = await getTranslations({ locale, namespace: "app.accountingHome" });
+  const t = await getSessionCountryTranslations({ locale, namespace: "app.accountingHome" });
   return { title: t("title"), robots: { index: false } };
 }
 
 export default async function AccountingPage({ params, searchParams }: Props) {
   const { locale } = await params;
   const { organization } = await requireAppSession(locale);
+  // Dates au format du pays de l'entreprise (30.09.2026, 30/09/2026, 09/30/2026).
+  const dates = countryPack(organization.country).dates;
   const style = countryPack(organization.country).amounts;
   const query = await searchParams;
-  const t = await getTranslations({ locale, namespace: "app.accountingHome" });
+  const t = await getSessionCountryTranslations({ locale, namespace: "app.accountingHome" });
   const [years, chart, unposted, chain] = await Promise.all([
     listFiscalYears(db(), organization.id),
     listAccounts(db(), organization.id),
@@ -128,7 +130,7 @@ export default async function AccountingPage({ params, searchParams }: Props) {
             >
               {years.map((y) => (
                 <option key={y.id} value={y.id}>
-                  {formatDate(y.startDate)} – {formatDate(y.endDate)}
+                  {formatDate(y.startDate, dates)} – {formatDate(y.endDate, dates)}
                 </option>
               ))}
             </select>
@@ -166,7 +168,7 @@ export default async function AccountingPage({ params, searchParams }: Props) {
                 <tr className="bg-strip">
                   <td className="px-3 py-2 font-semibold tabular-nums">{e.number}</td>
                   <td className="px-3 py-2 tabular-nums whitespace-nowrap">
-                    {formatDate(e.entryDate)}
+                    {formatDate(e.entryDate, dates)}
                   </td>
                   <td colSpan={3} className="px-3 py-2 font-semibold [overflow-wrap:anywhere]">
                     {e.description}

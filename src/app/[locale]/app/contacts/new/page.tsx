@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
-import { getTranslations } from "next-intl/server";
 import { ProLock } from "@/components/app/ProLock";
 import { ContactForm } from "@/components/contacts/ContactForm";
 import { requireAppSession } from "@/server/auth/guard";
+import { getSessionCountryTranslations } from "@/server/country-translations";
 import { db } from "@/server/db";
 import { lockFor } from "@/server/plan-lock";
 import { quotaAccess } from "@/server/plans";
@@ -11,14 +11,14 @@ type Props = { params: Promise<{ locale: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
-  const t = await getTranslations({ locale, namespace: "app.contacts" });
+  const t = await getSessionCountryTranslations({ locale, namespace: "app.contacts" });
   return { title: t("new"), robots: { index: false } };
 }
 
 export default async function NewContactPage({ params }: Props) {
   const { locale } = await params;
   const { organization } = await requireAppSession(locale);
-  const t = await getTranslations({ locale, namespace: "app.contacts" });
+  const t = await getSessionCountryTranslations({ locale, namespace: "app.contacts" });
   // Formule gratuite, 50 contacts atteints : le formulaire reste visible, grisé, avec la raison et
   // le lien de mise à niveau (adresse directe, favori, retour arrière). La raison vient en tête :
   // la fin du formulaire est loin du premier écran.

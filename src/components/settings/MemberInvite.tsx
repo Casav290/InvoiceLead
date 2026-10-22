@@ -1,17 +1,17 @@
 "use client";
 
-import { useTranslations } from "next-intl";
 import { useActionState } from "react";
 import {
   inviteMemberAction,
   type MemberInviteState,
 } from "@/app/[locale]/app/settings/team/actions";
+import { useCountryTranslations } from "@/components/app/CountryContext";
 import { fieldClass } from "@/components/forms/fields";
 import { Button } from "@/components/ui/button";
 
 /** Ajout d'une personne à l'entreprise : le Compte Lead lui envoie l'invitation au nom d'InvoiceLead. */
 export function MemberInvite({ locale }: { locale: string }) {
-  const t = useTranslations("app.team.memberInvite");
+  const t = useCountryTranslations("app.team.memberInvite");
   const [state, invite, pending] = useActionState<MemberInviteState, FormData>(inviteMemberAction, {
     round: 0,
   });

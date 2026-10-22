@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { getTranslations } from "next-intl/server";
 import type { ReactNode } from "react";
 import { ProBadge } from "@/components/app/ProLock";
 import { countryPack } from "@/countries";
@@ -7,6 +6,7 @@ import { Link } from "@/i18n/navigation";
 import { formatDate } from "@/lib/fiscal-year";
 import { formatAmount } from "@/lib/money";
 import { requireAppSession } from "@/server/auth/guard";
+import { getSessionCountryTranslations } from "@/server/country-translations";
 import { currentPlanUsage, markOf } from "@/server/current-plan";
 import { dashboardFigures } from "@/server/dashboard";
 import { db } from "@/server/db";
@@ -23,7 +23,7 @@ export async function generateMetadata({
   params: Promise<{ locale: string }>;
 }): Promise<Metadata> {
   const { locale } = await params;
-  const t = await getTranslations({ locale, namespace: "app.nav" });
+  const t = await getSessionCountryTranslations({ locale, namespace: "app.nav" });
   return { title: t("dashboard"), robots: { index: false } };
 }
 
@@ -37,8 +37,8 @@ export default async function DashboardPage({
   const { locale } = await params;
   const { forbidden } = await searchParams;
   const { user, organization } = await requireAppSession(locale);
-  const t = await getTranslations({ locale, namespace: "app.dashboard" });
-  const tp = await getTranslations({ locale, namespace: "app.plan" });
+  const t = await getSessionCountryTranslations({ locale, namespace: "app.dashboard" });
+  const tp = await getSessionCountryTranslations({ locale, namespace: "app.plan" });
   const tier = tierOf(organization);
   const app = await inNativeApp();
   const today = new Date().toISOString().slice(0, 10);

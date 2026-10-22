@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { getTranslations } from "next-intl/server";
 import { AccountingNav } from "@/components/accounting/AccountingNav";
 import { ProBadge, ProLock } from "@/components/app/ProLock";
 import { Button } from "@/components/ui/button";
@@ -9,6 +8,7 @@ import { formatDate } from "@/lib/fiscal-year";
 import { formatAmount } from "@/lib/money";
 import { aiConfigured } from "@/server/ai";
 import { requireAppSession } from "@/server/auth/guard";
+import { getSessionCountryTranslations } from "@/server/country-translations";
 import { db } from "@/server/db";
 import { lockFor } from "@/server/plan-lock";
 import { quotaAccess } from "@/server/plans";
@@ -29,7 +29,7 @@ type Props = {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
-  const t = await getTranslations({ locale, namespace: "app.receipts" });
+  const t = await getSessionCountryTranslations({ locale, namespace: "app.receipts" });
   return { title: t("title"), robots: { index: false } };
 }
 
@@ -38,10 +38,12 @@ const ERRORS = ["unreadable", "failed", "notFound", "quota"];
 export default async function ReceiptsPage({ params, searchParams }: Props) {
   const { locale } = await params;
   const { organization } = await requireAppSession(locale);
+  // Dates au format du pays de l'entreprise (30.09.2026, 30/09/2026, 09/30/2026).
+  const dates = countryPack(organization.country).dates;
   const style = countryPack(organization.country).amounts;
   const q = await searchParams;
-  const t = await getTranslations({ locale, namespace: "app.receipts" });
-  const tp = await getTranslations({ locale, namespace: "app.plan" });
+  const t = await getSessionCountryTranslations({ locale, namespace: "app.receipts" });
+  const tp = await getSessionCountryTranslations({ locale, namespace: "app.plan" });
   const rows = await listReceipts(db(), organization.id);
   const hidden = <input type="hidden" name="locale" value={locale} />;
   // Lectures du mois par l'IA (tickets, justificatifs) : une fois utilisées, dépôt et relecture
@@ -177,7 +179,7 @@ export default async function ReceiptsPage({ params, searchParams }: Props) {
                 {x ? (
                   <p className="mt-1 text-[12px] text-ink-2 [overflow-wrap:anywhere]">
                     {[
-                      x.date ? formatDate(x.date) : null,
+                      x.date ? formatDate(x.date, dates) : null,
                       x.invoiceNumber ? t("invoiceNumber", { number: x.invoiceNumber }) : null,
                       x.vatCents ? t("vat", { amount: formatAmount(x.vatCents, style) }) : null,
                       x.accountNumber ? t("account", { number: x.accountNumber }) : null,

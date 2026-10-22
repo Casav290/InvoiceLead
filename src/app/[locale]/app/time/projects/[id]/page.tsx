@@ -1,15 +1,16 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { getTranslations } from "next-intl/server";
 import { recordElsewhere } from "@/components/app/RecordElsewhere";
 import { ProjectFields } from "@/components/time/ProjectFields";
 import { Button } from "@/components/ui/button";
 import { countryPack } from "@/countries";
 import { Link } from "@/i18n/navigation";
+import { formatAmountInput } from "@/lib/amount-input";
 import { formatDate } from "@/lib/fiscal-year";
 import { formatAmount } from "@/lib/money";
 import { requireAppSession } from "@/server/auth/guard";
 import { listContacts } from "@/server/contacts";
+import { getSessionCountryTranslations } from "@/server/country-translations";
 import { db } from "@/server/db";
 import { formatMinutes, getProject, listEntries, listProjects } from "@/server/time";
 import {
@@ -26,7 +27,7 @@ type Props = {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
-  const t = await getTranslations({ locale, namespace: "app.time" });
+  const t = await getSessionCountryTranslations({ locale, namespace: "app.time" });
   return { title: t("projects"), robots: { index: false } };
 }
 
@@ -48,7 +49,7 @@ export default async function ProjectPage({ params, searchParams }: Props) {
     notFound();
   }
   const { project, customer } = found;
-  const t = await getTranslations({ locale, namespace: "app.time" });
+  const t = await getSessionCountryTranslations({ locale, namespace: "app.time" });
   const style = countryPack(organization.country).amounts;
   const dates = countryPack(organization.country).dates;
   const hintKey =
@@ -206,7 +207,9 @@ export default async function ProjectPage({ params, searchParams }: Props) {
             values={{
               contactId: project.contactId,
               name: project.name,
-              hourlyRate: project.hourlyRateCents ? formatAmount(project.hourlyRateCents) : "",
+              hourlyRate: project.hourlyRateCents
+                ? formatAmountInput(project.hourlyRateCents, organization.country)
+                : "",
               budgetHours: project.budgetMinutes ? String(project.budgetMinutes / 60) : "",
             }}
           />

@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
-import { getTranslations } from "next-intl/server";
 import { Button } from "@/components/ui/button";
 import { countryPack } from "@/countries";
 import { formatRate, type VatCode } from "@/countries/ch/vat";
 import { Link } from "@/i18n/navigation";
 import { formatAmount } from "@/lib/money";
 import { requireAppSession } from "@/server/auth/guard";
+import { getSessionCountryTranslations } from "@/server/country-translations";
 import { db } from "@/server/db";
 import { listProducts } from "@/server/products";
 
@@ -16,7 +16,7 @@ type Props = {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
-  const t = await getTranslations({ locale, namespace: "app.products" });
+  const t = await getSessionCountryTranslations({ locale, namespace: "app.products" });
   return { title: t("title"), robots: { index: false } };
 }
 
@@ -24,7 +24,7 @@ export default async function ProductsPage({ params, searchParams }: Props) {
   const { locale } = await params;
   const { organization } = await requireAppSession(locale);
   const { q = "", saved, archived } = await searchParams;
-  const t = await getTranslations({ locale, namespace: "app.products" });
+  const t = await getSessionCountryTranslations({ locale, namespace: "app.products" });
   const rows = await listProducts(db(), organization.id, q.slice(0, 100));
   const today = new Date().toISOString().slice(0, 10);
   return (

@@ -1,14 +1,15 @@
 import type { Metadata } from "next";
-import { getTranslations } from "next-intl/server";
 import { ProLock } from "@/components/app/ProLock";
 import { ScanTicket } from "@/components/app/ScanTicket";
 import { Button } from "@/components/ui/button";
-import { VAT_CODES } from "@/countries/ch/vat";
+import { countryPack, offeredVatCodes } from "@/countries";
 import { accountName } from "@/lib/account-name";
+import { formatAmountInput } from "@/lib/amount-input";
 import { formatDate } from "@/lib/fiscal-year";
 import { formatAmount } from "@/lib/money";
 import { listAccounts } from "@/server/accounting";
 import { requireAppSession } from "@/server/auth/guard";
+import { getSessionCountryTranslations } from "@/server/country-translations";
 import { db } from "@/server/db";
 import {
   lastClaimIban,
@@ -28,7 +29,7 @@ type Props = {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
-  const t = await getTranslations({ locale, namespace: "app.expenses" });
+  const t = await getSessionCountryTranslations({ locale, namespace: "app.expenses" });
   return { title: t("title"), robots: { index: false } };
 }
 
@@ -39,11 +40,13 @@ const ERRORS = ["date", "required", "iban", "amount", "km", "type", "size", "dup
 export default async function ExpensesPage({ params, searchParams }: Props) {
   const { locale } = await params;
   const { organization, user } = await requireAppSession(locale);
+  // Dates au format du pays de l'entreprise (30.09.2026, 30/09/2026, 09/30/2026).
+  const dates = countryPack(organization.country).dates;
   const q = await searchParams;
-  const t = await getTranslations({ locale, namespace: "app.expenses" });
-  const tb = await getTranslations({ locale, namespace: "app.bills" });
-  const tv = await getTranslations({ locale, namespace: "app.bank.vat" });
-  const tp = await getTranslations({ locale, namespace: "app.plan" });
+  const t = await getSessionCountryTranslations({ locale, namespace: "app.expenses" });
+  const tb = await getSessionCountryTranslations({ locale, namespace: "app.bills" });
+  const tv = await getSessionCountryTranslations({ locale, namespace: "app.bank.vat" });
+  const tp = await getSessionCountryTranslations({ locale, namespace: "app.plan" });
   const today = new Date().toISOString().slice(0, 10);
   // Tickets lus par l'IA : même compteur que la boîte des justificatifs (Gratuit 20 par mois).
   const reads = await quotaAccess(db(), organization, "aiReads");
@@ -65,7 +68,10 @@ export default async function ExpensesPage({ params, searchParams }: Props) {
   const prefill = {
     date: read?.date ?? today,
     description: [read?.supplier, read?.description].filter(Boolean).join(" · ").slice(0, 200),
-    amount: read?.totalCents != null && sameCurrency ? formatAmount(read.totalCents) : "",
+    amount:
+      read?.totalCents != null && sameCurrency
+        ? formatAmountInput(read.totalCents, organization.country)
+        : "",
     vatCode: read ? (read.vatCode ?? "") : "normal",
     accountId:
       (read?.accountNumber && expenseAccounts.find((a) => a.number === read.accountNumber)?.id) ||
@@ -214,16 +220,19 @@ export default async function ExpensesPage({ params, searchParams }: Props) {
                 className={field}
               />
             </label>
-            {organization.vatRegistered ? (
+            {/* Taux d'achat du pays ; aux États-Unis, la sales tax payée n'est pas récupérable. */}
+            {organization.vatRegistered && organization.country !== "US" ? (
               <label className="block">
                 <span className="mb-1 block text-[13px] font-semibold">{t("fields.vat")}</span>
                 <select name="vatCode" defaultValue={prefill.vatCode} className={field}>
                   <option value="">{tb("noVat")}</option>
-                  {VAT_CODES.map((c) => (
-                    <option key={c} value={c}>
-                      {tv(c)}
-                    </option>
-                  ))}
+                  {offeredVatCodes(organization.country, prefill.vatCode)
+                    .filter((c) => c !== "export")
+                    .map((c) => (
+                      <option key={c} value={c}>
+                        {tv(c)}
+                      </option>
+                    ))}
                 </select>
               </label>
             ) : null}
@@ -288,7 +297,7 @@ export default async function ExpensesPage({ params, searchParams }: Props) {
                 <input
                   name="rate"
                   inputMode="decimal"
-                  defaultValue={formatAmount(rate)}
+                  defaultValue={formatAmountInput(rate, organization.country)}
                   required
                   className={field}
                 />
@@ -318,13 +327,15 @@ export default async function ExpensesPage({ params, searchParams }: Props) {
               className="flex flex-wrap items-baseline gap-x-4 gap-y-1 px-4 py-3"
               data-testid="claim-row"
             >
-              <span className="text-[13px] text-ink-2 tabular-nums">{formatDate(c.issueDate)}</span>
+              <span className="text-[13px] text-ink-2 tabular-nums">
+                {formatDate(c.issueDate, dates)}
+              </span>
               <span className="min-w-0 flex-1 [overflow-wrap:anywhere]">{c.description}</span>
               <span className="text-[12px] text-ink-muted">
                 {tb(`status.${c.status as "draft" | "approved" | "scheduled" | "paid"}`)}
               </span>
               <span className="font-semibold tabular-nums">
-                {c.currency} {formatAmount(c.totalCents)}
+                {c.currency} {formatAmount(c.totalCents, countryPack(organization.country).amounts)}
               </span>
               {c.status === "draft" ? (
                 <form action={deleteClaimAction}>

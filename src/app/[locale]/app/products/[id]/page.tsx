@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { getTranslations } from "next-intl/server";
 import { recordElsewhere } from "@/components/app/RecordElsewhere";
 import { ProductForm } from "@/components/products/ProductForm";
 import { Button } from "@/components/ui/button";
-import { formatAmount } from "@/lib/money";
+import { formatAmountInput } from "@/lib/amount-input";
 import { requireAppSession } from "@/server/auth/guard";
+import { getSessionCountryTranslations } from "@/server/country-translations";
 import { db } from "@/server/db";
 import { getProduct } from "@/server/products";
 import { archiveProductAction } from "../actions";
@@ -14,7 +14,7 @@ type Props = { params: Promise<{ locale: string; id: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
-  const t = await getTranslations({ locale, namespace: "app.products" });
+  const t = await getSessionCountryTranslations({ locale, namespace: "app.products" });
   return { title: t("edit"), robots: { index: false } };
 }
 
@@ -34,7 +34,7 @@ export default async function ProductPage({ params }: Props) {
     if (elsewhere) return elsewhere;
   }
   if (!product || product.archivedAt) notFound();
-  const t = await getTranslations({ locale, namespace: "app.products" });
+  const t = await getSessionCountryTranslations({ locale, namespace: "app.products" });
   return (
     <div className="mx-auto max-w-3xl px-4 py-10 sm:px-8">
       <h1 className="text-[28px] leading-tight">{product.name}</h1>
@@ -47,7 +47,7 @@ export default async function ProductPage({ params }: Props) {
           sku: product.sku ?? "",
           unit: product.unit,
           description: product.description ?? "",
-          unitPrice: formatAmount(product.unitPriceCents),
+          unitPrice: formatAmountInput(product.unitPriceCents, organization.country),
           vatCode: product.vatCode,
         }}
       />

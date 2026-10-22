@@ -3,6 +3,7 @@ import { getTranslations } from "next-intl/server";
 import QRCode from "qrcode";
 import { countryPack } from "@/countries";
 import { formatRate } from "@/countries/ch/vat";
+import { forCountry } from "@/i18n/country";
 import { addressLines } from "@/lib/address";
 import { formatFxRate, toHome } from "@/lib/currencies";
 import { formatDate } from "@/lib/fiscal-year";
@@ -16,6 +17,7 @@ import {
   organizations,
   type PartySnapshot,
 } from "@/server/db/schema";
+import { kindNamespace } from "@/server/document-labels";
 import { epcQrPayload } from "@/server/invoice-pdf";
 
 function Address({
@@ -54,24 +56,24 @@ export async function InvoiceDocument({
   relatedNumber?: string | null;
 }) {
   const lang = invoice.language;
-  const t = await getTranslations({ locale: lang, namespace: "app.invoices.document" });
-  const tk = await getTranslations({
-    locale: lang,
-    namespace:
-      invoice.kind === "quote"
-        ? "app.quotes"
-        : invoice.kind === "credit_note"
-          ? "app.creditNotes"
-          : "app.invoices",
-  });
-  const tu = await getTranslations({ locale: lang, namespace: "app.invoices.units" });
   const sender = invoice.sender;
+  // Langue de la pièce, vocabulaire du pays de l'expéditeur (USt, Angebot, sales tax…).
+  const country = sender?.country;
+  const t = forCountry(
+    await getTranslations({ locale: lang, namespace: "app.invoices.document" }),
+    country,
+  );
+  const tk = forCountry(
+    await getTranslations({ locale: lang, namespace: kindNamespace(invoice.kind) }),
+    country,
+  );
+  const tu = forCountry(
+    await getTranslations({ locale: lang, namespace: "app.invoices.units" }),
+    country,
+  );
   const style = countryPack(sender?.country).amounts;
   const dateStyle = countryPack(sender?.country).dates;
-  // États-Unis : sales tax, pas de TVA, dans les libellés.
-  const us = sender?.country === "US";
-  // Allemagne : Umsatzsteuer (USt), pas la MWST suisse.
-  const de = sender?.country === "DE";
+  // Sales tax aux États-Unis, USt en Allemagne : forCountry lit les variantes (vatUs, vatDe…).
   // GiroCode (Allemagne, France) : le même que sur le PDF, à scanner depuis l'écran.
   const epc = epcQrPayload(invoice);
   const epcSvg = epc
@@ -149,9 +151,7 @@ export async function InvoiceDocument({
               <th className="py-2 pr-3 text-right">{t("quantity")}</th>
               <th className="hidden py-2 pr-3 text-right sm:table-cell">{t("unitPrice")}</th>
               {invoice.vatRegistered ? (
-                <th className="hidden py-2 pr-3 text-right sm:table-cell">
-                  {t(us ? "vatUs" : de ? "vatDe" : "vat")}
-                </th>
+                <th className="hidden py-2 pr-3 text-right sm:table-cell">{t("vat")}</th>
               ) : null}
               <th className="py-2 text-right">{t("amount")}</th>
             </tr>
@@ -183,7 +183,7 @@ export async function InvoiceDocument({
         {invoice.vatRegistered ? (
           <>
             <div className="flex justify-between gap-4">
-              <dt>{t(us ? "netUs" : de ? "netDe" : "net")}</dt>
+              <dt>{t("net")}</dt>
               <dd className="tabular-nums">{formatAmount(invoice.netCents, style)}</dd>
             </div>
             {totals.vat
@@ -191,7 +191,7 @@ export async function InvoiceDocument({
               .map((v) => (
                 <div key={v.rateBp} className="flex justify-between gap-4 text-ink-2">
                   <dt>
-                    {t(us ? "vatLineUs" : de ? "vatLineDe" : "vatLine", {
+                    {t("vatLine", {
                       rate: formatRate(v.rateBp, lang),
                       base: formatAmount(v.netCents, style),
                     })}

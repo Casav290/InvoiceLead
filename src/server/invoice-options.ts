@@ -1,6 +1,6 @@
 import "server-only";
 import type { ContactOption, ProductOption } from "@/components/invoices/InvoiceForm";
-import { formatAmount } from "@/lib/money";
+import { formatAmountInput } from "@/lib/amount-input";
 import { listContacts } from "./contacts";
 import type { Db } from "./db";
 import { listProducts } from "./products";
@@ -9,6 +9,8 @@ import { listProducts } from "./products";
 export async function invoiceOptions(
   database: Db,
   organizationId: string,
+  /** Pays de l'entreprise : format des prix préremplis (1'200.50 en Suisse, 1200,50 en Allemagne). */
+  country?: string | null,
 ): Promise<{ contacts: ContactOption[]; products: ProductOption[] }> {
   const [contacts, products] = await Promise.all([
     listContacts(database, organizationId),
@@ -23,7 +25,7 @@ export async function invoiceOptions(
       name: p.name,
       description: p.description ?? "",
       unit: p.unit,
-      unitPrice: formatAmount(p.unitPriceCents),
+      unitPrice: formatAmountInput(p.unitPriceCents, country),
       vatCode: p.vatCode,
     })),
   };
