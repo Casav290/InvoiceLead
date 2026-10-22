@@ -50,6 +50,13 @@ export default async function ProjectPage({ params, searchParams }: Props) {
   const { project, customer } = found;
   const t = await getTranslations({ locale, namespace: "app.time" });
   const style = countryPack(organization.country).amounts;
+  const dates = countryPack(organization.country).dates;
+  const hintKey =
+    organization.country === "US"
+      ? "invoiceHintUs"
+      : organization.country === "DE"
+        ? "invoiceHintDe"
+        : "invoiceHint";
   const [stats, entries, contacts] = await Promise.all([
     listProjects(db(), organization.id, { archived: !!project.archivedAt }),
     listEntries(db(), organization.id, { projectId: id }),
@@ -135,7 +142,7 @@ export default async function ProjectPage({ params, searchParams }: Props) {
         >
           {hidden}
           <p className="min-w-0 flex-1 text-[13px]">
-            {t("invoiceHint", {
+            {t(hintKey, {
               hours: formatMinutes(s.unbilledMinutes),
               amount: formatAmount(s.unbilledCents, style),
             })}
@@ -159,7 +166,7 @@ export default async function ProjectPage({ params, searchParams }: Props) {
                 key={entry.id}
                 className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-line-soft px-5 py-2.5 text-[13px] last:border-b-0"
               >
-                <span className="tabular-nums text-ink-2">{formatDate(entry.workDate)}</span>
+                <span className="tabular-nums text-ink-2">{formatDate(entry.workDate, dates)}</span>
                 <span className="min-w-0 flex-1 [overflow-wrap:anywhere]">
                   {entry.description ?? "–"}
                   {entry.startedAt ? ` · ${t("running")}` : ""}
@@ -190,6 +197,7 @@ export default async function ProjectPage({ params, searchParams }: Props) {
         <form action={saveProjectAction} className="grid gap-4 p-5 sm:grid-cols-2">
           {hidden}
           <ProjectFields
+            country={organization.country}
             locale={locale}
             currency={organization.currency}
             customers={contacts

@@ -3,6 +3,7 @@ import { getTranslations } from "next-intl/server";
 import { AppMark } from "@/components/brand/AppMark";
 import { Elapsed } from "@/components/time/Elapsed";
 import { Button } from "@/components/ui/button";
+import { countryPack } from "@/countries";
 import { Link } from "@/i18n/navigation";
 import { addDays, formatDate } from "@/lib/fiscal-year";
 import { PROJECTLEAD_URL } from "@/lib/lead-apps";
@@ -225,7 +226,9 @@ export default async function TimePage({ params, searchParams }: Props) {
                 className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-line-soft px-5 py-2.5 text-[13px] last:border-b-0"
                 data-testid="time-entry"
               >
-                <span className="tabular-nums text-ink-2">{formatDate(entry.workDate)}</span>
+                <span className="tabular-nums text-ink-2">
+                  {formatDate(entry.workDate, countryPack(organization.country).dates)}
+                </span>
                 <span className="min-w-0 flex-1 [overflow-wrap:anywhere]">
                   <span className="font-semibold">{project}</span>
                   {entry.description ? ` · ${entry.description}` : ""}

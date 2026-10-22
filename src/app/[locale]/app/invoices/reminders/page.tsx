@@ -35,6 +35,8 @@ export default async function RemindersPage({ params, searchParams }: Props) {
   const { organization } = session;
   const canSetup = can(session.membership, "company");
   const amounts = countryPack(organization.country).amounts;
+  const dates = countryPack(organization.country).dates;
+  const slip = countryPack(organization.country).paymentSlip;
   const q = await searchParams;
   const t = await getTranslations({ locale, namespace: "app.reminders" });
   const today = new Date().toISOString().slice(0, 10);
@@ -155,7 +157,9 @@ export default async function RemindersPage({ params, searchParams }: Props) {
           </form>
         ) : null}
       </div>
-      <p className="mt-2 text-[15px] text-ink-muted">{t("subtitle")}</p>
+      <p className="mt-2 text-[15px] text-ink-muted">
+        {t(slip === "epc-qr" ? "subtitleEpc" : slip === "none" ? "subtitleNone" : "subtitle")}
+      </p>
       {Number.isFinite(sends.limit) ? (
         <p className="mt-2 text-[13px] text-ink-2" data-testid="reminders-quota">
           {tp("quota.reminders", { used: sends.used, limit: sends.limit })}
@@ -220,8 +224,12 @@ export default async function RemindersPage({ params, searchParams }: Props) {
               </div>
               <p className="mt-1 text-[12px] text-ink-2">
                 {r.level === 0
-                  ? t("courtesyLine", { due: formatDate(r.dueDate) })
-                  : t("line", { level: r.level, days: r.daysLate, due: formatDate(r.dueDate) })}
+                  ? t("courtesyLine", { due: formatDate(r.dueDate, dates) })
+                  : t("line", {
+                      level: r.level,
+                      days: r.daysLate,
+                      due: formatDate(r.dueDate, dates),
+                    })}
                 {r.risk !== "unknown"
                   ? ` · ${t(`profile.${r.risk}`, { days: Math.round(r.avgDaysLate ?? 0) })}`
                   : ""}
@@ -301,7 +309,7 @@ export default async function RemindersPage({ params, searchParams }: Props) {
                   className="flex justify-between gap-4 border-b border-line py-2 last:border-b-0"
                   data-testid="forecast-week"
                 >
-                  <span>{t("week", { date: formatDate(w.weekStart) })}</span>
+                  <span>{t("week", { date: formatDate(w.weekStart, dates) })}</span>
                   <span className="font-semibold tabular-nums">
                     {organization.currency} {formatAmount(w.expectedCents, amounts)}
                   </span>

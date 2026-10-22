@@ -7,11 +7,14 @@ export async function ProjectFields({
   locale,
   customers,
   currency,
+  country,
   values = {},
 }: {
   locale: string;
   customers: { id: string; name: string }[];
   currency: string;
+  /** Pays de l'entreprise : sales tax aux États-Unis, USt en Allemagne dans le libellé du tarif. */
+  country?: string;
   values?: { contactId?: string; name?: string; hourlyRate?: string; budgetHours?: string };
 }) {
   const t = await getTranslations({ locale, namespace: "app.time" });
@@ -33,7 +36,9 @@ export async function ProjectFields({
       </label>
       <label className="block">
         <span className="mb-1 block text-[13px] font-semibold">
-          {t("hourlyRate", { currency })}
+          {t(country === "US" ? "hourlyRateUs" : country === "DE" ? "hourlyRateDe" : "hourlyRate", {
+            currency,
+          })}
         </span>
         <input
           name="hourlyRate"

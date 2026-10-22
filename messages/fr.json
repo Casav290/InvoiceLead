@@ -1070,7 +1070,11 @@
         "vatLineUs": "Sales tax {rate} sur {base}",
         "netUs": "Sous-total",
         "fxLine": "Cours de change : 1 {currency} = {rate} {home}, soit {home} {total}",
-        "fxVatLine": "dont TVA {home} {vat}"
+        "fxVatLine": "dont TVA {home} {vat}",
+        "vatDe": "TVA",
+        "netDe": "Total hors TVA",
+        "vatLineDe": "TVA {rate} sur {base}",
+        "giroCode": "GiroCode : scannez-le avec votre application bancaire pour payer par virement SEPA."
       },
       "docTitle": "Facture",
       "docDue": "Payable jusqu'au",
@@ -1292,7 +1296,9 @@
         "vat": "TVA",
         "review": "À vérifier",
         "bills": "Fournisseurs",
-        "cashflow": "Trésorerie"
+        "cashflow": "Trésorerie",
+        "vatDE": "TVA",
+        "vatUS": "Sales tax"
       },
       "welcomeFiduciary": "Bienvenue. Vous travaillez maintenant dans la comptabilité de votre client ; changez d'entreprise depuis l'en-tête.",
       "unavailableTitle": "Comptabilité bientôt disponible pour ce pays",
@@ -1359,7 +1365,14 @@
       },
       "autoPosted": "{count, plural, one {# mouvement comptabilisé} other {# mouvements comptabilisés}} par le pilote automatique.",
       "autoReview": "Les revoir",
-      "paysBill": "Paiement d’une facture fournisseur"
+      "paysBill": "Paiement d’une facture fournisseur",
+      "vatDe": {
+        "normal": "TVA 19 %",
+        "reduced": "TVA 7 %",
+        "lodging": "TVA 7 %",
+        "exempt": "Exonéré",
+        "export": "Exportation"
+      }
     },
     "receipts": {
       "title": "Justificatifs",
@@ -1544,7 +1557,15 @@
       "planOnlyUs": "Le relevé de sales tax, calculé et validé dans InvoiceLead, fait partie de la formule Pro. En formule gratuite, vous voyez sa structure et ses contrôles ; les montants s'affichent avec Pro.",
       "figuresPlan": "Fonction Pro. Les montants du décompte s'affichent avec Pro.",
       "figuresPlanUs": "Fonction Pro. Les montants du relevé s'affichent avec Pro.",
-      "amountHidden": "Montant affiché avec Pro"
+      "amountHidden": "Montant affiché avec Pro",
+      "titleDe": "TVA (UStVA)",
+      "titleFr": "TVA (CA3)",
+      "subtitleDe": "Déclaration préalable de TVA allemande (UStVA) préparée à partir du journal. Vérifiez, faites relire par l'assistant si vous le souhaitez, puis validez : les cases se reportent telles quelles dans ELSTER.",
+      "subtitleFr": "Déclaration CA3 préparée à partir du journal. Vérifiez, faites relire par l'assistant si vous le souhaitez, puis validez : les cases se reportent telles quelles sur impots.gouv.fr.",
+      "subtitleUs": "Relevé de sales tax préparé à partir du journal, au taux combiné indiqué dans les données de l'entreprise. Vérifiez, faites relire par l'assistant si vous le souhaitez, puis validez : les chiffres se reportent tels quels sur la déclaration de votre État.",
+      "payByDe": "À payer au Finanzamt d'ici le {date}.",
+      "payByFr": "À payer au service des impôts des entreprises d'ici le {date}.",
+      "payByUs": "À payer à l'administration fiscale de l'État d'ici le {date}."
     },
     "reminders": {
       "title": "Relances",
@@ -1615,7 +1636,9 @@
       "week": "Semaine du {date}",
       "later": "Plus tard",
       "forecastEmpty": "Aucune facture ouverte.",
-      "levelPlan": "Fonction Pro. En formule gratuite, vous envoyez vous-même la première relance ; les suivantes font partie de Pro."
+      "levelPlan": "Fonction Pro. En formule gratuite, vous envoyez vous-même la première relance ; les suivantes font partie de Pro.",
+      "subtitleEpc": "Factures échues dont la relance suivante est due (10, 25 puis 40 jours après l'échéance). L'e-mail part dans la langue de la facture, avec le PDF et son GiroCode.",
+      "subtitleNone": "Factures échues dont la relance suivante est due (10, 25 puis 40 jours après l'échéance). L'e-mail part dans la langue de la facture, avec le PDF."
     },
     "recurring": {
       "title": "Factures récurrentes",
@@ -2116,7 +2139,11 @@
         "text": "ProjectLead gère les projets, le planning et le temps de toute l'équipe. Chaque mois, il crée ici les brouillons de factures, que vous relisez et émettez. Pour un suivi simple, saisissez le temps ici.",
         "open": "Ouvrir ProjectLead",
         "connect": "Relier ProjectLead à InvoiceLead"
-      }
+      },
+      "invoiceHintUs": "{hours} h facturables pas encore facturées, {amount} hors taxes.",
+      "invoiceHintDe": "{hours} h facturables pas encore facturées, {amount} hors TVA.",
+      "hourlyRateUs": "Tarif horaire hors taxes ({currency})",
+      "hourlyRateDe": "Tarif horaire hors TVA ({currency})"
     },
     "capture": {
       "title": "Photographier un justificatif",

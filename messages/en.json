@@ -1070,7 +1070,11 @@
         "vatLineUs": "Sales tax {rate} on {base}",
         "netUs": "Subtotal",
         "fxLine": "Exchange rate: 1 {currency} = {rate} {home}, equal to {home} {total}",
-        "fxVatLine": "of which VAT {home} {vat}"
+        "fxVatLine": "of which VAT {home} {vat}",
+        "vatDe": "VAT",
+        "netDe": "Total excl. VAT",
+        "vatLineDe": "VAT {rate} on {base}",
+        "giroCode": "GiroCode: scan it with your banking app to pay by SEPA transfer."
       },
       "docTitle": "Invoice",
       "docDue": "Payable by",
@@ -1292,7 +1296,9 @@
         "vat": "VAT",
         "review": "To review",
         "bills": "Suppliers",
-        "cashflow": "Cash flow"
+        "cashflow": "Cash flow",
+        "vatDE": "VAT",
+        "vatUS": "Sales tax"
       },
       "welcomeFiduciary": "Welcome. You are now working in your client's accounts; switch company from the header.",
       "unavailableTitle": "Accounting coming soon for this country",
@@ -1359,7 +1365,14 @@
       },
       "autoPosted": "{count, plural, one {# transaction} other {# transactions}} posted by the autopilot.",
       "autoReview": "Review them",
-      "paysBill": "Supplier invoice payment"
+      "paysBill": "Supplier invoice payment",
+      "vatDe": {
+        "normal": "VAT 19 %",
+        "reduced": "VAT 7 %",
+        "lodging": "VAT 7 %",
+        "exempt": "Tax-exempt",
+        "export": "Export"
+      }
     },
     "receipts": {
       "title": "Receipts",
@@ -1544,7 +1557,15 @@
       "planOnlyUs": "The sales tax report, calculated and validated in InvoiceLead, is part of the Pro plan. On the Free plan you see its structure and checks; the amounts appear with Pro.",
       "figuresPlan": "Pro feature. The amounts of the return appear with Pro.",
       "figuresPlanUs": "Pro feature. The amounts of the report appear with Pro.",
-      "amountHidden": "Amount shown with Pro"
+      "amountHidden": "Amount shown with Pro",
+      "titleDe": "VAT return (UStVA)",
+      "titleFr": "VAT return (CA3)",
+      "subtitleDe": "Advance VAT return (Umsatzsteuer-Voranmeldung) prepared from the journal. Check it, have the assistant review it if you wish, then validate: the figures carry over unchanged to ELSTER.",
+      "subtitleFr": "CA3 return prepared from the journal. Check it, have the assistant review it if you wish, then validate: the boxes carry over unchanged to impots.gouv.fr.",
+      "subtitleUs": "Sales tax report prepared from the journal, at the combined rate set in the company details. Check it, have the assistant review it if you wish, then validate: the figures carry over unchanged to your state's return.",
+      "payByDe": "Payable to the tax office (Finanzamt) by {date}.",
+      "payByFr": "Payable to the tax office (SIE) by {date}.",
+      "payByUs": "Payable to your state tax agency by {date}."
     },
     "reminders": {
       "title": "Payment reminders",
@@ -1615,7 +1636,9 @@
       "week": "Week of {date}",
       "later": "Later",
       "forecastEmpty": "No open invoices.",
-      "levelPlan": "Pro feature. On the Free plan, you send the first reminder yourself; later reminders are part of Pro."
+      "levelPlan": "Pro feature. On the Free plan, you send the first reminder yourself; later reminders are part of Pro.",
+      "subtitleEpc": "Overdue invoices whose next reminder is due (10, 25 and then 40 days after the due date). The email is sent in the invoice language, with the PDF and its GiroCode.",
+      "subtitleNone": "Overdue invoices whose next reminder is due (10, 25 and then 40 days after the due date). The email is sent in the invoice language, with the PDF."
     },
     "recurring": {
       "title": "Recurring invoices",
@@ -2116,7 +2139,11 @@
         "text": "ProjectLead manages projects, planning and the whole team's time. Each month it creates the invoice drafts here, for you to review and issue. For simple tracking, log your time right here.",
         "open": "Open ProjectLead",
         "connect": "Connect ProjectLead to InvoiceLead"
-      }
+      },
+      "invoiceHintUs": "{hours} billable hours not yet invoiced, {amount} before tax.",
+      "invoiceHintDe": "{hours} billable hours not yet invoiced, {amount} excl. VAT.",
+      "hourlyRateUs": "Hourly rate before tax ({currency})",
+      "hourlyRateDe": "Hourly rate excl. VAT ({currency})"
     },
     "capture": {
       "title": "Photograph a receipt",

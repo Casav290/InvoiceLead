@@ -12,8 +12,10 @@ import { AccountingTabs, type TabMarks } from "./AccountingTabs";
 export async function AccountingNav() {
   const session = await getSession();
   const marks: TabMarks = {};
+  let country = "CH";
   if (session) {
     const org = session.organization;
+    country = org.country;
     const usage = await currentPlanUsage(org.id);
     const vat = markOf(featureAccess(org, "vatReturn"));
     if (vat) marks.vat = vat;
@@ -22,5 +24,5 @@ export async function AccountingNav() {
     const receipts = markOf(usage?.aiReads);
     if (receipts) marks.receipts = receipts;
   }
-  return <AccountingTabs marks={marks} />;
+  return <AccountingTabs marks={marks} country={country} />;
 }

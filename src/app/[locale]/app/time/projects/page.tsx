@@ -140,6 +140,7 @@ export default async function ProjectsPage({ params, searchParams }: Props) {
           >
             <input type="hidden" name="locale" value={locale} />
             <ProjectFields
+              country={organization.country}
               locale={locale}
               currency={organization.currency}
               customers={customers.map((c) => ({ id: c.id, name: c.name }))}

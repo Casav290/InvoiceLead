@@ -1070,7 +1070,11 @@
         "vatLineUs": "Sales Tax {rate} auf {base}",
         "netUs": "Zwischensumme",
         "fxLine": "Umrechnungskurs: 1 {currency} = {rate} {home}, entspricht {home} {total}",
-        "fxVatLine": "davon MWST {home} {vat}"
+        "fxVatLine": "davon MWST {home} {vat}",
+        "vatDe": "USt",
+        "netDe": "Summe netto",
+        "vatLineDe": "USt {rate} auf {base}",
+        "giroCode": "GiroCode: mit der Banking-App scannen und per SEPA-Überweisung bezahlen."
       },
       "docTitle": "Rechnung",
       "docDue": "Zahlbar bis",
@@ -1292,7 +1296,9 @@
         "vat": "MWST",
         "review": "Zu prüfen",
         "bills": "Kreditoren",
-        "cashflow": "Liquidität"
+        "cashflow": "Liquidität",
+        "vatDE": "USt",
+        "vatUS": "Sales Tax"
       },
       "welcomeFiduciary": "Willkommen. Sie arbeiten jetzt in der Buchhaltung Ihres Kunden; das Unternehmen wechseln Sie in der Kopfzeile.",
       "unavailableTitle": "Buchhaltung für dieses Land folgt bald",
@@ -1359,7 +1365,14 @@
       },
       "autoPosted": "{count, plural, one {# Bewegung} other {# Bewegungen}} vom Autopiloten verbucht.",
       "autoReview": "Prüfen",
-      "paysBill": "Zahlung einer Lieferantenrechnung"
+      "paysBill": "Zahlung einer Lieferantenrechnung",
+      "vatDe": {
+        "normal": "USt 19 %",
+        "reduced": "USt 7 %",
+        "lodging": "USt 7 %",
+        "exempt": "Steuerfrei",
+        "export": "Export"
+      }
     },
     "receipts": {
       "title": "Belege",
@@ -1498,8 +1511,8 @@
       "tax": "Steuer",
       "planOnly": "Die MWST-Abrechnung, in InvoiceLead berechnet und bestätigt, ist Teil des Pro-Abos. Im Gratis-Abo sehen Sie Aufbau und Kontrollen; die Beträge erscheinen mit Pro.",
       "figuresDe": {
-        "81": "Kz 81 · Steuerpflichtige Umsätze zu 19 %",
-        "86": "Kz 86 · Steuerpflichtige Umsätze zu 7 %",
+        "81": "Kz 81 · Steuerpflichtige Umsätze zu 19 %",
+        "86": "Kz 86 · Steuerpflichtige Umsätze zu 7 %",
         "35": "Kz 35/36 · Umsätze zu anderen Steuersätzen",
         "21": "Kz 21 · Nicht steuerbare sonstige Leistungen (EU)",
         "48": "Kz 48 · Steuerfreie Umsätze ohne Vorsteuerabzug",
@@ -1544,7 +1557,15 @@
       "planOnlyUs": "Die Sales-Tax-Übersicht, in InvoiceLead berechnet und bestätigt, ist Teil des Pro-Abos. Im Gratis-Abo sehen Sie Aufbau und Kontrollen; die Beträge erscheinen mit Pro.",
       "figuresPlan": "Pro-Funktion. Die Beträge der Abrechnung erscheinen mit Pro.",
       "figuresPlanUs": "Pro-Funktion. Die Beträge der Übersicht erscheinen mit Pro.",
-      "amountHidden": "Betrag mit Pro sichtbar"
+      "amountHidden": "Betrag mit Pro sichtbar",
+      "titleDe": "Umsatzsteuer-Voranmeldung",
+      "titleFr": "Umsatzsteuer (CA3)",
+      "subtitleDe": "Umsatzsteuer-Voranmeldung aus dem Journal. Prüfen Sie, lassen Sie sie bei Bedarf vom Assistenten gegenlesen und bestätigen Sie: Die Kennzahlen übertragen Sie unverändert in ELSTER.",
+      "subtitleFr": "CA3-Erklärung aus dem Journal. Prüfen Sie, lassen Sie sie bei Bedarf vom Assistenten gegenlesen und bestätigen Sie: Die Felder übertragen Sie unverändert auf impots.gouv.fr.",
+      "subtitleUs": "Sales-Tax-Übersicht aus dem Journal, zum kombinierten Satz aus den Unternehmensdaten. Prüfen Sie, lassen Sie sie bei Bedarf vom Assistenten gegenlesen und bestätigen Sie: Die Zahlen übertragen Sie unverändert in die Erklärung Ihres Bundesstaats.",
+      "payByDe": "An das Finanzamt zu zahlen bis {date}.",
+      "payByFr": "An das Finanzamt (SIE) zu zahlen bis {date}.",
+      "payByUs": "An die Steuerbehörde des Bundesstaats zu zahlen bis {date}."
     },
     "reminders": {
       "title": "Mahnungen",
@@ -1615,7 +1636,9 @@
       "week": "Woche vom {date}",
       "later": "Später",
       "forecastEmpty": "Keine offenen Rechnungen.",
-      "levelPlan": "Pro-Funktion. Im Gratis-Abo verschicken Sie die erste Mahnung selbst; die weiteren sind Teil von Pro."
+      "levelPlan": "Pro-Funktion. Im Gratis-Abo verschicken Sie die erste Mahnung selbst; die weiteren sind Teil von Pro.",
+      "subtitleEpc": "Überfällige Rechnungen, deren nächste Mahnstufe fällig ist (10, 25 und 40 Tage nach Fälligkeit). Die E-Mail geht in der Sprache der Rechnung, mit dem PDF und seinem GiroCode.",
+      "subtitleNone": "Überfällige Rechnungen, deren nächste Mahnstufe fällig ist (10, 25 und 40 Tage nach Fälligkeit). Die E-Mail geht in der Sprache der Rechnung, mit dem PDF."
     },
     "recurring": {
       "title": "Wiederkehrende Rechnungen",
@@ -2116,7 +2139,11 @@
         "text": "ProjectLead verwaltet Projekte, Planung und die Zeit des ganzen Teams. Jeden Monat erstellt es hier die Rechnungsentwürfe, die Sie prüfen und ausstellen. Für eine einfache Erfassung genügt die Zeiterfassung hier.",
         "open": "ProjectLead öffnen",
         "connect": "ProjectLead mit InvoiceLead verbinden"
-      }
+      },
+      "invoiceHintUs": "{hours} h verrechenbar und noch nicht verrechnet, {amount} vor Steuern.",
+      "invoiceHintDe": "{hours} h verrechenbar und noch nicht verrechnet, {amount} netto.",
+      "hourlyRateUs": "Stundensatz vor Steuern ({currency})",
+      "hourlyRateDe": "Stundensatz netto ({currency})"
     },
     "capture": {
       "title": "Beleg fotografieren",

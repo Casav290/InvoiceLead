@@ -75,7 +75,9 @@ export default async function CapturePage({ params, searchParams }: Props) {
                   {last.extraction.supplier ?? last.filename} ·{" "}
                   {last.extraction.currency ?? organization.currency}{" "}
                   {formatAmount(last.extraction.totalCents, style)}
-                  {last.extraction.date ? ` · ${formatDate(last.extraction.date)}` : ""}
+                  {last.extraction.date
+                    ? ` · ${formatDate(last.extraction.date, countryPack(organization.country).dates)}`
+                    : ""}
                 </span>
               </>
             ) : (

@@ -1,5 +1,6 @@
 import { eq } from "drizzle-orm";
 import { getTranslations } from "next-intl/server";
+import QRCode from "qrcode";
 import { countryPack } from "@/countries";
 import { formatRate } from "@/countries/ch/vat";
 import { addressLines } from "@/lib/address";
@@ -15,6 +16,7 @@ import {
   organizations,
   type PartySnapshot,
 } from "@/server/db/schema";
+import { epcQrPayload } from "@/server/invoice-pdf";
 
 function Address({
   party,
@@ -68,6 +70,13 @@ export async function InvoiceDocument({
   const dateStyle = countryPack(sender?.country).dates;
   // États-Unis : sales tax, pas de TVA, dans les libellés.
   const us = sender?.country === "US";
+  // Allemagne : Umsatzsteuer (USt), pas la MWST suisse.
+  const de = sender?.country === "DE";
+  // GiroCode (Allemagne, France) : le même que sur le PDF, à scanner depuis l'écran.
+  const epc = epcQrPayload(invoice);
+  const epcSvg = epc
+    ? await QRCode.toString(epc, { type: "svg", margin: 0, errorCorrectionLevel: "M" })
+    : null;
   const recipient = invoice.recipient;
   const totals = computeTotals(lines);
   const [org] = await db()
@@ -141,7 +150,7 @@ export async function InvoiceDocument({
               <th className="hidden py-2 pr-3 text-right sm:table-cell">{t("unitPrice")}</th>
               {invoice.vatRegistered ? (
                 <th className="hidden py-2 pr-3 text-right sm:table-cell">
-                  {t(us ? "vatUs" : "vat")}
+                  {t(us ? "vatUs" : de ? "vatDe" : "vat")}
                 </th>
               ) : null}
               <th className="py-2 text-right">{t("amount")}</th>
@@ -174,7 +183,7 @@ export async function InvoiceDocument({
         {invoice.vatRegistered ? (
           <>
             <div className="flex justify-between gap-4">
-              <dt>{t(us ? "netUs" : "net")}</dt>
+              <dt>{t(us ? "netUs" : de ? "netDe" : "net")}</dt>
               <dd className="tabular-nums">{formatAmount(invoice.netCents, style)}</dd>
             </div>
             {totals.vat
@@ -182,7 +191,7 @@ export async function InvoiceDocument({
               .map((v) => (
                 <div key={v.rateBp} className="flex justify-between gap-4 text-ink-2">
                   <dt>
-                    {t(us ? "vatLineUs" : "vatLine", {
+                    {t(us ? "vatLineUs" : de ? "vatLineDe" : "vatLine", {
                       rate: formatRate(v.rateBp, lang),
                       base: formatAmount(v.netCents, style),
                     })}
@@ -222,6 +231,18 @@ export async function InvoiceDocument({
         <p className="mt-8 text-[12px] text-ink-muted">
           {t("payTo", { iban: sender.qrIban ?? sender.iban ?? "" })}
         </p>
+      ) : null}
+      {epcSvg ? (
+        <div className="mt-4 flex items-center gap-4" data-testid="invoice-girocode">
+          <div
+            className="size-24 shrink-0 bg-white p-1.5 [&_svg]:size-full"
+            role="img"
+            aria-label="GiroCode"
+            // biome-ignore lint/security/noDangerouslySetInnerHtml: SVG produit ici par qrcode
+            dangerouslySetInnerHTML={{ __html: epcSvg }}
+          />
+          <p className="text-[12px] text-ink-muted">{t("giroCode")}</p>
+        </div>
       ) : null}
     </article>
   );

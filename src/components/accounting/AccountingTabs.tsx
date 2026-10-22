@@ -19,7 +19,7 @@ const ITEMS = [
 export type TabMarks = Partial<Record<(typeof ITEMS)[number]["key"], "pro" | "proplus">>;
 
 /** Onglets de la comptabilité ; un onglet marqué reste un lien, grisé, avec sa marque. */
-export function AccountingTabs({ marks }: { marks: TabMarks }) {
+export function AccountingTabs({ marks, country }: { marks: TabMarks; country?: string }) {
   const t = useTranslations("app.accountingHome.tabs");
   const pathname = usePathname();
   return (
@@ -45,7 +45,11 @@ export function AccountingTabs({ marks }: { marks: TabMarks }) {
                   : "border-b-transparent text-ink-2 hover:text-ink",
             )}
           >
-            {t(item.key)}
+            {t(
+              item.key === "vat" && (country === "DE" || country === "US")
+                ? `vat${country}`
+                : item.key,
+            )}
             {mark ? <ProBadge tier={mark} /> : null}
           </Link>
         );

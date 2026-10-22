@@ -68,6 +68,8 @@ export default async function VatPage({ params, searchParams }: Props) {
   // TDFN : décompte semestriel ; méthode effective : trimestriel.
   const germany = organization.country === "DE";
   const style = countryPack(organization.country).amounts;
+  const dates = countryPack(organization.country).dates;
+  const currency = countryPack(organization.country).currency;
   const france = organization.country === "FR";
   const uk = organization.country === "GB";
   const usa = organization.country === "US";
@@ -166,6 +168,9 @@ export default async function VatPage({ params, searchParams }: Props) {
         </Button>
       </form>
     ) : null;
+  // Allemagne, France : le libellé porte déjà sa case (« Kz 81 · », « A1 · ») ; sur téléphone la
+  // colonne du chiffre disparaît, pour que les libellés gardent leurs mots entiers.
+  const codeInLabel = germany || france;
   const shown = form.order.filter(
     (code) => code in figures && (figures[code] !== 0 || form.always.includes(code)),
   );
@@ -173,8 +178,12 @@ export default async function VatPage({ params, searchParams }: Props) {
   return (
     <div className="mx-auto max-w-5xl px-4 py-10 sm:px-8">
       <AccountingNav />
-      <h1 className="text-[28px] leading-tight">{t(usa ? "titleUs" : "title")}</h1>
-      <p className="mt-2 text-[15px] text-ink-muted">{t("subtitle")}</p>
+      <h1 className="text-[28px] leading-tight">
+        {t(usa ? "titleUs" : germany ? "titleDe" : france ? "titleFr" : "title")}
+      </h1>
+      <p className="mt-2 text-[15px] text-ink-muted">
+        {t(usa ? "subtitleUs" : germany ? "subtitleDe" : france ? "subtitleFr" : "subtitle")}
+      </p>
 
       {q.validated ? (
         <p
@@ -225,12 +234,15 @@ export default async function VatPage({ params, searchParams }: Props) {
         <>
           <div className="mt-6 flex flex-wrap items-baseline justify-between gap-2">
             <h2 className="text-[20px]">
-              {t("period", { start: formatDate(selected.start), end: formatDate(selected.end) })}
+              {t("period", {
+                start: formatDate(selected.start, dates),
+                end: formatDate(selected.end, dates),
+              })}
             </h2>
             <span className="text-[13px] text-ink-muted" data-testid="vat-status">
               {validated
                 ? t("validatedOn", {
-                    date: formatDate(validated.validatedAt.toISOString().slice(0, 10)),
+                    date: formatDate(validated.validatedAt.toISOString().slice(0, 10), dates),
                   })
                 : t("draft")}
             </span>
@@ -257,9 +269,11 @@ export default async function VatPage({ params, searchParams }: Props) {
             <table className="w-full text-left text-[13px]">
               <thead>
                 <tr className="border-b border-line-strong bg-head text-[10.5px] font-extrabold tracking-[0.09em] text-ink-muted uppercase">
-                  <th className="w-16 px-3 py-2">{t("figure")}</th>
+                  <th className={`w-16 px-3 py-2 ${codeInLabel ? "hidden sm:table-cell" : ""}`}>
+                    {t("figure")}
+                  </th>
                   <th className="px-3 py-2">{t("label")}</th>
-                  <th className="px-3 py-2 text-right">{t("amount")}</th>
+                  <th className="px-3 py-2 text-right">{currency}</th>
                   <th className="px-3 py-2 text-right">{t("tax")}</th>
                 </tr>
               </thead>
@@ -270,7 +284,11 @@ export default async function VatPage({ params, searchParams }: Props) {
                     className={`border-b border-line-soft last:border-b-0 ${form.bold.includes(code) ? "font-extrabold" : ""}`}
                     data-testid={`figure-${code}`}
                   >
-                    <td className="px-3 py-2 tabular-nums">{code}</td>
+                    <td
+                      className={`px-3 py-2 tabular-nums ${codeInLabel ? "hidden sm:table-cell" : ""}`}
+                    >
+                      {code}
+                    </td>
                     <td className="px-3 py-2 [overflow-wrap:anywhere]">
                       {t(`${form.labels}.${code}`)}
                     </td>
@@ -314,7 +332,9 @@ export default async function VatPage({ params, searchParams }: Props) {
           ) : null}
           {!masked && (figures["500"] ?? 0) > 0 ? (
             <p className="mt-3 text-[13px] text-ink-2">
-              {t("payBy", { date: formatDate(form.due(selected.end)) })}
+              {t(usa ? "payByUs" : germany ? "payByDe" : france ? "payByFr" : "payBy", {
+                date: formatDate(form.due(selected.end), dates),
+              })}
             </p>
           ) : null}
 

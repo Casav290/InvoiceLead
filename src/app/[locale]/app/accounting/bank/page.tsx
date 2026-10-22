@@ -62,6 +62,9 @@ export default async function BankPage({ params, searchParams }: Props) {
   const { locale } = await params;
   const { organization } = await requireAppSession(locale);
   const style = countryPack(organization.country).amounts;
+  const dates = countryPack(organization.country).dates;
+  // Allemagne : USt et ses taux, pas les libellés suisses (MWST).
+  const vatKey = organization.country === "DE" ? "vatDe" : "vat";
   const q = await searchParams;
   const t = await getTranslations({ locale, namespace: "app.bank" });
   const tp = await getTranslations({ locale, namespace: "app.plan" });
@@ -225,13 +228,13 @@ export default async function BankPage({ params, searchParams }: Props) {
                 ? t("paysInvoice", { invoice: invoiceName.get(p.invoiceId) ?? "" })
                 : p.kind === "bill"
                   ? t("paysBill")
-                  : `${accountLabel.get(p.accountId) ?? ""}${p.vatCode ? ` · ${t(`vat.${p.vatCode}`)}` : ""}`;
+                  : `${accountLabel.get(p.accountId) ?? ""}${p.vatCode ? ` · ${t(`${vatKey}.${p.vatCode}`)}` : ""}`;
             const sure = (p?.confidence ?? 0) >= CONFIDENT;
             return (
               <li key={r.id} className="border border-line-strong bg-panel" data-testid="bank-row">
                 <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 border-b border-line px-4 py-3">
                   <span className="text-[13px] tabular-nums text-ink-2">
-                    {formatDate(r.bookingDate)}
+                    {formatDate(r.bookingDate, dates)}
                   </span>
                   <span className="min-w-0 flex-1 font-semibold [overflow-wrap:anywhere]">
                     {r.counterparty ?? t("unknownParty")}
@@ -320,7 +323,7 @@ export default async function BankPage({ params, searchParams }: Props) {
                         <option value="">{t("noVat")}</option>
                         {VAT_CODES.map((c) => (
                           <option key={c} value={c}>
-                            {t(`vat.${c}`)}
+                            {t(`${vatKey}.${c}`)}
                           </option>
                         ))}
                       </select>
@@ -354,7 +357,7 @@ export default async function BankPage({ params, searchParams }: Props) {
                 </span>
                 <span className="[overflow-wrap:anywhere]">
                   {number} {accountName({ nameDe, nameFr, nameEn }, locale)}
-                  {rule.vatCode ? ` · ${t(`vat.${rule.vatCode}`)}` : ""}
+                  {rule.vatCode ? ` · ${t(`${vatKey}.${rule.vatCode}`)}` : ""}
                 </span>
                 <span className="text-ink-muted">{t("rules.hits", { count: rule.hits })}</span>
                 <form action={deleteRuleAction}>
@@ -379,7 +382,7 @@ export default async function BankPage({ params, searchParams }: Props) {
                 {done.slice(0, 100).map((r) => (
                   <tr key={r.id} className="border-b border-line-soft last:border-b-0">
                     <td className="px-3 py-2 whitespace-nowrap tabular-nums">
-                      {formatDate(r.bookingDate)}
+                      {formatDate(r.bookingDate, dates)}
                     </td>
                     <td className="px-3 py-2 [overflow-wrap:anywhere]">{r.counterparty ?? ""}</td>
                     <td className="px-3 py-2 text-right tabular-nums">
