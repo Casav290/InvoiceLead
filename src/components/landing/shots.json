@@ -51,7 +51,7 @@
   },
   "de/invoice-pdf": {
     "w": 1280,
-    "h": 1810,
+    "h": 1849,
     "widths": [800, 1280]
   },
   "fr/dashboard-desktop": {
@@ -106,7 +106,7 @@
   },
   "fr/invoice-pdf": {
     "w": 1280,
-    "h": 1810,
+    "h": 1885,
     "widths": [800, 1280]
   },
   "en/dashboard-desktop": {
@@ -134,11 +134,6 @@
     "h": 1200,
     "widths": [800, 1280, 1920]
   },
-  "en/bank-desktop": {
-    "w": 1920,
-    "h": 1200,
-    "widths": [800, 1280, 1920]
-  },
   "en/vat-desktop": {
     "w": 1920,
     "h": 1200,
@@ -161,7 +156,7 @@
   },
   "en/invoice-pdf": {
     "w": 1280,
-    "h": 1810,
+    "h": 1591,
     "widths": [800, 1280]
   }
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { type CSSProperties, useEffect, useRef, useState } from "react";
-import { formatAmount, vatOf } from "@/lib/money";
+import { type AmountStyle, formatAmount, vatOf } from "@/lib/money";
 
 export type HeroInvoiceCopy = {
   kind: string;
@@ -11,28 +11,86 @@ export type HeroInvoiceCopy = {
   clientAddress: string;
   item: string;
   qty: string;
+  /** Devise écrite en tête de la colonne des montants. */
+  currency: string;
   rows: { label: string; unit: string }[];
   subtotal: string;
   vat: string;
   total: string;
-  receipt: string;
+  /** Titre du bloc de paiement : virement SEPA (GiroCode) ou paiement en ligne (États-Unis). */
   payment: string;
+  scan: string;
+  beneficiary: string;
   account: string;
   reference: string;
+  referenceValue: string;
   amount: string;
+  /** États-Unis : échéance écrite sous le montant. */
+  due?: string;
+  dueValue?: string;
   draft: string;
   sent: string;
   paid: string;
   bank: string;
 };
 
-/** Montants de l'exemple, en centimes : escalier, pose, main courante, déplacements. */
-const AMOUNTS = [840_000, 152_000, 64_000, 9_000];
-const SELLER = "Holzwerk Brunner GmbH";
-const SELLER_ADDRESS = "Rue du Faucon 14, 2502 Biel/Bienne";
-/** IBAN d'exemple des documents SIX : jamais un vrai compte. */
-const IBAN = "CH44 3199 9123 0008 8901 2";
-const REFERENCE = "21 00000 00003 13947 14300 09017";
+type Sample = {
+  seller: string;
+  sellerAddress: string;
+  /** Initiales du logo. */
+  mark: string;
+  /** Montants des lignes, en centimes. */
+  amounts: number[];
+  /** Taux de la taxe, en points de base. */
+  rateBp: number;
+  style: AmountStyle;
+  money: (amount: string) => string;
+  /** GiroCode (virement SEPA, EPC) en Allemagne et en France ; paiement en ligne et ACH aux États-Unis. */
+  slip: "epc" | "online";
+  iban: string | null;
+};
+
+/**
+ * Facture d'exemple de chaque langue, sur l'entreprise fictive de la démo du même pays :
+ * en → Live Oak Woodworks LLC (Austin, sales tax 8,25 %), de → Albrecht Haustechnik GmbH
+ * (Freiburg, USt 19 %), fr → Studio Confluence SARL (Lyon, TVA 20 %). Les IBAN sont ceux de la
+ * démo, jamais un vrai compte.
+ */
+const SAMPLES: Record<string, Sample> = {
+  en: {
+    seller: "Live Oak Woodworks LLC",
+    sellerAddress: "2209 Pecan Mill Rd, Austin, TX 78744",
+    mark: "LO",
+    amounts: [780_000, 325_000, 238_000, 45_000],
+    rateBp: 825,
+    style: "en",
+    money: (a) => `$${a}`,
+    slip: "online",
+    iban: null,
+  },
+  de: {
+    seller: "Albrecht Haustechnik GmbH",
+    sellerAddress: "Hermann-Mitsch-Straße 26, 79108 Freiburg im Breisgau",
+    mark: "AH",
+    amounts: [1_485_000, 194_000, 109_200, 235_600],
+    rateBp: 1900,
+    style: "de",
+    money: (a) => `${a} €`,
+    slip: "epc",
+    iban: "DE65 6805 0101 0012 4738 51",
+  },
+  fr: {
+    seller: "Studio Confluence SARL",
+    sellerAddress: "14 rue Casimir Périer, 69002 Lyon",
+    mark: "SC",
+    amounts: [320_000, 140_000, 522_000, 68_000],
+    rateBp: 2000,
+    style: "fr",
+    money: (a) => `${a}\u00a0€`,
+    slip: "epc",
+    iban: "FR76 1009 6185 2300 0417 2651 840",
+  },
+};
 
 /** Un tour complet : la facture se remplit, part, est payée, reste affichée, puis recommence. */
 const CYCLE_MS = 16_000;
@@ -49,15 +107,23 @@ const T = {
   paid: 7.8,
 };
 
+/** Montant avec sa devise, écrit comme dans le pays de l'exemple : $15,025.10, 24.083,22 €. */
+function money(locale: string, cents: number): string {
+  const sample = SAMPLES[locale] ?? (SAMPLES.en as Sample);
+  return sample.money(formatAmount(cents, sample.style));
+}
+
 const at = (s: number) => ({ "--d": `${s}s` }) as CSSProperties;
 
 /**
- * Facture QR d'exemple qui se construit sous les yeux : lignes, totaux, section paiement, puis
- * Brouillon, Envoyée, Payée et le paiement rapproché. Les animations sont en CSS (landing.css) et
+ * Facture d'exemple qui se construit sous les yeux : lignes, totaux, bloc de paiement (GiroCode en
+ * Europe, paiement en ligne aux États-Unis), puis Brouillon, Envoyée, Payée et le paiement reçu. Les animations sont en CSS (landing.css) et
  * partent sans attendre JavaScript ; le composant ne fait que relancer le tour quand la facture est
  * à l'écran. Au repos (prefers-reduced-motion), la facture payée s'affiche telle quelle.
  */
-export function HeroInvoice({ copy }: { copy: HeroInvoiceCopy }) {
+export function HeroInvoice({ copy, locale }: { copy: HeroInvoiceCopy; locale: string }) {
+  const sample = SAMPLES[locale] ?? (SAMPLES.en as Sample);
+  const fmt = (cents: number) => formatAmount(cents, sample.style);
   const [cycle, setCycle] = useState(0);
   const [leaving, setLeaving] = useState(false);
   const root = useRef<HTMLDivElement>(null);
@@ -85,8 +151,8 @@ export function HeroInvoice({ copy }: { copy: HeroInvoiceCopy }) {
     };
   }, []);
 
-  const subtotal = AMOUNTS.reduce((sum, c) => sum + c, 0);
-  const vat = vatOf(subtotal, 810);
+  const subtotal = sample.amounts.reduce((sum, c) => sum + c, 0);
+  const vat = vatOf(subtotal, sample.rateBp);
   const total = subtotal + vat;
 
   return (
@@ -103,11 +169,13 @@ export function HeroInvoice({ copy }: { copy: HeroInvoiceCopy }) {
         >
           <div className="flex min-w-0 items-center gap-3 px-4 py-3 sm:px-5">
             <span className="flex h-8 w-8 shrink-0 items-center justify-center bg-ink text-[11px] font-extrabold text-white">
-              HB
+              {sample.mark}
             </span>
             <span className="min-w-0">
-              <span className="block truncate font-extrabold text-ink">{SELLER}</span>
-              <span className="block truncate text-[11px] text-ink-muted">{SELLER_ADDRESS}</span>
+              <span className="block truncate font-extrabold text-ink">{sample.seller}</span>
+              <span className="block truncate text-[11px] text-ink-muted">
+                {sample.sellerAddress}
+              </span>
             </span>
           </div>
           <div className="flex flex-col justify-center border-l border-line px-4 py-3 text-right sm:px-5">
@@ -156,7 +224,7 @@ export function HeroInvoice({ copy }: { copy: HeroInvoiceCopy }) {
         <div className="grid grid-cols-[1fr_auto] border-b border-line bg-head px-4 py-2 text-[10.5px] font-extrabold tracking-[0.09em] text-ink-muted uppercase sm:grid-cols-[1fr_auto_auto] sm:px-5">
           <span>{copy.item}</span>
           <span className="hidden w-20 text-right sm:block">{copy.qty}</span>
-          <span className="w-24 text-right">CHF</span>
+          <span className="w-24 text-right">{copy.currency}</span>
         </div>
         {copy.rows.map((row, i) => (
           <div
@@ -166,7 +234,7 @@ export function HeroInvoice({ copy }: { copy: HeroInvoiceCopy }) {
           >
             <span className="min-w-0 text-ink">{row.label}</span>
             <span className="hidden w-20 text-right text-ink-muted sm:block">{row.unit}</span>
-            <span className="w-24 text-right tabular-nums">{formatAmount(AMOUNTS[i] ?? 0)}</span>
+            <span className="w-24 text-right tabular-nums">{fmt(sample.amounts[i] ?? 0)}</span>
           </div>
         ))}
 
@@ -174,11 +242,11 @@ export function HeroInvoice({ copy }: { copy: HeroInvoiceCopy }) {
         <div className="lp-in px-4 pt-3 text-ink-muted sm:px-5" style={at(T.totals)}>
           <div className="flex justify-between">
             <span>{copy.subtotal}</span>
-            <span className="tabular-nums">{formatAmount(subtotal)}</span>
+            <span className="tabular-nums">{fmt(subtotal)}</span>
           </div>
           <div className="flex justify-between pt-1">
             <span>{copy.vat}</span>
-            <span className="tabular-nums">{formatAmount(vat)}</span>
+            <span className="tabular-nums">{fmt(vat)}</span>
           </div>
         </div>
         <div
@@ -188,41 +256,51 @@ export function HeroInvoice({ copy }: { copy: HeroInvoiceCopy }) {
           <span className="font-bold text-ink">{copy.total}</span>
           <CountUp
             cents={total}
+            locale={locale}
             delay={T.total}
             replay={cycle > 0}
             className="text-[20px] font-extrabold tracking-[-0.02em] text-ink tabular-nums sm:text-[24px]"
           />
         </div>
 
-        {/* Section paiement */}
-        <div className="lp-slip" style={at(T.slip)}>
-          <div className="relative border-t border-dashed border-ink-3">
-            <Scissors />
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-[150px_1fr]">
-            <div className="hidden border-r border-dashed border-ink-3 px-4 py-3 text-[11px] sm:block">
-              <p className="font-extrabold text-ink">{copy.receipt}</p>
-              <p className="mt-2 font-bold text-ink-2">{copy.account}</p>
-              <p className="text-ink-muted">{IBAN}</p>
-              <p className="text-ink-muted">{SELLER}</p>
-              <p className="mt-2 font-bold text-ink-2">{copy.amount}</p>
-              <p className="text-ink-muted tabular-nums">CHF {formatAmount(total)}</p>
-            </div>
-            <div className="grid grid-cols-[auto_1fr] gap-4 px-4 py-3 sm:px-5">
-              <div>
-                <p className="mb-2 text-[11px] font-extrabold text-ink">{copy.payment}</p>
-                <div className="lp-qr" style={at(T.qr)}>
-                  <QrMock />
+        {/* Bloc de paiement : GiroCode (virement SEPA) ou paiement en ligne et ACH. */}
+        <div className="lp-slip border-t border-line-strong" style={at(T.slip)}>
+          <div className="grid grid-cols-[auto_1fr] gap-4 px-4 py-3 sm:gap-5 sm:px-5">
+            <div className="lp-qr" style={at(T.qr)}>
+              {sample.slip === "epc" ? (
+                <QrMock />
+              ) : (
+                <div className="flex h-[92px] w-[132px] flex-col justify-between border border-line-strong bg-panel p-2.5 sm:h-[104px] sm:w-[150px]">
+                  <span className="text-[10.5px] font-extrabold tracking-[0.05em] text-ink-muted uppercase">
+                    {copy.payment}
+                  </span>
+                  <span className="bg-accent px-2 py-1.5 text-center text-[12px] font-bold text-white tabular-nums">
+                    {sample.money(fmt(total))}
+                  </span>
                 </div>
-              </div>
-              <div className="min-w-0 space-y-1.5 pt-6 text-[11px]">
-                <p className="font-bold text-ink-2">{copy.account}</p>
-                <p className="text-ink-muted">{IBAN}</p>
-                <p className="font-bold text-ink-2">{copy.reference}</p>
-                <p className="break-words text-ink-muted">{REFERENCE}</p>
-                <p className="font-bold text-ink-2">{copy.amount}</p>
-                <p className="font-bold text-ink tabular-nums">CHF {formatAmount(total)}</p>
-              </div>
+              )}
+            </div>
+            <div className="min-w-0 space-y-1 text-[11px]">
+              <p className="font-extrabold text-ink">
+                {sample.slip === "epc" ? copy.payment : copy.account}
+              </p>
+              {copy.scan ? <p className="text-ink-muted">{copy.scan}</p> : null}
+              <p className="pt-1 font-bold text-ink-2">{copy.beneficiary}</p>
+              <p className="truncate text-ink-muted">{sample.seller}</p>
+              {sample.iban ? (
+                <>
+                  <p className="font-bold text-ink-2">{copy.account}</p>
+                  <p className="break-words text-ink-muted">{sample.iban}</p>
+                </>
+              ) : null}
+              <p className="font-bold text-ink-2">{copy.reference}</p>
+              <p className="text-ink-muted">{copy.referenceValue}</p>
+              {copy.due ? (
+                <>
+                  <p className="font-bold text-ink-2">{copy.due}</p>
+                  <p className="text-ink-muted tabular-nums">{copy.dueValue}</p>
+                </>
+              ) : null}
             </div>
           </div>
         </div>
@@ -239,9 +317,7 @@ export function HeroInvoice({ copy }: { copy: HeroInvoiceCopy }) {
               <span className="h-5 w-[3px] shrink-0 bg-ok" />
               <span className="min-w-0 text-ink-2">{copy.bank}</span>
             </span>
-            <span className="shrink-0 font-bold text-ok-fg tabular-nums">
-              +{formatAmount(total)}
-            </span>
+            <span className="shrink-0 font-bold text-ok-fg tabular-nums">+{fmt(total)}</span>
           </div>
         </div>
       </div>
@@ -278,11 +354,13 @@ function Status({
  */
 function CountUp({
   cents,
+  locale,
   delay,
   replay,
   className,
 }: {
   cents: number;
+  locale: string;
   delay: number;
   replay: boolean;
   className: string;
@@ -291,14 +369,14 @@ function CountUp({
   useEffect(() => {
     const el = ref.current;
     if (!el || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const show = (value: number) => {
+      el.textContent = money(locale, value);
+    };
     const since = replay ? 0 : performance.now();
     const wait = delay * 1000 - since;
     if (wait < 0) return;
     let frame = 0;
     const duration = 900;
-    const show = (value: number) => {
-      el.textContent = `CHF ${formatAmount(value)}`;
-    };
     show(0);
     const timer = window.setTimeout(() => {
       const start = performance.now();
@@ -315,35 +393,15 @@ function CountUp({
       cancelAnimationFrame(frame);
       show(cents);
     };
-  }, [cents, delay, replay]);
+  }, [cents, locale, delay, replay]);
   return (
     <span ref={ref} className={className}>
-      CHF {formatAmount(cents)}
+      {money(locale, cents)}
     </span>
   );
 }
 
-function Scissors() {
-  return (
-    <svg
-      aria-hidden="true"
-      viewBox="0 0 24 24"
-      width="14"
-      height="14"
-      className="absolute -top-[7px] left-3 bg-paper text-ink-3"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="square"
-    >
-      <circle cx="6" cy="6" r="3" />
-      <circle cx="6" cy="18" r="3" />
-      <path d="M20 4 8.12 15.88M14.47 14.48 20 20M8.12 8.12 12 12" />
-    </svg>
-  );
-}
-
-/** Code QR d'illustration (pas une vraie pièce) : repères d'angle, modules stables, croix suisse. */
+/** GiroCode d'illustration (pas un vrai code de virement) : repères d'angle, modules stables. */
 function QrMock() {
   const n = 25;
   const finder = (r: number, c: number): boolean | null => {
@@ -364,11 +422,7 @@ function QrMock() {
   for (let r = 0; r < n; r++)
     for (let c = 0; c < n; c++) {
       const f = finder(r, c);
-      const on =
-        f ??
-        (r >= 10 && r <= 14 && c >= 10 && c <= 14
-          ? false
-          : ((r * 31 + c * 17 + r * c * 7) % 11) % 3 === 0);
+      const on = f ?? ((r * 31 + c * 17 + r * c * 7) % 11) % 3 === 0;
       if (on) d += `M${c} ${r}h1v1h-1z`;
     }
   return (
@@ -379,17 +433,6 @@ function QrMock() {
       shapeRendering="crispEdges"
     >
       <path d={d} className="fill-ink" />
-      <rect
-        x="10.5"
-        y="10.5"
-        width="4"
-        height="4"
-        className="fill-ink"
-        stroke="#fff"
-        strokeWidth="0.6"
-      />
-      <rect x="12.1" y="11.3" width="0.8" height="2.4" fill="#fff" />
-      <rect x="11.3" y="12.1" width="2.4" height="0.8" fill="#fff" />
     </svg>
   );
 }

@@ -1,7 +1,7 @@
 {
   "meta": {
-    "title": "InvoiceLead, devis, factures QR et comptabilité suisse",
-    "description": "Devis, factures QR conformes, relances, tickets lus en photo et comptabilité en partie double pour les indépendants et PME suisses. Gratuit pour démarrer, sans carte bancaire."
+    "title": "InvoiceLead, facturation et comptabilité pour l'Europe et les États-Unis",
+    "description": "Devis, factures conformes à votre pays, relances, tickets lus en photo et comptabilité en partie double pour les indépendants et PME aux États-Unis, au Royaume-Uni, en Allemagne, en France et en Suisse. Gratuit pour démarrer, sans carte bancaire."
   },
   "nav": {
     "features": "Fonctions",
@@ -17,7 +17,7 @@
     "newsText": "Les factures fournisseurs se lisent en photo",
     "title1": "Du devis à l'encaissement.",
     "title2": "Sans ressaisir une ligne.",
-    "lede": "InvoiceLead prépare vos devis, envoie des factures QR conformes, relance les retards et lit vos tickets en photo. Votre comptabilité se remplit au passage, prête pour la fiduciaire.",
+    "lede": "InvoiceLead prépare vos devis, envoie des factures conformes aux règles de votre pays, relance les retards et lit vos tickets en photo. Votre comptabilité se remplit au passage, prête pour votre expert-comptable.",
     "ctaPrimary": "Commencer gratuitement",
     "ctaSecondary": "Voir l'application",
     "fine": "Sans carte bancaire. Formule gratuite sans limite de durée. Connexion avec votre compte ERPlead.",
@@ -25,41 +25,46 @@
     "doc": {
       "kind": "Facture",
       "number": "N° 2026-0040",
-      "date": "08.10.2026",
-      "client": "Hôtel du Lac Vert SA",
-      "clientAddress": "Quai des Saules 12, 2000 Neuchâtel",
+      "date": "12/10/2026",
+      "client": "Hôtel des Brotteaux",
+      "clientAddress": "41 boulevard des Belges, 69006 Lyon",
       "item": "Désignation",
       "qty": "Qté",
+      "currency": "EUR",
       "rows": [
         {
-          "label": "Escalier en frêne massif, 14 marches",
+          "label": "Identité visuelle et logo",
           "unit": "forfait"
         },
         {
-          "label": "Pose et finition à l'huile",
-          "unit": "16 h"
+          "label": "Charte graphique, 24 pages",
+          "unit": "forfait"
         },
         {
-          "label": "Main courante en laiton",
-          "unit": "1 pce"
+          "label": "Développement du site",
+          "unit": "9 jours"
         },
         {
-          "label": "Déplacements",
-          "unit": "2 jours"
+          "label": "Shooting photo, ½ journée",
+          "unit": "forfait"
         }
       ],
-      "subtotal": "Sous-total",
-      "vat": "TVA 8,1 %",
-      "total": "Total",
-      "receipt": "Récépissé",
-      "payment": "Section paiement",
-      "account": "Compte / Payable à",
+      "subtotal": "Total HT",
+      "vat": "TVA 20 %",
+      "total": "Total TTC",
+      "payment": "Virement SEPA",
+      "scan": "Scannez ce GiroCode avec votre application bancaire",
+      "beneficiary": "Bénéficiaire",
+      "account": "IBAN",
       "reference": "Référence",
+      "referenceValue": "Facture 2026-0040",
       "amount": "Montant",
+      "due": "",
+      "dueValue": "",
       "draft": "Brouillon",
       "sent": "Envoyée",
       "paid": "Payée",
-      "bank": "Paiement reçu, rapproché avec le relevé bancaire"
+      "bank": "Virement reçu, rapproché avec le relevé bancaire"
     },
     "stats": {
       "label": "La formule gratuite en chiffres",
@@ -95,15 +100,15 @@
           ],
           "alt": "Devis en cours pour un client"
         },
-        "qr": {
-          "label": "Facture QR",
-          "title": "Des factures QR que chaque banque lit du premier coup.",
+        "invoice": {
+          "label": "Factures",
+          "title": "La facture de votre pays, taux et mentions compris.",
           "points": [
-            "Section paiement selon la norme SIX, adresses structurées",
-            "Référence QR ou SCOR selon votre compte",
-            "Envoi par e-mail, avec le PDF et un lien de consultation"
+            "TVA, USt, VAT ou sales tax, au taux du pays",
+            "GiroCode SEPA en Allemagne et en France, QR-facture en Suisse",
+            "E-factures XRechnung, ZUGFeRD et Factur-X"
           ],
-          "alt": "Facture QR en PDF, avec sa section paiement"
+          "alt": "Facture en PDF de Studio Confluence, avec son GiroCode de virement SEPA"
         },
         "reminders": {
           "label": "Relances",
@@ -131,7 +136,7 @@
           "points": [
             "En photo, en PDF ou en e-facture",
             "Échéances visibles avant qu'elles ne tombent",
-            "Ordre de paiement pain.001 pour votre banque"
+            "Ordre de paiement pain.001 (SEPA ou Suisse) pour votre banque"
           ],
           "alt": "Factures fournisseurs avec leurs échéances"
         },
@@ -139,7 +144,7 @@
           "label": "Banque",
           "title": "Le relevé importé, chaque paiement rapproché.",
           "points": [
-            "Relevés camt.053 de toutes les banques suisses",
+            "Relevés camt.053, le format ISO 20022 des banques européennes",
             "Chaque crédit proposé face à la bonne facture",
             "Le pilote automatique valide les cas sûrs"
           ],
@@ -147,13 +152,13 @@
         },
         "vat": {
           "label": "TVA",
-          "title": "Le décompte TVA préparé pour l'AFC.",
+          "title": "La déclaration de votre pays, préparée.",
           "points": [
-            "Méthode effective ou taux de la dette fiscale nette",
-            "Contre-prestations convenues ou reçues",
-            "Export XML eCH-0217 pour le portail de l'AFC"
+            "CA3 en France, UStVA en Allemagne, MTD en neuf cases au Royaume-Uni",
+            "Relevé de sales tax aux États-Unis",
+            "Décompte AFC en Suisse, avec l'export XML eCH-0217"
           ],
-          "alt": "Décompte TVA du trimestre"
+          "alt": "Déclaration de TVA CA3 préparée par InvoiceLead"
         },
         "time": {
           "label": "Temps",
@@ -185,15 +190,10 @@
         }
       ],
       "ticket": {
-        "items": [
-          "Vis inox 4x40, 200 pces",
-          "Colle à bois D3, 750 g",
-          "Papier abrasif P120",
-          "Huile dure incolore, 1 l"
-        ],
-        "total": "Total CHF",
-        "vatIncl": "dont TVA 8,1 %",
-        "card": "Payé par carte",
+        "subtotal": "Total HT",
+        "total": "Total TTC EUR",
+        "vatIncl": "dont TVA 20 %",
+        "card": "Payé par carte (CB)",
         "thanks": "Merci de votre visite"
       },
       "read": {
@@ -203,32 +203,32 @@
         "amount": "Montant",
         "vat": "TVA",
         "account": "Compte proposé",
-        "accountValue": "4000 Charges de matériel"
+        "accountValue": "604000 Achats d'études et prestations"
       },
       "alt": "Photographier un justificatif sur le téléphone : le ticket est lu par l'IA"
     },
-    "swiss": {
-      "title": "Fait pour la Suisse. Prêt pour vos clients d'ailleurs.",
+    "countries": {
+      "title": "Fait pour votre pays. Cinq pays, les règles de chacun.",
       "items": [
         {
-          "title": "QR-facture SIX 2.3",
-          "body": "Section paiement conforme, adresses structurées, référence QR ou SCOR."
+          "title": "États-Unis",
+          "body": "Sales tax à votre taux combiné, papier Letter, numéro EIN, plan comptable américain et relevé de sales tax."
         },
         {
-          "title": "TVA à 8,1 %, 2,6 % et 3,8 %",
-          "body": "Méthode effective ou taux de la dette fiscale nette, décompte préparé."
+          "title": "Royaume-Uni",
+          "body": "VAT à 20 % et 5 %, numéros de TVA et Companies House contrôlés, déclaration MTD en neuf cases."
         },
         {
-          "title": "eCH-0217",
-          "body": "Le décompte TVA en XML, accepté par le portail de l'AFC."
+          "title": "Allemagne",
+          "body": "USt à 19 % et 7 %, GiroCode, e-factures XRechnung et ZUGFeRD, plan SKR04 et UStVA."
         },
         {
-          "title": "camt.053 et pain.001",
-          "body": "Relevés bancaires importés, paiements fournisseurs exportés."
+          "title": "France",
+          "body": "TVA à 20 %, 10 % et 5,5 %, SIRET contrôlé, GiroCode, Factur-X, plan PCG et CA3."
         },
         {
-          "title": "Plan comptable PME",
-          "body": "Écritures passées par vos factures, bilan, compte de résultat et grand livre."
+          "title": "Suisse",
+          "body": "QR-facture SIX, TVA à 8,1 %, 2,6 % et 3,8 %, plan PME, décompte AFC et XML eCH-0217."
         },
         {
           "title": "Documents en 4 langues",
@@ -236,11 +236,11 @@
         },
         {
           "title": "Multidevise",
-          "body": "Devis et factures en EUR, USD ou GBP, au cours du jour."
+          "body": "Devis et factures en EUR, USD, GBP ou CHF, au cours du jour."
         },
         {
-          "title": "Au-delà de la Suisse",
-          "body": "UStVA en Allemagne, CA3 en France, MTD au Royaume-Uni, sales tax aux États-Unis."
+          "title": "Déclarations prêtes à reporter",
+          "body": "Les cases sont calculées depuis vos écritures. Le dépôt sur le portail fiscal reste de votre côté."
         }
       ]
     },
@@ -281,14 +281,14 @@
           "free": "{n} active"
         },
         "vat": {
-          "label": "Décompte TVA, multidevise, accès fiduciaire",
+          "label": "Déclarations fiscales, multidevise, accès comptable",
           "free": "Visibles en gris",
           "pro": "Compris"
         },
         "seats": {
           "label": "Utilisateurs",
           "free": "{n}",
-          "pro": "{n}, plus votre fiduciaire"
+          "pro": "{n}, plus votre comptable"
         }
       },
       "note": "Prix hors TVA. Pro+ à 39 € par mois : 5 utilisateurs, API, serveur MCP et webhooks.",
@@ -2350,7 +2350,7 @@
           "1 utilisateur, 1 entreprise",
           "10 factures par mois, devis illimités",
           "50 contacts",
-          "QR-facture, documents en DE, FR, IT, EN",
+          "Factures du pays (GiroCode SEPA, QR-facture suisse), documents en DE, FR, IT, EN",
           "Comptabilité alimentée par vos factures",
           "20 pièces lues par l'IA chaque mois (tickets, justificatifs), e-factures reçues sans limite",
           "Assistant : 10 questions par mois",
@@ -2365,11 +2365,11 @@
         "tagline": "Pour les PME qui facturent chaque semaine",
         "features": [
           "Factures et contacts illimités",
-          "1 utilisateur et accès fiduciaire gratuit",
+          "1 utilisateur et accès gratuit pour votre comptable",
           "50 pièces lues par l'IA chaque mois",
           "Assistant sans limite",
           "Relances automatiques sur 3 niveaux, frais, intérêts et relances intelligentes",
-          "Déclarations de TVA : Suisse (effective et TDFN), UStVA, CA3, MTD et sales tax américaine",
+          "Déclarations : UStVA, CA3, MTD au Royaume-Uni, sales tax américaine et décompte TVA suisse (effective et TDFN)",
           "Import bancaire camt sans limite, récapitulatif du pilote le lundi",
           "Factures récurrentes sans limite, multidevise"
         ]
@@ -2383,8 +2383,8 @@
           "API, serveur MCP et webhooks",
           "Jusqu'à 3 sociétés",
           "Connexion bancaire directe",
-          "eBill",
-          "Archivage conforme GeBüV",
+          "eBill (Suisse)",
+          "Archivage conforme GeBüV (Suisse)",
           "Support prioritaire"
         ]
       }
@@ -2395,24 +2395,24 @@
     "title": "Questions fréquentes",
     "items": [
       {
-        "q": "InvoiceLead produit-il des QR-factures conformes ?",
-        "a": "Oui. La section paiement suit la norme SIX en vigueur (version 2.3, adresses structurées), avec référence QR ou SCOR selon votre compte bancaire."
+        "q": "Mes factures sont-elles conformes aux règles de mon pays ?",
+        "a": "Oui, dans les cinq pays pris en charge : États-Unis, Royaume-Uni, Allemagne, France et Suisse. Chaque facture reprend les taux, les numéros et les mentions du pays de votre entreprise : GiroCode de virement SEPA et e-factures XRechnung ou ZUGFeRD en Allemagne, GiroCode et Factur-X en France, VAT au Royaume-Uni, sales tax et papier Letter aux États-Unis, QR-facture SIX (version 2.3, référence QR ou SCOR) en Suisse."
       },
       {
         "q": "Puis-je tenir toute ma comptabilité dans InvoiceLead ?",
-        "a": "Oui. Comptabilité en partie double sur le plan comptable PME, écritures créées par vos factures et paiements, bilan et compte de résultat, dès la formule gratuite. Le décompte TVA s'ajoute avec la formule Pro."
+        "a": "Oui. Comptabilité en partie double sur un plan comptable adapté à votre pays (SKR04 en Allemagne, PCG en France, plan PME en Suisse, plans britannique et américain), écritures créées par vos factures et paiements, bilan et compte de résultat, dès la formule gratuite. Les déclarations de TVA ou de sales tax s'ajoutent avec la formule Pro."
       },
       {
-        "q": "Quelles déclarations de TVA sont prises en charge ?",
-        "a": "En Suisse : la méthode effective et celle du taux de la dette fiscale nette, sur contre-prestations convenues ou reçues. Le décompte s'exporte au format XML eCH-0217, accepté par le portail de l'AFC. Ailleurs : UStVA en Allemagne, CA3 en France, MTD au Royaume-Uni et sales tax aux États-Unis. Les déclarations de TVA font partie de la formule Pro."
+        "q": "Quelles déclarations fiscales sont prises en charge ?",
+        "a": "Une par pays : l'UStVA en Allemagne, la CA3 en France, la déclaration MTD en neuf cases au Royaume-Uni, le relevé de sales tax aux États-Unis et, en Suisse, le décompte TVA (méthode effective ou taux de la dette fiscale nette, contre-prestations convenues ou reçues), exporté en XML eCH-0217 pour le portail de l'AFC. Les chiffres sont prêts à reporter ; le dépôt auprès de l'administration fiscale reste de votre côté. Les déclarations font partie de la formule Pro."
       },
       {
         "q": "Qu'est-ce que le Compte Lead ?",
         "a": "Le compte unique de la famille Lead : le même identifiant pour InvoiceLead, ScanLead, CRMlead, ProjectLead et Greetlead. Chaque application a sa propre formule : un abonnement ne vaut que pour l'application où il est pris."
       },
       {
-        "q": "Ma fiduciaire peut-elle accéder à ma comptabilité ?",
-        "a": "Oui, dès la formule Pro, votre fiduciaire accède gratuitement à votre comptabilité."
+        "q": "Mon expert-comptable peut-il accéder à ma comptabilité ?",
+        "a": "Oui, dès la formule Pro, votre expert-comptable ou votre fiduciaire accède gratuitement à votre comptabilité."
       },
       {
         "q": "Où sont hébergées mes données ?",
@@ -2420,7 +2420,7 @@
       },
       {
         "q": "Puis-je récupérer mes données ?",
-        "a": "Oui, à tout moment, et pendant 30 jours après une résiliation. Vos livres doivent être conservés dix ans : l'export est prévu pour cela."
+        "a": "Oui, à tout moment, et pendant 30 jours après une résiliation. Vos livres doivent être conservés plusieurs années, jusqu'à dix ans selon le pays : l'export est prévu pour cela."
       },
       {
         "q": "Que comprend la formule gratuite ?",

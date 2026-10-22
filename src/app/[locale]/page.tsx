@@ -15,7 +15,7 @@ import { PLANS } from "@/server/plans";
 
 type Params = { params: Promise<{ locale: string }> };
 
-const OG_LOCALE: Record<string, string> = { de: "de_CH", fr: "fr_CH", en: "en_GB" };
+const OG_LOCALE: Record<string, string> = { de: "de_DE", fr: "fr_FR", en: "en_US" };
 
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { locale } = await params;
@@ -51,7 +51,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
 /** Onglets des fonctions : clé des textes, capture, adresse montrée dans le cadre, formule. */
 const TABS = [
   { key: "quotes", shot: "quote-desktop", path: "app/quotes", pro: false },
-  { key: "qr", shot: "invoice-pdf", path: "app/invoices", pro: false },
+  { key: "invoice", shot: "invoice-pdf", path: "app/invoices", pro: false },
   { key: "reminders", shot: "reminders-desktop", path: "app/invoices/reminders", pro: false },
   { key: "receipts", shot: "expenses-desktop", path: "app/expenses", pro: false },
   { key: "bills", shot: "bills-desktop", path: "app/accounting/bills", pro: false },
@@ -60,8 +60,11 @@ const TABS = [
   { key: "time", shot: "time-desktop", path: "app/time", pro: false },
 ] as const;
 
-/** Points forts suisses ; ceux de la formule Pro portent sa marque. */
-const SWISS_PRO = [false, true, true, false, false, false, true, true];
+/**
+ * « Fait pour votre pays » : les cinq pays pris en charge (docs/PAYS.md), puis les langues, la
+ * multidevise et les déclarations ; celles de la formule Pro portent sa marque.
+ */
+const COUNTRIES_PRO = [false, false, false, false, false, false, true, true];
 
 const FAMILY = [
   { key: "scanlead", mark: "SL", color: "bg-scanlead", href: "https://scanlead.io/?lang=" },
@@ -82,8 +85,68 @@ const NAMES: Record<(typeof FAMILY)[number]["key"], string> = {
 /** Questions de la FAQ reprises sur l'accueil (index dans faq.items). */
 const FAQ_ITEMS = [0, 7, 4, 6];
 
-/** Taux normal de TVA écrit dans chaque langue. */
-const VAT_RATE: Record<string, string> = { de: "8,1 %", fr: "8,1\u202f%", en: "8.1%" };
+/**
+ * Ticket de caisse fictif lu par l'IA, celui de la démo de chaque langue (la même photo que la
+ * capture du téléphone) : en → Austin (États-Unis), de → Fribourg-en-Brisgau, fr → Lyon. Aux
+ * États-Unis la taxe s'ajoute au sous-total ; en Europe, la TVA est comprise dans le total.
+ */
+const TICKETS: Record<
+  string,
+  {
+    store: string;
+    address: string;
+    when: string;
+    /** Lignes du ticket, telles qu'imprimées par la caisse (libellé, montant). */
+    lines: [string, string][];
+    subtotal: string | null;
+    tax: string;
+    total: string;
+    read: { date: string; amount: string; vat: string };
+  }
+> = {
+  en: {
+    store: "Hill Country Lumber & Hardware",
+    address: "5520 Riverbend Pkwy, Austin, TX 78744",
+    when: "10/19/2026 3:12 PM",
+    lines: [
+      ["Wood screws #8x1-1/4 (2)", "21.98"],
+      ["Wood glue III, 16 oz", "9.47"],
+      ["Sanding discs 120g x50", "24.99"],
+      ["Euro hinges 35mm x10", "30.97"],
+    ],
+    subtotal: "87.41",
+    tax: "7.21",
+    total: "94.62",
+    read: { date: "10/19/2026", amount: "$94.62", vat: "$7.21 (8.25%)" },
+  },
+  de: {
+    store: "Dreisam Eisenwaren",
+    address: "Haslacher Str. 112, 79115 Freiburg im Breisgau",
+    when: "20.10.2026 15:47",
+    lines: [
+      ["Pressfitting 22 mm x 6", "26,40"],
+      ["Gewindedichtband 2x", "7,98"],
+      ["Kupferrohr 22 mm, 2 m", "19,62"],
+    ],
+    subtotal: null,
+    tax: "8,62",
+    total: "54,00",
+    read: { date: "20.10.2026", amount: "54,00 €", vat: "8,62 € (19 %)" },
+  },
+  fr: {
+    store: "Imprimerie Croix-Rousse",
+    address: "32 bd de la Croix-Rousse, 69004 Lyon",
+    when: "20/10/2026 16:05",
+    lines: [
+      ["Épreuves couleur A3 x 12", "38,40"],
+      ["Cartes de visite 350 g x 250", "48,00"],
+    ],
+    subtotal: null,
+    tax: "14,40",
+    total: "86,40",
+    read: { date: "20/10/2026", amount: "86,40\u00a0€", vat: "14,40\u00a0€ (20\u202f%)" },
+  },
+};
 
 const free = PLANS.free;
 const pro = PLANS.pro;
@@ -95,43 +158,46 @@ export default async function HomePage({ params }: Params) {
   const tMeta = await getTranslations({ locale, namespace: "meta" });
   const signup = leadLoginHref(locale, true);
   const host = `invoicelead.io/${locale}`;
+  const ticket = TICKETS[locale] ?? (TICKETS.en as (typeof TICKETS)[string]);
 
-  const doc = t.raw("doc") as Omit<HeroInvoiceCopy, "rows"> & {
-    rows: HeroInvoiceCopy["rows"];
-  };
+  const doc = t.raw("doc") as HeroInvoiceCopy;
 
-  const tabs: FeatureTab[] = TABS.map((tab) => ({
-    key: tab.key,
-    label: t(`features.tabs.${tab.key}.label`),
-    title: t(`features.tabs.${tab.key}.title`),
-    points: (t.raw(`features.tabs.${tab.key}.points`) as string[]).map((p) =>
-      p.replace("{n}", String(free.quotas.aiReads)),
-    ),
-    pro: tab.pro ? t("features.pro") : null,
-    shot: (
-      <Frame url={`${host}/${tab.path}`}>
-        {tab.shot === "invoice-pdf" ? (
-          <div className="flex aspect-[16/10] justify-center overflow-hidden bg-muted px-[8%] pt-[3%]">
+  // Anglais : les captures montrent l'entreprise américaine de la démo, sans relevé camt.053 ; pas
+  // d'onglet Banque (le texte resterait vrai, mais l'écran serait vide).
+  const tabs: FeatureTab[] = TABS.filter((tab) => locale !== "en" || tab.key !== "bank").map(
+    (tab) => ({
+      key: tab.key,
+      label: t(`features.tabs.${tab.key}.label`),
+      title: t(`features.tabs.${tab.key}.title`),
+      points: (t.raw(`features.tabs.${tab.key}.points`) as string[]).map((p) =>
+        p.replace("{n}", String(free.quotas.aiReads)),
+      ),
+      pro: tab.pro ? t("features.pro") : null,
+      shot: (
+        <Frame url={`${host}/${tab.path}`}>
+          {tab.shot === "invoice-pdf" ? (
+            <div className="flex aspect-[16/10] justify-center overflow-hidden bg-muted px-[8%] pt-[3%]">
+              <Shot
+                locale={locale}
+                name={tab.shot}
+                alt={t(`features.tabs.${tab.key}.alt`)}
+                sizes="(min-width: 1200px) 760px, 84vw"
+                className="h-full w-full max-w-[760px] border border-b-0 border-line-strong"
+                imgClassName="lp-pan h-full"
+              />
+            </div>
+          ) : (
             <Shot
               locale={locale}
               name={tab.shot}
               alt={t(`features.tabs.${tab.key}.alt`)}
-              sizes="(min-width: 1200px) 760px, 84vw"
-              className="h-full w-full max-w-[760px] border border-b-0 border-line-strong"
-              imgClassName="lp-pan h-full"
+              sizes="(min-width: 1200px) 1024px, 100vw"
             />
-          </div>
-        ) : (
-          <Shot
-            locale={locale}
-            name={tab.shot}
-            alt={t(`features.tabs.${tab.key}.alt`)}
-            sizes="(min-width: 1200px) 1024px, 100vw"
-          />
-        )}
-      </Frame>
-    ),
-  }));
+          )}
+        </Frame>
+      ),
+    }),
+  );
 
   const faq = (tFaq.raw("items") as { q: string; a: string }[]).filter((_, i) =>
     FAQ_ITEMS.includes(i),
@@ -219,7 +285,7 @@ export default async function HomePage({ params }: Params) {
     <div className="flex min-h-screen flex-col overflow-x-clip">
       <PublicHeader />
       <main className="flex-1">
-        {/* Héros : le titre à gauche, la facture QR qui se construit à droite. */}
+        {/* Héros : le titre à gauche, la facture du pays de la langue qui se construit à droite. */}
         <section className="border-b border-line-strong">
           <div className="mx-auto grid max-w-6xl grid-cols-1 items-center gap-12 px-4 pt-12 pb-16 sm:px-8 md:pt-16 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)] lg:gap-14 lg:pb-20">
             <div>
@@ -252,7 +318,7 @@ export default async function HomePage({ params }: Params) {
               </p>
             </div>
             <div className="mx-auto w-full max-w-[540px] lg:mr-0">
-              <HeroInvoice copy={doc} />
+              <HeroInvoice copy={doc} locale={locale} />
             </div>
           </div>
         </section>
@@ -420,8 +486,9 @@ export default async function HomePage({ params }: Params) {
                 </Phone>
               </div>
               <ReadTicket
-                items={t.raw("photo.ticket.items") as string[]}
+                ticket={ticket}
                 labels={{
+                  subtotal: t("photo.ticket.subtotal"),
                   total: t("photo.ticket.total"),
                   vatIncl: t("photo.ticket.vatIncl"),
                   card: t("photo.ticket.card"),
@@ -429,10 +496,10 @@ export default async function HomePage({ params }: Params) {
                   title: t("photo.read.title"),
                 }}
                 read={[
-                  { label: t("photo.read.supplier"), value: "Brico Seeland" },
-                  { label: t("photo.read.date"), value: "06.10.2026" },
-                  { label: t("photo.read.amount"), value: "CHF 86.35" },
-                  { label: t("photo.read.vat"), value: `CHF 6.47 (${VAT_RATE[locale] ?? "8.1%"})` },
+                  { label: t("photo.read.supplier"), value: ticket.store },
+                  { label: t("photo.read.date"), value: ticket.read.date },
+                  { label: t("photo.read.amount"), value: ticket.read.amount },
+                  { label: t("photo.read.vat"), value: ticket.read.vat },
                   { label: t("photo.read.account"), value: t("photo.read.accountValue") },
                 ]}
               />
@@ -440,20 +507,20 @@ export default async function HomePage({ params }: Params) {
           </div>
         </section>
 
-        {/* Points forts suisses, en cellules. */}
+        {/* Fait pour votre pays : les cinq pays, en cellules. */}
         <section className="border-b border-line-strong bg-panel">
           <div className="mx-auto max-w-6xl px-4 py-16 sm:px-8 md:py-24">
             <h2
               data-reveal
               className="max-w-3xl text-[30px] leading-[1.05] font-extrabold text-ink sm:text-[40px] lg:text-[46px]"
             >
-              {t("swiss.title")}
+              {t("countries.title")}
             </h2>
             <div
               data-cells
               className="mt-10 grid border-t border-l border-line-strong sm:grid-cols-2 lg:grid-cols-4"
             >
-              {(t.raw("swiss.items") as { title: string; body: string }[]).map((item, i) => (
+              {(t.raw("countries.items") as { title: string; body: string }[]).map((item, i) => (
                 <div
                   key={item.title}
                   className="flex flex-col gap-2 border-r border-b border-line-strong bg-paper p-5 sm:p-6"
@@ -462,7 +529,7 @@ export default async function HomePage({ params }: Params) {
                     <h3 className="text-[16px] leading-snug font-extrabold text-ink">
                       {item.title}
                     </h3>
-                    {SWISS_PRO[i] ? (
+                    {COUNTRIES_PRO[i] ? (
                       <span className="shrink-0 border-l-[3px] border-accent bg-accent-pale px-1.5 py-[2px] text-[10px] font-extrabold tracking-[0.05em] text-accent-dark uppercase">
                         Pro
                       </span>
@@ -705,16 +772,21 @@ export default async function HomePage({ params }: Params) {
 
 /** Ticket de caisse fictif lu par l'IA : la barre de lecture passe, les champs se remplissent. */
 function ReadTicket({
-  items,
+  ticket,
   labels,
   read,
 }: {
-  items: string[];
-  labels: Record<"total" | "vatIncl" | "card" | "thanks" | "title", string>;
+  ticket: (typeof TICKETS)[string];
+  labels: Record<"subtotal" | "total" | "vatIncl" | "card" | "thanks" | "title", string>;
   read: { label: string; value: string }[];
 }) {
-  const amounts = ["18.90", "14.50", "9.80", "43.15"];
   const delay = (i: number) => ({ "--d": `${i * 0.25}s` }) as React.CSSProperties;
+  const taxRow = (
+    <p className="lp-field flex justify-between text-ink-muted" style={delay(3)}>
+      <span>{labels.vatIncl}</span>
+      <span>{ticket.tax}</span>
+    </p>
+  );
   return (
     <div aria-hidden="true" className="flex flex-col gap-4">
       <div
@@ -723,33 +795,38 @@ function ReadTicket({
       >
         <span className="lp-scan" />
         <p className="lp-field text-center text-[14px] font-extrabold text-ink" style={delay(0)}>
-          Brico Seeland
+          {ticket.store}
         </p>
-        <p className="text-center text-[11px] text-ink-muted">
-          Rue de l'Atelier 3, 2502 Biel/Bienne
-        </p>
+        <p className="text-center text-[11px] text-ink-muted">{ticket.address}</p>
         <p className="lp-field mt-1 text-center text-[11px] text-ink-muted" style={delay(1)}>
-          06.10.2026 10:42
+          {ticket.when}
         </p>
         <div className="mt-3 border-t border-dashed border-ink-3 pt-2">
-          {items.map((item, i) => (
+          {ticket.lines.map(([item, amount]) => (
             <p key={item} className="flex justify-between gap-3 py-0.5">
               <span className="min-w-0">{item}</span>
-              <span>{amounts[i]}</span>
+              <span>{amount}</span>
             </p>
           ))}
         </div>
+        {/* États-Unis : sous-total, puis la sales tax qui s'y ajoute. */}
+        {ticket.subtotal ? (
+          <div className="mt-2 border-t border-dashed border-ink-3 pt-2">
+            <p className="flex justify-between text-ink-muted">
+              <span>{labels.subtotal}</span>
+              <span>{ticket.subtotal}</span>
+            </p>
+            {taxRow}
+          </div>
+        ) : null}
         <p
           className="lp-field mt-2 flex justify-between border-t border-dashed border-ink-3 pt-2 text-[14px] font-extrabold text-ink"
           style={delay(2)}
         >
           <span>{labels.total}</span>
-          <span>86.35</span>
+          <span>{ticket.total}</span>
         </p>
-        <p className="lp-field flex justify-between text-ink-muted" style={delay(3)}>
-          <span>{labels.vatIncl}</span>
-          <span>6.47</span>
-        </p>
+        {ticket.subtotal ? null : taxRow}
         <p className="mt-2 text-ink-muted">{labels.card}</p>
         <p className="mt-2 text-center text-[11px] text-ink-muted">{labels.thanks}</p>
       </div>

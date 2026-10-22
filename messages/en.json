@@ -1,7 +1,7 @@
 {
   "meta": {
-    "title": "InvoiceLead, quotes, QR-bills and Swiss accounting",
-    "description": "Quotes, compliant QR-bills, payment reminders, receipts read from a photo and double-entry accounting for Swiss freelancers and SMEs. Free to start, no credit card."
+    "title": "InvoiceLead, invoicing and accounting for Europe and the US",
+    "description": "Quotes, invoices that follow your country's rules, payment reminders, receipts read from a photo and double-entry accounting for freelancers and small businesses in the United States, the United Kingdom, Germany, France and Switzerland. Free to start, no credit card."
   },
   "nav": {
     "features": "Features",
@@ -17,7 +17,7 @@
     "newsText": "Read supplier invoices from a photo",
     "title1": "From quote to money in the bank.",
     "title2": "Without retyping a single line.",
-    "lede": "InvoiceLead prepares your quotes, sends compliant Swiss QR-bills, chases late payers and reads your receipts from a photo. Your books fill in along the way, ready for your accountant.",
+    "lede": "InvoiceLead prepares your quotes, sends invoices that follow your country's rules, chases late payers and reads your receipts from a photo. Your books fill in along the way, ready for your accountant.",
     "ctaPrimary": "Start for free",
     "ctaSecondary": "See the app",
     "fine": "No credit card. Free plan with no time limit. Sign in with your ERPlead account.",
@@ -25,41 +25,46 @@
     "doc": {
       "kind": "Invoice",
       "number": "No. 2026-0040",
-      "date": "08.10.2026",
-      "client": "Hôtel du Lac Vert SA",
-      "clientAddress": "Quai des Saules 12, 2000 Neuchâtel",
+      "date": "10/14/2026",
+      "client": "Harper & Lane Law PLLC",
+      "clientAddress": "600 Congress Ave, Suite 1400, Austin, TX 78701",
       "item": "Item",
       "qty": "Qty",
+      "currency": "USD",
       "rows": [
         {
-          "label": "Solid ash staircase, 14 steps",
-          "unit": "flat rate"
+          "label": "Walnut conference table, 12 ft, live edge",
+          "unit": "flat"
         },
         {
-          "label": "Fitting and oil finish",
-          "unit": "16 h"
+          "label": "Matching credenza with cable management",
+          "unit": "flat"
         },
         {
-          "label": "Brass handrail",
-          "unit": "1 pc"
+          "label": "Shop labor: milling and finishing",
+          "unit": "28 h"
         },
         {
-          "label": "Travel",
-          "unit": "2 days"
+          "label": "Delivery and installation",
+          "unit": "6 h"
         }
       ],
       "subtotal": "Subtotal",
-      "vat": "VAT 8.1%",
-      "total": "Total",
-      "receipt": "Receipt",
-      "payment": "Payment part",
-      "account": "Account / Payable to",
+      "vat": "Sales tax 8.25%",
+      "total": "Total due",
+      "payment": "Pay online",
+      "scan": "",
+      "beneficiary": "Payable to",
+      "account": "ACH transfer or check",
       "reference": "Reference",
-      "amount": "Amount",
+      "referenceValue": "Invoice 2026-0040",
+      "amount": "Amount due",
+      "due": "Due",
+      "dueValue": "11/13/2026",
       "draft": "Draft",
       "sent": "Sent",
       "paid": "Paid",
-      "bank": "Payment received, matched with the bank statement"
+      "bank": "Paid online by card, invoice marked as paid"
     },
     "stats": {
       "label": "The free plan in numbers",
@@ -95,15 +100,15 @@
           ],
           "alt": "Open quote for a client"
         },
-        "qr": {
-          "label": "QR-bill",
-          "title": "QR-bills every Swiss bank reads first time.",
+        "invoice": {
+          "label": "Invoices",
+          "title": "Your country's invoice, rates and required details included.",
           "points": [
-            "Payment part to the SIX standard, structured addresses",
-            "QR or SCOR reference, depending on your account",
-            "Sent by email, with the PDF and a view link"
+            "Sales tax, VAT or USt at your country's rate",
+            "Letter paper in the US, SEPA GiroCode in Germany and France, QR-bill in Switzerland",
+            "XRechnung, ZUGFeRD and Factur-X e-invoices"
           ],
-          "alt": "QR-bill as a PDF, with its payment part"
+          "alt": "Live Oak Woodworks invoice as a PDF, with sales tax"
         },
         "reminders": {
           "label": "Reminders",
@@ -131,7 +136,7 @@
           "points": [
             "From a photo, a PDF or an e-invoice",
             "Due dates in view before they slip",
-            "pain.001 payment file for your bank"
+            "pain.001 payment file for SEPA and Swiss banks"
           ],
           "alt": "Supplier invoices with their due dates"
         },
@@ -139,21 +144,21 @@
           "label": "Bank",
           "title": "Statement imported, every payment matched.",
           "points": [
-            "camt.053 statements from any Swiss bank",
+            "camt.053 statements, the ISO 20022 format of European banks",
             "Each credit matched to the right invoice",
             "Autopilot books the safe cases"
           ],
           "alt": "Imported bank statement with suggested matches"
         },
         "vat": {
-          "label": "VAT",
-          "title": "Your Swiss VAT return, prepared for the FTA.",
+          "label": "Tax",
+          "title": "Your country's tax return, prepared.",
           "points": [
-            "Effective method or net tax rate",
-            "On agreed or received consideration",
-            "eCH-0217 XML export for the FTA portal"
+            "Sales tax report in the US",
+            "MTD 9-box VAT return in the UK, UStVA in Germany, CA3 in France",
+            "Swiss VAT return with eCH-0217 XML export"
           ],
-          "alt": "Quarterly VAT return"
+          "alt": "Sales tax report prepared by InvoiceLead"
         },
         "time": {
           "label": "Time",
@@ -169,7 +174,7 @@
     },
     "photo": {
       "title": "One receipt. One photo. Booked.",
-      "body": "On site or at lunch, open InvoiceLead on your phone and take a photo of the receipt. The AI reads the amount, the date and the VAT, then suggests the account. One tap to confirm.",
+      "body": "On site or at lunch, open InvoiceLead on your phone and take a photo of the receipt. The AI reads the amount, the date and the tax, then suggests the account. One tap to confirm.",
       "steps": [
         {
           "title": "Snap it",
@@ -177,7 +182,7 @@
         },
         {
           "title": "AI reads it",
-          "body": "Amount, VAT rate, date and supplier, in seconds."
+          "body": "Amount, tax, date and supplier, in seconds."
         },
         {
           "title": "Confirm",
@@ -185,50 +190,45 @@
         }
       ],
       "ticket": {
-        "items": [
-          "Stainless screws 4x40, 200 pcs",
-          "Wood glue D3, 750 g",
-          "Sandpaper P120",
-          "Clear hard wax oil, 1 l"
-        ],
-        "total": "Total CHF",
-        "vatIncl": "incl. VAT 8.1%",
-        "card": "Paid by card",
-        "thanks": "Thank you for your visit"
+        "subtotal": "Subtotal",
+        "total": "Total USD",
+        "vatIncl": "Sales tax 8.25%",
+        "card": "Paid by debit card",
+        "thanks": "Thank you for shopping local!"
       },
       "read": {
         "title": "Read by AI",
         "supplier": "Supplier",
         "date": "Date",
         "amount": "Amount",
-        "vat": "VAT",
+        "vat": "Sales tax",
         "account": "Suggested account",
-        "accountValue": "4000 Cost of materials"
+        "accountValue": "5000 Cost of goods sold"
       },
       "alt": "Taking a receipt photo on a phone: the AI reads it"
     },
-    "swiss": {
-      "title": "Made for Switzerland. Ready for clients abroad.",
+    "countries": {
+      "title": "Made for your country. Five countries, each with its own rules.",
       "items": [
         {
-          "title": "Swiss QR-bill, SIX 2.3",
-          "body": "Compliant payment part, structured addresses, QR or SCOR reference."
+          "title": "United States",
+          "body": "Sales tax at your combined rate, Letter paper, EIN, a US chart of accounts and a sales tax report."
         },
         {
-          "title": "VAT at 8.1%, 2.6% and 3.8%",
-          "body": "Effective or net tax rate method, return prepared."
+          "title": "United Kingdom",
+          "body": "VAT at 20% and 5%, VAT and Companies House numbers checked, 9-box MTD VAT return."
         },
         {
-          "title": "eCH-0217",
-          "body": "Your VAT return as XML, accepted by the FTA portal."
+          "title": "Germany",
+          "body": "USt at 19% and 7%, GiroCode, XRechnung and ZUGFeRD e-invoices, SKR04 chart and UStVA."
         },
         {
-          "title": "camt.053 and pain.001",
-          "body": "Bank statements imported, supplier payments exported."
+          "title": "France",
+          "body": "TVA at 20%, 10% and 5.5%, SIRET checked, GiroCode, Factur-X, PCG chart and CA3."
         },
         {
-          "title": "Swiss SME chart of accounts",
-          "body": "Entries posted from your invoices, balance sheet, income statement and ledger."
+          "title": "Switzerland",
+          "body": "Swiss QR-bill (SIX), VAT at 8.1%, 2.6% and 3.8%, SME chart of accounts, VAT return with eCH-0217 XML."
         },
         {
           "title": "Documents in 4 languages",
@@ -236,11 +236,11 @@
         },
         {
           "title": "Multi-currency",
-          "body": "Quotes and invoices in EUR, USD or GBP at the day's rate."
+          "body": "Quotes and invoices in USD, EUR, GBP or CHF at the day's rate."
         },
         {
-          "title": "Beyond Switzerland",
-          "body": "UStVA in Germany, CA3 in France, MTD in the UK, sales tax in the US."
+          "title": "Returns ready to file",
+          "body": "Every box is worked out from your books. You submit the return on the tax portal yourself."
         }
       ]
     },
@@ -281,7 +281,7 @@
           "free": "{n} active"
         },
         "vat": {
-          "label": "VAT return, multi-currency, accountant access",
+          "label": "Tax returns, multi-currency, accountant access",
           "free": "Visible, greyed out",
           "pro": "Included"
         },
@@ -2350,7 +2350,7 @@
           "1 user, 1 company",
           "10 invoices per month, unlimited quotes",
           "50 contacts",
-          "QR-bill, documents in DE, FR, IT, EN",
+          "Invoices to your country's rules (SEPA GiroCode, Swiss QR-bill), documents in DE, FR, IT, EN",
           "Accounting fed by your invoices",
           "20 documents read by AI each month (receipts, supporting documents), e-invoices received without limit",
           "Assistant: 10 questions per month",
@@ -2362,14 +2362,14 @@
       },
       "pro": {
         "name": "Pro",
-        "tagline": "For SMEs that invoice every week",
+        "tagline": "For small businesses that invoice every week",
         "features": [
           "Unlimited invoices and contacts",
-          "1 user and free fiduciary access",
+          "1 user and free access for your accountant",
           "50 documents read by AI each month",
           "Unlimited assistant questions",
           "Automatic reminders on 3 levels, fees, interest and smart reminders",
-          "Tax returns: Swiss VAT (effective and net tax rate), UStVA, CA3, MTD and US sales tax",
+          "Tax returns: US sales tax, UK MTD, UStVA, CA3 and Swiss VAT (effective and net tax rate)",
           "Unlimited camt bank import, Monday autopilot summary",
           "Unlimited recurring invoices, multi-currency"
         ]
@@ -2383,8 +2383,8 @@
           "API, MCP server and webhooks",
           "Up to 3 companies",
           "Direct bank connection",
-          "eBill",
-          "GeBüV-compliant archiving",
+          "eBill (Switzerland)",
+          "GeBüV-compliant archiving (Switzerland)",
           "Priority support"
         ]
       }
@@ -2395,16 +2395,16 @@
     "title": "Frequently asked questions",
     "items": [
       {
-        "q": "Does InvoiceLead produce compliant QR-bills?",
-        "a": "Yes. The payment part follows the current SIX standard (version 2.3, structured addresses), with a QR or SCOR reference depending on your bank account."
+        "q": "Do my invoices follow my country's rules?",
+        "a": "Yes, in the five countries InvoiceLead supports: the United States, the United Kingdom, Germany, France and Switzerland. Each invoice carries the rates, numbers and required details of your company's country: sales tax and Letter paper in the US, VAT in the UK, a SEPA GiroCode with XRechnung or ZUGFeRD e-invoices in Germany, GiroCode and Factur-X in France, and the SIX QR-bill (version 2.3, QR or SCOR reference) in Switzerland."
       },
       {
         "q": "Can I keep all my accounts in InvoiceLead?",
-        "a": "Yes. Double-entry accounting on the SME chart of accounts, entries created from your invoices and payments, balance sheet and income statement, already on the Free plan. The VAT return comes with the Pro plan."
+        "a": "Yes. Double-entry accounting on a chart of accounts for your country (US and UK charts, SKR04 in Germany, PCG in France, the Swiss SME chart), entries created from your invoices and payments, balance sheet and income statement, already on the Free plan. The VAT or sales tax return comes with the Pro plan."
       },
       {
         "q": "Which tax returns are supported?",
-        "a": "In Switzerland: the effective method and the net tax rate method, on agreed or received consideration. The return is exported in the eCH-0217 XML format, accepted by the SFTA portal. Elsewhere: UStVA in Germany, CA3 in France, MTD in the United Kingdom and US sales tax. Tax returns are part of the Pro plan."
+        "a": "One per country: the sales tax report in the US, the 9-box MTD VAT return in the UK, the UStVA in Germany, the CA3 in France and, in Switzerland, the VAT return (effective or net tax rate method, on agreed or received consideration), exported as eCH-0217 XML for the SFTA portal. The figures are ready to copy across; you file the return with the tax authority yourself. Tax returns are part of the Pro plan."
       },
       {
         "q": "What is the Lead account?",
@@ -2420,7 +2420,7 @@
       },
       {
         "q": "Can I get my data back?",
-        "a": "Yes, at any time, and for 30 days after cancellation. Your books must be kept for ten years: the export is designed for that."
+        "a": "Yes, at any time, and for 30 days after cancellation. Your books must be kept for several years, up to ten depending on the country: the export is designed for that."
       },
       {
         "q": "What does the Free plan include?",
