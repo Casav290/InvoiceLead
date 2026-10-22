@@ -788,7 +788,8 @@
       "payments": "Online-Zahlung",
       "api": "API",
       "projectlead": "ProjectLead",
-      "plan": "Abo"
+      "plan": "Abo",
+      "einvoicing": "Empfangene Rechnungen"
     },
     "accounts": {
       "title": "Kontenplan",
@@ -2180,13 +2181,15 @@
         "draft": "Zu genehmigen",
         "approved": "Zu bezahlen",
         "scheduled": "Zahlung übermittelt",
-        "paid": "Bezahlt"
+        "paid": "Bezahlt",
+        "refused": "Abgelehnt"
       },
       "status": {
         "draft": "Entwurf",
         "approved": "Genehmigt, zu bezahlen",
         "scheduled": "Zahlung übermittelt",
-        "paid": "Bezahlt"
+        "paid": "Bezahlt",
+        "refused": "Abgelehnt"
       },
       "due": "fällig {date}",
       "dualApproval": "Vier-Augen-Prinzip für Lieferantenrechnungen",
@@ -2272,7 +2275,8 @@
         "notFound": "Rechnung nicht gefunden oder bereits erledigt.",
         "none": "Keine genehmigte Rechnung mit IBAN zu bezahlen.",
         "noIban": "Erfassen Sie zuerst die IBAN des Unternehmens in den Einstellungen.",
-        "plan": "Rechnungen in Fremdwährung zu erfassen ist Teil des Pro-Abos."
+        "plan": "Rechnungen in Fremdwährung zu erfassen ist Teil des Pro-Abos.",
+        "reason": "Geben Sie den Ablehnungsgrund an."
       },
       "claim": "Spesen",
       "claimIntl": "Ausgabe",
@@ -2292,7 +2296,17 @@
           "duplicate": "Dieser Beleg ist bereits erfasst.",
           "unread": "Die KI konnte diese Rechnung nicht lesen. Das Foto bleibt bei den Belegen. Erfassen Sie die Rechnung mit «Neue Lieferantenrechnung»."
         }
-      }
+      },
+      "refusedNotice": "Rechnung abgelehnt. Der Grund ist vermerkt.",
+      "fromPlatform": "Über die zugelassene Plattform empfangen (E-Rechnung).",
+      "refusalReason": "Ablehnungsgrund: {reason}",
+      "refuseReason": "Ablehnungsgrund",
+      "refuse": "Rechnung ablehnen",
+      "refuseHint": "Die Ablehnung wird hier und bei der zugelassenen Plattform vermerkt. Informieren Sie auch den Lieferanten.",
+      "platformOn": "Empfangene E-Rechnungen kommen hier automatisch an.",
+      "platformOff": "Anmeldung bei der zugelassenen Plattform läuft.",
+      "platformNone": "Empfangen Sie Ihre E-Rechnungen hier, automatisch:",
+      "platformSettings": "Empfangseinstellungen"
     },
     "time": {
       "title": "Zeit",
@@ -2540,6 +2554,46 @@
         "alreadyPlan": "Ihr Unternehmen hat in InvoiceLead bereits {plan}: Es gibt nichts weiter zu bezahlen."
       },
       "leadAccount": "Mein ERPlead-Konto öffnen"
+    },
+    "einvoicing": {
+      "title": "Empfangene E-Rechnungen",
+      "subtitle": "Seit dem 1. September 2026 muss jedes französische Unternehmen E-Rechnungen über eine zugelassene Plattform empfangen können. InvoiceLead meldet Sie dort an: Ihre Lieferantenrechnungen kommen von selbst unter Lieferantenrechnungen an.",
+      "reception": "Empfang",
+      "notFrance": "Der Empfang über eine zugelassene Plattform betrifft französische Unternehmen. Anderswo importieren Sie E-Rechnungen (Factur-X, ZUGFeRD, XRechnung, UBL) unter Lieferantenrechnungen.",
+      "active": "Empfang aktiv seit {date}.",
+      "scheduled": "Angemeldet. Empfang aktiv ab {date}.",
+      "how": "Lieferanten finden Ihr Unternehmen (SIREN {siren}) im Verzeichnis der E-Rechnung. Jede empfangene Rechnung wird ein Entwurf unter Lieferantenrechnungen, mit der Originaldatei.",
+      "lastSync": "Letzter Abruf: {date} um {time}.",
+      "neverSynced": "Noch nicht abgerufen.",
+      "syncTrouble": "Die Plattform antwortete beim letzten Versuch nicht; neuer Versuch automatisch.",
+      "syncNow": "Jetzt abrufen",
+      "openBills": "Lieferantenrechnungen öffnen",
+      "soon": "Die Verbindung zur zugelassenen Plattform öffnet bald. Bis dahin importieren Sie Factur-X- oder UBL-Rechnungen unter Lieferantenrechnungen.",
+      "adminOnly": "Nur ein Administrator kann das Unternehmen anmelden.",
+      "needSiret": "Erfassen Sie zuerst die SIRET des Unternehmens in den Einstellungen.",
+      "openCompany": "Unternehmenseinstellungen",
+      "steps": {
+        "register": "InvoiceLead meldet Ihre SIREN {siren} über B2Brouter im Verzeichnis an.",
+        "next": "Der Empfang ist am nächsten Morgen aktiv.",
+        "bills": "Empfangene Rechnungen kommen unter Lieferantenrechnungen an, zum Freigeben oder Ablehnen."
+      },
+      "consent": "Ich erlaube InvoiceLead, bei B2Brouter, einer zugelassenen Plattform, ein Empfangskonto im Namen des Unternehmens (SIREN {siren}) zu eröffnen.",
+      "migrationCode": "Übertragungscode (optional)",
+      "migrationHint": "Nur wenn Ihre SIREN schon bei einer anderen Plattform angemeldet ist: Fragen Sie dort nach diesem Code.",
+      "register": "Unternehmen anmelden",
+      "retry": "Anmeldung fortsetzen",
+      "footnote": "B2Brouter ist eine von der DGFiP zugelassene Plattform. Das Konto dient nur dem Empfang: Ihre ausgestellten Rechnungen und das E-Reporting laufen noch nicht darüber (Pflicht für KMU ab 1. September 2027).",
+      "registeredNotice": "Unternehmen im Verzeichnis angemeldet.",
+      "receivedNotice": "{count, plural, =0 {Keine neue Rechnung.} one {# Rechnung empfangen.} other {# Rechnungen empfangen.}}",
+      "errors": {
+        "consent": "Setzen Sie das Häkchen, um das Unternehmen anzumelden.",
+        "unavailable": "Die Verbindung zur zugelassenen Plattform ist noch nicht offen.",
+        "notFrance": "Nur für französische Unternehmen.",
+        "siret": "SIRET fehlt oder ist ungültig in den Unternehmenseinstellungen.",
+        "alreadyElsewhere": "Diese SIREN ist schon bei einer anderen Plattform angemeldet. Fragen Sie dort den Übertragungscode an und geben Sie ihn hier ein.",
+        "failed": "Die Plattform hat die Anmeldung abgelehnt. Versuchen Sie es später erneut.",
+        "sync": "Die Plattform antwortet nicht. Neuer Versuch automatisch."
+      }
     }
   },
   "footer": {

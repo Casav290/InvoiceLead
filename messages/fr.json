@@ -788,7 +788,8 @@
       "payments": "Paiement en ligne",
       "api": "API",
       "projectlead": "ProjectLead",
-      "plan": "Formule"
+      "plan": "Formule",
+      "einvoicing": "Factures reçues"
     },
     "accounts": {
       "title": "Plan comptable",
@@ -2180,13 +2181,15 @@
         "draft": "À approuver",
         "approved": "À payer",
         "scheduled": "Paiement transmis",
-        "paid": "Payées"
+        "paid": "Payées",
+        "refused": "Refusées"
       },
       "status": {
         "draft": "Brouillon",
         "approved": "Approuvée, à payer",
         "scheduled": "Paiement transmis",
-        "paid": "Payée"
+        "paid": "Payée",
+        "refused": "Refusée"
       },
       "due": "échéance {date}",
       "dualApproval": "Double validation des factures fournisseurs",
@@ -2272,7 +2275,8 @@
         "notFound": "Facture introuvable ou déjà traitée.",
         "none": "Aucune facture approuvée avec un IBAN à payer.",
         "noIban": "Saisissez d'abord l'IBAN de l'entreprise dans les réglages.",
-        "plan": "Saisir une facture en devise étrangère fait partie de la formule Pro."
+        "plan": "Saisir une facture en devise étrangère fait partie de la formule Pro.",
+        "reason": "Indiquez le motif du refus."
       },
       "claim": "Note de frais",
       "claimIntl": "Note de frais",
@@ -2292,7 +2296,17 @@
           "duplicate": "Cette pièce est déjà dans les justificatifs.",
           "unread": "L'IA n'a pas pu lire cette facture. La photo est gardée dans les justificatifs. Saisissez la facture avec « Nouvelle facture fournisseur »."
         }
-      }
+      },
+      "refusedNotice": "Facture refusée. Le motif est noté.",
+      "fromPlatform": "Reçue par la plateforme agréée (facture électronique).",
+      "refusalReason": "Motif du refus : {reason}",
+      "refuseReason": "Motif du refus",
+      "refuse": "Refuser la facture",
+      "refuseHint": "Le refus est noté ici et chez la plateforme agréée. Prévenez aussi le fournisseur.",
+      "platformOn": "Les factures électroniques reçues arrivent ici automatiquement.",
+      "platformOff": "Inscription à la plateforme agréée en cours.",
+      "platformNone": "Recevez vos factures électroniques ici, automatiquement :",
+      "platformSettings": "Réglages de réception"
     },
     "time": {
       "title": "Temps",
@@ -2540,6 +2554,46 @@
         "alreadyPlan": "Votre entreprise a déjà {plan} dans InvoiceLead : rien à payer de plus."
       },
       "leadAccount": "Ouvrir mon Compte ERPlead"
+    },
+    "einvoicing": {
+      "title": "Factures électroniques reçues",
+      "subtitle": "Depuis le 1er septembre 2026, toute entreprise française doit pouvoir recevoir ses factures électroniques par une plateforme agréée. InvoiceLead vous y inscrit : vos factures fournisseurs arrivent seules dans Factures fournisseurs.",
+      "reception": "Réception",
+      "notFrance": "La réception par plateforme agréée concerne les entreprises françaises. Ailleurs, importez vos factures électroniques (Factur-X, ZUGFeRD, XRechnung, UBL) dans Factures fournisseurs.",
+      "active": "Réception active depuis le {date}.",
+      "scheduled": "Inscription faite. Réception active à partir du {date}.",
+      "how": "Les fournisseurs trouvent votre entreprise (SIREN {siren}) dans l'annuaire de la facturation électronique. Chaque facture reçue devient un brouillon dans Factures fournisseurs, avec le fichier d'origine.",
+      "lastSync": "Dernier relevé : {date} à {time}.",
+      "neverSynced": "Pas encore relevé.",
+      "syncTrouble": "La plateforme ne répondait pas au dernier essai ; nouvel essai automatique.",
+      "syncNow": "Relever maintenant",
+      "openBills": "Ouvrir les factures fournisseurs",
+      "soon": "La connexion à la plateforme agréée ouvre bientôt. En attendant, importez vos factures Factur-X ou UBL dans Factures fournisseurs.",
+      "adminOnly": "Seul un administrateur peut inscrire l'entreprise.",
+      "needSiret": "Saisissez d'abord le SIRET de l'entreprise dans les réglages.",
+      "openCompany": "Réglages de l'entreprise",
+      "steps": {
+        "register": "InvoiceLead inscrit votre SIREN {siren} à l'annuaire, par B2Brouter.",
+        "next": "La réception est active le lendemain matin.",
+        "bills": "Vos factures reçues arrivent dans Factures fournisseurs, à approuver ou à refuser."
+      },
+      "consent": "J'autorise InvoiceLead à ouvrir un compte de réception chez B2Brouter, plateforme agréée, au nom de l'entreprise (SIREN {siren}).",
+      "migrationCode": "Code de transfert (facultatif)",
+      "migrationHint": "Seulement si votre SIREN est déjà inscrit chez une autre plateforme : demandez-lui ce code.",
+      "register": "Inscrire l'entreprise",
+      "retry": "Reprendre l'inscription",
+      "footnote": "B2Brouter est une plateforme agréée par la DGFiP. Le compte sert à la réception seulement : vos factures émises et l'e-reporting n'y passent pas encore (obligatoires pour les PME au 1er septembre 2027).",
+      "registeredNotice": "Entreprise inscrite à l'annuaire.",
+      "receivedNotice": "{count, plural, =0 {Aucune nouvelle facture.} one {# facture reçue.} other {# factures reçues.}}",
+      "errors": {
+        "consent": "Cochez l'autorisation pour inscrire l'entreprise.",
+        "unavailable": "La connexion à la plateforme agréée n'est pas encore ouverte.",
+        "notFrance": "Réservé aux entreprises françaises.",
+        "siret": "SIRET manquant ou invalide dans les réglages de l'entreprise.",
+        "alreadyElsewhere": "Ce SIREN est déjà inscrit chez une autre plateforme. Demandez-lui le code de transfert et saisissez-le ici.",
+        "failed": "La plateforme a refusé l'inscription. Réessayez plus tard.",
+        "sync": "La plateforme ne répond pas. Nouvel essai automatique."
+      }
     }
   },
   "footer": {

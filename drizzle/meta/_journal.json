@@ -316,6 +316,13 @@
       "when": 1792048926653,
       "tag": "0044_member_seats",
       "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "7",
+      "when": 1792674146875,
+      "tag": "0045_einvoice_reception",
+      "breakpoints": true
     }
   ]
 }

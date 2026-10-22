@@ -4,6 +4,8 @@ import { sendAutopilotDigests } from "@/server/autopilot-digest";
 import { reportPendingToLead } from "@/server/billing/subscriptions";
 import { deliverCrmlead } from "@/server/crmlead-sync";
 import { db } from "@/server/db";
+import { b2brouterFromEnv } from "@/server/einvoicing/b2brouter";
+import { syncAll } from "@/server/einvoicing/reception";
 import { env } from "@/server/env";
 import { refreshStalePlans } from "@/server/plan-refresh";
 import { runRecurring } from "@/server/recurring";
@@ -23,8 +25,8 @@ function authorized(request: Request): boolean {
 }
 
 /**
- * Tâche quotidienne (Vercel Cron) : formules relues, factures récurrentes échues, puis relances
- * automatiques.
+ * Tâche quotidienne (Vercel Cron) : formules relues, factures récurrentes échues, relances
+ * automatiques, puis relevé des factures électroniques reçues en France.
  */
 export async function GET(request: Request) {
   if (!authorized(request)) return new Response("unauthorized", { status: 401 });
@@ -45,6 +47,8 @@ export async function GET(request: Request) {
   // Le lundi : récapitulatif du pilote automatique aux administrateurs.
   const digests =
     new Date(`${today}T00:00:00Z`).getUTCDay() === 1 ? await sendAutopilotDigests(db(), today) : 0;
+  // France : factures reçues par la plateforme agréée, et décisions rendues à la plateforme.
+  const einvoices = await syncAll(db(), b2brouterFromEnv());
   // Pages longues gardées pour une connexion (login-pages.ts) : effacées après 30 jours.
   const loginPages = await purgePages(db());
   return Response.json({
@@ -56,6 +60,7 @@ export async function GET(request: Request) {
     webhooks,
     crmlead,
     digests,
+    einvoices,
     loginPages,
   });
 }

@@ -17,7 +17,7 @@ Chaque entreprise choisit son pays dans les réglages ; il fixe la devise, les t
 
 Avant d'ouvrir un pays, un professionnel local relit le plan comptable, les correspondances vers le formulaire fiscal et les mentions des factures : fiduciaire en Suisse, Steuerberater en Allemagne, expert-comptable en France, accountant au Royaume-Uni, CPA aux États-Unis.
 
-Les dépôts électroniques ne sont pas branchés : le fichier eCH-0217 se télécharge depuis le décompte validé et se dépose à la main sur le portail de l'AFC, ELSTER pour l'UStVA, une plateforme agréée (PDP) pour la France, l'API Making Tax Digital de HMRC (InvoiceLead doit être enregistré comme logiciel reconnu), et les portails des États américains. Les chiffres sont prêts à reporter.
+En France, la réception des factures électroniques passe par la plateforme agréée B2Brouter (docs/RECEPTION-FR.md) ; l'émission et l'e-reporting par plateforme ne sont pas encore branchés. Les dépôts électroniques ne sont pas branchés : le fichier eCH-0217 se télécharge depuis le décompte validé et se dépose à la main sur le portail de l'AFC, ELSTER pour l'UStVA, l'API Making Tax Digital de HMRC (InvoiceLead doit être enregistré comme logiciel reconnu), et les portails des États américains. Les chiffres sont prêts à reporter.
 
 Limites connues : aux États-Unis, un seul taux de sales tax par entreprise (pas encore de taux par lieu de livraison ni de nexus multi-États) ; au Royaume-Uni, le taux zéro et l'exonération partagent le même code ; en France, les exportations sont regroupées en E2 et un rappel demande de les ventiler.
 

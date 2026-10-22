@@ -59,6 +59,12 @@ const schema = z.object({
   /** « 1 » : TVA calculée par Stripe Tax au Checkout (éteinte par défaut, comme CRMlead). */
   STRIPE_BILLING_AUTOMATIC_TAX: z.enum(["0", "1"]).optional(),
   STRIPE_BILLING_API_URL: z.url().default("https://api.stripe.com"),
+  // Réception des factures électroniques françaises par la plateforme agréée B2Brouter : clé du
+  // groupe d'intégration InvoiceLead (un compte par entreprise cliente, créé par l'API). Sans clé,
+  // l'inscription se dit indisponible et rien n'est relevé. Une clé « test_ » vise le bac à sable.
+  B2BROUTER_API_KEY: z.string().min(1).optional(),
+  B2BROUTER_API_URL: z.url().default("https://api.b2brouter.net"),
+  B2BROUTER_API_VERSION: z.string().min(1).default("2026-06-26"),
   /** Cours de change de référence de la BCE, pour les factures en devise. */
   FX_API_URL: z.url().default("https://api.frankfurter.dev/v1"),
 });

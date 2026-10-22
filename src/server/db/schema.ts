@@ -983,10 +983,21 @@ export const supplierBills = pgTable(
     vatCode: text("vat_code"),
     accountId: uuid("account_id").references(() => accounts.id, { onDelete: "set null" }),
     description: text("description"),
-    /** draft | approved | scheduled (fichier de paiement produit) | paid */
+    /**
+     * draft | approved | scheduled (fichier de paiement produit) | paid | refused (facture reçue
+     * par la plateforme agréée et refusée, avec son motif)
+     */
     status: text("status").notNull().default("draft"),
     // manual | receipt | einvoice | expense (note de frais) | mileage (indemnité kilométrique)
     source: text("source").notNull().default("manual"),
+    /**
+     * Facture reçue par la plateforme agréée (France) : son identifiant chez la plateforme
+     * (« b2brouter:4053100 »), le dernier état qui lui a été transmis (accepted, refused, paid) et
+     * le motif d'un refus.
+     */
+    platformRef: text("platform_ref"),
+    platformState: text("platform_state"),
+    refusalReason: text("refusal_reason"),
     /** Note de frais : la personne de l'équipe à rembourser. */
     claimantId: uuid("claimant_id").references(() => users.id, { onDelete: "set null" }),
     /** Indemnité kilométrique : distance (en mètres) et taux par kilomètre (en centimes). */
@@ -1012,6 +1023,9 @@ export const supplierBills = pgTable(
     uniqueIndex("supplier_bills_receipt_idx")
       .on(t.receiptId)
       .where(sql`${t.receiptId} is not null`),
+    uniqueIndex("supplier_bills_platform_ref_idx")
+      .on(t.organizationId, t.platformRef)
+      .where(sql`${t.platformRef} is not null`),
     check("supplier_bills_positive", sql`${t.totalCents} > 0`),
   ],
 );
@@ -1194,3 +1208,30 @@ export const billingEvents = pgTable("billing_events", {
   result: text("result").notNull(),
   receivedAt: timestamp("received_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+/**
+ * Réception des factures électroniques par une plateforme agréée (France, réforme du 1er septembre
+ * 2026) : le compte de l'entreprise chez B2Brouter, inscrit à l'annuaire de la DGFiP par son SIREN.
+ * Les factures reçues sont relevées par la tâche quotidienne et à l'ouverture des Achats.
+ */
+export const einvoiceConnections = pgTable("einvoice_connections", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  organizationId: uuid("organization_id")
+    .notNull()
+    .unique()
+    .references(() => organizations.id, { onDelete: "cascade" }),
+  provider: text("provider").notNull().default("b2brouter"),
+  /** Compte de l'entreprise chez la plateforme. */
+  externalAccountId: text("external_account_id").notNull(),
+  siren: text("siren").notNull(),
+  /** Première date de réception (l'annuaire s'active la nuit suivant l'inscription). */
+  startDate: date("start_date", { mode: "string" }).notNull(),
+  registeredBy: uuid("registered_by").references(() => users.id, { onDelete: "set null" }),
+  lastSyncAt: timestamp("last_sync_at", { withTimezone: true }),
+  /** Dernière erreur du relevé (code court), vide quand tout va bien. */
+  lastError: text("last_error"),
+  createdAt: createdAt(),
+  updatedAt: updatedAt(),
+});
+
+export type EinvoiceConnection = typeof einvoiceConnections.$inferSelect;

@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, inArray, lte, ne, sql } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, lte, notInArray, sql } from "drizzle-orm";
 import { addDays } from "@/lib/fiscal-year";
 import type { Db } from "./db";
 import { contacts, invoicePayments, invoices, organizations, supplierBills } from "./db/schema";
@@ -207,7 +207,7 @@ export async function dashboardFigures(
       ),
     );
 
-  // Factures fournisseurs et notes de frais pas encore payées.
+  // Factures fournisseurs et notes de frais pas encore payées (une facture refusée ne se paie pas).
   const bills = await database
     .select({
       totalCents: supplierBills.totalCents,
@@ -216,7 +216,12 @@ export async function dashboardFigures(
       dueDate: supplierBills.dueDate,
     })
     .from(supplierBills)
-    .where(and(eq(supplierBills.organizationId, organizationId), ne(supplierBills.status, "paid")));
+    .where(
+      and(
+        eq(supplierBills.organizationId, organizationId),
+        notInArray(supplierBills.status, ["paid", "refused"]),
+      ),
+    );
 
   return {
     currency: home,

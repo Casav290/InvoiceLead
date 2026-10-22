@@ -19,6 +19,8 @@ import {
 } from "@/server/bills";
 import { db } from "@/server/db";
 import { auditLog, organizations } from "@/server/db/schema";
+import { b2brouterFromEnv } from "@/server/einvoicing/b2brouter";
+import { pushStates, refuseBill } from "@/server/einvoicing/reception";
 import { featureAccess } from "@/server/plans";
 
 export type BillFormState = {
@@ -81,6 +83,22 @@ export async function deleteBillAction(form: FormData) {
   await deleteBill(db(), who, String(form.get("id") ?? ""));
   revalidatePath(`/${locale}/app/accounting`, "layout");
   redirect(`${path}?deleted=1`);
+}
+
+/**
+ * Refus d'une facture reçue par la plateforme agréée, avec son motif : rendu tout de suite à la
+ * plateforme quand elle répond, sinon au prochain relevé.
+ */
+export async function refuseBillAction(form: FormData) {
+  const { locale, who, path } = await guard(form);
+  const id = String(form.get("id") ?? "");
+  const result = await refuseBill(db(), who, id, String(form.get("reason") ?? ""));
+  if (typeof result === "object") {
+    const client = b2brouterFromEnv();
+    if (client) await pushStates(db(), who.organizationId, client).catch(() => 0);
+  }
+  revalidatePath(`/${locale}/app/accounting`, "layout");
+  redirect(`${path}/${id}?${typeof result === "object" ? "refused=1" : `error=${result}`}`);
 }
 
 export async function markBillPaidAction(form: FormData) {

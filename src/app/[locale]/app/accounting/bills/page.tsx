@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { after } from "next/server";
 import { AccountingNav } from "@/components/accounting/AccountingNav";
 import { ProLock } from "@/components/app/ProLock";
 import { ScanTicket } from "@/components/app/ScanTicket";
@@ -12,6 +13,8 @@ import { requireAppSession } from "@/server/auth/guard";
 import { listBills } from "@/server/bills";
 import { getSessionCountryTranslations } from "@/server/country-translations";
 import { db } from "@/server/db";
+import { b2brouterFromEnv } from "@/server/einvoicing/b2brouter";
+import { getConnection, receptionState, syncIfStale } from "@/server/einvoicing/reception";
 import { lockFor } from "@/server/plan-lock";
 import { quotaAccess } from "@/server/plans";
 import { can } from "@/server/roles";
@@ -34,13 +37,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return { title: t("title"), robots: { index: false } };
 }
 
-const GROUPS = ["draft", "approved", "scheduled", "paid"] as const;
+const GROUPS = ["draft", "approved", "scheduled", "paid", "refused"] as const;
 /** Photo refusée ou pas lue (billFromPhoto) : la raison s'affiche dans le bloc de la photo. */
 const PHOTO_ERRORS = ["quota", "type", "size", "duplicate", "unread"];
 
 /**
  * Factures fournisseurs : prises en photo et lues par l'IA, importées en e-facture ou saisies ; à
- * approuver, à payer (fichier pain.001), transmises, payées.
+ * approuver, à payer (fichier pain.001), transmises, payées ; en France, reçues aussi par la
+ * plateforme agréée (src/server/einvoicing), et refusables avec un motif.
  */
 export default async function BillsPage({ params, searchParams }: Props) {
   const { locale } = await params;
@@ -51,6 +55,19 @@ export default async function BillsPage({ params, searchParams }: Props) {
   const t = await getSessionCountryTranslations({ locale, namespace: "app.bills" });
   const style = countryPack(organization.country).amounts;
   const today = new Date().toISOString().slice(0, 10);
+  // France : factures reçues par la plateforme agréée, relevées après l'affichage (au plus tous les
+  // quarts d'heure) ; elles apparaissent à la visite suivante.
+  const platform =
+    organization.country === "FR"
+      ? receptionState(await getConnection(db(), organization.id), today)
+      : null;
+  if (platform === "active")
+    after(() =>
+      syncIfStale(db(), organization.id, b2brouterFromEnv()).then(
+        () => undefined,
+        () => undefined,
+      ),
+    );
   const bills = await listBills(db(), organization.id);
   const toPay = bills.filter((b) => b.status === "approved");
   const hidden = <input type="hidden" name="locale" value={locale} />;
@@ -81,6 +98,23 @@ export default async function BillsPage({ params, searchParams }: Props) {
         </Button>
       </div>
       <p className="mt-2 text-[15px] text-ink-muted">{t("subtitle")}</p>
+      {platform && (platform !== "none" || b2brouterFromEnv()) ? (
+        <p className="mt-2 text-[13px] text-ink-2" data-testid="bills-platform">
+          {t(
+            platform === "active"
+              ? "platformOn"
+              : platform === "none"
+                ? "platformNone"
+                : "platformOff",
+          )}{" "}
+          <Link
+            href="/app/settings/einvoicing"
+            className="font-semibold text-accent-dark underline"
+          >
+            {t("platformSettings")}
+          </Link>
+        </p>
+      ) : null}
       {notice ? (
         <p
           role="status"

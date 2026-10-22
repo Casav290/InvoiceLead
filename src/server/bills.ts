@@ -132,7 +132,11 @@ export async function createBill(
   database: Db,
   who: Who,
   data: BillInput,
-  origin: { source?: "manual" | "receipt" | "einvoice"; receiptId?: string | null } = {},
+  origin: {
+    source?: "manual" | "receipt" | "einvoice";
+    receiptId?: string | null;
+    platformRef?: string | null;
+  } = {},
 ): Promise<SupplierBill> {
   const learned = data.accountId
     ? null
@@ -146,6 +150,7 @@ export async function createBill(
       organizationId: who.organizationId,
       source: origin.source ?? "manual",
       receiptId: origin.receiptId ?? null,
+      platformRef: origin.platformRef ?? null,
       createdBy: who.userId,
     })
     .returning();
@@ -369,11 +374,13 @@ export async function einvoiceXml(file: { type: string; bytes: Buffer }): Promis
  * justificatif, et devenue facture à payer. Un avoir du fournisseur n'est pas une facture à payer.
  * Sans IA, elle ne compte pas dans les pièces lues du mois : la réception des e-factures est
  * ouverte à toutes les formules, sans limite (obligatoire en France depuis le 1er septembre 2026).
+ * `platformRef` : facture relevée chez la plateforme agréée (src/server/einvoicing).
  */
 export async function importEInvoice(
   database: Db,
   who: Who,
   file: { name: string; type: string; bytes: Buffer },
+  platformRef: string | null = null,
 ): Promise<SupplierBill | "notEInvoice" | "creditNote" | "duplicate" | "type" | "size"> {
   const xml = await einvoiceXml(file);
   const parsed: IncomingInvoice | null = xml ? parseIncomingInvoice(xml) : null;
@@ -434,7 +441,7 @@ export async function importEInvoice(
       accountId: null,
       description: parsed.description,
     },
-    { source: "einvoice", receiptId: stored.id },
+    { source: "einvoice", receiptId: stored.id, platformRef },
   );
 }
 

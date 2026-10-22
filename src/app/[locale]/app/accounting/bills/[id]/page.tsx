@@ -18,7 +18,12 @@ import { getSessionCountryTranslations } from "@/server/country-translations";
 import { db } from "@/server/db";
 import { lockFor } from "@/server/plan-lock";
 import { featureAccess } from "@/server/plans";
-import { approveBillAction, deleteBillAction, markBillPaidAction } from "../actions";
+import {
+  approveBillAction,
+  deleteBillAction,
+  markBillPaidAction,
+  refuseBillAction,
+} from "../actions";
 
 type Props = {
   params: Promise<{ locale: string; id: string }>;
@@ -28,6 +33,7 @@ type Props = {
     approved?: string;
     firstApproval?: string;
     paid?: string;
+    refused?: string;
     error?: string;
   }>;
 };
@@ -47,6 +53,7 @@ const ERRORS = [
   "vatPeriodClosed",
   "notFound",
   "plan",
+  "reason",
 ];
 
 export default async function BillPage({ params, searchParams }: Props) {
@@ -89,7 +96,9 @@ export default async function BillPage({ params, searchParams }: Props) {
           ? t("firstApprovalNotice")
           : q.paid
             ? t("paidNotice")
-            : null;
+            : q.refused
+              ? t("refusedNotice")
+              : null;
   const today = new Date().toISOString().slice(0, 10);
   const draft = bill.status === "draft";
   const multiCurrency = featureAccess(organization, "multiCurrency");
@@ -153,6 +162,16 @@ export default async function BillPage({ params, searchParams }: Props) {
             : t(`errors.${q.error}`)}
         </p>
       ) : null}
+      {bill.platformRef ? (
+        <p className="mt-4 text-[13px] text-ink-2" data-testid="bill-platform">
+          {t("fromPlatform")}
+        </p>
+      ) : null}
+      {bill.status === "refused" && bill.refusalReason ? (
+        <p className="mt-2 text-[13px] text-ink-2" data-testid="bill-refusal">
+          {t("refusalReason", { reason: bill.refusalReason })}
+        </p>
+      ) : null}
       {bill.receiptId ? (
         <p className="mt-4 text-[13px]">
           <a
@@ -203,12 +222,36 @@ export default async function BillPage({ params, searchParams }: Props) {
               description: bill.description ?? "",
             }}
           />
-          <form action={deleteBillAction} className="mt-6">
-            {hidden}
-            <Button type="submit" variant="ghost">
-              {t("delete")}
-            </Button>
-          </form>
+          {bill.platformRef ? (
+            <form
+              action={refuseBillAction}
+              className="mt-6 flex flex-wrap items-end gap-3 border border-line-strong bg-panel px-5 py-4"
+              data-testid="bill-refuse"
+            >
+              {hidden}
+              <label className="block min-w-[min(100%,18rem)] flex-1">
+                <span className="mb-1 block text-[13px] font-semibold">{t("refuseReason")}</span>
+                <input
+                  name="reason"
+                  required
+                  minLength={3}
+                  maxLength={500}
+                  className="h-10 w-full border border-line-strong bg-panel px-3 text-[14px]"
+                />
+              </label>
+              <Button type="submit" variant="secondary">
+                {t("refuse")}
+              </Button>
+              <p className="w-full text-[12px] text-ink-muted">{t("refuseHint")}</p>
+            </form>
+          ) : (
+            <form action={deleteBillAction} className="mt-6">
+              {hidden}
+              <Button type="submit" variant="ghost">
+                {t("delete")}
+              </Button>
+            </form>
+          )}
         </>
       ) : (
         <>

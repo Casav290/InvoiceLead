@@ -12,6 +12,7 @@ const ITEMS = [
   { href: "/app/settings/team", key: "team" },
   { href: "/app/settings/plan", key: "plan" },
   { href: "/app/settings/payments", key: "payments" },
+  { href: "/app/settings/einvoicing", key: "einvoicing" },
   { href: "/app/settings/projectlead", key: "projectlead" },
   { href: "/app/settings/api", key: "api" },
 ] as const;

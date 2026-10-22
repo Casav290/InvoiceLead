@@ -788,7 +788,8 @@
       "payments": "Online payments",
       "api": "API",
       "projectlead": "ProjectLead",
-      "plan": "Plan"
+      "plan": "Plan",
+      "einvoicing": "Received invoices"
     },
     "accounts": {
       "title": "Chart of accounts",
@@ -2180,13 +2181,15 @@
         "draft": "To approve",
         "approved": "To pay",
         "scheduled": "Payment sent",
-        "paid": "Paid"
+        "paid": "Paid",
+        "refused": "Refused"
       },
       "status": {
         "draft": "Draft",
         "approved": "Approved, to pay",
         "scheduled": "Payment sent",
-        "paid": "Paid"
+        "paid": "Paid",
+        "refused": "Refused"
       },
       "due": "due {date}",
       "dualApproval": "Dual approval of supplier bills",
@@ -2272,7 +2275,8 @@
         "notFound": "Bill not found or already handled.",
         "none": "No approved bill with an IBAN to pay.",
         "noIban": "Enter the company's IBAN in the settings first.",
-        "plan": "Entering a bill in a foreign currency is part of the Pro plan."
+        "plan": "Entering a bill in a foreign currency is part of the Pro plan.",
+        "reason": "Enter the reason for refusal."
       },
       "claim": "Expense claim",
       "claimIntl": "Expense claim",
@@ -2292,7 +2296,17 @@
           "duplicate": "This document is already in your receipts.",
           "unread": "AI could not read this bill. The photo is kept with your receipts. Enter the bill with “New supplier bill”."
         }
-      }
+      },
+      "refusedNotice": "Invoice refused. The reason is recorded.",
+      "fromPlatform": "Received through the approved platform (e-invoice).",
+      "refusalReason": "Reason for refusal: {reason}",
+      "refuseReason": "Reason for refusal",
+      "refuse": "Refuse invoice",
+      "refuseHint": "The refusal is recorded here and with the approved platform. Let the supplier know as well.",
+      "platformOn": "E-invoices you receive arrive here automatically.",
+      "platformOff": "Registration with the approved platform is in progress.",
+      "platformNone": "Receive your e-invoices here, automatically:",
+      "platformSettings": "Reception settings"
     },
     "time": {
       "title": "Time",
@@ -2540,6 +2554,46 @@
         "alreadyPlan": "Your company already has {plan} in InvoiceLead: there is nothing more to pay."
       },
       "leadAccount": "Open my ERPlead account"
+    },
+    "einvoicing": {
+      "title": "Received e-invoices",
+      "subtitle": "Since 1 September 2026, every French company must be able to receive e-invoices through an approved platform. InvoiceLead registers you: supplier invoices arrive in Supplier bills on their own.",
+      "reception": "Reception",
+      "notFrance": "Reception through an approved platform applies to French companies. Elsewhere, import e-invoices (Factur-X, ZUGFeRD, XRechnung, UBL) in Supplier bills.",
+      "active": "Reception active since {date}.",
+      "scheduled": "Registered. Reception active from {date}.",
+      "how": "Suppliers find your company (SIREN {siren}) in the e-invoicing directory. Each invoice received becomes a draft in Supplier bills, with the original file.",
+      "lastSync": "Last check: {date} at {time}.",
+      "neverSynced": "Not checked yet.",
+      "syncTrouble": "The platform did not answer last time; it will be tried again automatically.",
+      "syncNow": "Check now",
+      "openBills": "Open supplier bills",
+      "soon": "The connection to the approved platform opens soon. Until then, import Factur-X or UBL invoices in Supplier bills.",
+      "adminOnly": "Only an administrator can register the company.",
+      "needSiret": "Enter the company's SIRET in the settings first.",
+      "openCompany": "Company settings",
+      "steps": {
+        "register": "InvoiceLead registers your SIREN {siren} in the directory, through B2Brouter.",
+        "next": "Reception is active the next morning.",
+        "bills": "Invoices you receive arrive in Supplier bills, to approve or refuse."
+      },
+      "consent": "I authorise InvoiceLead to open a reception account with B2Brouter, an approved platform, in the company's name (SIREN {siren}).",
+      "migrationCode": "Transfer code (optional)",
+      "migrationHint": "Only if your SIREN is already registered with another platform: ask it for this code.",
+      "register": "Register the company",
+      "retry": "Resume registration",
+      "footnote": "B2Brouter is a platform approved by the DGFiP. The account is for reception only: your issued invoices and e-reporting do not go through it yet (required for SMEs from 1 September 2027).",
+      "registeredNotice": "Company registered in the directory.",
+      "receivedNotice": "{count, plural, =0 {No new invoice.} one {# invoice received.} other {# invoices received.}}",
+      "errors": {
+        "consent": "Tick the authorisation to register the company.",
+        "unavailable": "The connection to the approved platform is not open yet.",
+        "notFrance": "For French companies only.",
+        "siret": "SIRET missing or invalid in the company settings.",
+        "alreadyElsewhere": "This SIREN is already registered with another platform. Ask it for the transfer code and enter it here.",
+        "failed": "The platform refused the registration. Try again later.",
+        "sync": "The platform is not answering. It will be tried again automatically."
+      }
     }
   },
   "footer": {
