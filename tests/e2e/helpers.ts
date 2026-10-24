@@ -59,7 +59,11 @@ export async function traitNetIssues(page: Page): Promise<string[]> {
         cs.borderBottomLeftRadius,
         cs.borderBottomRightRadius,
       ];
-      if (radii.some((r) => r !== "0px")) issues.push(`arrondi ${label(el)} ${radii.join(" ")}`);
+      // Seule exception : la bulle « Assistant IA », ronde dans toutes les applications Lead (cahier
+      // commun du 24.10.2026). Son panneau, lui, reste à angles vifs.
+      const bubble = el.matches('[data-testid="assistant-bubble"]');
+      if (!bubble && radii.some((r) => r !== "0px"))
+        issues.push(`arrondi ${label(el)} ${radii.join(" ")}`);
       if (cs.boxShadow !== "none") issues.push(`ombre ${label(el)} ${cs.boxShadow}`);
       if (cs.textShadow !== "none") issues.push(`ombre de texte ${label(el)}`);
       if (/gradient/.test(cs.backgroundImage)) issues.push(`dégradé ${label(el)}`);

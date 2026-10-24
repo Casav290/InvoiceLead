@@ -1,0 +1,598 @@
+"use client";
+
+import { Sparkles, X } from "lucide-react";
+import { useLocale, useTranslations } from "next-intl";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { useCountry, useCountryTranslations } from "@/components/app/CountryContext";
+import { countryPack } from "@/countries";
+import { Link, usePathname, useRouter } from "@/i18n/navigation";
+import { formatMoney } from "@/lib/money";
+
+/**
+ * Bulle « Assistant IA » (cahier commun de la famille Lead, 24.10.2026) : en bas à droite de toutes
+ * les pages de l'application, jamais sur les pages publiques. Le fil vit dans le sessionStorage de
+ * l'onglet ; les écritures proposées s'affichent en cartes « À confirmer » et ne partent qu'au clic.
+ */
+
+type Summary = {
+  action: string;
+  fields: { key: string; value: string }[];
+  lines?: {
+    description: string;
+    quantity: string;
+    unit: string;
+    unitPriceCents: number;
+    netCents: number;
+  }[];
+  totals?: { currency: string; netCents: number; vatCents: number; totalCents: number };
+};
+
+type Action =
+  | { type: "navigate"; path: string }
+  | { type: "confirm"; token: string; summary: Summary };
+
+type CardState =
+  | "pending"
+  | "saving"
+  | "done"
+  | "cancelled"
+  | "expired"
+  | "planLimit"
+  | "failed"
+  | "session";
+
+type Item =
+  | { id: string; kind: "user"; text: string }
+  | { id: string; kind: "assistant"; text: string }
+  | { id: string; kind: "notice"; code: string }
+  | { id: string; kind: "navigated"; path: string }
+  | {
+      id: string;
+      kind: "confirm";
+      token: string;
+      summary: Summary;
+      state: CardState;
+      result?: { path: string; label: string };
+    };
+
+type Stored = { history: unknown[]; items: Item[]; notes: string[] };
+
+const EMPTY: Stored = { history: [], items: [], notes: [] };
+const uid = () => Math.random().toString(36).slice(2);
+
+function load(key: string): Stored {
+  try {
+    const raw = window.sessionStorage.getItem(key);
+    if (!raw) return EMPTY;
+    const parsed = JSON.parse(raw) as Stored;
+    return Array.isArray(parsed.history) && Array.isArray(parsed.items)
+      ? { ...EMPTY, ...parsed }
+      : EMPTY;
+  } catch {
+    return EMPTY;
+  }
+}
+
+function save(key: string, value: Stored) {
+  try {
+    window.sessionStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    // Stockage plein ou refusé : le fil reste en mémoire jusqu'au rechargement.
+  }
+}
+
+const ERROR_BY_STATUS: Record<number, string> = {
+  400: "invalid",
+  401: "session",
+  403: "forbidden",
+  503: "unavailable",
+};
+
+export function AssistantBubble({ storageKey }: { storageKey: string }) {
+  const t = useTranslations("app.aiBubble");
+  const tc = useCountryTranslations("app.aiBubble.confirm");
+  const locale = useLocale();
+  const country = useCountry();
+  const pathname = usePathname();
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [draft, setDraft] = useState("");
+  const [data, setData] = useState<Stored>(EMPTY);
+  const bubbleRef = useRef<HTMLButtonElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const threadRef = useRef<HTMLDivElement>(null);
+  const panelId = useId();
+  const titleId = useId();
+
+  useEffect(() => setData(load(storageKey)), [storageKey]);
+
+  const update = useCallback(
+    (fn: (prev: Stored) => Stored) =>
+      setData((prev) => {
+        const next = fn(prev);
+        save(storageKey, next);
+        return next;
+      }),
+    [storageKey],
+  );
+
+  const close = useCallback(() => {
+    setOpen(false);
+    requestAnimationFrame(() => bubbleRef.current?.focus());
+  }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    requestAnimationFrame(() => inputRef.current?.focus());
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") close();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open, close]);
+
+  // Le fil défile jusqu'au dernier message à chaque ajout.
+  const count = data.items.length;
+  useEffect(() => {
+    if (open && count >= 0) threadRef.current?.scrollTo({ top: threadRef.current.scrollHeight });
+  }, [open, count]);
+
+  useEffect(() => {
+    if (!busy && open) inputRef.current?.focus();
+  }, [busy, open]);
+
+  async function send(text: string) {
+    const question = text.trim();
+    if (!question || busy) return;
+    const content = data.notes.length
+      ? [...data.notes.map((n) => ({ type: "text", text: n })), { type: "text", text: question }]
+      : question;
+    const messages = [...data.history, { role: "user", content }];
+    update((prev) => ({
+      ...prev,
+      items: [...prev.items, { id: uid(), kind: "user", text: question }],
+    }));
+    setDraft("");
+    setBusy(true);
+    try {
+      const res = await fetch("/api/assistant", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages, page: pathname, locale }),
+      });
+      const body = (await res.json().catch(() => ({}))) as {
+        messages?: unknown[];
+        reply?: string;
+        actions?: Action[];
+        notice?: string | null;
+        error?: string;
+        scope?: string;
+      };
+      if (!res.ok) {
+        const code =
+          res.status === 429
+            ? body.scope === "org"
+              ? "quotaOrg"
+              : "quotaUser"
+            : (ERROR_BY_STATUS[res.status] ?? "unavailable");
+        update((prev) => ({
+          ...prev,
+          items: [...prev.items, { id: uid(), kind: "notice", code }],
+        }));
+        return;
+      }
+      const added: Item[] = [];
+      if (body.reply) added.push({ id: uid(), kind: "assistant", text: body.reply });
+      if (body.notice) added.push({ id: uid(), kind: "notice", code: body.notice });
+      let target: string | null = null;
+      for (const a of body.actions ?? []) {
+        if (a.type === "confirm")
+          added.push({
+            id: uid(),
+            kind: "confirm",
+            token: a.token,
+            summary: a.summary,
+            state: "pending",
+          });
+        if (a.type === "navigate") {
+          target = a.path;
+          added.push({ id: uid(), kind: "navigated", path: a.path });
+        }
+      }
+      update((prev) => ({
+        history: Array.isArray(body.messages) ? body.messages : prev.history,
+        items: [...prev.items, ...added],
+        notes: [],
+      }));
+      if (target) router.push(target);
+    } catch {
+      update((prev) => ({
+        ...prev,
+        items: [...prev.items, { id: uid(), kind: "notice", code: "network" }],
+      }));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const setCard = (id: string, patch: Partial<Extract<Item, { kind: "confirm" }>>, note?: string) =>
+    update((prev) => ({
+      ...prev,
+      items: prev.items.map((it) =>
+        it.id === id && it.kind === "confirm" ? { ...it, ...patch } : it,
+      ),
+      notes: note ? [...prev.notes, note].slice(-5) : prev.notes,
+    }));
+
+  async function confirm(item: Extract<Item, { kind: "confirm" }>) {
+    setCard(item.id, { state: "saving" });
+    try {
+      const res = await fetch("/api/assistant/confirm", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: item.token }),
+      });
+      const body = (await res.json().catch(() => ({}))) as {
+        result?: { id: string; path: string; label: string; action: string };
+        error?: string;
+      };
+      if (res.ok && body.result) {
+        const r = body.result;
+        setCard(
+          item.id,
+          { state: "done", result: { path: r.path, label: r.label }, token: "" },
+          `[The user clicked Confirm: ${r.action} saved (id ${r.id}, page ${r.path}).]`,
+        );
+        router.refresh();
+        return;
+      }
+      const state: CardState =
+        res.status === 401
+          ? "session"
+          : res.status === 403
+            ? "expired"
+            : body.error === "plan_limit"
+              ? "planLimit"
+              : "failed";
+      setCard(
+        item.id,
+        { state },
+        `[Confirming ${item.summary.action} failed: ${body.error ?? res.status}.]`,
+      );
+    } catch {
+      setCard(item.id, { state: "pending" });
+    }
+  }
+
+  function cancel(item: Extract<Item, { kind: "confirm" }>) {
+    setCard(
+      item.id,
+      { state: "cancelled", token: "" },
+      `[The user clicked Cancel: the proposed ${item.summary.action} was not saved.]`,
+    );
+  }
+
+  function reset() {
+    update(() => EMPTY);
+    setDraft("");
+    inputRef.current?.focus();
+  }
+
+  const style = countryPack(country).amounts;
+  const money = (cents: number, currency: string) => formatMoney(cents, currency, style);
+  const shownValue = (key: string, value: string) => {
+    if (key === "kind" || key === "documentKind")
+      return tc.has(`values.${value}`) ? tc(`values.${value}`) : value;
+    if (key === "status") return tc("values.draft");
+    if (key === "role")
+      return value
+        .split("+")
+        .map((v) => (tc.has(`values.${v}`) ? tc(`values.${v}`) : v))
+        .join(", ");
+    return value;
+  };
+
+  return (
+    <>
+      {!open && (
+        <button
+          ref={bubbleRef}
+          type="button"
+          data-testid="assistant-bubble"
+          aria-label={t("open")}
+          aria-expanded={false}
+          aria-controls={panelId}
+          onClick={() => setOpen(true)}
+          className="fixed right-4 bottom-4 z-40 flex h-14 w-14 items-center justify-center border-2 border-white bg-accent text-white outline-offset-2 hover:bg-accent-dark focus-visible:outline-2 focus-visible:outline-accent sm:right-6 sm:bottom-6"
+          style={{ borderRadius: "50%" }}
+        >
+          <Sparkles aria-hidden="true" className="h-6 w-6" strokeWidth={2} />
+        </button>
+      )}
+      {open && (
+        <section
+          id={panelId}
+          role="dialog"
+          aria-modal="false"
+          aria-labelledby={titleId}
+          data-testid="assistant-panel"
+          className="fixed inset-0 z-[60] flex flex-col border-line-strong bg-panel text-ink sm:inset-auto sm:right-6 sm:bottom-6 sm:z-40 sm:h-[600px] sm:max-h-[calc(100dvh-3rem)] sm:w-[400px] sm:max-w-[calc(100vw-3rem)] sm:border"
+        >
+          <header className="flex items-center gap-2 border-b border-line-strong bg-accent px-4 py-3 text-white">
+            <Sparkles aria-hidden="true" className="h-5 w-5 shrink-0" />
+            <h2 id={titleId} className="flex-1 text-[15px] font-extrabold tracking-[-0.01em]">
+              {t("title")}
+            </h2>
+            <button
+              type="button"
+              onClick={reset}
+              disabled={busy}
+              data-testid="assistant-new"
+              className="border border-white/70 px-2 py-1 text-[12px] font-semibold hover:bg-accent-dark disabled:opacity-60"
+            >
+              {t("newConversation")}
+            </button>
+            <button
+              type="button"
+              onClick={close}
+              aria-label={t("close")}
+              data-testid="assistant-close"
+              className="flex h-8 w-8 items-center justify-center hover:bg-accent-dark"
+            >
+              <X aria-hidden="true" className="h-5 w-5" />
+            </button>
+          </header>
+
+          <div
+            ref={threadRef}
+            className="flex-1 space-y-3 overflow-y-auto px-4 py-4 text-[14px] leading-[1.5]"
+            aria-live="polite"
+            data-testid="assistant-thread"
+          >
+            {data.items.length === 0 && (
+              <div className="space-y-3">
+                <p className="text-ink-2">{t("intro")}</p>
+                <p className="text-[12px] font-semibold uppercase tracking-[0.06em] text-ink-muted">
+                  {t("suggestionsLabel")}
+                </p>
+                <ul className="space-y-2">
+                  {(["overdue", "draft", "collected"] as const).map((k) => (
+                    <li key={k}>
+                      <button
+                        type="button"
+                        data-testid={`assistant-suggestion-${k}`}
+                        onClick={() => send(t(`suggestions.${k}`))}
+                        disabled={busy}
+                        className="w-full border border-line-strong bg-paper px-3 py-2 text-left hover:border-accent hover:bg-accent-veil"
+                      >
+                        {t(`suggestions.${k}`)}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {data.items.map((it) => {
+              if (it.kind === "user")
+                return (
+                  <div
+                    key={it.id}
+                    className="ml-8 border border-accent-pale bg-accent-veil px-3 py-2"
+                  >
+                    <span className="sr-only">{t("you")}: </span>
+                    <p className="whitespace-pre-wrap break-words">{it.text}</p>
+                  </div>
+                );
+              if (it.kind === "assistant")
+                return (
+                  <div
+                    key={it.id}
+                    className="mr-4 border-l-2 border-accent px-3 py-1"
+                    data-testid="assistant-reply"
+                  >
+                    <span className="sr-only">{t("assistant")}: </span>
+                    <p className="whitespace-pre-wrap break-words">{it.text}</p>
+                  </div>
+                );
+              if (it.kind === "notice")
+                return (
+                  <p
+                    key={it.id}
+                    role="alert"
+                    data-testid="assistant-notice"
+                    className="border border-hot-bg bg-hot-bg px-3 py-2 text-hot-fg"
+                  >
+                    {t.has(`errors.${it.code}`) ? t(`errors.${it.code}`) : t("errors.unavailable")}
+                  </p>
+                );
+              if (it.kind === "navigated")
+                return (
+                  <p
+                    key={it.id}
+                    className="text-[12px] text-ink-muted"
+                    data-testid="assistant-navigated"
+                  >
+                    {t("opened", { path: it.path })}
+                  </p>
+                );
+              const s = it.summary;
+              return (
+                <div
+                  key={it.id}
+                  className="border border-line-strong bg-paper"
+                  data-testid="assistant-confirm-card"
+                  data-state={it.state}
+                >
+                  <div className="flex items-center justify-between border-b border-line px-3 py-2">
+                    <span className="text-[12px] font-semibold uppercase tracking-[0.06em] text-ink-muted">
+                      {tc("heading")}
+                    </span>
+                    <span className="text-[13px] font-bold">
+                      {tc.has(`titles.${s.action}`) ? tc(`titles.${s.action}`) : s.action}
+                    </span>
+                  </div>
+                  <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 px-3 py-2 text-[13px]">
+                    {s.fields.map((f) => (
+                      <div key={f.key} className="contents">
+                        <dt className="text-ink-muted">
+                          {tc.has(`fields.${f.key}`) ? tc(`fields.${f.key}`) : f.key}
+                        </dt>
+                        <dd className="break-words font-medium">{shownValue(f.key, f.value)}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                  {s.lines && s.lines.length > 0 && (
+                    <table className="w-full table-fixed border-t border-line text-[12px]">
+                      <thead className="bg-head text-ink-muted">
+                        <tr>
+                          <th className="px-3 py-1 text-left font-semibold">
+                            {tc("columns.description")}
+                          </th>
+                          <th className="w-12 px-1 py-1 text-right font-semibold">
+                            {tc("columns.quantity")}
+                          </th>
+                          <th className="w-24 px-3 py-1 text-right font-semibold">
+                            {tc("columns.amount")}
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {s.lines.map((l, i) => (
+                          <tr key={`${i}-${l.description}`} className="border-t border-line-cell">
+                            <td className="break-words px-3 py-1">{l.description}</td>
+                            <td className="px-1 py-1 text-right">{l.quantity}</td>
+                            <td className="px-3 py-1 text-right tabular-nums">
+                              {money(l.netCents, s.totals?.currency ?? "")}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                  {s.totals && (
+                    <dl className="grid grid-cols-[1fr_auto] gap-x-3 border-t border-line px-3 py-2 text-[13px] tabular-nums">
+                      <dt className="text-ink-muted">{tc("net")}</dt>
+                      <dd className="text-right">{money(s.totals.netCents, s.totals.currency)}</dd>
+                      {s.totals.vatCents !== 0 && (
+                        <>
+                          <dt className="text-ink-muted">{tc("tax")}</dt>
+                          <dd className="text-right">
+                            {money(s.totals.vatCents, s.totals.currency)}
+                          </dd>
+                        </>
+                      )}
+                      <dt className="font-bold">{tc("total")}</dt>
+                      <dd className="text-right font-bold">
+                        {money(s.totals.totalCents, s.totals.currency)}
+                      </dd>
+                    </dl>
+                  )}
+                  <div className="border-t border-line px-3 py-2">
+                    {(it.state === "pending" || it.state === "saving") && (
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          data-testid="assistant-confirm"
+                          onClick={() => confirm(it)}
+                          disabled={it.state === "saving"}
+                          className="bg-accent px-3 py-1.5 text-[13px] font-bold text-white hover:bg-accent-dark disabled:opacity-60"
+                        >
+                          {it.state === "saving" ? tc("saving") : tc("confirm")}
+                        </button>
+                        <button
+                          type="button"
+                          data-testid="assistant-cancel"
+                          onClick={() => cancel(it)}
+                          disabled={it.state === "saving"}
+                          className="border border-line-strong px-3 py-1.5 text-[13px] font-semibold hover:border-ink-3"
+                        >
+                          {tc("cancel")}
+                        </button>
+                      </div>
+                    )}
+                    {it.state === "done" && it.result && (
+                      <p
+                        className="flex flex-wrap items-center gap-2 text-[13px]"
+                        data-testid="assistant-done"
+                      >
+                        <span className="font-semibold text-ink">
+                          {tc("done", { label: it.result.label })}
+                        </span>
+                        <Link href={it.result.path} className="font-bold text-accent underline">
+                          {tc("open")}
+                        </Link>
+                      </p>
+                    )}
+                    {it.state === "cancelled" && (
+                      <p className="text-[13px] text-ink-muted">{tc("cancelled")}</p>
+                    )}
+                    {it.state === "expired" && (
+                      <p className="text-[13px] text-hot-fg">{tc("expired")}</p>
+                    )}
+                    {it.state === "planLimit" && (
+                      <p className="text-[13px] text-hot-fg">{tc("planLimit")}</p>
+                    )}
+                    {it.state === "failed" && (
+                      <p className="text-[13px] text-hot-fg">{tc("failed")}</p>
+                    )}
+                    {it.state === "session" && (
+                      <p className="text-[13px] text-hot-fg">{t("errors.session")}</p>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+            {busy && (
+              <p
+                className="text-[13px] font-semibold text-ink-3"
+                data-testid="assistant-working"
+                role="status"
+              >
+                {t("working")}
+              </p>
+            )}
+          </div>
+
+          <form
+            className="flex items-end gap-2 border-t border-line-strong bg-panel p-3"
+            onSubmit={(e) => {
+              e.preventDefault();
+              send(draft);
+            }}
+          >
+            <label htmlFor={`${panelId}-input`} className="sr-only">
+              {t("inputLabel")}
+            </label>
+            <textarea
+              id={`${panelId}-input`}
+              ref={inputRef}
+              data-testid="assistant-input"
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+                  e.preventDefault();
+                  send(draft);
+                }
+              }}
+              disabled={busy}
+              rows={2}
+              maxLength={4000}
+              placeholder={t("placeholder")}
+              className="max-h-40 min-h-[44px] flex-1 resize-none border border-line-strong bg-white px-3 py-2 text-[14px] text-ink outline-none focus:border-accent disabled:bg-muted"
+            />
+            <button
+              type="submit"
+              data-testid="assistant-send"
+              disabled={busy || !draft.trim()}
+              className="h-[44px] bg-accent px-4 text-[14px] font-bold text-white hover:bg-accent-dark disabled:opacity-50"
+            >
+              {t("send")}
+            </button>
+          </form>
+        </section>
+      )}
+    </>
+  );
+}

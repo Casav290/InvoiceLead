@@ -2594,6 +2594,99 @@
         "failed": "Die Plattform hat die Anmeldung abgelehnt. Versuchen Sie es später erneut.",
         "sync": "Die Plattform antwortet nicht. Neuer Versuch automatisch."
       }
+    },
+    "aiBubble": {
+      "title": "KI-Assistent",
+      "open": "KI-Assistent öffnen",
+      "close": "Assistent schliessen",
+      "newConversation": "Neues Gespräch",
+      "placeholder": "Fragen Sie, was Sie möchten…",
+      "inputLabel": "Ihre Anfrage an den KI-Assistenten",
+      "send": "Senden",
+      "working": "Der Assistent arbeitet…",
+      "intro": "Fragen Sie nach Rechnungen, Offerten, Kunden oder Zahlen, oder lassen Sie einen Entwurf vorbereiten. Gespeichert wird erst nach Ihrem Klick auf «Bestätigen».",
+      "suggestionsLabel": "Vorschläge",
+      "suggestions": {
+        "overdue": "Welche Rechnungen sind überfällig?",
+        "draft": "Bereite einen Rechnungsentwurf für einen Kunden vor",
+        "collected": "Wie viel habe ich diesen Monat eingenommen?"
+      },
+      "you": "Sie",
+      "assistant": "KI-Assistent",
+      "opened": "Seite geöffnet: {path}",
+      "errors": {
+        "unavailable": "Der Assistent antwortet gerade nicht. Versuchen Sie es gleich noch einmal.",
+        "network": "Die Verbindung ist unterbrochen. Prüfen Sie Ihr Netzwerk und versuchen Sie es erneut.",
+        "quotaUser": "Sie haben 40 Nachrichten in einer Stunde gesendet. Versuchen Sie es etwas später wieder.",
+        "quotaOrg": "Ihr Unternehmen hat heute 400 Nachrichten erreicht. Der Assistent ist morgen wieder da.",
+        "session": "Ihre Sitzung ist abgelaufen. Laden Sie die Seite neu, um sich wieder anzumelden.",
+        "forbidden": "Ihr Zugang zu InvoiceLead erlaubt den Assistenten nicht.",
+        "invalid": "Diese Anfrage konnte nicht gelesen werden. Beginnen Sie ein neues Gespräch.",
+        "refusal": "Diese Anfrage kann ich nicht bearbeiten.",
+        "truncated": "Die Antwort wurde abgeschnitten. Stellen Sie eine genauere Frage.",
+        "incomplete": "Ich konnte nicht fertig werden. Formulieren Sie die Anfrage neu oder teilen Sie sie auf."
+      },
+      "confirm": {
+        "heading": "Zu bestätigen",
+        "confirm": "Bestätigen",
+        "cancel": "Abbrechen",
+        "saving": "Wird gespeichert…",
+        "cancelled": "Abgebrochen. Nichts wurde gespeichert.",
+        "done": "Gespeichert: {label}",
+        "open": "Öffnen",
+        "expired": "Dieser Vorschlag ist abgelaufen oder wurde schon verwendet. Fragen Sie den Assistenten erneut.",
+        "planLimit": "Die Kontaktgrenze Ihres Abos ist erreicht.",
+        "failed": "Das Speichern hat nicht geklappt. Die Daten haben sich vielleicht geändert; fragen Sie den Assistenten erneut.",
+        "titles": {
+          "create_contact": "Neuer Kontakt",
+          "update_contact": "Kontakt ändern",
+          "create_invoice_draft": "Neuer Entwurf",
+          "update_invoice_draft": "Entwurf ändern"
+        },
+        "fields": {
+          "previousName": "Bisheriger Name",
+          "name": "Name",
+          "kind": "Art",
+          "role": "Rolle",
+          "email": "E-Mail",
+          "phone": "Telefon",
+          "contactPerson": "Kontaktperson",
+          "address": "Adresse",
+          "country": "Land",
+          "language": "Sprache",
+          "uid": "MWST-Nummer",
+          "paymentTermDays": "Zahlungsfrist (Tage)",
+          "documentKind": "Beleg",
+          "number": "Nummer",
+          "customer": "Kunde",
+          "title": "Titel",
+          "issueDate": "Datum",
+          "dueDate": "Fälligkeit",
+          "status": "Status",
+          "uidIntl": "USt-IdNr.",
+          "uidUs": "Steuernummer"
+        },
+        "values": {
+          "company": "Unternehmen",
+          "person": "Person",
+          "customer": "Kunde",
+          "supplier": "Lieferant",
+          "invoice": "Rechnung",
+          "quote": "Offerte",
+          "draft": "Entwurf, weder ausgestellt noch versendet",
+          "quoteIntl": "Angebot"
+        },
+        "columns": {
+          "description": "Bezeichnung",
+          "quantity": "Menge",
+          "amount": "Betrag"
+        },
+        "net": "Total ohne Steuern",
+        "tax": "MWST",
+        "taxUs": "Sales Tax",
+        "total": "Total",
+        "taxIntl": "USt."
+      }
     }
   },
   "footer": {

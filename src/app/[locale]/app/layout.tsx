@@ -1,6 +1,8 @@
 import { AppHeader } from "@/components/app/AppHeader";
 import { CountryProvider } from "@/components/app/CountryContext";
+import { AssistantBubble } from "@/components/assistant/AssistantBubble";
 import { leadAppItems } from "@/lib/lead-apps";
+import { assistantConfigured } from "@/server/ai-assistant/auth";
 import { APP_CODE } from "@/server/auth/attach";
 import { requireAppSession } from "@/server/auth/guard";
 import { getSessionCountryTranslations } from "@/server/country-translations";
@@ -20,6 +22,8 @@ export default async function AppLayout({
   const { user, organization } = await requireAppSession(locale);
   const orgs = await listUserOrganizations(db(), user.id);
   const tier = tierOf(organization);
+  // Sans clé côté serveur, pas de bulle (et /api/assistant répond 503).
+  const bubble = assistantConfigured();
   const tp = await getSessionCountryTranslations({ locale, namespace: "app.plan" });
   // Dans l'app Android / iOS : pas de « Passer à Pro » (lib/native.ts).
   const upgrade =
@@ -48,7 +52,9 @@ export default async function AppLayout({
           apps={leadAppItems(APP_CODE, locale)}
           upgrade={upgrade}
         />
-        <main className="flex-1">{children}</main>
+        {/* Bulle « Assistant IA » : place gardée sous la page pour qu'elle ne cache jamais sa fin. */}
+        <main className={bubble ? "flex-1 pb-24" : "flex-1"}>{children}</main>
+        {bubble && <AssistantBubble storageKey={`il-assistant:${organization.id}:${user.id}`} />}
       </div>
     </CountryProvider>
   );

@@ -2594,6 +2594,99 @@
         "failed": "The platform refused the registration. Try again later.",
         "sync": "The platform is not answering. It will be tried again automatically."
       }
+    },
+    "aiBubble": {
+      "title": "AI assistant",
+      "open": "Open the AI assistant",
+      "close": "Close the assistant",
+      "newConversation": "New conversation",
+      "placeholder": "Ask for anything…",
+      "inputLabel": "Your request to the AI assistant",
+      "send": "Send",
+      "working": "The assistant is working…",
+      "intro": "Ask about your invoices, quotes, customers or figures, or ask for a draft. Nothing is saved until you click “Confirm”.",
+      "suggestionsLabel": "Suggestions",
+      "suggestions": {
+        "overdue": "Which invoices are overdue?",
+        "draft": "Prepare a draft invoice for a customer",
+        "collected": "How much have I collected this month?"
+      },
+      "you": "You",
+      "assistant": "AI assistant",
+      "opened": "Page opened: {path}",
+      "errors": {
+        "unavailable": "The assistant is not responding right now. Try again in a moment.",
+        "network": "The connection was lost. Check your network and try again.",
+        "quotaUser": "You have sent 40 messages in an hour. Try again a little later.",
+        "quotaOrg": "Your company has reached 400 messages today. The assistant is back tomorrow.",
+        "session": "Your session has expired. Reload the page to sign in again.",
+        "forbidden": "Your access to InvoiceLead does not include the assistant.",
+        "invalid": "This request could not be read. Start a new conversation.",
+        "refusal": "I can't help with this request.",
+        "truncated": "The answer was cut off. Ask a more precise question.",
+        "incomplete": "I could not finish. Rephrase the request or split it up."
+      },
+      "confirm": {
+        "heading": "To confirm",
+        "confirm": "Confirm",
+        "cancel": "Cancel",
+        "saving": "Saving…",
+        "cancelled": "Cancelled. Nothing was saved.",
+        "done": "Saved: {label}",
+        "open": "Open",
+        "expired": "This proposal has expired or was already used. Ask the assistant again.",
+        "planLimit": "Your plan's contact limit has been reached.",
+        "failed": "Saving did not work. The data may have changed; ask the assistant again.",
+        "titles": {
+          "create_contact": "New contact",
+          "update_contact": "Edit contact",
+          "create_invoice_draft": "New draft",
+          "update_invoice_draft": "Edit draft"
+        },
+        "fields": {
+          "previousName": "Current name",
+          "name": "Name",
+          "kind": "Type",
+          "role": "Role",
+          "email": "E-mail",
+          "phone": "Phone",
+          "contactPerson": "Contact person",
+          "address": "Address",
+          "country": "Country",
+          "language": "Language",
+          "uid": "VAT number",
+          "paymentTermDays": "Payment terms (days)",
+          "documentKind": "Document",
+          "number": "Number",
+          "customer": "Customer",
+          "title": "Title",
+          "issueDate": "Date",
+          "dueDate": "Due date",
+          "status": "Status",
+          "uidIntl": "VAT number",
+          "uidUs": "Tax ID"
+        },
+        "values": {
+          "company": "Company",
+          "person": "Person",
+          "customer": "Customer",
+          "supplier": "Supplier",
+          "invoice": "Invoice",
+          "quote": "Quote",
+          "draft": "Draft, not issued and not sent",
+          "quoteIntl": "Quote"
+        },
+        "columns": {
+          "description": "Description",
+          "quantity": "Qty",
+          "amount": "Amount"
+        },
+        "net": "Total excluding tax",
+        "tax": "VAT",
+        "taxUs": "Sales tax",
+        "total": "Total",
+        "taxIntl": "VAT"
+      }
     }
   },
   "footer": {

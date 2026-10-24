@@ -1235,3 +1235,47 @@ export const einvoiceConnections = pgTable("einvoice_connections", {
 });
 
 export type EinvoiceConnection = typeof einvoiceConnections.$inferSelect;
+
+/**
+ * Bulle « Assistant IA » (24.10.2026) : une ligne par message envoyé à l'assistant. Sert au quota
+ * (40 messages par heure et par personne, 400 par jour et par entreprise) et au journal : qui, quand,
+ * jetons consommés, outils appelés, erreur. Le contenu des conversations n'est jamais gardé.
+ */
+export const assistantUsage = pgTable(
+  "assistant_usage",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
+    inputTokens: integer("input_tokens").notNull().default(0),
+    outputTokens: integer("output_tokens").notNull().default(0),
+    cacheReadTokens: integer("cache_read_tokens").notNull().default(0),
+    cacheWriteTokens: integer("cache_write_tokens").notNull().default(0),
+    /** Noms des outils appelés pendant ce message, dans l'ordre. */
+    tools: text("tools").array().notNull().default(sql`'{}'::text[]`),
+    /** Code court d'une erreur (« api », « refusal », « max_tokens »…), vide quand tout va bien. */
+    error: text("error"),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    index("assistant_usage_user_idx").on(t.userId, t.createdAt),
+    index("assistant_usage_org_idx").on(t.organizationId, t.createdAt),
+  ],
+);
+
+/**
+ * Jetons « À confirmer » de l'assistant déjà utilisés : une écriture proposée ne s'exécute qu'une
+ * fois. La ligne garde l'identifiant du jeton (jti), jamais son contenu ; effacée après deux jours.
+ */
+export const assistantConfirmations = pgTable("assistant_confirmations", {
+  jti: text("jti").primaryKey(),
+  organizationId: uuid("organization_id")
+    .notNull()
+    .references(() => organizations.id, { onDelete: "cascade" }),
+  userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
+  /** Outil confirmé (create_contact, create_invoice_draft…). */
+  tool: text("tool").notNull(),
+  usedAt: timestamp("used_at", { withTimezone: true }).notNull().defaultNow(),
+});

@@ -2594,6 +2594,99 @@
         "failed": "La plateforme a refusé l'inscription. Réessayez plus tard.",
         "sync": "La plateforme ne répond pas. Nouvel essai automatique."
       }
+    },
+    "aiBubble": {
+      "title": "Assistant IA",
+      "open": "Ouvrir l'assistant IA",
+      "close": "Fermer l'assistant",
+      "newConversation": "Nouvelle conversation",
+      "placeholder": "Demandez ce que vous voulez…",
+      "inputLabel": "Votre demande à l'assistant IA",
+      "send": "Envoyer",
+      "working": "L'assistant travaille…",
+      "intro": "Posez une question sur vos factures, devis, clients ou chiffres, ou demandez un brouillon. Rien n'est enregistré sans votre clic sur « Confirmer ».",
+      "suggestionsLabel": "Suggestions",
+      "suggestions": {
+        "overdue": "Quelles factures sont en retard de paiement ?",
+        "draft": "Prépare un brouillon de facture pour un client",
+        "collected": "Combien ai-je encaissé ce mois-ci ?"
+      },
+      "you": "Vous",
+      "assistant": "Assistant IA",
+      "opened": "Page ouverte : {path}",
+      "errors": {
+        "unavailable": "L'assistant ne répond pas pour le moment. Réessayez dans un instant.",
+        "network": "La connexion a été perdue. Vérifiez votre réseau et réessayez.",
+        "quotaUser": "Vous avez envoyé 40 messages en une heure. Réessayez un peu plus tard.",
+        "quotaOrg": "Votre entreprise a atteint 400 messages aujourd'hui. L'assistant revient demain.",
+        "session": "Votre session a expiré. Rechargez la page pour vous reconnecter.",
+        "forbidden": "Votre accès à InvoiceLead ne permet pas d'utiliser l'assistant.",
+        "invalid": "Cette demande n'a pas pu être lue. Commencez une nouvelle conversation.",
+        "refusal": "Je ne peux pas traiter cette demande.",
+        "truncated": "La réponse a été coupée. Posez une question plus précise.",
+        "incomplete": "Je n'ai pas pu terminer. Reformulez ou découpez la demande."
+      },
+      "confirm": {
+        "heading": "À confirmer",
+        "confirm": "Confirmer",
+        "cancel": "Annuler",
+        "saving": "Enregistrement…",
+        "cancelled": "Annulé. Rien n'a été enregistré.",
+        "done": "Enregistré : {label}",
+        "open": "Ouvrir",
+        "expired": "Cette proposition a expiré ou a déjà servi. Redemandez-la à l'assistant.",
+        "planLimit": "La limite de contacts de votre formule est atteinte.",
+        "failed": "L'enregistrement n'a pas abouti. Les données ont peut-être changé ; redemandez à l'assistant.",
+        "titles": {
+          "create_contact": "Nouveau contact",
+          "update_contact": "Modifier le contact",
+          "create_invoice_draft": "Nouveau brouillon",
+          "update_invoice_draft": "Modifier le brouillon"
+        },
+        "fields": {
+          "previousName": "Nom actuel",
+          "name": "Nom",
+          "kind": "Type",
+          "role": "Rôle",
+          "email": "E-mail",
+          "phone": "Téléphone",
+          "contactPerson": "Personne de contact",
+          "address": "Adresse",
+          "country": "Pays",
+          "language": "Langue",
+          "uid": "N° de TVA",
+          "paymentTermDays": "Délai de paiement (jours)",
+          "documentKind": "Pièce",
+          "number": "Numéro",
+          "customer": "Client",
+          "title": "Titre",
+          "issueDate": "Date",
+          "dueDate": "Échéance",
+          "status": "Statut",
+          "uidIntl": "N° de TVA",
+          "uidUs": "N° fiscal"
+        },
+        "values": {
+          "company": "Entreprise",
+          "person": "Personne",
+          "customer": "Client",
+          "supplier": "Fournisseur",
+          "invoice": "Facture",
+          "quote": "Devis",
+          "draft": "Brouillon, ni émis ni envoyé",
+          "quoteIntl": "Devis"
+        },
+        "columns": {
+          "description": "Désignation",
+          "quantity": "Qté",
+          "amount": "Montant"
+        },
+        "net": "Total hors taxes",
+        "tax": "TVA",
+        "taxUs": "Taxe de vente",
+        "total": "Total",
+        "taxIntl": "TVA"
+      }
     }
   },
   "footer": {

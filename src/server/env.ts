@@ -23,6 +23,11 @@ const schema = z.object({
   AI_MODEL: z.string().min(1).default("glm-4.6"),
   /** Modèle capable de lire une image (photo de ticket, facture scannée). */
   AI_VISION_MODEL: z.string().min(1).default("glm-4.5v"),
+  /**
+   * Bulle « Assistant IA » (Claude, API d'Anthropic) : lue côté serveur seulement. Sans clé, la bulle
+   * est masquée et /api/assistant répond 503.
+   */
+  ANTHROPIC_API_KEY: z.string().min(1).optional(),
   // Neon Object Storage (variables AWS standard). Sans elles, les fichiers sont gardés en base.
   AWS_ENDPOINT_URL_S3: z.url().optional(),
   AWS_ACCESS_KEY_ID: z.string().min(1).optional(),

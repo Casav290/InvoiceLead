@@ -323,6 +323,13 @@
       "when": 1792674146875,
       "tag": "0045_einvoice_reception",
       "breakpoints": true
+    },
+    {
+      "idx": 46,
+      "version": "7",
+      "when": 1792808049730,
+      "tag": "0046_assistant_ia",
+      "breakpoints": true
     }
   ]
 }

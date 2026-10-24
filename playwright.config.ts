@@ -24,6 +24,9 @@ const appEnv = {
   RESEND_API_KEY: "re_test",
   RESEND_API_URL: `http://localhost:${LEAD_PORT}/resend`,
   AI_API_KEY: "ai_test",
+  // Bulle « Assistant IA » affichée ; les tests simulent /api/assistant, aucun appel au modèle.
+  ANTHROPIC_API_KEY: "anthropic_e2e_placeholder",
+  ANTHROPIC_BASE_URL: `http://localhost:${LEAD_PORT}/anthropic`,
   CRON_SECRET: "cron-secret-for-tests-only",
   AI_BASE_URL: `http://localhost:${LEAD_PORT}/ai`,
   STRIPE_SECRET_KEY: "sk_test_e2e",
