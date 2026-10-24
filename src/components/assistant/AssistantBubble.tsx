@@ -6,6 +6,7 @@ import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { useCountry, useCountryTranslations } from "@/components/app/CountryContext";
 import { countryPack } from "@/countries";
 import { Link, usePathname, useRouter } from "@/i18n/navigation";
+import { formatDate } from "@/lib/fiscal-year";
 import { formatMoney } from "@/lib/money";
 
 /**
@@ -281,7 +282,18 @@ export function AssistantBubble({ storageKey }: { storageKey: string }) {
 
   const style = countryPack(country).amounts;
   const money = (cents: number, currency: string) => formatMoney(cents, currency, style);
+  const dates = countryPack(country).dates;
+  const names = (type: "language" | "region", code: string) => {
+    try {
+      return new Intl.DisplayNames([locale], { type }).of(code) ?? code;
+    } catch {
+      return code;
+    }
+  };
   const shownValue = (key: string, value: string) => {
+    if (key === "issueDate" || key === "dueDate") return formatDate(value, dates);
+    if (key === "language") return names("language", value);
+    if (key === "country") return names("region", value);
     if (key === "kind" || key === "documentKind")
       return tc.has(`values.${value}`) ? tc(`values.${value}`) : value;
     if (key === "status") return tc("values.draft");
