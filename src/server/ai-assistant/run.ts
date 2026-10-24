@@ -77,6 +77,8 @@ export async function runAssistant(input: {
       output_config: { effort: "low" },
       betas: ["server-side-fallback-2026-07-01"],
       fallbacks: "default",
+      // Le fil de la conversation aussi : chaque tour relit le précédent depuis le cache.
+      cache_control: { type: "ephemeral" },
       system: [
         { type: "text", text: STABLE_PROMPT, cache_control: { type: "ephemeral" } },
         { type: "text", text: context },
