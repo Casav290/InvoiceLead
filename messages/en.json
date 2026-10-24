@@ -2605,6 +2605,7 @@
       "send": "Send",
       "working": "The assistant is working…",
       "intro": "Ask about your invoices, quotes, customers or figures, or ask for a draft. Nothing is saved until you click “Confirm”.",
+      "introIntl": "Ask about your invoices, quotes, customers or figures, or ask for a draft. Nothing is saved until you click “Confirm”.",
       "suggestionsLabel": "Suggestions",
       "suggestions": {
         "overdue": "Which invoices are overdue?",

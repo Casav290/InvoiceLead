@@ -1,7 +1,7 @@
 "use client";
 
 import { Sparkles, X } from "lucide-react";
-import { useLocale, useTranslations } from "next-intl";
+import { useLocale } from "next-intl";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { useCountry, useCountryTranslations } from "@/components/app/CountryContext";
 import { countryPack } from "@/countries";
@@ -107,7 +107,7 @@ const ERROR_BY_STATUS: Record<number, string> = {
 };
 
 export function AssistantBubble({ storageKey }: { storageKey: string }) {
-  const t = useTranslations("app.aiBubble");
+  const t = useCountryTranslations("app.aiBubble");
   const tc = useCountryTranslations("app.aiBubble.confirm");
   const locale = useLocale();
   const country = useCountry();

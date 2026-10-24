@@ -2605,6 +2605,7 @@
       "send": "Senden",
       "working": "Der Assistent arbeitet…",
       "intro": "Fragen Sie nach Rechnungen, Offerten, Kunden oder Zahlen, oder lassen Sie einen Entwurf vorbereiten. Gespeichert wird erst nach Ihrem Klick auf «Bestätigen».",
+      "introIntl": "Fragen Sie nach Rechnungen, Angeboten, Kunden oder Zahlen, oder lassen Sie einen Entwurf vorbereiten. Gespeichert wird erst nach Ihrem Klick auf «Bestätigen».",
       "suggestionsLabel": "Vorschläge",
       "suggestions": {
         "overdue": "Welche Rechnungen sind überfällig?",
