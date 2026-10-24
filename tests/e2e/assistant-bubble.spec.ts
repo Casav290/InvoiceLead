@@ -34,7 +34,7 @@ async function fakeAssistant(page: Page, sent: unknown[]) {
     await route.fulfill({
       json: {
         messages: [...body.messages, { role: "assistant", content: "Bereit zur Bestätigung." }],
-        reply: "Der Entwurf ist bereit. Bitte bestätigen.",
+        reply: "Der Entwurf ist **bereit**. Bitte bestätigen. <b>kein HTML</b>",
         actions: [{ type: "confirm", token: "signed.token", summary: SUMMARY }],
         notice: null,
       },
@@ -111,6 +111,9 @@ test("bulle : carte « À confirmer », Annuler n'écrit rien, Confirmer appelle
   await expect(input).toHaveValue("Prépare une facture\npour Kunde AG");
   await input.press("Enter");
   await expect(page.getByTestId("assistant-reply")).toContainText("Der Entwurf ist bereit");
+  // Le gras du modèle devient <strong> ; le HTML reste du texte.
+  await expect(page.getByTestId("assistant-reply").first().locator("strong")).toHaveText("bereit");
+  await expect(page.getByTestId("assistant-reply").first()).toContainText("<b>kein HTML</b>");
   const cards = page.getByTestId("assistant-confirm-card");
   await expect(cards).toHaveCount(1);
   await expect(cards.first()).toContainText("À confirmer");

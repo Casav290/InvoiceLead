@@ -82,6 +82,15 @@ function save(key: string, value: Stored) {
   }
 }
 
+/** **gras** du modèle rendu en <strong>, sans jamais interpréter de HTML. */
+function withBold(text: string) {
+  return text
+    .split(/(\*\*[^*\n]+\*\*)/g)
+    .map((part, i) =>
+      /^\*\*[^*\n]+\*\*$/.test(part) ? <strong key={i}>{part.slice(2, -2)}</strong> : part,
+    );
+}
+
 const ERROR_BY_STATUS: Record<number, string> = {
   400: "invalid",
   401: "session",
@@ -404,7 +413,7 @@ export function AssistantBubble({ storageKey }: { storageKey: string }) {
                     data-testid="assistant-reply"
                   >
                     <span className="sr-only">{t("assistant")}: </span>
-                    <p className="whitespace-pre-wrap break-words">{it.text}</p>
+                    <p className="whitespace-pre-wrap break-words">{withBold(it.text)}</p>
                   </div>
                 );
               if (it.kind === "notice")
