@@ -2613,7 +2613,7 @@
       },
       "you": "Vous",
       "assistant": "Assistant IA",
-      "opened": "Page ouverte : {path}",
+      "opened": "Page ouverte dans l'application.",
       "errors": {
         "unavailable": "L'assistant ne répond pas pour le moment. Réessayez dans un instant.",
         "network": "La connexion a été perdue. Vérifiez votre réseau et réessayez.",

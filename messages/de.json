@@ -2613,7 +2613,7 @@
       },
       "you": "Sie",
       "assistant": "KI-Assistent",
-      "opened": "Seite geöffnet: {path}",
+      "opened": "Seite in der Anwendung geöffnet.",
       "errors": {
         "unavailable": "Der Assistent antwortet gerade nicht. Versuchen Sie es gleich noch einmal.",
         "network": "Die Verbindung ist unterbrochen. Prüfen Sie Ihr Netzwerk und versuchen Sie es erneut.",

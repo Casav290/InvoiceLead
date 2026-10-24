@@ -83,8 +83,16 @@ function save(key: string, value: Stored) {
 }
 
 /** **gras** du modèle rendu en <strong>, sans jamais interpréter de HTML. */
-function withBold(text: string) {
-  return text
+function withBold(text: string, locale: string) {
+  // Français : guillemets et ponctuation haute collés par une espace fine insécable, comme l'interface.
+  const typeset =
+    locale === "fr"
+      ? text
+          .replace(/«\s+/g, "«\u202f")
+          .replace(/\s+»/g, "\u202f»")
+          .replace(/ +([?!;:])(?=\s|$)/g, "\u202f$1")
+      : text;
+  return typeset
     .split(/(\*\*[^*\n]+\*\*)/g)
     .map((part, i) =>
       /^\*\*[^*\n]+\*\*$/.test(part) ? <strong key={i}>{part.slice(2, -2)}</strong> : part,
@@ -413,7 +421,7 @@ export function AssistantBubble({ storageKey }: { storageKey: string }) {
                     data-testid="assistant-reply"
                   >
                     <span className="sr-only">{t("assistant")}: </span>
-                    <p className="whitespace-pre-wrap break-words">{withBold(it.text)}</p>
+                    <p className="whitespace-pre-wrap break-words">{withBold(it.text, locale)}</p>
                   </div>
                 );
               if (it.kind === "notice")
@@ -434,7 +442,7 @@ export function AssistantBubble({ storageKey }: { storageKey: string }) {
                     className="text-[12px] text-ink-muted"
                     data-testid="assistant-navigated"
                   >
-                    {t("opened", { path: it.path })}
+                    {t("opened")}
                   </p>
                 );
               const s = it.summary;
