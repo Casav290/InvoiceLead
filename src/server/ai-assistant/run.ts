@@ -87,9 +87,13 @@ export async function runAssistant(input: {
     { signal },
   );
   let last: BetaMessage | undefined;
+  // Texte de tout le tour : le modèle parle souvent avant un outil (open_page) et finit sans rien ajouter.
+  const said: string[] = [];
   try {
     for await (const message of runner) {
       last = message;
+      const text = textOf(message);
+      if (text) said.push(text);
       usage.inputTokens += message.usage.input_tokens ?? 0;
       usage.outputTokens += message.usage.output_tokens ?? 0;
       usage.cacheReadTokens += message.usage.cache_read_input_tokens ?? 0;
@@ -113,7 +117,7 @@ export async function runAssistant(input: {
       usage,
     };
   }
-  const reply = textOf(last);
+  const reply = said.join("\n\n").trim();
   let notice: Notice | null = null;
   if (stop === "max_tokens") notice = "truncated";
   else if (stop !== "end_turn" && stop !== "stop_sequence") notice = "incomplete";
