@@ -109,7 +109,7 @@ for (const size of WIDTHS) {
       // Fonctions Pro grisées de la formule gratuite (marques, verrous, liens de mise à niveau).
       await page.goto("/fr/app/settings/api");
       expect(await traitNetIssues(page)).toEqual([]);
-      await page.goto("/de/app/settings/projectlead");
+      await page.goto("/de/app/settings/lead-apps");
       expect(await traitNetIssues(page)).toEqual([]);
       await page.goto("/fr/app/settings/team");
       expect(await traitNetIssues(page)).toEqual([]);

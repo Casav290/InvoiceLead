@@ -193,5 +193,7 @@ export function leadFamilyTexts(locale: string): { title: string; open: string; 
   };
 }
 
-/** Adresse de ProjectLead : page Temps, réglage de la liaison. */
+/** Adresse de ProjectLead : page Temps, Réglages → Applications Lead. */
 export const PROJECTLEAD_URL: string = LEAD_FAMILY.apps[3].origin;
+/** Adresse de CRMlead : Réglages → Applications Lead. */
+export const CRMLEAD_URL: string = LEAD_FAMILY.apps[2].origin;

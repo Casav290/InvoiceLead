@@ -787,7 +787,7 @@
       "team": "Team",
       "payments": "Online-Zahlung",
       "api": "API",
-      "projectlead": "ProjectLead",
+      "leadApps": "Lead-Apps",
       "plan": "Abo",
       "einvoicing": "Empfangene Rechnungen"
     },
@@ -2091,35 +2091,23 @@
         "events": "Wählen Sie mindestens ein Ereignis."
       },
       "mcp": "MCP-Server für Claude, ChatGPT oder einen anderen Assistenten: {url}, mit einem API-Schlüssel im Header Authorization.",
-      "projectLead": "ProjectLead wird mit einem eigenen Schlüssel verbunden, in jedem Abo.",
-      "projectLeadLink": "ProjectLead verbinden"
+      "projectLead": "Zum Verbinden von ProjectLead oder CRMlead braucht es keinen Schlüssel."
     },
-    "projectLead": {
-      "title": "ProjectLead verbinden",
-      "subtitle": "ProjectLead verwaltet Ihre Projekte, die Planung und die Zeit des Teams. Jeden Monat erstellt es hier die Rechnungsentwürfe Ihrer Projekte. Sie prüfen sie und stellen sie in InvoiceLead aus.",
-      "open": "ProjectLead öffnen",
-      "steps": {
-        "create": "Erstellen Sie unten den Schlüssel und kopieren Sie ihn.",
-        "open": "Öffnen Sie in ProjectLead Réglages, Intégrations, InvoiceLead.",
-        "paste": "Fügen Sie die Adresse {url} und den Schlüssel ein und speichern Sie."
-      },
-      "drafts": "Entwürfe sind kostenlos. Im Gratis-Abo zählt eine Rechnung erst bei der Ausstellung zu Ihren {limit} Rechnungen des Monats.",
-      "key": {
-        "title": "ProjectLead-Schlüssel",
-        "scope": "Dieser Schlüssel dient nur ProjectLead, in jedem Abo. Er liest und erstellt Ihre Kundenkontakte und erstellt Rechnungsentwürfe. Er kann keine Rechnung ausstellen, Ihre Rechnungen nicht lesen und sonst nichts tun.",
-        "empty": "Kein ProjectLead-Schlüssel.",
-        "create": "ProjectLead-Schlüssel erstellen",
-        "created": "Kopieren Sie diesen Schlüssel jetzt: Er wird nicht mehr angezeigt. Fügen Sie ihn in ProjectLead ein.",
-        "meta": "erstellt am {created}, verwendet: {used}",
-        "never": "nie",
-        "revoke": "Widerrufen",
-        "revoked": "Schlüssel widerrufen. ProjectLead kann keine Entwürfe mehr erstellen.",
-        "adminOnly": "Den Schlüssel erstellt eine Administratorin, ein Administrator oder eine verantwortliche Person des Unternehmens.",
-        "errors": {
-          "tooMany": "Höchstens drei ProjectLead-Schlüssel. Widerrufen Sie einen, um einen neuen zu erstellen.",
-          "invalid": "Der Schlüssel konnte nicht erstellt werden. Versuchen Sie es noch einmal."
-        }
-      }
+    "leadApps": {
+      "title": "Lead-Apps",
+      "intro": "Unternehmen im Lead-Konto: {name} ({email}). Apps, die mit diesem Unternehmen geöffnet werden, verbinden sich von selbst: nichts zu kopieren oder einzufügen.",
+      "linked": "Verbunden",
+      "notUsed": "Noch nicht genutzt",
+      "notUsedText": "{app}: von Ihrem Unternehmen noch nicht genutzt. Öffnen Sie die App mit Ihrem Lead-Konto (kostenlos zum Start): Die Verbindung entsteht von selbst.",
+      "open": "{app} öffnen",
+      "projectlead": "ProjectLead erstellt hier die Rechnungsentwürfe aus der erfassten Zeit. Sie prüfen sie und stellen sie in InvoiceLead aus.",
+      "crmlead": "Offerten aus einem CRMlead-Lead erscheinen auf dessen Karte; eine angenommene Offerte setzt ihn auf gewonnen.",
+      "crmleadIntl": "Angebote aus einem CRMlead-Lead erscheinen auf dessen Karte; ein angenommenes Angebot setzt ihn auf gewonnen.",
+      "lastDraft": "Letzter empfangener Entwurf: {date}",
+      "noDraft": "Noch kein Entwurf empfangen.",
+      "apiTitle": "API und externe Tools",
+      "apiText": "Für Zapier, Make, Claude, ChatGPT oder Ihre Skripte. Zum Verbinden der Lead-Apps braucht es keinen Schlüssel.",
+      "apiLink": "API-Schlüssel und Webhooks"
     },
     "review": {
       "title": "Zu prüfen",
@@ -2382,7 +2370,7 @@
         "title": "Teamprojekte mit ProjectLead",
         "text": "ProjectLead verwaltet Projekte, Planung und die Zeit des ganzen Teams. Jeden Monat erstellt es hier die Rechnungsentwürfe, die Sie prüfen und ausstellen. Für eine einfache Erfassung genügt die Zeiterfassung hier.",
         "open": "ProjectLead öffnen",
-        "connect": "ProjectLead mit InvoiceLead verbinden"
+        "linked": "Die in ProjectLead erfasste Zeit kommt hier als Rechnungsentwürfe an."
       },
       "invoiceHintUs": "{hours} h abrechenbar und noch nicht abgerechnet, {amount} vor Steuern.",
       "invoiceHintDe": "{hours} h abrechenbar und noch nicht abgerechnet, {amount} netto.",

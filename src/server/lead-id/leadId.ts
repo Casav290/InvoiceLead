@@ -6,8 +6,10 @@
  *
  * Copie de CRMlead `docs/lead-id-kit/leadId.ts` au 30.09.2026. Ajouts propres à InvoiceLead depuis :
  * `@ts-nocheck` ci-dessous (ce dépôt compile avec `noUncheckedIndexedAccess`, plus strict que CRMlead),
- * émetteurs de transition (crmlead.io) en réception, `sid` de la session du Compte Lead, et relecture
- * des clés pour un `kid` inconnu limitée à une toutes les 30 s (comme ScanLead `server/leadId.ts`).
+ * `sid` de la session du Compte Lead, relecture des clés pour un `kid` inconnu limitée à une toutes
+ * les 30 s (comme ScanLead `server/leadId.ts`), et depuis le 26.10.2026 la « liaison sans clé » :
+ * jeton d'échange lié à l'organisation (et à la personne), réception d'ERPlead seul, contrôle de
+ * l'enveloppe (zod, la seule dépendance). Plus d'émetteur de transition crmlead.io.
  *
  * Variables d'environnement attendues :
  *   LEAD_ID_ISSUER         https://erplead.io
@@ -18,6 +20,7 @@
  */
 // @ts-nocheck
 import { createHash, createPublicKey, randomBytes, verify } from 'node:crypto'
+import { z } from 'zod'
 
 const env = (k: string) => {
   const v = process.env[k]
@@ -56,19 +59,12 @@ export type Tokens = { access_token: string; id_token: string; refresh_token?: s
 
 // ------------------------------------------------------------------ clés publiques
 
-/**
- * Transition vers ERPlead (08.10.2026) : tant que CRMlead n'est pas lui-même client d'ERPlead, ses envois
- * d'échange portent un jeton signé par crmlead.io. On les accepte en réception, et seulement là.
- */
-const LEGACY_EXCHANGE_ISSUERS = ['https://crmlead.io']
-
 const jwksCache = new Map<string, { at: number; keys: any[] }>()
 // Relecture pour une clé inconnue : au plus une toutes les 30 s par émetteur (même règle que ScanLead, 14.10.2026).
 // La route back-channel et la boîte de réception des échanges sont publiques : sans ce délai, chaque jeton forgé avec
 // un `kid` inventé ferait un appel à ERPlead (amplificateur 1 pour 1). Une vraie rotation de clé est prise en compte
 // dans les 30 s. Les requêtes simultanées partagent la même lecture, qu'elle vienne de l'expiration d'une heure ou d'une
-// clé inconnue : une requête qui trouve une lecture en cours l'attend avant de conclure. Par émetteur : une lecture récente des clés de
-// CRMlead (transition) ne retarde pas la prise en compte d'une rotation chez ERPlead. Les émetteurs sont filtrés
+// clé inconnue : une requête qui trouve une lecture en cours l'attend avant de conclure. Les émetteurs sont filtrés
 // avant d'arriver ici (liste fixe), ces tables ne grandissent donc pas.
 const UNKNOWN_KID_REFRESH_MS = 30_000
 const jwksReadAt = new Map<string, number>()
@@ -185,8 +181,8 @@ export function logoutUrl(idToken: string | null, backTo: string) {
   return `${issuer()}/oauth/logout?${q}`
 }
 
-async function tokenRequest(body: Record<string, string>, from: string = issuer()): Promise<Tokens> {
-  const r = await fetch(`${from}/oauth/token`, {
+async function tokenRequest(body: Record<string, string>): Promise<Tokens> {
+  const r = await fetch(`${issuer()}/oauth/token`, {
     method: 'POST', headers: { Authorization: basic(), 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams(body),
   })
@@ -199,12 +195,15 @@ async function tokenRequest(body: Record<string, string>, from: string = issuer(
 
 const appTokens = new Map<string, { token: string; until: number }>()
 
-/** Jeton d'application (portée `exchange` vers une application, ou `billing`), mis en cache. */
-export async function appToken(scope: 'exchange' | 'billing', audience?: string) {
-  const key = `${scope}|${audience ?? ''}`
+/**
+ * Jeton d'application `billing` (droits et abonnements de n'importe quelle organisation), mis en cache.
+ * Les échanges entre applications passent par `exchangeToken`, lié à une organisation.
+ */
+export async function appToken(scope: 'billing') {
+  const key = scope
   const hit = appTokens.get(key)
   if (hit && hit.until > Date.now() + 60_000) return hit.token
-  const t = await tokenRequest({ grant_type: 'client_credentials', scope, ...(audience ? { audience } : {}) })
+  const t = await tokenRequest({ grant_type: 'client_credentials', scope })
   appTokens.set(key, { token: t.access_token, until: Date.now() + t.expires_in * 1000 })
   return t.access_token
 }
@@ -237,60 +236,215 @@ export async function entitlementsOf(q: { org?: string; email?: string }): Promi
   return r.json()
 }
 
-// ------------------------------------------------------------------ échange de données
+// ------------------------------------------------------------------ échange de données (liaison sans clé)
 
 export type Envelope = {
   id: string                        // identifiant unique de l'envoi (uuid)
-  type: 'contact' | 'lead' | 'deal' | 'project' | 'invoice' | string
-  org: string                       // l'organisation Lead (claims.org)
+  type: 'contact' | 'lead' | 'deal' | 'client' | 'document' | 'invoice' | string
+  org: string                       // l'organisation ERPlead (claims.org)
   sub?: string                      // la personne qui a agi (claims.sub), si connue
   occurred_at: string
   source: { app: string; id: string; url?: string }   // votre application et VOTRE identifiant de l'objet
   data: Record<string, unknown>
 }
 
-/** L'adresse de réception d'une application sœur, lue sur sa carte de visite `/.well-known/lead-app.json`. */
-async function inboxOf(appBaseUrl: string) {
-  const r = await fetch(`${appBaseUrl.replace(/\/+$/, '')}/.well-known/lead-app.json`)
-  if (!r.ok) throw new Error(`lead_app ${r.status}`)
-  return (await r.json()).exchange.inbox as string
+/** Erreur d'un échange : `status` HTTP (0 : ERPlead ou l'app sœur injoignable) et corps JSON rendu. */
+export type ExchangeError = Error & { status: number; body: Record<string, unknown> }
+const exchangeError = (code: string, status: number, body: Record<string, unknown> = {}): ExchangeError =>
+  Object.assign(new Error(code), { status, body })
+
+const sha256 = (s: string) => createHash('sha256').update(s).digest('hex')
+/** Jetons d'échange : 14 min sans personne, 5 min avec (et jamais au-delà de leur expiration). */
+const ORG_TOKEN_MS = 14 * 60_000
+const PERSON_TOKEN_MS = 5 * 60_000
+const exchangeTokens = new Map<string, { token: string; until: number }>()
+const tokenKey = (scope: string, audience: string, org: string, proof?: string | null) =>
+  `${scope}|${audience}|${org}|${proof ? sha256(proof) : ''}`
+
+/**
+ * Jeton d'échange d'ERPlead pour UNE application cible et UNE organisation, avec la preuve de la
+ * personne (son jeton d'identité) quand elle agit. Aucune formule n'est regardée par ERPlead.
+ * ERPlead en panne (5xx, réseau) : erreur `erplead_unavailable` (à relancer) ; refus (4xx) : erreur
+ * portant `status` et `body` (invalid_target, person_proof, test_org_only…).
+ */
+export async function exchangeToken(scope: 'exchange' | 'exchange_read', audience: string,
+                                    opts: { org: string; personProof?: string | null }): Promise<string> {
+  if (!opts.org) throw exchangeError('org_required', 400, { error: 'org_required' })
+  const key = tokenKey(scope, audience, opts.org, opts.personProof)
+  const hit = exchangeTokens.get(key)
+  if (hit && hit.until > Date.now()) return hit.token
+  const form: Record<string, string> = { grant_type: 'client_credentials', scope, audience, org: opts.org }
+  if (opts.personProof) {
+    form.subject_token = opts.personProof
+    form.subject_token_type = 'urn:ietf:params:oauth:token-type:id_token'
+  }
+  let r: Response
+  try {
+    r = await fetch(`${issuer()}/oauth/token`, {
+      method: 'POST', redirect: 'error',
+      headers: { Authorization: basic(), 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams(form),
+    })
+  } catch {
+    throw exchangeError('erplead_unavailable', 0, { error: 'erplead_unavailable' })
+  }
+  const out = await r.json().catch(() => ({}))
+  if (r.status >= 500) throw exchangeError('erplead_unavailable', r.status, { error: 'erplead_unavailable' })
+  if (!r.ok || typeof out.access_token !== 'string') throw exchangeError(`lead_id:${out.error ?? r.status}`, r.status, out)
+  const life = Math.min((Number(out.expires_in) || 900) * 1000 - 60_000, opts.personProof ? PERSON_TOKEN_MS : ORG_TOKEN_MS)
+  exchangeTokens.set(key, { token: out.access_token, until: Date.now() + Math.max(life, 0) })
+  return out.access_token
+}
+
+/** Oublie un jeton d'échange (refusé en 401 par la cible) ; sans argument, tous (tests). */
+export function forgetExchangeToken(scope?: string, audience?: string, org?: string, proof?: string | null) {
+  if (scope === undefined) exchangeTokens.clear()
+  else exchangeTokens.delete(tokenKey(scope, audience ?? '', org ?? '', proof))
+}
+
+/** Même origine (schéma, hôte, port) ; une adresse invalide n'est jamais la même. */
+export function sameOrigin(a: string, b: string): boolean {
+  try { return new URL(a).origin === new URL(b).origin } catch { return false }
 }
 
 /**
- * Envoyer un objet à une application sœur. Répéter le même `source.id` met à jour chez elle,
- * sans doublon : on peut renvoyer sans crainte après un échec.
+ * Carte de visite d'une application sœur (`/.well-known/lead-app.json`). Les adresses qu'elle donne
+ * ne sont gardées que si elles sont sur la même origine que l'adresse constante de l'app.
  */
-export async function send(target: { app: string; url: string }, e: Omit<Envelope, 'id' | 'occurred_at' | 'source'> &
-                           { source: { id: string; url?: string } }) {
+async function cardOf(baseUrl: string): Promise<{ inbox?: string; read?: string }> {
+  const base = baseUrl.replace(/\/+$/, '')
+  let r: Response
+  try { r = await fetch(`${base}/.well-known/lead-app.json`, { redirect: 'error' }) } catch {
+    throw exchangeError('lead_app_unavailable', 0, { error: 'lead_app_unavailable' })
+  }
+  if (!r.ok) throw exchangeError(`lead_app ${r.status}`, r.status >= 500 ? r.status : 0, { error: 'lead_app_card' })
+  const exchange = (await r.json().catch(() => ({})))?.exchange ?? {}
+  const keep = (u: unknown) => (typeof u === 'string' && sameOrigin(u, base) ? u : undefined)
+  return { inbox: keep(exchange.inbox), read: keep(exchange.read) }
+}
+
+/** Appel avec un jeton d'échange : 401 → jeton oublié, une seule nouvelle tentative. */
+async function withExchangeToken(scope: 'exchange' | 'exchange_read', audience: string, org: string,
+                                 proof: string | null | undefined, call: (token: string) => Promise<Response>) {
+  let r: Response
+  try {
+    r = await call(await exchangeToken(scope, audience, { org, personProof: proof }))
+    if (r.status === 401) {
+      forgetExchangeToken(scope, audience, org, proof)
+      r = await call(await exchangeToken(scope, audience, { org, personProof: proof }))
+    }
+  } catch (e) {
+    if ((e as ExchangeError).body) throw e
+    throw exchangeError('lead_app_unavailable', 0, { error: 'lead_app_unavailable' })
+  }
+  const out = await r.json().catch(() => ({}))
+  if (!r.ok) throw exchangeError(`lead_exchange:${out.error ?? r.status}`, r.status, out)
+  return out
+}
+
+/**
+ * Envoyer un objet à une application sœur, pour l'organisation de l'enveloppe. Répéter le même
+ * `source.id` met à jour chez elle, sans doublon : on peut renvoyer sans crainte après un échec.
+ * Erreur : `status` et `body` de la réponse (0 : injoignable).
+ */
+export async function send(target: { app: string; url: string },
+                           e: Omit<Envelope, 'id' | 'occurred_at' | 'source'> & { id?: string; occurred_at?: string; source: { id: string; url?: string } },
+                           opts: { personProof?: string | null } = {}) {
   const envelope: Envelope = {
     id: crypto.randomUUID(), occurred_at: new Date().toISOString(), ...e,
     source: { app: env('LEAD_ID_APP'), ...e.source },
   }
-  const inbox = await inboxOf(target.url)
-  const post = (token: string) => fetch(inbox, {
-    method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+  const { inbox } = await cardOf(target.url)
+  if (!inbox) throw exchangeError('lead_app_no_inbox', 0, { error: 'lead_app_no_inbox' })
+  return withExchangeToken('exchange', target.app, envelope.org, opts.personProof, (token) => fetch(inbox, {
+    method: 'POST', redirect: 'error',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
     body: JSON.stringify(envelope),
-  })
-  let r = await post(await appToken('exchange', target.app))
-  // Transition : une application pas encore cliente d'ERPlead (CRMlead) refuse son jeton ; on demande alors
-  // le jeton à l'application elle-même, qui connaît encore notre client (même secret).
-  const base = target.url.replace(/\/+$/, '')
-  if (r.status === 401 && LEGACY_EXCHANGE_ISSUERS.includes(base) && base !== issuer()) {
-    const t = await tokenRequest({ grant_type: 'client_credentials', scope: 'exchange', audience: target.app }, base)
-    r = await post(t.access_token)
-  }
-  const out = await r.json().catch(() => ({}))
-  if (!r.ok) throw Object.assign(new Error(`lead_exchange:${out.error ?? r.status}`), { status: r.status, body: out })
-  return out as { id: string; url: string; status: 'created' | 'updated' }
+  })) as Promise<{ id?: string; url?: string; status: 'created' | 'updated' | string }>
 }
 
+/** Lire chez une application sœur (`exchange.read` de sa carte), avec les droits de la personne. */
+export async function readExchange(target: { app: string; url: string },
+                                   q: { type: string; q?: string; ids?: string[]; link?: boolean },
+                                   opts: { org: string; personProof: string }) {
+  const { read } = await cardOf(target.url)
+  if (!read) throw exchangeError('lead_app_no_read', 0, { error: 'lead_app_no_read' })
+  const params = new URLSearchParams({ type: q.type })
+  if (q.q) params.set('q', q.q)
+  if (q.ids?.length) params.set('ids', q.ids.join(','))
+  if (q.link) params.set('link', '1')
+  return withExchangeToken('exchange_read', target.app, opts.org, opts.personProof, (token) =>
+    fetch(`${read}?${params}`, { redirect: 'error', headers: { Authorization: `Bearer ${token}` } }))
+}
+
+export type IncomingExchange = { app: string; org: string | null; person: string | null; person_role: string | null }
+
 /**
- * Côté réception (votre `/api/lead-exchange/v1/inbox`) : qui envoie ? Rend le code de
- * l'application expéditrice, ou `null` si le jeton n'est pas un jeton d'échange pour vous.
+ * Côté réception : qui envoie, pour quelle organisation, au nom de quelle personne ? Jeton signé par
+ * ERPlead seulement, destiné à cette application (`aud`), émis pour un client (`sub` « client:… »).
+ * Jeton d'échange (`token_use` 'exchange') : portée exactement `want`. Ancien jeton sans organisation :
+ * accepté seulement en envoi (`want` 'exchange'), sans organisation ni personne. Sinon `null`.
  */
-export async function incomingSender(authorization: string | undefined): Promise<string | null> {
-  const m = authorization?.match(/^Bearer\s+(.+)$/i)
+export async function incomingExchange(authorization: string | null | undefined,
+                                       want: 'exchange' | 'exchange_read'): Promise<IncomingExchange | null> {
+  const m = authorization?.match(/^Bearer\s+(\S+)$/i)
   if (!m) return null
-  const c = await verifyLeadJwt(m[1], env('LEAD_ID_APP'), [...new Set([issuer(), ...LEGACY_EXCHANGE_ISSUERS])])
-  return c && String(c.scope ?? '').split(' ').includes('exchange') ? String(c.app ?? '') || null : null
+  const c = await verifyLeadJwt(m[1], env('LEAD_ID_APP'), [issuer()])
+  if (!c || typeof c.sub !== 'string' || !c.sub.startsWith('client:')) return null
+  const app = typeof c.app === 'string' && c.app ? c.app : null
+  if (!app) return null
+  const str = (v: unknown) => (typeof v === 'string' && v ? v : null)
+  if (c.token_use === 'exchange') {
+    if (c.scope !== want) return null
+    return { app, org: str(c.org), person: str(c.person), person_role: str(c.person_role) }
+  }
+  if (want === 'exchange' && String(c.scope ?? '').split(' ').includes('exchange')) {
+    return { app, org: null, person: null, person_role: null }
+  }
+  return null
+}
+
+/** Chaînes ≤ 2000, `contacts` ≤ 50, `lines` ≤ 200, tout autre tableau ≤ 200, profondeur ≤ 6. */
+function withinLimits(v: unknown, key = '', depth = 0): boolean {
+  if (depth > 6) return false
+  if (typeof v === 'string') return v.length <= 2000
+  if (Array.isArray(v)) {
+    const max = key === 'contacts' ? 50 : 200
+    return v.length <= max && v.every((x) => withinLimits(x, '', depth + 1))
+  }
+  if (v && typeof v === 'object') return Object.entries(v).every(([k, x]) => withinLimits(x, k, depth + 1))
+  return true
+}
+const short = z.string().min(1).max(2000)
+export const envelopeSchema = z.object({
+  id: short,
+  type: short,
+  org: short,
+  sub: z.string().max(2000).nullish(),
+  occurred_at: z.string().max(2000).optional(),
+  source: z.object({ app: short, id: short, url: z.string().max(2000).optional() }),
+  data: z.record(z.string(), z.unknown()).refine((d) => withinLimits(d), 'limits'),
+})
+
+/**
+ * Contrôle d'une enveloppe reçue, après `incomingExchange`. Rend `null` si elle passe, sinon le refus :
+ * 400 invalid_envelope, 422 unsupported_type, 403 source_mismatch / sender_not_allowed / org_mismatch,
+ * 401 org_required (jeton sans organisation d'un expéditeur de `orgSenders`).
+ */
+export function checkEnvelope(tok: IncomingExchange, e: unknown, allowed: Record<string, string[]>,
+                              orgSenders: string[]): { status: number; error: string } | null {
+  const parsed = envelopeSchema.safeParse(e)
+  if (!parsed.success) return { status: 400, error: 'invalid_envelope' }
+  const env = parsed.data
+  if (!Object.hasOwn(allowed, env.type)) return { status: 422, error: 'unsupported_type' }
+  if (env.source.app !== tok.app) return { status: 403, error: 'source_mismatch' }
+  if (!allowed[env.type].includes(tok.app)) return { status: 403, error: 'sender_not_allowed' }
+  if (tok.org && tok.org !== env.org) return { status: 403, error: 'org_mismatch' }
+  if (!tok.org && orgSenders.includes(tok.app)) return { status: 401, error: 'org_required' }
+  return null
+}
+
+/** Liste EXCHANGE_ORG_SENDERS (séparée par des virgules), ou le défaut de l'application. */
+export function orgSendersFrom(value: string | undefined, fallback: string): string[] {
+  return (value ?? fallback).split(',').map((s) => s.trim()).filter(Boolean)
 }

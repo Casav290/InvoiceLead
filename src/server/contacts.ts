@@ -29,6 +29,8 @@ export type ContactInput = {
   uid: string | null;
   paymentTermDays: number;
   notes: string | null;
+  /** Fiche d'origine dans une autre application Lead (« projectlead:<client> »), posée à la création. */
+  externalRef?: string | null;
 };
 
 export type ContactErrors = Partial<Record<keyof ContactInput, string>>;

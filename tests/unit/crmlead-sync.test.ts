@@ -144,7 +144,7 @@ describe("états vers CRMlead", () => {
     ).toBe(true);
   });
 
-  it("CRMlead injoignable : l'envoi attend et repart ; lead introuvable : abandon", async () => {
+  it("CRMlead injoignable : l'envoi attend et repart (une panne n'est jamais définitive)", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(async () => new Response("panne", { status: 503 })),
@@ -154,12 +154,67 @@ describe("états vers CRMlead", () => {
     await deliverCrmlead(db);
     const [waiting] = await db.select().from(crmleadOutbox);
     expect(waiting).toMatchObject({ status: "pending", attempts: 1 });
+    // Bien après la dernière reprise de la liste : toujours relancé.
+    await db.update(crmleadOutbox).set({ attempts: 9, nextAttemptAt: new Date(0) });
+    await deliverCrmlead(db);
+    const [still] = await db.select().from(crmleadOutbox);
+    expect(still).toMatchObject({ status: "pending", attempts: 10 });
+  });
 
-    const received = fakeCrmlead(404);
-    await db.update(crmleadOutbox).set({ nextAttemptAt: new Date(0) });
+  it("CRMlead ne connaît pas encore l'entreprise (404) : « waiting », relancé, puis livré", async () => {
+    const { who, quoteId } = await setup();
+    let received = fakeCrmlead(404);
+    await issueInvoice(db, who, quoteId);
     await deliverCrmlead(db);
     expect(received).toHaveLength(1);
-    const [gaveUp] = await db.select().from(crmleadOutbox);
-    expect(gaveUp).toMatchObject({ status: "failed", attempts: 2 });
+    const [first] = await db.select().from(crmleadOutbox);
+    expect(first).toMatchObject({ status: "waiting", attempts: 1 });
+    // CRMlead pas encore utilisée : relance une fois par jour.
+    const inHours = (d: Date) => (d.getTime() - Date.now()) / 3_600_000;
+    expect(inHours(first?.nextAttemptAt as Date)).toBeGreaterThan(23);
+    // Pas encore l'heure : rien ne part.
+    await deliverCrmlead(db);
+    expect(received).toHaveLength(1);
+    // Le Compte Lead dit CRMlead utilisée : relance chaque heure.
+    await db
+      .update(organizations)
+      .set({ entitlements: { plan: { code: "free", rank: 0 }, apps: { crmlead: { used: true } } } })
+      .where(eq(organizations.id, who.organizationId));
+    await db.update(crmleadOutbox).set({ nextAttemptAt: new Date(0) });
+    await deliverCrmlead(db);
+    const [second] = await db.select().from(crmleadOutbox);
+    expect(second?.status).toBe("waiting");
+    expect(inHours(second?.nextAttemptAt as Date)).toBeLessThan(1.1);
+    // CRMlead a été ouvert : l'envoi en attente part.
+    received = fakeCrmlead(200);
+    await db.update(crmleadOutbox).set({ nextAttemptAt: new Date(0) });
+    const out = await deliverCrmlead(db);
+    expect(out.delivered).toBe(1);
+    expect(received).toHaveLength(1);
+    const [done] = await db.select().from(crmleadOutbox);
+    expect(done).toMatchObject({ status: "delivered", attempts: 3 });
+  });
+
+  it("404 pendant plus de 30 jours : « expired » ; 403 : définitif ; 402 n'est plus une fin", async () => {
+    const { who, quoteId } = await setup();
+    fakeCrmlead(404);
+    await issueInvoice(db, who, quoteId);
+    await db
+      .update(crmleadOutbox)
+      .set({ createdAt: new Date(Date.now() - 31 * 86_400_000), nextAttemptAt: new Date(0) });
+    await deliverCrmlead(db);
+    expect((await db.select().from(crmleadOutbox))[0]?.status).toBe("expired");
+
+    await db.delete(crmleadOutbox);
+    fakeCrmlead(403);
+    await setQuoteOutcome(db, who, quoteId, "accepted");
+    await deliverCrmlead(db);
+    expect((await db.select().from(crmleadOutbox))[0]?.status).toBe("failed");
+
+    await db.delete(crmleadOutbox);
+    fakeCrmlead(402);
+    await setQuoteOutcome(db, who, quoteId, "declined");
+    await deliverCrmlead(db);
+    expect((await db.select().from(crmleadOutbox))[0]?.status).toBe("pending");
   });
 });

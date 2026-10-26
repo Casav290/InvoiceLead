@@ -787,7 +787,7 @@
       "team": "Team",
       "payments": "Online payments",
       "api": "API",
-      "projectlead": "ProjectLead",
+      "leadApps": "Lead apps",
       "plan": "Plan",
       "einvoicing": "Received invoices"
     },
@@ -2091,35 +2091,23 @@
         "events": "Choose at least one event."
       },
       "mcp": "MCP server for Claude, ChatGPT or another assistant: {url}, with an API key in the Authorization header.",
-      "projectLead": "ProjectLead connects with its own key, on every plan.",
-      "projectLeadLink": "Connect ProjectLead"
+      "projectLead": "No key needed to connect ProjectLead or CRMlead."
     },
-    "projectLead": {
-      "title": "Connect ProjectLead",
-      "subtitle": "ProjectLead manages your projects, planning and team time. Each month it creates the invoice drafts for your projects here. You review them, then issue them in InvoiceLead.",
-      "open": "Open ProjectLead",
-      "steps": {
-        "create": "Create the key below and copy it.",
-        "open": "In ProjectLead, open Réglages, Intégrations, InvoiceLead.",
-        "paste": "Paste the address {url} and the key, then save."
-      },
-      "drafts": "Drafts are free. On the free plan, an invoice counts toward your {limit} invoices of the month only when you issue it.",
-      "key": {
-        "title": "ProjectLead key",
-        "scope": "This key only serves ProjectLead, on every plan. It reads and creates your customer contacts and creates invoice drafts. It cannot issue an invoice, read your invoices or do anything else.",
-        "empty": "No ProjectLead key.",
-        "create": "Create the ProjectLead key",
-        "created": "Copy this key now: it will not be shown again. Paste it into ProjectLead.",
-        "meta": "created {created}, used: {used}",
-        "never": "never",
-        "revoke": "Revoke",
-        "revoked": "Key revoked. ProjectLead can no longer create drafts.",
-        "adminOnly": "An admin or a manager of the company creates the key.",
-        "errors": {
-          "tooMany": "Three ProjectLead keys at most. Revoke one to create a new one.",
-          "invalid": "The key could not be created. Try again."
-        }
-      }
+    "leadApps": {
+      "title": "Lead apps",
+      "intro": "Lead Account company: {name} ({email}). Apps opened with this company connect on their own: nothing to copy or paste.",
+      "linked": "Connected",
+      "notUsed": "Not used yet",
+      "notUsedText": "{app}: not used by your company yet. Open it with your Lead Account (free to start): the connection happens on its own.",
+      "open": "Open {app}",
+      "projectlead": "ProjectLead creates invoice drafts here from the time logged. You review them and issue them in InvoiceLead.",
+      "crmlead": "Quotes made from a CRMlead lead show on its record; an accepted quote marks it won.",
+      "crmleadIntl": "Quotes made from a CRMlead lead show on its record; an accepted quote marks it won.",
+      "lastDraft": "Last draft received: {date}",
+      "noDraft": "No draft received yet.",
+      "apiTitle": "API and outside tools",
+      "apiText": "For Zapier, Make, Claude, ChatGPT or your scripts. No key needed to connect the Lead apps.",
+      "apiLink": "API keys and webhooks"
     },
     "review": {
       "title": "To review",
@@ -2382,7 +2370,7 @@
         "title": "Team projects with ProjectLead",
         "text": "ProjectLead manages projects, planning and the whole team's time. Each month it creates the invoice drafts here, for you to review and issue. For simple tracking, log your time right here.",
         "open": "Open ProjectLead",
-        "connect": "Connect ProjectLead to InvoiceLead"
+        "linked": "Time logged in ProjectLead arrives here as invoice drafts."
       },
       "invoiceHintUs": "{hours} billable hours not yet invoiced, {amount} before tax.",
       "invoiceHintDe": "{hours} billable hours not yet invoiced, {amount} excl. VAT.",

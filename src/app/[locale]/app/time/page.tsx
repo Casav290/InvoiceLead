@@ -70,13 +70,9 @@ export default async function TimePage({ params, searchParams }: Props) {
                 {t("projectLead.open")}
               </a>
             </Button>
-            <Link
-              href="/app/settings/projectlead"
-              className="text-[13px] font-semibold text-accent-dark underline"
-              data-testid="projectlead-connect"
-            >
-              {t("projectLead.connect")}
-            </Link>
+            <span className="text-[13px] text-ink-2" data-testid="projectlead-state">
+              {t("projectLead.linked")}
+            </span>
           </div>
         </div>
       </section>

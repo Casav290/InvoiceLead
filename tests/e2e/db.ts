@@ -25,6 +25,20 @@ export async function useQuota(leadOrg: string, key: string, used: number) {
   if (rowCount !== 1) throw new Error(`organisation ${leadOrg} introuvable`);
 }
 
+/**
+ * L'organisation a déjà ouvert cette application avec le Compte Lead (`apps[code].used` d'ERPlead),
+ * comme si les droits venaient d'être relus.
+ */
+export async function markAppUsed(leadOrg: string, app: string) {
+  const { rowCount } = await base().query(
+    `update organizations set entitlements = jsonb_set(coalesce(entitlements, '{}'::jsonb), '{apps}',
+       coalesce(entitlements->'apps', '{}'::jsonb) || jsonb_build_object($2::text, jsonb_build_object('used', true)))
+     where lead_org = $1`,
+    [leadOrg, app],
+  );
+  if (rowCount !== 1) throw new Error(`organisation ${leadOrg} introuvable`);
+}
+
 /** Ajoute `count` contacts actifs à l'organisation du Compte Lead. */
 export async function addContacts(leadOrg: string, count: number) {
   const { rowCount } = await base().query(

@@ -27,25 +27,49 @@ const RETRY_MS = 10 * 60_000;
 const WAIT_MS = 5_000;
 const attempts = new Map<string, number>();
 
-/** Droits à jour d'une organisation du Compte Lead, avec un jeton d'application, ou null. */
+/**
+ * Droits à jour d'une organisation du Compte Lead, avec le jeton d'application « billing », ou null.
+ * Plus de jeton d'échange ici : depuis la liaison sans clé, un jeton d'échange est lié à une
+ * organisation et à une application cible, et ne lit plus que sa propre organisation.
+ */
 async function fetchEntitlements(leadOrg: string): Promise<LeadEntitlements | null> {
   const issuer = env().LEAD_ID_ISSUER.replace(/\/+$/, "");
   const url = `${issuer}/api/lead-id/v1/entitlements?${new URLSearchParams({ org: leadOrg })}`;
-  // Portée « exchange » d'abord (déjà accordée à InvoiceLead pour CRMlead), « billing » ensuite.
-  const tokens = [() => appToken("exchange", "crmlead"), () => appToken("billing")];
-  for (const token of tokens) {
-    try {
-      const r = await fetch(url, { headers: { authorization: `Bearer ${await token()}` } });
-      if (!r.ok) continue;
-      const body = (await r.json()) as (LeadEntitlements & { org?: string }) | null;
-      if (!body || typeof body !== "object" || !body.plan || !body.apps) continue;
-      const { org: _org, ...lead } = body;
-      return lead;
-    } catch {
-      // Compte Lead injoignable ou portée refusée : on essaie l'autre jeton.
-    }
+  try {
+    const r = await fetch(url, {
+      headers: { authorization: `Bearer ${await appToken("billing")}` },
+    });
+    if (!r.ok) return null;
+    const body = (await r.json()) as (LeadEntitlements & { org?: string }) | null;
+    if (!body || typeof body !== "object" || !body.plan || !body.apps) return null;
+    const { org: _org, ...lead } = body;
+    return lead;
+  } catch {
+    // Compte Lead injoignable : la formule enregistrée vaut encore (PLAN_MAX_AGE_MS).
+    return null;
   }
-  return null;
+}
+
+/** Droits relus tout de suite (écran « Applications Lead »), enregistrés ; null si le Compte Lead est muet. */
+export async function refreshEntitlementsNow(
+  database: Db,
+  org: Refreshable,
+  now = Date.now(),
+): Promise<LeadEntitlements | null> {
+  if (!org.leadOrg) return null;
+  const lead = await fetchEntitlements(org.leadOrg);
+  if (!lead) return null;
+  await database
+    .update(organizations)
+    .set({
+      leadPlan: lead.plan?.code ?? "free",
+      hasAccess: hasInvoiceLeadAccess({ lead }),
+      entitlements: lead,
+      entitlementsAt: new Date(now),
+      updatedAt: new Date(now),
+    })
+    .where(eq(organizations.id, org.id));
+  return lead;
 }
 
 /**

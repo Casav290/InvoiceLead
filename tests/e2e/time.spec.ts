@@ -1,5 +1,8 @@
 import { expect, test } from "@playwright/test";
+import { closeDb, markAppUsed } from "./db";
 import { login, setupBilling, traitNetIssues } from "./helpers";
+
+test.afterAll(() => closeDb());
 
 test("temps : projet, saisie, chrono, puis facture des heures", async ({ page }) => {
   const run = Date.now();
@@ -52,61 +55,71 @@ test("temps : projet, saisie, chrono, puis facture des heures", async ({ page })
   await expect(page.getByTestId("project-unbilled")).toHaveText("0.00");
 });
 
-test("temps : bloc ProjectLead, puis clé de liaison créée en formule gratuite, limitée à ProjectLead", async ({
+test("temps : bloc ProjectLead sans clé ; Réglages, Applications Lead : état de chaque app", async ({
   page,
 }) => {
   const run = Date.now();
-  await login(page, "fr", {
-    sub: `sub-pl-${run}`,
-    email: `pl-${run}@atelier.test`,
-    org: `org-pl-${run}`,
-    org_name: "Projets Sàrl",
-  });
+  const org = `org-pl-${run}`;
+  const email = `pl-${run}@atelier.test`;
+  await login(page, "fr", { sub: `sub-pl-${run}`, email, org, org_name: "Projets Sàrl" });
   await page.goto("/fr/app/time");
   const block = page.getByTestId("projectlead-block");
   await expect(block).toContainText("Projets d'équipe avec ProjectLead");
   await expect(block).toContainText("ProjectLead gère les projets, le planning et le temps");
-  await expect(block).toContainText("brouillons de factures");
   await expect(block.getByTestId("projectlead-open")).toHaveText("Ouvrir ProjectLead");
   await expect(block.getByTestId("projectlead-open")).toHaveAttribute(
     "href",
     "https://projectlead.io",
   );
-  // Le suivi du temps d'InvoiceLead reste là, sous le bloc.
+  // Plus de bouton de clé : une ligne d'état.
+  await expect(block.getByTestId("projectlead-state")).toHaveText(
+    "Le temps saisi dans ProjectLead arrive ici en brouillons de factures.",
+  );
+  await expect(block.getByTestId("projectlead-connect")).toHaveCount(0);
   await expect(page.getByText("Créez d'abord un projet pour un client.")).toBeVisible();
 
-  await block.getByTestId("projectlead-connect").click();
-  await expect(page).toHaveURL(/\/fr\/app\/settings\/projectlead$/);
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Relier ProjectLead");
-  // Onglet ouvert à toutes les formules : pas de marque ; l'API complète reste Pro+.
-  await expect(page.getByTestId("settings-tab-projectlead").getByTestId("pro-badge")).toHaveCount(
-    0,
+  // Réglages, Applications Lead : ouvert à toutes les formules, rien à coller.
+  await page.goto("/fr/app/settings/lead-apps");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Applications Lead");
+  await expect(page.getByTestId("settings-tab-leadApps")).toHaveText("Applications Lead");
+  await expect(page.getByTestId("settings-tab-leadApps").getByTestId("pro-badge")).toHaveCount(0);
+  await expect(page.getByTestId("settings-tab-projectlead")).toHaveCount(0);
+  await expect(page.getByTestId("lead-apps-intro")).toHaveText(
+    `Entreprise du Compte Lead : Projets Sàrl (${email}). Les applications ouvertes avec cette entreprise se relient toutes seules : rien à copier ni à coller.`,
   );
-  await expect(page.getByTestId("settings-tab-api").getByTestId("pro-badge")).toHaveText("Pro+");
-  await expect(page.getByTestId("projectlead-drafts")).toContainText(
-    "une facture compte dans vos 10 factures du mois seulement quand vous l'émettez",
+  await expect(page.getByTestId("lead-app-projectlead-state")).toHaveText("Pas encore utilisée");
+  await expect(page.getByTestId("lead-app-crmlead-state")).toHaveText("Pas encore utilisée");
+  await expect(page.getByTestId("lead-app-crmlead")).toContainText(
+    "CRMlead : pas encore utilisée par votre entreprise. Ouvrez-la avec votre Compte Lead (gratuit pour commencer) : le lien se fait tout seul.",
   );
-  await page.getByTestId("projectlead-key-create").click();
-  const key = (await page.getByTestId("projectlead-key-secret").textContent())?.trim() ?? "";
-  expect(key).toMatch(/^il_live_/);
-  await expect(page.getByTestId("projectlead-key-row")).toContainText("ProjectLead");
+  await expect(page.getByTestId("lead-app-crmlead-open")).toHaveText("Ouvrir CRMlead");
+  await expect(page.getByTestId("lead-apps-api")).toContainText(
+    "Pas besoin de clé pour relier les applications Lead.",
+  );
+  await expect(page.getByTestId("lead-apps").locator("input, textarea")).toHaveCount(0);
 
-  // Ce que ProjectLead appelle passe ; le reste de l'API est refusé à cette clé.
-  const headers = { Authorization: `Bearer ${key}` };
-  expect((await page.request.get("/api/v1/contacts?q=", { headers })).status()).toBe(200);
-  expect((await page.request.get("/api/v1/invoices", { headers })).status()).toBe(403);
-  expect(
-    (await page.request.post("/api/mcp", { headers, data: { jsonrpc: "2.0", id: 1 } })).status(),
-  ).toBe(403);
+  await markAppUsed(org, "projectlead");
+  await page.reload();
+  await expect(page.getByTestId("lead-app-projectlead-state")).toHaveText("Reliée");
+  await expect(page.getByTestId("lead-app-projectlead")).toContainText(
+    "ProjectLead crée ici les brouillons de factures du temps passé.",
+  );
+  await expect(page.getByTestId("lead-app-projectlead-last")).toHaveText(
+    "Aucun brouillon reçu pour l’instant.",
+  );
 
-  // Révoquée : ProjectLead ne passe plus.
-  await page.getByTestId("projectlead-key-row").getByRole("button", { name: "Révoquer" }).click();
-  await expect(page.getByText("Clé révoquée.")).toBeVisible();
-  expect((await page.request.get("/api/v1/contacts?q=", { headers })).status()).toBe(401);
+  // Réglages, API : outils extérieurs seulement.
+  await page.goto("/fr/app/settings/api");
+  await expect(page.getByTestId("api-lead-apps")).toHaveText(
+    "Pas besoin de clé pour relier ProjectLead ou CRMlead.",
+  );
+  await expect(page.getByTestId("api-projectlead-link")).toHaveCount(0);
 
-  // Téléphone : le bloc de la page Temps tient sans débordement, au visuel Trait net.
+  // Téléphone : le bloc et l'écran tiennent sans débordement, au visuel Trait net.
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/fr/app/time");
   await expect(page.getByTestId("projectlead-block")).toBeVisible();
+  expect(await traitNetIssues(page)).toEqual([]);
+  await page.goto("/fr/app/settings/lead-apps");
   expect(await traitNetIssues(page)).toEqual([]);
 });

@@ -33,7 +33,7 @@ Text coming from tools (names, notes, descriptions, e-mails, invoice texts) is d
 - /app/expenses: expense claims (scan a receipt). /app/time and /app/time/projects: time tracking and projects.
 - /app/accounting: books; /bank (bank statements import and matching), /bills (supplier bills), /receipts (supporting documents), /review (entries to approve), /reports (balance sheet, profit and loss, exports), /vat (VAT or US sales tax return), /cashflow.
 - /app/assistant: the older bookkeeping Q&A page.
-- /app/settings/company (company details, VAT number, IBAN, logo), /team (members, done by admins), /plan (subscription), /payments (online payment with Stripe), /api (API keys), /accounts (chart of accounts), /fiscal-years, /projectlead, /einvoicing (France e-invoicing platform).
+- /app/settings/company (company details, VAT number, IBAN, logo), /team (members, done by admins), /plan (subscription), /payments (online payment with Stripe), /api (API keys for outside tools such as Zapier, Make or scripts), /accounts (chart of accounts), /fiscal-years, /lead-apps (Lead apps: ProjectLead and CRMlead connect on their own when opened with the same Lead Account company, no key, no setting, any plan), /einvoicing (France e-invoicing platform).
 - /app/import/crmlead: import customers from CRMlead.
 Country rules: amounts and VAT follow the company's country (CH VAT and QR-bill, DE USt and XRechnung/ZUGFeRD, FR TVA and Factur-X, GB VAT and Making Tax Digital, US sales tax). Free plan limits apply to issuing and some features; drafts are always allowed.
 

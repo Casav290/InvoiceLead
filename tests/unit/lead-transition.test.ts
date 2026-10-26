@@ -1,9 +1,9 @@
 import { generateKeyPairSync, sign } from "node:crypto";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
-import { incomingSender, send, verifyLeadJwt } from "@/server/lead-id/leadId";
+import { incomingExchange, send, verifyLeadJwt } from "@/server/lead-id/leadId";
 import { setTestEnv } from "../support/env";
 
-// Transition vers ERPlead : CRMlead signe encore ses envois d'échange, on les accepte en réception seulement.
+// Liaison sans clé : seuls les jetons d'ERPlead sont acceptés, en connexion comme en réception (plus de crmlead.io).
 beforeAll(() => setTestEnv({ LEAD_ID_ISSUER: "https://erplead.io" }));
 afterEach(() => vi.unstubAllGlobals());
 
@@ -42,13 +42,19 @@ function stubJwks(extra?: (url: string, init?: RequestInit) => Response | undefi
   return calls;
 }
 
-describe("réception d'un échange pendant la transition", () => {
-  it("accepte un jeton d'ERPlead et un jeton de CRMlead, refuse tout autre émetteur", async () => {
+describe("réception d'un échange : ERPlead seulement", () => {
+  it("accepte un jeton d'ERPlead, refuse celui de CRMlead (ancienne transition) et tout autre émetteur", async () => {
     stubJwks();
-    const claims = { aud: "invoicelead", scope: "exchange", app: "crmlead" };
-    expect(await incomingSender(`Bearer ${jwt("https://erplead.io", claims)}`)).toBe("crmlead");
-    expect(await incomingSender(`Bearer ${jwt("https://crmlead.io", claims)}`)).toBe("crmlead");
-    expect(await incomingSender(`Bearer ${jwt("https://autre.test", claims)}`)).toBeNull();
+    const claims = { aud: "invoicelead", scope: "exchange", app: "crmlead", sub: "client:crmlead" };
+    expect(
+      await incomingExchange(`Bearer ${jwt("https://erplead.io", claims)}`, "exchange"),
+    ).toEqual({ app: "crmlead", org: null, person: null, person_role: null });
+    expect(
+      await incomingExchange(`Bearer ${jwt("https://crmlead.io", claims)}`, "exchange"),
+    ).toBeNull();
+    expect(
+      await incomingExchange(`Bearer ${jwt("https://autre.test", claims)}`, "exchange"),
+    ).toBeNull();
   });
 
   it("la connexion n'accepte que l'émetteur ERPlead", async () => {
@@ -80,57 +86,51 @@ describe("réception d'un échange pendant la transition", () => {
       ).toString("base64url");
       return `${h}.${p}`;
     });
-    expect(await incomingSender(`Bearer ${forged}`)).toBeNull();
+    expect(await incomingExchange(`Bearer ${forged}`, "exchange")).toBeNull();
   });
 });
 
 describe("relecture des clés pour un kid inconnu : au plus une toutes les 30 s, par émetteur", () => {
-  it("une lecture récente des clés de CRMlead ne retarde pas une rotation chez ERPlead", async () => {
+  it("une clé tournée chez ERPlead est lue ; une clé inconnue relue il y a moins de 30 s ne fait rien relire", async () => {
     const erp = "https://erplead.io";
-    const crm = "https://crmlead.io";
     const rotated = generateKeyPairSync("rsa", { modulusLength: 2048 });
     const jwk = (iss: Iss) => ({
       ...keys[iss].publicKey.export({ format: "jwk" }),
       kid: kidOf(iss),
     });
-    const published: Record<string, unknown[]> = { [erp]: [jwk(erp)], [crm]: [jwk(crm)] };
+    let published: unknown[] = [jwk(erp)];
     const reads: string[] = [];
     vi.stubGlobal(
       "fetch",
       vi.fn(async (url: string) => {
-        const iss = url.replace(/\/oauth\/jwks$/, "");
-        if (!(iss in published)) return new Response("{}", { status: 404 });
-        reads.push(iss);
-        return Response.json({ keys: published[iss] });
+        if (url !== `${erp}/oauth/jwks`) return new Response("{}", { status: 404 });
+        reads.push(url);
+        return Response.json({ keys: published });
       }),
     );
-    const withKid = (kid: string, iss: string, signer: typeof rotated.privateKey) => {
+    const withKid = (kid: string, signer: typeof rotated.privateKey) => {
       const h = Buffer.from(JSON.stringify({ alg: "RS256", kid })).toString("base64url");
       const p = Buffer.from(
-        JSON.stringify({ iss, aud: "invoicelead", exp: Math.floor(Date.now() / 1000) + 300 }),
+        JSON.stringify({ iss: erp, aud: "invoicelead", exp: Math.floor(Date.now() / 1000) + 300 }),
       ).toString("base64url");
       return `${h}.${p}.${sign("sha256", Buffer.from(`${h}.${p}`), signer).toString("base64url")}`;
     };
-    const exchange = { aud: "invoicelead", scope: "exchange", app: "crmlead" };
     vi.useFakeTimers({ toFake: ["Date"] });
     try {
       vi.setSystemTime(Date.now() + 2 * 3_600_000); // caches d'une heure échus
       expect(await verifyLeadJwt(jwt(erp, { aud: "invoicelead" }), "invoicelead")).not.toBeNull();
-      expect(reads).toEqual([erp]);
-      published[erp] = [jwk(erp), { ...rotated.publicKey.export({ format: "jwk" }), kid: "erp-2" }];
-      // 31 s plus tard, un envoi signé par CRMlead fait lire ses clés.
+      expect(reads).toHaveLength(1);
+      published = [jwk(erp), { ...rotated.publicKey.export({ format: "jwk" }), kid: "erp-2" }];
       vi.setSystemTime(Date.now() + 31_000);
-      expect(await incomingSender(`Bearer ${jwt(crm, exchange)}`)).toBe("crmlead");
-      expect(reads).toEqual([erp, crm]);
-      // Une seconde après : la clé tournée d'ERPlead est lue (sa dernière lecture date de 32 s)…
+      expect(
+        await verifyLeadJwt(withKid("erp-2", rotated.privateKey), "invoicelead"),
+      ).not.toBeNull();
+      expect(reads).toHaveLength(2);
       vi.setSystemTime(Date.now() + 1_000);
-      const turned = withKid("erp-2", erp, rotated.privateKey);
-      expect(await verifyLeadJwt(turned, "invoicelead")).not.toBeNull();
-      expect(reads).toEqual([erp, crm, erp]);
-      // … mais une clé inconnue annoncée par CRMlead, relu il y a 1 s, ne fait rien relire.
-      const unknown = withKid("crm-inconnue", crm, rotated.privateKey);
-      expect(await incomingSender(`Bearer ${unknown}`)).toBeNull();
-      expect(reads).toEqual([erp, crm, erp]);
+      expect(
+        await verifyLeadJwt(withKid("inconnue", rotated.privateKey), "invoicelead"),
+      ).toBeNull();
+      expect(reads).toHaveLength(2);
     } finally {
       vi.useRealTimers();
     }
@@ -215,14 +215,13 @@ describe("relecture des clés pour un kid inconnu : au plus une toutes les 30 s,
   });
 });
 
-describe("envoi vers CRMlead pendant la transition", () => {
-  it("refusé avec le jeton d'ERPlead : redemande le jeton à CRMlead et renvoie", async () => {
+describe("envoi vers CRMlead", () => {
+  it("refusé en 401 : jeton d'ERPlead oublié et redemandé une fois, jamais à CRMlead", async () => {
     const auth: string[] = [];
+    let n = 0;
     const calls = stubJwks((url, init) => {
       if (url === "https://erplead.io/oauth/token")
-        return Response.json({ access_token: "erp", expires_in: 300 });
-      if (url === "https://crmlead.io/oauth/token")
-        return Response.json({ access_token: "crm", expires_in: 300 });
+        return Response.json({ access_token: `erp${++n}`, expires_in: 900 });
       if (url.endsWith("/.well-known/lead-app.json"))
         return Response.json({
           exchange: { inbox: "https://crmlead.io/api/lead-exchange/v1/inbox" },
@@ -230,17 +229,17 @@ describe("envoi vers CRMlead pendant la transition", () => {
       if (url.endsWith("/inbox")) {
         const a = new Headers(init?.headers).get("authorization") ?? "";
         auth.push(a);
-        return a === "Bearer crm"
-          ? Response.json({ id: "1", url: "u", status: "created" })
-          : Response.json({ error: "invalid_token" }, { status: 401 });
+        return auth.length === 1
+          ? Response.json({ error: "invalid_token" }, { status: 401 })
+          : Response.json({ id: "1", url: "u", status: "created" });
       }
     });
     const out = await send(
       { app: "crmlead", url: "https://crmlead.io" },
-      { type: "invoice", org: "o", source: { id: "f1" }, data: {} },
+      { type: "document", org: "o-transition", source: { id: "f1" }, data: {} },
     );
     expect(out.status).toBe("created");
-    expect(auth).toEqual(["Bearer erp", "Bearer crm"]);
-    expect(calls).toContain("https://crmlead.io/oauth/token");
+    expect(auth).toEqual(["Bearer erp1", "Bearer erp2"]);
+    expect(calls).not.toContain("https://crmlead.io/oauth/token");
   });
 });

@@ -719,7 +719,11 @@ describe("formule par application", () => {
       leadPlan: "pro",
       entitlements: {
         app: "invoicelead",
-        plan: { ...leadPlan(1), source: "family", valid_until: "2026-10-25T11:40:27.000Z" },
+        plan: {
+          ...leadPlan(1),
+          source: "family",
+          valid_until: new Date(Date.now() + 30 * 86_400_000).toISOString(),
+        },
         apps: {},
         subscriptions: [{ app: "crmlead", plan: "pro", inherited: true }],
       },

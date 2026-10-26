@@ -4,7 +4,6 @@ import { ApiKeyForm, WebhookForm } from "@/components/settings/ApiForms";
 import { SettingsNav } from "@/components/settings/SettingsNav";
 import { Button } from "@/components/ui/button";
 import { countryPack } from "@/countries";
-import { Link } from "@/i18n/navigation";
 import { formatDate } from "@/lib/fiscal-year";
 import { listApiKeys } from "@/server/api-keys";
 import { requireAppSession } from "@/server/auth/guard";
@@ -60,15 +59,8 @@ export default async function ApiSettingsPage({ params, searchParams }: Props) {
       <p className="mt-2 text-[13px] text-ink-2" data-testid="mcp-url">
         {t("mcp", { url: `${env().APP_URL}/api/mcp` })}
       </p>
-      <p className="mt-2 text-[13px] text-ink-2">
-        {t("projectLead")}{" "}
-        <Link
-          href="/app/settings/projectlead"
-          className="font-semibold text-accent-dark underline"
-          data-testid="api-projectlead-link"
-        >
-          {t("projectLeadLink")}
-        </Link>
+      <p className="mt-2 text-[13px] text-ink-2" data-testid="api-lead-apps">
+        {t("projectLead")}
       </p>
       {q.revoked || q.disabled ? (
         <p

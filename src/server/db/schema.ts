@@ -242,7 +242,11 @@ export const contacts = pgTable(
     uid: text("uid"),
     paymentTermDays: integer("payment_term_days").notNull().default(30),
     notes: text("notes"),
-    /** Fiche d'origine dans une autre application de la famille, « crmlead:<id> ». */
+    /**
+     * Fiche d'origine dans une autre application de la famille, « crmlead:<id> » ou
+     * « projectlead:<client> ». Unique par entreprise : un clic et la tâche mensuelle de ProjectLead
+     * arrivés ensemble ne créent qu'un contact.
+     */
     externalRef: text("external_ref"),
     archivedAt: timestamp("archived_at", { withTimezone: true }),
     createdAt: createdAt(),
@@ -250,7 +254,9 @@ export const contacts = pgTable(
   },
   (t) => [
     index("contacts_org_name_idx").on(t.organizationId, sql`lower(${t.name})`),
-    index("contacts_org_external_idx").on(t.organizationId, t.externalRef),
+    uniqueIndex("contacts_org_external_idx")
+      .on(t.organizationId, t.externalRef)
+      .where(sql`${t.externalRef} is not null`),
   ],
 );
 
@@ -1104,6 +1110,7 @@ export const crmleadOutbox = pgTable(
     invoiceId: uuid("invoice_id").notNull(),
     envelope: jsonb("envelope").notNull(),
     // pending | sending (réservé par un envoi en cours) | delivered | failed | superseded
+    // | waiting (CRMlead ne connaît pas encore l'entreprise, 404) | expired (30 jours sans aboutir)
     status: text("status").notNull().default("pending"),
     attempts: integer("attempts").notNull().default(0),
     lastError: text("last_error"),

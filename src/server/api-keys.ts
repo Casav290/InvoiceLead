@@ -20,11 +20,12 @@ type Who = { organizationId: string; userId: string };
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
- * Portée d'une clé. « full » : toute l'API REST et le serveur MCP, formule Pro+. « projectlead » :
- * la clé qui relie ProjectLead, ouverte à toutes les formules, limitée à ce que ProjectLead appelle
- * (lire et créer des contacts, créer des brouillons de factures ; voir ProjectLead,
- * server/lib/invoicelead.ts). Rien d'autre : ni lecture des factures, ni émission, ni paiement, ni
- * PDF, ni devis, ni MCP, ni webhooks.
+ * Portée d'une clé. « full » : toute l'API REST et le serveur MCP, formule Pro+, pour les outils
+ * extérieurs (Zapier, Make, Claude, scripts). « projectlead » : ancienne clé qui reliait ProjectLead.
+ * Depuis la liaison sans clé (26.10.2026), ProjectLead passe par le Compte Lead
+ * (/api/lead-exchange/v1) et plus aucune clé de cette portée n'est créée ; celles qui existent
+ * restent acceptées, limitées à ce que ProjectLead appelait (contacts, brouillons de factures),
+ * jusqu'à leur révocation (étape 5b).
  */
 export const API_SCOPES = ["full", "projectlead"] as const;
 export type ApiScope = (typeof API_SCOPES)[number];
@@ -56,21 +57,16 @@ export function scopeAllows(scope: string, endpoint: ApiEndpoint): boolean {
   return false;
 }
 
-/** Clés actives au plus, par portée. */
-export const MAX_API_KEYS: Record<ApiScope, number> = { full: 10, projectlead: 3 };
-/** Nom de la clé ProjectLead dans la liste et le journal. */
-export const PROJECTLEAD_KEY_NAME = "ProjectLead";
+/** Clés actives au plus. Seules les clés complètes se créent encore. */
+export const MAX_API_KEYS = { full: 10 } as const;
 
-/**
- * Nouvelle clé : « il_live_ » suivi de 32 octets aléatoires. Rendue une seule fois. La clé ProjectLead
- * porte le même préfixe : ProjectLead l'attend sous cette forme.
- */
+/** Nouvelle clé complète : « il_live_ » suivi de 32 octets aléatoires. Rendue une seule fois. */
 export async function createApiKey(
   database: Db,
   who: Who,
   name: string,
-  scope: ApiScope = "full",
 ): Promise<{ key: string; row: ApiKey } | "invalid" | "tooMany"> {
+  const scope = "full" as const;
   const label = name.trim();
   if (!label || label.length > 60) return "invalid";
   const active = await database
@@ -106,11 +102,6 @@ export async function createApiKey(
     data: { name: label, prefix: row.prefix, scope },
   });
   return { key, row };
-}
-
-/** Clé qui relie ProjectLead : toutes les formules, portée « projectlead ». */
-export function createProjectLeadKey(database: Db, who: Who) {
-  return createApiKey(database, who, PROJECTLEAD_KEY_NAME, "projectlead");
 }
 
 /** Clés actives de l'entreprise d'une portée. */

@@ -13,7 +13,7 @@ const ITEMS = [
   { href: "/app/settings/plan", key: "plan" },
   { href: "/app/settings/payments", key: "payments" },
   { href: "/app/settings/einvoicing", key: "einvoicing" },
-  { href: "/app/settings/projectlead", key: "projectlead" },
+  { href: "/app/settings/lead-apps", key: "leadApps" },
   { href: "/app/settings/api", key: "api" },
 ] as const;
 
@@ -21,7 +21,7 @@ export type SettingsMarks = Partial<Record<(typeof ITEMS)[number]["key"], "pro" 
 
 /**
  * Onglets des réglages : entreprise, plan comptable, exercices, équipe, formule (abonnement
- * InvoiceLead), paiements, ProjectLead (toutes formules), API. Un onglet marqué (fonction réservée)
+ * InvoiceLead), paiements, Applications Lead (liaison sans clé, toutes formules), API. Un onglet marqué (fonction réservée)
  * reste un lien, grisé, avec sa marque.
  */
 export function SettingsTabs({

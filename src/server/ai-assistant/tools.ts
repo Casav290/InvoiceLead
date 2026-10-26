@@ -83,7 +83,7 @@ export const OPENABLE_PAGES = [
   "/app/settings/api",
   "/app/settings/accounts",
   "/app/settings/fiscal-years",
-  "/app/settings/projectlead",
+  "/app/settings/lead-apps",
   "/app/settings/einvoicing",
 ] as const;
 
