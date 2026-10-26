@@ -1330,7 +1330,10 @@
       "issueCurrencyPlan": "Dieses Dokument lautet auf {currency}. Das Ausstellen in Fremdwährung ist Teil des Pro-Abos. Stellen Sie es auf {home} um, um es jetzt auszustellen.",
       "quoteCurrencyPlan": "Diese Offerte lautet auf {currency}. Die Verrechnung in Fremdwährung ist Teil des Pro-Abos.",
       "quoteCurrencyPlanIntl": "Dieses Angebot lautet auf {currency}. Die Abrechnung in Fremdwährung ist Teil des Pro-Abos.",
-      "currencyPlan": "Weitere Währungen sind Teil des Pro-Abos."
+      "currencyPlan": "Weitere Währungen sind Teil des Pro-Abos.",
+      "crmleadDeal": "Verkaufschance in CRMlead",
+      "crmleadInherited": "vom vorherigen Dokument dieses Kunden übernommen: Der angenommene Betrag wird dort übernommen.",
+      "crmleadDetach": "Lösen"
     },
     "quotes": {
       "title": "Offerten",

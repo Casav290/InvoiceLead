@@ -435,6 +435,11 @@ export const invoices = pgTable(
     journalEntryId: uuid("journal_entry_id"),
     /** Origine dans une autre application de la famille, « crmlead:<id du lead> » : évite les doublons. */
     externalRef: text("external_ref"),
+    /**
+     * Affaire CRMlead d'une pièce qui n'en est pas l'import d'origine : nouveau devis d'un client dont un devis est
+     * déjà relié (le premier refusé, un second accepté), ou nouvelle pièce depuis un lead dont le devis est refusé.
+     */
+    crmleadLeadId: uuid("crmlead_lead_id"),
     /** Projet facturé (heures reprises du suivi du temps). */
     projectId: uuid("project_id"),
     /** Facture d'acompte sur un devis (`source_quote_id`), déduite de la facture finale. */
@@ -454,6 +459,9 @@ export const invoices = pgTable(
     uniqueIndex("invoices_org_external_idx")
       .on(t.organizationId, t.externalRef)
       .where(sql`${t.externalRef} is not null`),
+    index("invoices_org_crmlead_lead_idx")
+      .on(t.organizationId, t.crmleadLeadId)
+      .where(sql`${t.crmleadLeadId} is not null`),
   ],
 );
 

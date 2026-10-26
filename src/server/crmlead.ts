@@ -1,4 +1,4 @@
-import { and, eq, isNull, sql } from "drizzle-orm";
+import { and, desc, eq, isNull, ne, or, sql } from "drizzle-orm";
 import { z } from "zod";
 import { VAT_CODES } from "@/countries/ch/vat";
 import { CURRENCIES } from "@/lib/currencies";
@@ -58,6 +58,8 @@ export const handoffSchema = z.object({
 
 export type Handoff = z.infer<typeof handoffSchema>;
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export function decodeHandoff(param: string | undefined | null): Handoff | null {
   if (!param || param.length > 60_000) return null;
   try {
@@ -109,16 +111,31 @@ export async function importHandoff(
   opts: { language: string; today: string; canCreateContact: boolean },
 ): Promise<ImportResult> {
   const ref = `crmlead:${h.lead.id}`;
+  // La pièce de l'affaire : l'import d'origine ou une pièce reprise, la plus récente qui ne soit pas refusée. Un
+  // devis refusé ne bloque plus : « Créer un devis » depuis CRMlead en fait un nouveau, relié au même lead.
+  const leadUuid = UUID_RE.test(h.lead.id);
+  const linked = and(
+    eq(invoices.organizationId, who.organizationId),
+    leadUuid
+      ? or(eq(invoices.externalRef, ref), eq(invoices.crmleadLeadId, h.lead.id))
+      : eq(invoices.externalRef, ref),
+  );
   const existing = async () => {
     const [row] = await database
       .select({ id: invoices.id, kind: invoices.kind })
       .from(invoices)
-      .where(and(eq(invoices.organizationId, who.organizationId), eq(invoices.externalRef, ref)))
+      .where(and(linked, ne(invoices.status, "declined")))
+      .orderBy(desc(invoices.createdAt))
       .limit(1);
     return row
       ? { status: "existing" as const, id: row.id, kind: row.kind as "quote" | "invoice" }
       : null;
   };
+  const [origin] = await database
+    .select({ id: invoices.id })
+    .from(invoices)
+    .where(and(linked, eq(invoices.externalRef, ref)))
+    .limit(1);
   const found = await existing();
   if (found) return found;
 
@@ -183,8 +200,11 @@ export async function importHandoff(
       })),
     },
     h.kind,
+    // L'import d'origine porte la référence (unique) ; après un devis refusé, la nouvelle pièce prend le lien repris.
+    { crmleadLeadId: origin && leadUuid ? h.lead.id : null },
   );
   if (!created || typeof created === "string") throw new Error("crmlead:not_saved");
+  if (origin) return { status: "created", id: created.id, kind: h.kind };
   try {
     await database.update(invoices).set({ externalRef: ref }).where(eq(invoices.id, created.id));
   } catch {

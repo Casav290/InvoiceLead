@@ -2,9 +2,14 @@ import { eq } from "drizzle-orm";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { attachLeadIdentity } from "@/server/auth/attach";
 import { decodeHandoff, encodeHandoff, importHandoff } from "@/server/crmlead";
-import { deliverCrmlead } from "@/server/crmlead-sync";
-import { crmleadOutbox, organizations } from "@/server/db/schema";
-import { convertQuoteToInvoice, issueInvoice, setQuoteOutcome } from "@/server/invoices";
+import { deliverCrmlead, detachCrmlead } from "@/server/crmlead-sync";
+import { crmleadOutbox, invoices, organizations } from "@/server/db/schema";
+import {
+  convertQuoteToInvoice,
+  createInvoice,
+  issueInvoice,
+  setQuoteOutcome,
+} from "@/server/invoices";
 import { addPayment } from "@/server/payments";
 import { claims } from "../support/claims";
 import { testDb } from "../support/db";
@@ -216,5 +221,99 @@ describe("états vers CRMlead", () => {
     await setQuoteOutcome(db, who, quoteId, "declined");
     await deliverCrmlead(db);
     expect((await db.select().from(crmleadOutbox))[0]?.status).toBe("pending");
+  });
+
+  it("un nouveau devis du même client reprend l'affaire : refusé puis nouveau devis accepté (26.10.2026)", async () => {
+    const received = fakeCrmlead();
+    const { who, quoteId } = await setup();
+    await issueInvoice(db, who, quoteId);
+    await setQuoteOutcome(db, who, quoteId, "accepted");
+    const [first] = await db.select().from(invoices).where(eq(invoices.id, quoteId));
+    if (!first) throw new Error("devis");
+    // Nouveau devis fait à la main pour le même client, 7 500 CHF : relié au même lead sans rien faire.
+    const second = await createInvoice(
+      db,
+      who,
+      {
+        contactId: first.contactId,
+        language: "fr",
+        currency: "CHF",
+        title: null,
+        introText: null,
+        footerText: null,
+        issueDate: "2026-10-26",
+        serviceDate: "2026-10-26",
+        dueDate: null,
+        lines: [
+          {
+            productId: null,
+            description: "Forfait",
+            quantityMilli: 1000,
+            unit: "flat",
+            unitPriceCents: 750000,
+            vatCode: "normal",
+          },
+        ],
+      },
+      "quote",
+    );
+    if (!second || typeof second === "string") throw new Error(String(second));
+    expect(second.crmleadLeadId).toBe(LEAD);
+    expect(second.externalRef).toBeNull();
+    await issueInvoice(db, who, second.id);
+    await setQuoteOutcome(db, who, quoteId, "declined");
+    await setQuoteOutcome(db, who, second.id, "accepted");
+    await deliverCrmlead(db);
+    expect(received.at(-1)).toMatchObject({
+      source: { id: second.id },
+      data: {
+        kind: "quote",
+        status: "accepted",
+        net_cents: 750000,
+        currency: "CHF",
+        lead_id: LEAD,
+      },
+    });
+    expect(
+      received.some((e) => (e as { data: { status: string } }).data.status === "declined"),
+    ).toBe(true);
+  });
+
+  it("depuis CRMlead, un devis refusé laisse créer un nouveau devis relié ; détacher un brouillon repris", async () => {
+    fakeCrmlead();
+    const { who, quoteId } = await setup();
+    await issueInvoice(db, who, quoteId);
+    await setQuoteOutcome(db, who, quoteId, "declined");
+    const handoff = decodeHandoff(
+      encodeHandoff({
+        v: 1,
+        kind: "quote",
+        lead: { id: LEAD, title: "Refonte du site" },
+        contact: { id: `lead:${LEAD}`, name: "Boulangerie Rochat SA", language: "fr" },
+        lines: [{ description: "Refonte du site", quantity: 1, unitPriceCents: 750000 }],
+      }),
+    );
+    if (!handoff) throw new Error("handoff");
+    const again = await importHandoff(db, who, handoff, {
+      language: "fr",
+      today: "2026-10-26",
+      canCreateContact: true,
+    });
+    expect(again).toMatchObject({ status: "created", kind: "quote" });
+    if (again.status === "contactLimit") throw new Error("limit");
+    expect(again.id).not.toBe(quoteId);
+    const [doc] = await db.select().from(invoices).where(eq(invoices.id, again.id));
+    expect(doc).toMatchObject({ crmleadLeadId: LEAD, externalRef: null, netCents: 750000 });
+    // Un second passage rend ce nouveau devis, pas le refusé.
+    expect(
+      await importHandoff(db, who, handoff, {
+        language: "fr",
+        today: "2026-10-26",
+        canCreateContact: true,
+      }),
+    ).toMatchObject({ status: "existing", id: again.id });
+    expect(await detachCrmlead(db, who.organizationId, again.id)).toBe(true);
+    const [after] = await db.select().from(invoices).where(eq(invoices.id, again.id));
+    expect(after?.crmleadLeadId).toBeNull();
   });
 });

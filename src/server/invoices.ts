@@ -7,7 +7,7 @@ import { type Currency, isCurrency, parseFxRate } from "@/lib/currencies";
 import { isIsoDate } from "@/lib/fiscal-year";
 import { computeTotals, parseQuantityToMilli } from "@/lib/invoice-math";
 import { vatNumberLabel } from "@/lib/swiss-ids";
-import { syncCrmlead } from "./crmlead-sync";
+import { inheritedCrmleadLead, syncCrmlead } from "./crmlead-sync";
 import type { Db } from "./db";
 import {
   auditLog,
@@ -251,7 +251,12 @@ async function writeInvoice(
   data: InvoiceInput,
   id: string | null,
   kind: DocumentKind,
-  links: { sourceQuoteId?: string; relatedInvoiceId?: string; deposit?: boolean } = {},
+  links: {
+    sourceQuoteId?: string;
+    relatedInvoiceId?: string;
+    deposit?: boolean;
+    crmleadLeadId?: string | null;
+  } = {},
 ): Promise<SaveResult> {
   if (kind === "credit_note" && id) {
     // Un avoir reste au nom du client de sa facture, quoi que dise le formulaire.
@@ -293,6 +298,13 @@ async function writeInvoice(
     }
   }
   const { rates, totals } = priced(data, vatRegistered, country, localRateBp);
+  // Nouveau devis fait à la main : il reprend l'affaire CRMlead du dernier devis relié du même client.
+  const crmleadLeadId =
+    id || kind !== "quote"
+      ? null
+      : links.crmleadLeadId !== undefined
+        ? links.crmleadLeadId
+        : await inheritedCrmleadLead(database, who.organizationId, contact.id);
   const values = {
     contactId: contact.id,
     language: data.language,
@@ -343,6 +355,7 @@ async function writeInvoice(
           sourceQuoteId: links.sourceQuoteId ?? null,
           deposit: links.deposit ?? false,
           relatedInvoiceId: links.relatedInvoiceId ?? null,
+          crmleadLeadId,
           organizationId: who.organizationId,
           createdBy: who.userId,
         })
@@ -381,8 +394,9 @@ export async function createInvoice(
   who: Who,
   data: InvoiceInput,
   kind: DocumentKind = "invoice",
+  links: { crmleadLeadId?: string | null } = {},
 ) {
-  return writeInvoice(database, who, data, null, kind);
+  return writeInvoice(database, who, data, null, kind, links);
 }
 
 /** Modifie un brouillon de l'organisation ; une pièce émise ne change plus. */

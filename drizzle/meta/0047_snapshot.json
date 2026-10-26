@@ -1,5 +1,5 @@
 {
-  "id": "f9d5a3f6-cc4a-46b6-8dc3-6dfeb540afc3",
+  "id": "bcfe9701-a201-4909-abbf-3e3254203dd8",
   "prevId": "662ab862-84c7-4b03-a09c-625546073400",
   "version": "7",
   "dialect": "postgresql",
@@ -1327,8 +1327,7 @@
               "nulls": "last"
             }
           ],
-          "isUnique": true,
-          "where": "\"contacts\".\"external_ref\" is not null",
+          "isUnique": false,
           "concurrently": false,
           "method": "btree",
           "with": {}
@@ -2580,6 +2579,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "crmlead_lead_id": {
+          "name": "crmlead_lead_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
         "project_id": {
           "name": "project_id",
           "type": "uuid",
@@ -2718,6 +2723,28 @@
           ],
           "isUnique": true,
           "where": "\"invoices\".\"external_ref\" is not null",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "invoices_org_crmlead_lead_idx": {
+          "name": "invoices_org_crmlead_lead_idx",
+          "columns": [
+            {
+              "expression": "organization_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "crmlead_lead_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "where": "\"invoices\".\"crmlead_lead_id\" is not null",
           "concurrently": false,
           "method": "btree",
           "with": {}

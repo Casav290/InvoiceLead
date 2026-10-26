@@ -570,7 +570,7 @@ describe("kit : contrôle d'enveloppe et envoi", () => {
 describe("migration 0047 : index unique des contacts reliés", () => {
   it("s'arrête s'il existe des doublons (organization_id, external_ref), sans rien changer", async () => {
     const { orgId } = await company();
-    const sqlText = readFileSync("drizzle/0047_contacts_external_unique.sql", "utf8");
+    const sqlText = readFileSync("drizzle/0048_contacts_external_unique.sql", "utf8");
     const pg = new Client({ connectionString: process.env.TEST_DATABASE_URL });
     await pg.connect();
     try {

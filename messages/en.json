@@ -1330,7 +1330,10 @@
       "issueCurrencyPlan": "This document is in {currency}. Issuing in another currency is part of the Pro plan. Switch it back to {home} to issue it now.",
       "quoteCurrencyPlan": "This quote is in {currency}. Invoicing in another currency is part of the Pro plan.",
       "quoteCurrencyPlanIntl": "This quote is in {currency}. Invoicing in another currency is part of the Pro plan.",
-      "currencyPlan": "Other currencies are part of the Pro plan."
+      "currencyPlan": "Other currencies are part of the Pro plan.",
+      "crmleadDeal": "Deal in CRMlead",
+      "crmleadInherited": "carried over from this customer's previous quote: the accepted amount will be used there.",
+      "crmleadDetach": "Detach"
     },
     "quotes": {
       "title": "Quotes",
