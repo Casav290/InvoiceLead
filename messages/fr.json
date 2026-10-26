@@ -1330,7 +1330,10 @@
       "issueCurrencyPlan": "Ce document est en {currency}. L'émettre dans une autre devise fait partie de la formule Pro. Repassez-le en {home} pour l'émettre maintenant.",
       "quoteCurrencyPlan": "Ce devis est en {currency}. Le facturer dans une autre devise fait partie de la formule Pro.",
       "quoteCurrencyPlanIntl": "Ce devis est en {currency}. Le facturer dans une autre devise fait partie de la formule Pro.",
-      "currencyPlan": "Les autres devises font partie de la formule Pro."
+      "currencyPlan": "Les autres devises font partie de la formule Pro.",
+      "crmleadDeal": "Affaire dans CRMlead",
+      "crmleadInherited": "reprise du devis précédent de ce client : le montant accepté y sera repris.",
+      "crmleadDetach": "Détacher"
     },
     "quotes": {
       "title": "Devis",

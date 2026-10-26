@@ -7,6 +7,7 @@ import {
   deleteDraftAction,
   deletePaymentAction,
   depositInvoiceAction,
+  detachCrmleadAction,
   issueInvoiceAction,
   quoteOutcomeAction,
 } from "@/app/[locale]/app/invoices/actions";
@@ -27,9 +28,11 @@ import { Link } from "@/i18n/navigation";
 import { formatAmountInput } from "@/lib/amount-input";
 import { formatDate } from "@/lib/fiscal-year";
 import { formatQuantity } from "@/lib/invoice-math";
+import { LEAD_FAMILY } from "@/lib/lead-apps";
 import { formatAmount } from "@/lib/money";
 import { requireAppSession } from "@/server/auth/guard";
 import { getSessionCountryTranslations } from "@/server/country-translations";
+import { crmleadLeadOf } from "@/server/crmlead-sync";
 import { db } from "@/server/db";
 import { emailConfigured } from "@/server/email";
 import { invoiceOptions } from "@/server/invoice-options";
@@ -339,6 +342,8 @@ export async function DocumentDetailPage({
   const payments = billed ? await listPayments(db(), organization.id, invoice.id) : [];
   const reminders = billed ? await listReminders(db(), organization.id, invoice.id) : [];
   const section = sectionOf(kind);
+  // L'affaire CRMlead de la pièce : montant et devise y suivent le dernier devis accepté.
+  const crmLead = await crmleadLeadOf(db(), invoice);
   const deposits =
     kind === "quote" && !draft ? await depositInvoices(db(), organization.id, invoice.id) : [];
   const amounts = countryPack(organization.country).amounts;
@@ -544,6 +549,34 @@ export async function DocumentDetailPage({
         </p>
       ) : null}
 
+      {crmLead ? (
+        <p
+          className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px] text-ink-2"
+          data-testid="crmlead-deal"
+        >
+          <a
+            href={`${LEAD_FAMILY.apps.find((a) => a.code === "crmlead")?.origin ?? "https://crmlead.io"}/leads/${crmLead}`}
+            target="_blank"
+            rel="noreferrer"
+            className="font-semibold text-accent-dark underline"
+          >
+            {t("crmleadDeal")}
+          </a>
+          {invoice.crmleadLeadId && !invoice.externalRef ? (
+            <>
+              <span className="text-ink-muted">{t("crmleadInherited")}</span>
+              {draft ? (
+                <form action={detachCrmleadAction}>
+                  {hidden}
+                  <button type="submit" className="underline" data-testid="crmlead-detach">
+                    {t("crmleadDetach")}
+                  </button>
+                </form>
+              ) : null}
+            </>
+          ) : null}
+        </p>
+      ) : null}
       {related ? (
         <p className="mt-4 text-[13px] text-ink-2">
           <Link

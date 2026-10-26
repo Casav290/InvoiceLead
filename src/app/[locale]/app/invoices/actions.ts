@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { requirePermission } from "@/server/auth/guard";
 import { pickLocale } from "@/server/auth/login-cookie";
+import { detachCrmlead } from "@/server/crmlead-sync";
 import { db } from "@/server/db";
 import {
   convertQuoteToInvoice,
@@ -142,6 +143,15 @@ export async function quoteOutcomeAction(form: FormData) {
   );
   revalidatePath(`/${locale}/app/quotes`);
   redirect(`/${locale}/app/quotes/${id}`);
+}
+
+/** Un nouveau devis a repris l'affaire CRMlead d'un devis précédent du client : on peut l'en détacher (brouillon). */
+export async function detachCrmleadAction(form: FormData) {
+  const locale = pickLocale(form.get("locale"));
+  const session = await requirePermission(locale, "billing");
+  const id = String(form.get("id") ?? "");
+  await detachCrmlead(db(), session.organization.id, id);
+  redirect(`/${locale}/app/${section(kindOf(form))}/${id}`);
 }
 
 export async function convertQuoteAction(form: FormData) {

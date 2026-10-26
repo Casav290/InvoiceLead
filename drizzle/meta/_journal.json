@@ -330,6 +330,13 @@
       "when": 1792808049730,
       "tag": "0046_assistant_ia",
       "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1792994765734,
+      "tag": "0047_crmlead_lead",
+      "breakpoints": true
     }
   ]
 }

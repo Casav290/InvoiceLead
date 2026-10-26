@@ -1,4 +1,4 @@
-import { and, eq, inArray, lte, sql } from "drizzle-orm";
+import { and, eq, gte, inArray, lte, sql } from "drizzle-orm";
 import type { Db } from "./db";
 import { crmleadOutbox, invoices, organizations } from "./db/schema";
 import { env } from "./env";
@@ -23,6 +23,7 @@ export async function crmleadLeadOf(
 ): Promise<string | null> {
   const ref = invoice.externalRef?.startsWith("crmlead:") ? invoice.externalRef.slice(8) : null;
   if (ref && UUID.test(ref)) return ref;
+  if (invoice.crmleadLeadId && UUID.test(invoice.crmleadLeadId)) return invoice.crmleadLeadId;
   if (depth > 2) return null;
   const parentId = invoice.sourceQuoteId ?? invoice.relatedInvoiceId;
   if (!parentId) return null;
@@ -31,6 +32,49 @@ export async function crmleadLeadOf(
     .from(invoices)
     .where(and(eq(invoices.id, parentId), eq(invoices.organizationId, invoice.organizationId)));
   return parent ? crmleadLeadOf(database, parent, depth + 1) : null;
+}
+
+/** Un devis repris d'une affaire reste relié 180 jours : au-delà, un nouveau devis est une nouvelle affaire. */
+const INHERIT_DAYS = 180;
+
+/**
+ * L'affaire CRMlead d'un nouveau devis fait à la main pour un client : celle de son dernier devis relié, quand il a
+ * moins de 180 jours et n'est pas encore devenu facture (26.10.2026 : O-2026-0001 refusé, O-2026-0002 à 7 500 CHF
+ * accepté, et CRMlead comme ProjectLead gardaient les 5 000 du premier). Rien quand ce n'est pas clair.
+ */
+export async function inheritedCrmleadLead(
+  database: Db,
+  organizationId: string,
+  contactId: string,
+): Promise<string | null> {
+  const since = new Date(Date.now() - INHERIT_DAYS * 86_400_000);
+  const [last] = await database
+    .select()
+    .from(invoices)
+    .where(
+      and(
+        eq(invoices.organizationId, organizationId),
+        eq(invoices.contactId, contactId),
+        eq(invoices.kind, "quote"),
+        sql`(${invoices.externalRef} like 'crmlead:%' or ${invoices.crmleadLeadId} is not null)`,
+        gte(invoices.createdAt, since),
+      ),
+    )
+    .orderBy(sql`${invoices.createdAt} desc`)
+    .limit(1);
+  if (!last || last.status === "invoiced") return null;
+  return crmleadLeadOf(database, last);
+}
+
+/** Retire le lien repris d'une pièce (celui de l'import d'origine reste : il est la pièce de l'affaire). */
+export async function detachCrmlead(database: Db, organizationId: string, invoiceId: string) {
+  if (!UUID.test(invoiceId)) return false;
+  const rows = await database
+    .update(invoices)
+    .set({ crmleadLeadId: null, updatedAt: new Date() })
+    .where(and(eq(invoices.id, invoiceId), eq(invoices.organizationId, organizationId)))
+    .returning({ id: invoices.id });
+  return rows.length > 0;
 }
 
 /** État montré dans CRMlead : celui du devis, ou pour une facture, émise, payée en partie, payée, annulée. */
