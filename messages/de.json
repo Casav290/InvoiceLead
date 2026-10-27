@@ -2595,8 +2595,8 @@
       "inputLabel": "Ihre Anfrage an den KI-Assistenten",
       "send": "Senden",
       "working": "Der Assistent arbeitet…",
-      "intro": "Fragen Sie nach Rechnungen, Offerten, Kunden oder Zahlen, oder lassen Sie einen Entwurf vorbereiten. Gespeichert wird erst nach Ihrem Klick auf «Bestätigen».",
-      "introIntl": "Fragen Sie nach Rechnungen, Angeboten, Kunden oder Zahlen, oder lassen Sie einen Entwurf vorbereiten. Gespeichert wird erst nach Ihrem Klick auf «Bestätigen».",
+      "intro": "Fragen Sie nach Rechnungen, Offerten, Kunden oder Zahlen, oder verlangen Sie eine Änderung: Offerten, Rechnungen, Artikel, Zeit, Spesen, Lieferanten… Gespeichert wird erst nach Ihrem Klick auf «Bestätigen».",
+      "introIntl": "Fragen Sie nach Rechnungen, Angeboten, Kunden oder Zahlen, oder verlangen Sie eine Änderung: Angebote, Rechnungen, Artikel, Zeit, Ausgaben, Lieferanten… Gespeichert wird erst nach Ihrem Klick auf «Bestätigen».",
       "suggestionsLabel": "Vorschläge",
       "suggestions": {
         "overdue": "Welche Rechnungen sind überfällig?",

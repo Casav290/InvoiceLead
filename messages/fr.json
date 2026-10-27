@@ -2595,8 +2595,8 @@
       "inputLabel": "Votre demande à l'assistant IA",
       "send": "Envoyer",
       "working": "L'assistant travaille…",
-      "intro": "Posez une question sur vos factures, devis, clients ou chiffres, ou demandez un brouillon. Rien n'est enregistré sans votre clic sur « Confirmer ».",
-      "introIntl": "Posez une question sur vos factures, devis, clients ou chiffres, ou demandez un brouillon. Rien n'est enregistré sans votre clic sur « Confirmer ».",
+      "intro": "Posez une question sur vos factures, devis, clients ou chiffres, ou demandez un changement : devis, factures, articles, temps, notes de frais, fournisseurs… Rien n'est enregistré sans votre clic sur « Confirmer ».",
+      "introIntl": "Posez une question sur vos factures, devis, clients ou chiffres, ou demandez un changement : devis, factures, articles, temps, notes de frais, fournisseurs… Rien n'est enregistré sans votre clic sur « Confirmer ».",
       "suggestionsLabel": "Suggestions",
       "suggestions": {
         "overdue": "Quelles factures sont en retard de paiement ?",

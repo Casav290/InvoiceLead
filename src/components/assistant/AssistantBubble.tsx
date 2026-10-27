@@ -142,6 +142,18 @@ const failureState = (status: number, error: string | undefined): CardState => {
   return "failed";
 };
 
+/**
+ * Présentation par défaut selon la clé : les cartes du 24.10.2026 (sans « format ») restent lisibles
+ * dans un fil ouvert au moment d'une mise à jour.
+ */
+const KEY_FORMATS: Record<string, Field["format"]> = {
+  issueDate: "date",
+  dueDate: "date",
+  kind: "enum",
+  documentKind: "enum",
+  status: "enum",
+};
+
 /** Champs dont les valeurs ont déjà leurs libellés sur un écran de l'application (messages app.*). */
 const ENUM_SOURCES: Record<string, string> = {
   unit: "products.units",
@@ -406,7 +418,7 @@ export function AssistantBubble({ storageKey }: { storageKey: string }) {
         .split("+")
         .map((v) => enumValue(v))
         .join(", ");
-    switch (f.format) {
+    switch (f.format ?? KEY_FORMATS[f.key]) {
       case "date":
         return formatDate(value, dates);
       case "money":
