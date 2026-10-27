@@ -149,6 +149,7 @@ export const createProductOp = defineOp({
         label: created.name,
         amountCents: created.unitPriceCents,
         currency,
+        unit: created.unit,
       },
     };
   },

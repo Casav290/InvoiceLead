@@ -1,5 +1,6 @@
 import type { z } from "zod";
 import { countryPack } from "@/countries";
+import type { Locale } from "@/i18n/routing";
 import { formatQuantity } from "@/lib/invoice-math";
 import type { Db } from "../db";
 import type { Organization } from "../db/schema";
@@ -23,8 +24,8 @@ export type AssistantContext = {
   membership: Member;
   /** Date du jour, AAAA-MM-JJ. */
   today: string;
-  /** Langue de l'interface (lecture d'un justificatif par l'IA). */
-  locale: "de" | "fr" | "en";
+  /** Langue de l'interface (libellés des comptes, lecture d'un justificatif par l'IA). */
+  locale: Locale;
 };
 
 /** Ce qu'une opération a créé ou modifié, pour les références d'un lot et la page qui le montre. */
@@ -85,6 +86,8 @@ export type BatchItem = {
   label: string;
   /** Valeur d'une liste à traduire (« quote », « invoice »…), montrée avant le libellé. */
   detail?: string;
+  /** Unité du montant (prix d'un article). */
+  unit?: string;
   amountCents?: number;
   currency?: string;
   lines?: SummaryLine[];

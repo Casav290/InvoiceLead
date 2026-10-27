@@ -1,6 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { BetaMessageParam } from "@anthropic-ai/sdk/resources/beta/messages/messages";
-import { routing } from "@/i18n/routing";
+import { type Locale, routing } from "@/i18n/routing";
 import type { CurrentSession } from "../auth/session";
 import type { Db } from "../db";
 import { actionOperations, applyAction } from "./operations";
@@ -35,14 +35,12 @@ export const MAX_QUESTION = 4000;
 
 const today = () => new Date().toISOString().slice(0, 10);
 
-const LOCALES = ["de", "fr", "en"] as const;
-type Locale = (typeof LOCALES)[number];
-const localeOf = (value: unknown, fallback: string): Locale =>
-  (LOCALES as readonly string[]).includes(String(value))
-    ? (String(value) as Locale)
-    : (LOCALES as readonly string[]).includes(fallback)
-      ? (fallback as Locale)
-      : "de";
+/** Langue de la demande, sinon celle de l'entreprise, sinon la langue par défaut de l'application. */
+const localeOf = (value: unknown, fallback: string): Locale => {
+  const known = routing.locales as readonly string[];
+  if (known.includes(String(value))) return String(value) as Locale;
+  return (known.includes(fallback) ? fallback : routing.defaultLocale) as Locale;
+};
 
 function context(session: CurrentSession, deps: Deps, locale: unknown): AssistantContext {
   return {

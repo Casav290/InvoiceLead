@@ -290,7 +290,7 @@ const draftFields = {
   issueDate: isoDate.optional(),
   serviceDate: isoDate.optional(),
   dueDate: isoDate.optional(),
-  language: z.enum(["de", "fr", "en"]).optional(),
+  language: z.enum(INVOICE_LANGUAGES).optional(),
   currency: z.enum(["CHF", "EUR", "USD", "GBP"]).optional(),
 };
 

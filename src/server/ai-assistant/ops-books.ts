@@ -4,6 +4,7 @@ import { CHART_TEMPLATES } from "@/countries/ch/chart-of-accounts";
 import { VAT_CODES } from "@/countries/ch/vat";
 import { periodsBetween } from "@/countries/ch/vat-return";
 import { chartPack } from "@/countries/charts";
+import { accountName } from "@/lib/account-name";
 import { parseAmountToCents } from "@/lib/amount-input";
 import {
   type AccountInput,
@@ -128,9 +129,7 @@ async function accountLabel(ctx: AssistantContext, id: string | null | undefined
   if (!id) return "";
   const a = await getAccount(ctx.database, ctx.organization.id, id);
   if (!a) return "";
-  const name =
-    ctx.locale === "fr" ? a.nameFr : ctx.locale === "en" ? (a.nameEn ?? a.nameDe) : a.nameDe;
-  return `${a.number} ${name}`;
+  return `${a.number} ${accountName(a, ctx.locale)}`;
 }
 
 async function billFieldsOf(ctx: AssistantContext, b: SupplierBill): Promise<SummaryField[]> {
@@ -321,6 +320,13 @@ async function receiptRow(ctx: AssistantContext, id: string) {
   return row ?? null;
 }
 
+/** Langue de lecture d'un justificatif : celle de l'interface si la lecture la connaît, sinon l'anglais. */
+const READER_LANGUAGES = ["de", "fr", "en"] as const;
+const readerLanguage = (locale: string): (typeof READER_LANGUAGES)[number] =>
+  (READER_LANGUAGES as readonly string[]).includes(locale)
+    ? (locale as (typeof READER_LANGUAGES)[number])
+    : "en";
+
 async function readCheck(ctx: AssistantContext, receiptId: string): Promise<OpOutcome> {
   const row = await receiptRow(ctx, receiptId);
   if (!row || row.status === "posted" || row.status === "billed") return fail("receipt_not_found");
@@ -357,7 +363,12 @@ export const readReceiptOp = defineOp({
   async run(ctx, input) {
     const checked = await readCheck(ctx, input.receiptId);
     if (!checked.ok) return checked;
-    const read = await readReceipt(ctx.database, who(ctx), input.receiptId, ctx.locale);
+    const read = await readReceipt(
+      ctx.database,
+      who(ctx),
+      input.receiptId,
+      readerLanguage(ctx.locale),
+    );
     if (read !== "read") return fail(read === "quota" ? "plan_limit_ai_reads" : `read_${read}`);
     const row = await receiptRow(ctx, input.receiptId);
     return {

@@ -38,6 +38,8 @@ type GroupItem = {
   action: string;
   label: string;
   detail?: string;
+  /** Unité du prix (article) : « CHF 90.00 · Mois ». */
+  unit?: string;
   amountCents?: number;
   currency?: string;
   lines?: Line[];
@@ -408,8 +410,9 @@ export function AssistantBubble({ storageKey }: { storageKey: string }) {
     if (source && ta.has(`${source}.${value}`)) return ta(`${source}.${value}`);
     return tc.has(`values.${value}`) ? tc(`values.${value}`) : value;
   };
+  // Français : espace fine insécable ; anglais : collé ; autres langues : espace.
   const percent = (value: string) =>
-    locale === "fr" ? `${value} %` : locale === "de" ? `${value} %` : `${value}%`;
+    locale === "fr" ? `${value}\u202f%` : locale === "en" ? `${value}%` : `${value} %`;
   /** Valeur d'un champ du résumé, selon sa présentation ; vide : « (vide) ». */
   const shownValue = (f: Field, value: string) => {
     if (value === "") return tc("values.empty");
@@ -459,7 +462,7 @@ export function AssistantBubble({ storageKey }: { storageKey: string }) {
         <tr>
           <th className="px-3 py-1 text-left font-semibold">{tc("columns.description")}</th>
           <th className="w-12 px-1 py-1 text-right font-semibold">{tc("columns.quantity")}</th>
-          <th className="w-24 px-3 py-1 text-right font-semibold">{tc("columns.amount")}</th>
+          <th className="w-28 px-3 py-1 text-right font-semibold">{tc("columns.amount")}</th>
         </tr>
       </thead>
       <tbody>
@@ -467,7 +470,9 @@ export function AssistantBubble({ storageKey }: { storageKey: string }) {
           <tr key={`${i}-${l.description}`} className="border-t border-line-cell">
             <td className="break-words px-3 py-1">{l.description}</td>
             <td className="px-1 py-1 text-right">{l.quantity}</td>
-            <td className="px-3 py-1 text-right tabular-nums">{money(l.netCents, currency)}</td>
+            <td className="whitespace-nowrap px-3 py-1 text-right tabular-nums">
+              {money(l.netCents, currency)}
+            </td>
           </tr>
         ))}
       </tbody>
@@ -673,8 +678,9 @@ export function AssistantBubble({ storageKey }: { storageKey: string }) {
                                     .join(" · ")}
                                 </span>
                                 {item.amountCents !== undefined && !item.totals && (
-                                  <span className="ml-2 tabular-nums text-ink-muted">
+                                  <span className="ml-2 whitespace-nowrap tabular-nums text-ink-muted">
                                     {money(item.amountCents, item.currency ?? "")}
+                                    {item.unit ? ` · ${enumValue(item.unit, "unit")}` : ""}
                                   </span>
                                 )}
                                 {item.lines && item.lines.length > 0 && (

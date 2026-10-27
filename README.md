@@ -63,25 +63,38 @@ c'est elle que visent les lanceurs et les liens des autres applications.
 
 ## Bulle « Assistant IA »
 
-Cahier commun de la famille Lead (24.10.2026). Une bulle ronde en bas à droite de toutes les pages de
-l'application (jamais sur les pages publiques) ouvre un fil où l'on demande ce qu'on veut. Code :
-`src/server/ai-assistant/` (outils, prompt, jeton, quota), routes `POST /api/assistant` et
+Cahier commun de la famille Lead (24.10.2026, étendu le 27.10.2026 : « tout ce que l'assistant propose
+s'applique »). Une bulle ronde en bas à droite de toutes les pages de l'application (jamais sur les
+pages publiques) ouvre un fil où l'on demande ce qu'on veut. Code : `src/server/ai-assistant/`
+(outils, opérations, prompt, jeton, quota), routes `POST /api/assistant` et
 `POST /api/assistant/confirm`, composant `src/components/assistant/AssistantBubble.tsx`, textes
 `app.aiBubble` dans `messages/`.
 
 - Modèle `claude-opus-5-5` par le Tool Runner du SDK officiel (`@anthropic-ai/sdk`), effort bas,
-  10 itérations au plus, repli serveur en cas de refus. Clé `ANTHROPIC_API_KEY` sur Vercel seulement ;
-  sans elle, bulle masquée et route 503.
-- Outils = fonctions d'InvoiceLead avec l'entreprise et les droits de la session. Lecture : chiffres du
-  tableau de bord, livres, contacts, factures, devis, avoirs, paiements reçus, relances dues, articles,
-  ouverture d'une page. Écriture en deux temps (contact créé ou modifié, brouillon de facture ou de devis
-  créé ou modifié) : l'outil ne fait que proposer, la carte « À confirmer » envoie un jeton HMAC (personne,
-  entreprise, 10 minutes, usage unique) à `/api/assistant/confirm`, qui relit les droits puis écrit.
-- Jamais : émettre (numérotation légale), envoyer une facture ou une relance, enregistrer un paiement,
-  supprimer, toucher à l'abonnement, à l'équipe ou aux clés. L'assistant le dit et ouvre l'écran.
+  16 000 jetons de sortie par appel, 10 itérations au plus, tour arrêté à 270 s (`maxDuration` 300 s,
+  plan Hobby avec Fluid compute), repli serveur en cas de refus. Clé `ANTHROPIC_API_KEY` sur Vercel
+  seulement ; sans elle, bulle masquée et route 503.
+- Outils = fonctions d'InvoiceLead avec l'entreprise et les droits de la session. Lecture : chiffres,
+  livres, contacts, pièces, paiements reçus, relances dues, articles, projets et temps, factures
+  fournisseurs, justificatifs, récurrences, plan comptable, exercices, périodes TVA, réglages.
+- Écriture : chaque action permise d'un écran a son outil `propose_…` (36 opérations, inventaire et
+  raisons des refus dans [docs/ASSISTANT-ACTIONS.md](docs/ASSISTANT-ACTIONS.md)), et `propose_batch`
+  regroupe jusqu'à 150 opérations sous une carte, un clic, une transaction (tout ou rien, clés locales
+  `@c1`). Proposer = l'opération jouée dans une transaction annulée (rien n'est écrit, la carte montre
+  ce que la base contiendrait) ; « Confirmer » = jeton HMAC (personne, entreprise, 10 minutes, usage
+  unique), droits relus, même opération dans une transaction validée ; envois vers CRMlead,
+  comptabilisation et webhooks seulement après (`src/server/pending-effects.ts`). La page du résultat
+  s'ouvre ensuite.
+- Jamais : envoyer quoi que ce soit (pièce, relance, lien de partage, plateforme de facturation
+  électronique, envoi automatique), payer ou enregistrer un paiement (rapprochement bancaire
+  compris), supprimer ou archiver, toucher à l'abonnement, à l'équipe et aux droits ou aux clés.
+  L'assistant le dit et ouvre l'écran. Émettre une pièce est permis (numéro définitif, rien n'est
+  envoyé).
 - Quota : 40 messages par heure et par personne, 400 par jour et par entreprise (`assistant_usage`,
   migration 0046). Le contenu des conversations n'est pas gardé en base ; le fil vit dans le
   `sessionStorage` de l'onglet.
+- Portes du chantier : `node scripts/assistant-actions-gates.mjs G1` à `G6` (inventaire, tests, contrôles
+  complets, aperçu réel, refus, production).
 
 ## Variables d'environnement
 

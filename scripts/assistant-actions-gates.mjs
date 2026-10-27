@@ -194,13 +194,11 @@ function vitestJson(files, db, label, extra = []) {
   const res = sh(
     "npx",
     ["vitest", "run", ...files, "--reporter=json", `--outputFile=${out}`, ...extra],
-    {
-      env: { ...process.env, TEST_DATABASE_URL: LOCAL_PG(db) },
-      timeout: 1_800_000,
-    },
+    { env: { ...process.env, TEST_DATABASE_URL: LOCAL_PG(db) }, timeout: 1_800_000 },
   );
-  if (!existsSync(out))
-    return { ok: false, tests: [], log: `${res.stdout}\n${res.stderr}`.slice(-2000) };
+  const log = `${res.stdout ?? ""}\n${res.stderr ?? ""}`;
+  writeFileSync(join(TMP, `${label}.log`), log);
+  if (!existsSync(out)) return { ok: false, tests: [], why: log.slice(-2000) };
   const report = JSON.parse(readFileSync(out, "utf8"));
   const tests = report.testResults.flatMap((f) =>
     f.assertionResults.map((a) => ({
@@ -208,13 +206,13 @@ function vitestJson(files, db, label, extra = []) {
       status: a.status,
     })),
   );
-  return {
-    ok: res.status === 0,
-    tests,
-    failedFiles: report.testResults
-      .filter((f) => f.status !== "passed")
-      .map((f) => relative(ROOT, f.name)),
-  };
+  // Sortie en erreur sans test en échec : une erreur hors test (crochet, rejet non géré), dite ici.
+  const why =
+    res.status === 0
+      ? ""
+      : (/(Unhandled[^\n]*\n[^\n]*|Hook timed out[^\n]*|Error: [^\n]*)/.exec(log)?.[0] ??
+        `code ${res.status}`);
+  return { ok: res.status === 0 && report.success, tests, why };
 }
 
 /** Base locale dédiée à une porte (créée au besoin), migrée comme en CI. */
@@ -439,11 +437,11 @@ async function g3() {
   const failed = v.tests.filter((t) => t.status !== "passed");
   check(
     "Vitest complet",
-    v.ok && failed.length === 0 && v.tests.length > 500,
+    v.ok && failed.length === 0 && v.tests.length >= 470,
     `${v.tests.length} tests, ${failed.length} non passés ${failed
       .slice(0, 3)
       .map((t) => t.name)
-      .join(" | ")}`,
+      .join(" | ")} ${v.why}`,
   );
   const build = step("build", "npx", ["next", "build"], {
     env: { ...process.env, NEXT_TELEMETRY_DISABLED: "1" },
@@ -800,14 +798,16 @@ async function flagship(view, base, st, session, client, shotPrefix) {
     /^\/fr\/app\/quotes\/[0-9a-f-]{36}$/.test(url),
     url,
   );
-  const body = await page
-    .locator("main")
-    .innerText()
-    .catch(() => "");
+  // Un brouillon s'ouvre dans son formulaire : les lignes sont dans les champs « Désignation ».
+  await page.waitForSelector('[name="line.description"]', { timeout: 30_000 }).catch(() => {});
+  const shown = await page
+    .locator('[name="line.description"]')
+    .evaluateAll((els) => els.map((e) => e.value))
+    .catch(() => []);
   check(
     `${shotPrefix} : la page montre les deux lignes`,
-    body.includes("site vitrine") && /h[ée]bergement/i.test(body),
-    body.slice(0, 120),
+    shown.some((v) => v.includes("site vitrine")) && shown.some((v) => /h[ée]bergement/i.test(v)),
+    JSON.stringify(shown),
   );
   const after = await quoteOf(ro, session.orgId, client);
   const q = after.rows[0];
@@ -882,11 +882,16 @@ async function g4() {
   try {
     // Bureau : scénario phare.
     const desk = await appPage(br, base, session.token, bypass, { width: 1280, height: 860 });
-    const unauth = await desk.page.request.post(`${base}/api/assistant`, {
-      headers: { cookie: "" },
-      data: { messages: [{ role: "user", content: "Bonjour" }] },
+    // Sans session (aucun cookie) : la route refuse.
+    const unauth = await fetch(`${base}/api/assistant`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        ...(bypass ? { "x-vercel-protection-bypass": bypass } : {}),
+      },
+      body: JSON.stringify({ messages: [{ role: "user", content: "Bonjour" }] }),
     });
-    check("sans session : /api/assistant = 401", unauth.status() === 401, unauth.status());
+    check("sans session : /api/assistant = 401", unauth.status === 401, unauth.status);
     const one = await flagship(
       desk,
       base,

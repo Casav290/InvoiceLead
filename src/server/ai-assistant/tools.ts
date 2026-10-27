@@ -1,6 +1,8 @@
 import { betaZodTool } from "@anthropic-ai/sdk/helpers/beta/zod";
 import { and, desc, eq, gte, lte } from "drizzle-orm";
 import { z } from "zod";
+import { routing } from "@/i18n/routing";
+import { accountName } from "@/lib/account-name";
 import { listAccounts, listFiscalYears } from "../accounting";
 import { bookFacts } from "../assistant";
 import { listBills } from "../bills";
@@ -111,14 +113,13 @@ const PAGE_PATTERNS = OPENABLE_PAGES.map(
   (p) => new RegExp(`^${p.replace(":id", UUID).replace(/\//g, "\\/")}$`, "i"),
 );
 
+/** Préfixe de langue d'un chemin (« /fr/… »), pour toutes les langues de l'application. */
+const LOCALE_PREFIX = new RegExp(`^/(${routing.locales.join("|")})(?=/)`);
+
 /** Chemin de page accepté (sans la langue), ou null. */
 export function safePagePath(path: unknown): string | null {
   if (typeof path !== "string") return null;
-  const clean =
-    path
-      .trim()
-      .replace(/^\/(de|fr|en)(?=\/)/, "")
-      .replace(/\/+$/, "") || "/app";
+  const clean = path.trim().replace(LOCALE_PREFIX, "").replace(/\/+$/, "") || "/app";
   return PAGE_PATTERNS.some((re) => re.test(clean)) ? clean : null;
 }
 
@@ -714,12 +715,7 @@ export function buildTools(ctx: AssistantContext, state: ToolState, secret: stri
           accounts: rows.slice(0, MAX_ROWS).map((a) => ({
             id: a.id,
             number: a.number,
-            name:
-              ctx.locale === "fr"
-                ? a.nameFr
-                : ctx.locale === "en"
-                  ? (a.nameEn ?? a.nameDe)
-                  : a.nameDe,
+            name: accountName(a, ctx.locale),
             type: a.type,
             vatCode: a.vatCode,
             active: a.active,
