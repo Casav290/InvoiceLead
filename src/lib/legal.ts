@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { marked } from "marked";
+import { isLocale } from "@/i18n/locales";
 
 export const LEGAL_DOCS = ["imprint", "privacy", "terms", "dpa"] as const;
 export type LegalDoc = (typeof LEGAL_DOCS)[number];
@@ -15,7 +16,7 @@ export function legalHtml(doc: LegalDoc, locale: string): string {
     process.cwd(),
     "content",
     "legal",
-    `${doc}-${locale === "fr" || locale === "en" ? locale : "de"}.md`,
+    `${doc}-${isLocale(locale) ? locale : "de"}.md`,
   );
   return marked.parse(readFileSync(file, "utf8"), { async: false });
 }

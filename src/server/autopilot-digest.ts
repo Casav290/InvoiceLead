@@ -1,5 +1,6 @@
-import { and, eq, inArray, isNull } from "drizzle-orm";
+import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import { getTranslations } from "next-intl/server";
+import { isLocale } from "@/i18n/locales";
 import { autopilotSummary } from "./autopilot";
 import type { Db } from "./db";
 import { memberships, organizations, users } from "./db/schema";
@@ -22,7 +23,10 @@ export async function sendAutopilotDigests(database: Db, today: string): Promise
     const s = await autopilotSummary(database, org.id, today);
     if (s.autoWeek + s.toApprove + s.toReview + s.anomalies === 0) continue;
     const admins = await database
-      .select({ email: users.email, locale: users.locale })
+      .select({
+        email: users.email,
+        locale: sql<string>`coalesce(${users.chosenLocale}, ${users.locale})`,
+      })
       .from(memberships)
       .innerJoin(users, eq(users.id, memberships.userId))
       .where(
@@ -34,7 +38,7 @@ export async function sendAutopilotDigests(database: Db, today: string): Promise
         ),
       );
     for (const a of admins) {
-      const locale = a.locale === "fr" || a.locale === "en" ? a.locale : "de";
+      const locale = isLocale(a.locale) ? a.locale : "de";
       const t = await getTranslations({ locale, namespace: "app.review.digest" });
       try {
         await sendEmail({

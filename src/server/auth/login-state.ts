@@ -1,5 +1,6 @@
 import { createCipheriv, createDecipheriv, hkdfSync, randomBytes } from "node:crypto";
 import { z } from "zod";
+import { type AppLocale, LOCALES } from "@/i18n/locales";
 import { safeFrom } from "@/lib/lead-entry";
 import { INVITE_TOKEN, safeNext } from "./login-cookie";
 
@@ -24,7 +25,7 @@ import { INVITE_TOKEN, safeNext } from "./login-cookie";
  */
 
 export type LoginRequest = {
-  locale: "de" | "fr" | "en";
+  locale: AppLocale;
   /**
    * La langue ne venait pas de l'adresse (/login sans langue, racine « / ») : `locale` ne sert qu'aux
    * écrans d'erreur, l'arrivée prend la langue du Compte Lead (claims.locale), jamais celle du navigateur.
@@ -74,7 +75,7 @@ const IV = 12;
 const TAG = 16;
 
 const payload = z.object({
-  l: z.enum(["de", "fr", "en"]),
+  l: z.enum(LOCALES),
   t: z.number().int().positive(),
   n: z.string().optional(),
   i: z.string().regex(INVITE_TOKEN).optional(),

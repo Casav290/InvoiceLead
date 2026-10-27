@@ -8,7 +8,7 @@ export const LOGIN_COOKIE = "il_lead_login";
  * le proxy y reprend cette page, une seule fois. Seule une adresse d'invitation est suivie.
  */
 export const AFTER_LOGOUT_COOKIE = "il_after_logout";
-export const AFTER_LOGOUT_PATH = /^\/(de|fr|en)\/invite\?token=[A-Za-z0-9_-]{20,100}$/;
+export const AFTER_LOGOUT_PATH = /^\/(de|fr|en|it|es)\/invite\?token=[A-Za-z0-9_-]{20,100}$/;
 
 /**
  * Cookie d'une demande de connexion, propre à cette demande (son `state`) : deux onglets qui se

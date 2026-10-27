@@ -7,13 +7,13 @@
  *
  * Sans dépendance au serveur : le proxy s'en sert, les tests aussi.
  */
+import { type AppLocale, LOCALES } from "../i18n/locales";
 import { PROBE_COOKIE, SESSION_COOKIE } from "./cookies";
 
-const LOCALES = ["de", "fr", "en"] as const;
-type Locale = (typeof LOCALES)[number];
+type Locale = AppLocale;
 
 /** Racine du site : « / », « /fr », « /fr/ ». */
-const HOME = /^\/(?:(de|fr|en)\/?)?$/i;
+const HOME = /^\/(?:(de|fr|en|it|es)\/?)?$/i;
 /** Adresse d'entrée des lanceurs de la famille, sans langue : « /login ». */
 const LOGIN = /^\/login\/?$/i;
 
@@ -30,7 +30,7 @@ export const BOT_UA =
  * d'espace, de « # », de guillemet ou de chevron.
  */
 const FROM_PATH =
-  /^\/(?:(?:de|fr|en)(?:\/[A-Za-z0-9_\-/]*)?)?(?:\?[A-Za-z0-9=&%._~+,:;!$'()*@/?|-]*)?$/;
+  /^\/(?:(?:de|fr|en|it|es)(?:\/[A-Za-z0-9_\-/]*)?)?(?:\?[A-Za-z0-9=&%._~+,:;!$'()*@/?|-]*)?$/;
 export const FROM_MAX = 300;
 
 export function safeFrom(value: string | null | undefined): string | undefined {

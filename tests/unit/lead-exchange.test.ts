@@ -215,6 +215,17 @@ describe("boîte de réception : enveloppe 'invoice' de ProjectLead", () => {
     expect(await contactsOf(orgId)).toHaveLength(1);
   });
 
+  it("brouillon en espagnol ou en italien de ProjectLead : gardé dans sa langue", async () => {
+    const { orgId } = await company();
+    expect((await post(envelope({}, { language: "es" }))).status).toBe(201);
+    expect((await drafts(orgId))[0]).toMatchObject({ language: "es" });
+    const it_ = await post(
+      envelope({ source: { app: "projectlead", id: "run:p-2:2026-10" } }, { language: "it" }),
+    );
+    expect(it_.status).toBe(201);
+    expect((await drafts(orgId)).map((d) => d.language).sort()).toEqual(["es", "it"]);
+  });
+
   it("déjà émise : 409 already_issued avec l'identifiant", async () => {
     const { orgId, adaId } = await company();
     await db

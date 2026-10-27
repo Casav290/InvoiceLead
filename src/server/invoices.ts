@@ -2,6 +2,7 @@ import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { countryPack } from "@/countries";
 import { paymentReference } from "@/countries/ch/qr-reference";
 import { VAT_CODES, type VatCode } from "@/countries/ch/vat";
+import { isLocale, LOCALES } from "@/i18n/locales";
 import { parseAmountToCents } from "@/lib/amount-input";
 import { type Currency, isCurrency, parseFxRate } from "@/lib/currencies";
 import { isIsoDate } from "@/lib/fiscal-year";
@@ -38,11 +39,12 @@ export type DocumentKind = (typeof DOCUMENT_KINDS)[number];
 /** Durée de validité proposée pour un devis sans date saisie. */
 export const QUOTE_VALIDITY_DAYS = 30;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-export const INVOICE_LANGUAGES = ["de", "fr", "en"] as const;
+/** Langues des documents (factures, devis, notes de crédit, rappels, e-mails, PDF) : les cinq de l'interface. */
+export const INVOICE_LANGUAGES = LOCALES;
 
 /** Langue de document admise, allemand par défaut. */
 export function documentLanguage(value: unknown): (typeof INVOICE_LANGUAGES)[number] {
-  return value === "fr" || value === "en" ? value : "de";
+  return isLocale(value) ? value : "de";
 }
 export const MAX_LINES = 100;
 
@@ -559,6 +561,7 @@ export async function issueInvoice(
       plan: {
         ...planColumns,
         currency: organizations.currency,
+        regionCurrency: organizations.regionCurrency,
       },
     })
     .from(invoices)
@@ -858,6 +861,18 @@ function depositText(language: string, country: string | null | undefined) {
       line: (percent: string, quote: string) =>
         `Acompte de ${percent}\u202f% selon le devis ${quote}`,
     };
+  if (lang === "it")
+    return {
+      ...text,
+      line: (percent: string, quote: string) =>
+        `Acconto del ${percent}% secondo il preventivo ${quote}`,
+    };
+  if (lang === "es")
+    return {
+      ...text,
+      line: (percent: string, quote: string) =>
+        `Anticipo del ${percent}% según el presupuesto ${quote}`,
+    };
   return text;
 }
 
@@ -873,6 +888,14 @@ const DEPOSIT_TEXT = {
   en: {
     line: (percent: string, quote: string) => `Deposit of ${percent}% as per quote ${quote}`,
     less: (invoice: string) => `Less deposit invoice ${invoice}`,
+  },
+  it: {
+    line: (percent: string, quote: string) => `Acconto del ${percent}% secondo l’offerta ${quote}`,
+    less: (invoice: string) => `Dedotta fattura d’acconto ${invoice}`,
+  },
+  es: {
+    line: (percent: string, quote: string) => `Anticipo del ${percent}% según la oferta ${quote}`,
+    less: (invoice: string) => `Menos factura de anticipo ${invoice}`,
   },
 } as const;
 

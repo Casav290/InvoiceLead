@@ -1,4 +1,5 @@
 import { and, desc, eq, gte, inArray, sql } from "drizzle-orm";
+import type { AppLocale } from "@/i18n/locales";
 import { addDays } from "@/lib/fiscal-year";
 import { listFiscalYears } from "./accounting";
 import { aiLanguageName, chatJson } from "./ai";
@@ -188,7 +189,7 @@ export async function askAssistant(
   database: Db,
   who: Who,
   question: string,
-  language: "de" | "fr" | "en",
+  language: AppLocale,
   today = new Date().toISOString().slice(0, 10),
 ): Promise<AssistantAnswer | "empty" | "failed" | "quota"> {
   const q = question.trim().slice(0, 500);
@@ -207,7 +208,7 @@ async function answer(
   database: Db,
   who: Who,
   q: string,
-  language: "de" | "fr" | "en",
+  language: AppLocale,
   today: string,
 ): Promise<AssistantAnswer | "failed"> {
   const facts = await bookFacts(database, who.organizationId, today);

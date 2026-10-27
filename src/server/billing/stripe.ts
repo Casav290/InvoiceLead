@@ -1,3 +1,4 @@
+import { isLocale } from "@/i18n/locales";
 import { env } from "../env";
 
 /**
@@ -263,5 +264,4 @@ export function classify(
 }
 
 /** Les langues que Stripe Checkout et le portail affichent, parmi celles d'InvoiceLead. */
-export const stripeLocale = (l: string | null | undefined): string =>
-  l === "fr" || l === "de" || l === "en" ? l : "auto";
+export const stripeLocale = (l: string | null | undefined): string => (isLocale(l) ? l : "auto");

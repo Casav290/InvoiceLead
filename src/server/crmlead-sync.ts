@@ -1,4 +1,5 @@
 import { and, eq, gte, inArray, lte, sql } from "drizzle-orm";
+import { isLocale } from "@/i18n/locales";
 import type { Db } from "./db";
 import { crmleadOutbox, invoices, organizations } from "./db/schema";
 import { env } from "./env";
@@ -122,7 +123,7 @@ export async function queueCrmlead(database: Db, organizationId: string, invoice
       : invoice.kind === "credit_note"
         ? "credit-notes"
         : "invoices";
-  const lang = ["de", "fr", "en"].includes(invoice.language) ? invoice.language : "de";
+  const lang = isLocale(invoice.language) ? invoice.language : "de";
   const envelope = {
     type: "document",
     org: org.leadOrg,

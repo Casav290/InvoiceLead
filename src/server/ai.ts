@@ -45,9 +45,9 @@ export async function chatJson(
 
 /** Langue des réponses de l'assistant, pour les consignes. */
 export function aiLanguageName(language: string): string {
-  return language === "fr"
-    ? "French"
-    : language === "en"
-      ? "British English"
-      : "Swiss German (no ß)";
+  if (language === "fr") return "French";
+  if (language === "en") return "British English";
+  if (language === "it") return "Italian";
+  if (language === "es") return "Spanish";
+  return "Swiss German (no ß)";
 }

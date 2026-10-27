@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
+import { LocaleMenu } from "@/components/LocaleMenu";
 import { Button } from "@/components/ui/button";
 import { forCountry } from "@/i18n/country";
 import { INVITE_TOKEN, pickLocale } from "@/server/auth/login-cookie";
@@ -36,6 +37,9 @@ export default async function InvitePage({ params, searchParams }: Props) {
 
   return (
     <main className="flex min-h-screen items-start justify-center px-4 py-20">
+      <div className="fixed top-3 right-3 z-40">
+        <LocaleMenu keepSearch />
+      </div>
       <div className="w-full max-w-[480px] border border-line-strong bg-panel" data-testid="invite">
         <div className="border-b border-line px-6 py-5">
           <h1 className="text-[22px] leading-tight">{t("title")}</h1>

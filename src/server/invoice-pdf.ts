@@ -56,6 +56,27 @@ const LEFT = mm(20);
 /** Pages A4 (210 × 297 mm) ou US Letter (215,9 × 279,4 mm), marges de 20 mm. */
 const PAGE = { A4: { w: 210, h: 297 }, LETTER: { w: 215.9, h: 279.4 } };
 
+/** Communication du QR (« Facture 2026-001 ») dans la langue de la pièce. */
+const QR_MESSAGE: Record<string, string> = {
+  de: "Rechnung",
+  fr: "Facture",
+  en: "Invoice",
+  it: "Fattura",
+  es: "Factura",
+};
+
+/**
+ * Langue de la section paiement de la QR-facture. La norme suisse (SIX, Swiss Implementation
+ * Guidelines) ne connaît que l'allemand, le français, l'italien et l'anglais : une pièce en espagnol
+ * imprime sa section paiement en anglais, la langue internationale admise par la norme.
+ */
+export function qrBillLanguage(language: string): "DE" | "FR" | "IT" | "EN" {
+  if (language === "fr") return "FR";
+  if (language === "it") return "IT";
+  if (language === "en" || language === "es") return "EN";
+  return "DE";
+}
+
 /** Données de la QR-facture, ou null si la facture ne peut pas en porter (montant nul, compte absent). */
 export function qrBillData(invoice: Invoice) {
   if (invoice.kind !== "invoice") return null;
@@ -92,8 +113,7 @@ export function qrBillData(invoice: Invoice) {
     },
     debtor,
     reference: invoice.paymentReference ?? undefined,
-    message:
-      `${invoice.language === "fr" ? "Facture" : invoice.language === "en" ? "Invoice" : "Rechnung"} ${invoice.number ?? ""}`.trim(),
+    message: `${QR_MESSAGE[invoice.language] ?? QR_MESSAGE.de} ${invoice.number ?? ""}`.trim(),
   };
 }
 
@@ -446,9 +466,7 @@ export function renderInvoicePdf(
   // Section paiement QR, au bas de la dernière page ou sur une page A4 à elle.
   const data = qrBillData(invoice);
   if (data) {
-    const bill = new SwissQRBill(data, {
-      language: invoice.language === "fr" ? "FR" : invoice.language === "en" ? "EN" : "DE",
-    });
+    const bill = new SwissQRBill(data, { language: qrBillLanguage(invoice.language) });
     if (!SwissQRBill.isSpaceSufficient(doc)) doc.addPage();
     bill.attachTo(doc);
   }

@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import { type NextRequest, NextResponse } from "next/server";
+import { isLocale } from "@/i18n/locales";
 import {
   LOGIN_COOKIE_PATH,
   loginCookieName,
@@ -43,7 +44,7 @@ export async function GET(request: NextRequest) {
   // Langue donnée par l'adresse. Sans elle (/login des lanceurs, racine « / »), l'arrivée prend celle
   // du Compte Lead (callback, claims.locale) ; la langue du navigateur ne sert qu'aux écrans d'erreur.
   const asked = q.get("locale");
-  const given = asked === "de" || asked === "fr" || asked === "en" ? asked : undefined;
+  const given = isLocale(asked) ? asked : undefined;
   const locale =
     given ??
     localeFromRequest(
@@ -82,7 +83,7 @@ export async function GET(request: NextRequest) {
   if (found) {
     // Déjà connectée ici : l'accueil de l'espace, dans la langue de l'adresse ou, sans elle, dans
     // celle de son Compte Lead (relue à chaque connexion, attach.ts).
-    const home = `/${given ?? pickLocale(found.user.locale)}/app`;
+    const home = `/${given ?? pickLocale(found.user.chosenLocale ?? found.user.locale)}/app`;
     const target = invite ? invitePath(locale, invite) : (next ?? home);
     return NextResponse.redirect(`${APP_URL}${target}`, 303);
   }

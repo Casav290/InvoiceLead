@@ -1,6 +1,7 @@
 import { betaZodTool } from "@anthropic-ai/sdk/helpers/beta/zod";
 import { and, desc, eq, gte, lte } from "drizzle-orm";
 import { z } from "zod";
+import { LOCALES } from "@/i18n/locales";
 import { bookFacts } from "../assistant";
 import { getContact, listContacts } from "../contacts";
 import { dashboardFigures } from "../dashboard";
@@ -98,7 +99,7 @@ export function safePagePath(path: unknown): string | null {
   const clean =
     path
       .trim()
-      .replace(/^\/(de|fr|en)(?=\/)/, "")
+      .replace(/^\/(de|fr|en|it|es)(?=\/)/, "")
       .replace(/\/+$/, "") || "/app";
   return PAGE_PATTERNS.some((re) => re.test(clean)) ? clean : null;
 }
@@ -129,7 +130,7 @@ const contactFields = {
   town: z.string().max(35).optional(),
   region: z.string().max(35).optional().describe("US state code (TX, NY…) for US addresses"),
   country: z.enum(["CH", "LI", "DE", "FR", "IT", "AT", "GB", "US"]).optional(),
-  language: z.enum(["de", "fr", "it", "en"]).optional(),
+  language: z.enum(LOCALES).optional(),
   uid: z.string().max(40).optional().describe("company VAT / UID number"),
   paymentTermDays: z.number().int().min(0).max(365).optional(),
   notes: z.string().max(1000).optional(),
@@ -142,7 +143,7 @@ const draftFields = {
   issueDate: isoDate.optional(),
   serviceDate: isoDate.optional(),
   dueDate: isoDate.optional(),
-  language: z.enum(["de", "fr", "en"]).optional(),
+  language: z.enum(LOCALES).optional(),
   currency: z.enum(["CHF", "EUR", "USD", "GBP"]).optional(),
 };
 

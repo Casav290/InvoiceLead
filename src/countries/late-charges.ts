@@ -6,21 +6,46 @@ import type { TemplateAccount } from "./ch/chart-of-accounts";
  * plans suisse, allemand, français et américain ; au Royaume-Uni il est ajouté à part.
  */
 const LATE: Record<string, Omit<TemplateAccount, "role" | "type">> = {
-  CH: { number: "6950", de: "Finanzertrag", fr: "Produits financiers", en: "Financial income" },
-  DE: { number: "7100", de: "Zinserträge", fr: "Produits d'intérêts", en: "Interest income" },
+  CH: {
+    number: "6950",
+    de: "Finanzertrag",
+    fr: "Produits financiers",
+    it: "Ricavi finanziari",
+    es: "Ingresos financieros",
+    en: "Financial income",
+  },
+  DE: {
+    number: "7100",
+    de: "Zinserträge",
+    fr: "Produits d'intérêts",
+    it: "Interessi attivi",
+    es: "Ingresos por intereses",
+    en: "Interest income",
+  },
   FR: {
     number: "768000",
     de: "Übrige Finanzerträge",
     fr: "Autres produits financiers",
+    it: "Altri proventi finanziari",
+    es: "Otros ingresos financieros",
     en: "Other financial income",
   },
   GB: {
     number: "4950",
     de: "Mahngebühren und Verzugszinsen",
     fr: "Frais de rappel et intérêts de retard",
+    it: "Spese di sollecito e interessi di mora",
+    es: "Gastos de reclamación e intereses de demora",
     en: "Late payment charges and interest",
   },
-  US: { number: "7000", de: "Zinserträge", fr: "Produits d'intérêts", en: "Interest income" },
+  US: {
+    number: "7000",
+    de: "Zinserträge",
+    fr: "Produits d'intérêts",
+    it: "Interessi attivi",
+    es: "Ingresos por intereses",
+    en: "Interest income",
+  },
 };
 
 export function lateChargesAccount(country: string | null | undefined): TemplateAccount {

@@ -92,6 +92,15 @@ const SAMPLES: Record<string, Sample> = {
   },
 };
 
+/**
+ * Exemple de chaque langue : l'italien et l'espagnol reprennent l'entreprise française (euro et
+ * GiroCode), dont leurs textes (messages it/es) suivent l'exemple ; une langue inconnue, l'anglais.
+ */
+function sampleFor(locale: string): Sample {
+  const key = locale === "it" || locale === "es" ? "fr" : locale;
+  return SAMPLES[key] ?? (SAMPLES.en as Sample);
+}
+
 /** Un tour complet : la facture se remplit, part, est payée, reste affichée, puis recommence. */
 const CYCLE_MS = 16_000;
 const LEAVE_MS = 600;
@@ -109,7 +118,7 @@ const T = {
 
 /** Montant avec sa devise, écrit comme dans le pays de l'exemple : $15,025.10, 24.083,22 €. */
 function money(locale: string, cents: number): string {
-  const sample = SAMPLES[locale] ?? (SAMPLES.en as Sample);
+  const sample = sampleFor(locale);
   return sample.money(formatAmount(cents, sample.style));
 }
 
@@ -122,7 +131,7 @@ const at = (s: number) => ({ "--d": `${s}s` }) as CSSProperties;
  * à l'écran. Au repos (prefers-reduced-motion), la facture payée s'affiche telle quelle.
  */
 export function HeroInvoice({ copy, locale }: { copy: HeroInvoiceCopy; locale: string }) {
-  const sample = SAMPLES[locale] ?? (SAMPLES.en as Sample);
+  const sample = sampleFor(locale);
   const fmt = (cents: number) => formatAmount(cents, sample.style);
   const [cycle, setCycle] = useState(0);
   const [leaving, setLeaving] = useState(false);

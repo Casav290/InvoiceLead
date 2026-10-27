@@ -231,8 +231,8 @@
           "body": "QR-Rechnung nach SIX, MWST 8,1 %, 2,6 % und 3,8 %, KMU-Kontenrahmen, ESTV-Abrechnung als eCH-0217."
         },
         {
-          "title": "Dokumente in 4 Sprachen",
-          "body": "Deutsch, Französisch, Italienisch und Englisch, pro Kunde gewählt."
+          "title": "Dokumente in 5 Sprachen",
+          "body": "Deutsch, Französisch, Englisch, Italienisch und Spanisch, pro Kunde gewählt."
         },
         {
           "title": "Fremdwährungen",
@@ -351,7 +351,8 @@
         "pro": "Pro",
         "pro_plus": "Pro+"
       },
-      "feedback": "Feedback geben"
+      "feedback": "Feedback geben",
+      "language": "Sprache"
     },
     "dashboard": {
       "title": "Guten Tag {name}",
@@ -665,7 +666,8 @@
         "de": "Deutsch",
         "fr": "Französisch",
         "it": "Italienisch",
-        "en": "Englisch"
+        "en": "Englisch",
+        "es": "Spanisch"
       },
       "countries": {
         "CH": "Schweiz",
@@ -1101,7 +1103,9 @@
       "languages": {
         "de": "Deutsch",
         "fr": "Französisch",
-        "en": "Englisch"
+        "en": "Englisch",
+        "it": "Italienisch",
+        "es": "Spanisch"
       },
       "units": {
         "hour": "Std.",

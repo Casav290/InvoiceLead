@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { OrgSwitcher } from "@/components/app/OrgSwitcher";
+import { LocaleMenu } from "@/components/LocaleMenu";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { accessProblem, appPage, requireSession } from "@/server/auth/guard";
 import { getSession } from "@/server/auth/session";
@@ -116,6 +117,12 @@ export default async function NoAccessPage({
       : { advice: "anyAsk" as const, offer: "plans" as const };
     return (
       <main className="flex min-h-screen items-start justify-center px-4 py-20">
+        <div className="fixed top-3 right-3 z-40">
+          <LocaleMenu keepSearch />
+        </div>
+        <div className="fixed top-3 right-3 z-40">
+          <LocaleMenu keepSearch />
+        </div>
         <div
           className="w-full max-w-[480px] border border-line-strong bg-panel"
           data-testid="no-access"
@@ -199,6 +206,9 @@ export default async function NoAccessPage({
           : t("freeUp", { org });
   return (
     <main className="flex min-h-screen items-start justify-center px-4 py-20">
+      <div className="fixed top-3 right-3 z-40">
+        <LocaleMenu keepSearch />
+      </div>
       <div
         className="w-full max-w-[480px] border border-line-strong bg-panel"
         data-testid="no-access"

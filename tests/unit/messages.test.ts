@@ -3,7 +3,9 @@ import { describe, expect, it } from "vitest";
 import { PLANS } from "@/server/plans";
 import de from "../../messages/de.json";
 import en from "../../messages/en.json";
+import es from "../../messages/es.json";
 import fr from "../../messages/fr.json";
+import it_ from "../../messages/it.json";
 
 type Tree = { [key: string]: Node };
 type Node = string | Node[] | Tree;
@@ -34,22 +36,42 @@ function argumentNames(elements: MessageFormatElement[], found = new Set<string>
 }
 
 describe("messages", () => {
-  it("ont les mêmes clés en allemand, en français et en anglais", () => {
+  it("ont les mêmes clés dans les cinq langues (allemand, français, anglais, italien, espagnol)", () => {
     const keys = (t: Tree) =>
       entries(t)
         .map(([k]) => k)
         .sort();
-    expect(keys(de as Tree)).toEqual(keys(fr as Tree));
-    expect(keys(en as Tree)).toEqual(keys(fr as Tree));
+    for (const t of [de, en, it_, es]) expect(keys(t as Tree)).toEqual(keys(fr as Tree));
   });
 
-  it("gardent en anglais les variables de chaque message", () => {
-    const vars = (v: string) => [...argumentNames(parse(v, { ignoreTag: true }))].sort();
+  for (const [lang, messages] of [
+    ["de", de],
+    ["en", en],
+    ["it", it_],
+    ["es", es],
+  ] as const)
+    it(`gardent en ${lang} les variables et les balises de chaque message`, () => {
+      const vars = (v: string) => [...argumentNames(parse(v, { ignoreTag: true }))].sort();
+      const tags = (v: string) => [...v.matchAll(/<(\w+)>/g)].map((m) => m[1]).sort();
+      const other = new Map(entries(messages as Tree));
+      const bad = entries(fr as Tree).filter(
+        ([k, v]) =>
+          JSON.stringify(vars(v)) !== JSON.stringify(vars(other.get(k) ?? "")) ||
+          JSON.stringify(tags(v)) !== JSON.stringify(tags(other.get(k) ?? "")),
+      );
+      expect(bad).toEqual([]);
+    });
+
+  it("sont vraiment traduits en italien et en espagnol (pas de repli en français ni en anglais)", () => {
+    const french = new Map(entries(fr as Tree));
     const english = new Map(entries(en as Tree));
-    const bad = entries(fr as Tree).filter(
-      ([k, v]) => JSON.stringify(vars(v)) !== JSON.stringify(vars(english.get(k) ?? "")),
-    );
-    expect(bad).toEqual([]);
+    for (const t of [it_, es]) {
+      const all = entries(t as Tree).filter(([, v]) => v.trim().length > 12);
+      const copied = all.filter(([k, v]) => v === french.get(k) || v === english.get(k));
+      // Restent identiques seulement des sigles, adresses et noms propres longs (moins de 2 %).
+      expect(copied.length / all.length).toBeLessThan(0.02);
+      expect(entries(t as Tree).filter(([, v]) => v.includes("\u202f"))).toEqual([]);
+    }
   });
 
   it("n'ont pas de ß en allemand de Suisse", () => {
@@ -57,7 +79,7 @@ describe("messages", () => {
   });
 
   it("n'ont ni tiret cadratin ni tiret demi-cadratin (consigne d'écriture d'Ève)", () => {
-    for (const t of [de, fr, en])
+    for (const t of [de, fr, en, it_, es])
       expect(entries(t as Tree).filter(([, v]) => /[\u2013\u2014]/.test(v))).toEqual([]);
   });
 
@@ -74,7 +96,7 @@ describe("messages", () => {
 
 /**
  * Tarifs et FAQ écrivent les allocations en toutes lettres : chaque chiffre doit rester celui de
- * PLANS (src/server/plans.ts), dans les trois langues. L'ordre des lignes est celui de la page
+ * PLANS (src/server/plans.ts), dans les cinq langues. L'ordre des lignes est celui de la page
  * Tarifs (et de ses étiquettes « Bientôt »).
  */
 describe("tarifs et FAQ face aux formules", () => {
@@ -89,6 +111,8 @@ describe("tarifs et FAQ face aux formules", () => {
     ["de", de],
     ["fr", fr],
     ["en", en],
+    ["it", it_],
+    ["es", es],
   ] as [string, Copy][]) {
     it(`reprennent les chiffres de PLANS (${lang})`, () => {
       const plans = copy.pricing.plans;

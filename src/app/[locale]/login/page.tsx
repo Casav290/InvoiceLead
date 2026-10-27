@@ -57,7 +57,7 @@ export default async function Page({
   };
   const langQuery = Object.fromEntries(
     routing.locales.map((l) => {
-      const moved = next ? safeNext(next.replace(/^\/(de|fr|en)\//, `/${l}/`)) : undefined;
+      const moved = next ? safeNext(next.replace(/^\/(de|fr|en|it|es)\//, `/${l}/`)) : undefined;
       return [
         l,
         { erreur: error, ...(invite ? { invite } : moved ? { next: moved } : {}), ...again },

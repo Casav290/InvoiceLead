@@ -1,4 +1,5 @@
 import { and, eq, gte, isNull, sql } from "drizzle-orm";
+import { homeCurrencies } from "@/lib/region";
 import type { Db } from "./db";
 import { contacts, invoices, organizations, planUsage, recurringInvoices } from "./db/schema";
 
@@ -369,10 +370,15 @@ export function featureAccess(org: OrgPlan, feature: Feature): Access {
 
 /**
  * Pièce dans une autre devise que celle de l'entreprise, sans la multidevise (formule Pro) : une
- * nouvelle facture, un nouveau devis ou une nouvelle récurrence dans cette devise est refusé.
+ * nouvelle facture, un nouveau devis ou une nouvelle récurrence dans cette devise est refusé. La
+ * devise de la région d'où l'entreprise a été ouverte (l'euro en Italie, région.ts) n'est jamais
+ * réservée à Pro.
  */
-export function foreignWithoutPro(org: OrgPlan & { currency: string }, currency: string): boolean {
-  return currency !== org.currency && !featureAccess(org, "multiCurrency").allowed;
+export function foreignWithoutPro(
+  org: OrgPlan & { currency: string; regionCurrency?: string | null },
+  currency: string,
+): boolean {
+  return !homeCurrencies(org).includes(currency) && !featureAccess(org, "multiCurrency").allowed;
 }
 
 function quotaResult(tier: Tier, quota: Quota, used: number): Access {
@@ -536,9 +542,14 @@ export async function refundQuota(
 export async function organizationPlan(
   database: Db,
   organizationId: string,
-): Promise<(Org & { currency: string }) | null> {
+): Promise<(Org & { currency: string; regionCurrency: string | null }) | null> {
   const [row] = await database
-    .select({ id: organizations.id, ...planColumns, currency: organizations.currency })
+    .select({
+      id: organizations.id,
+      ...planColumns,
+      currency: organizations.currency,
+      regionCurrency: organizations.regionCurrency,
+    })
     .from(organizations)
     .where(eq(organizations.id, organizationId));
   return row ?? null;

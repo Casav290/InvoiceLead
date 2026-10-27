@@ -3,6 +3,7 @@ import { countryPack } from "@/countries";
 import { type BankEntry, type BankStatement, parseCamt } from "@/countries/ch/camt";
 import { VAT_CODES, type VatCode } from "@/countries/ch/vat";
 import { chartPack } from "@/countries/charts";
+import { type AppLocale, localized } from "@/i18n/locales";
 import { roundHalfAwayFromZero } from "@/lib/money";
 import { aiLanguageName, chatJson } from "./ai";
 import { billProposals, payBillFromBank } from "./bills";
@@ -171,7 +172,7 @@ type AiAnswer = {
 export async function proposeAll(
   database: Db,
   who: Who,
-  options: { language: "de" | "fr" | "en"; useAi: boolean },
+  options: { language: AppLocale; useAi: boolean },
 ): Promise<{ proposed: number; aiError: boolean }> {
   const pending = await database
     .select()
@@ -197,10 +198,13 @@ export async function proposeAll(
         kind: "invoice",
         invoiceId: match.id,
         confidence: 1,
-        explanation:
-          options.language === "fr"
-            ? `Référence de paiement de la facture ${match.number}.`
-            : `Zahlungsreferenz der Rechnung ${match.number}.`,
+        explanation: localized(options.language, {
+          de: `Zahlungsreferenz der Rechnung ${match.number}.`,
+          fr: `Référence de paiement de la facture ${match.number}.`,
+          en: `Payment reference of invoice ${match.number}.`,
+          it: `Riferimento di pagamento della fattura ${match.number}.`,
+          es: `Referencia de pago de la factura ${match.number}.`,
+        }),
         source: "reference",
       });
     }
@@ -223,10 +227,13 @@ export async function proposeAll(
       accountId: rule.accountId,
       vatCode: rule.vatCode,
       confidence: ruleConfidence(rule),
-      explanation:
-        options.language === "fr"
-          ? `Comme les ${rule.hits} fois précédentes pour cette contrepartie.`
-          : `Wie die letzten ${rule.hits} Male bei dieser Gegenpartei.`,
+      explanation: localized(options.language, {
+        de: `Wie die letzten ${rule.hits} Male bei dieser Gegenpartei.`,
+        fr: `Comme les ${rule.hits} fois précédentes pour cette contrepartie.`,
+        en: `As the previous ${rule.hits} times for this counterparty.`,
+        it: `Come le ${rule.hits} volte precedenti per questa controparte.`,
+        es: `Como las ${rule.hits} veces anteriores para esta contraparte.`,
+      }),
       source: "rule",
     });
   }
@@ -318,7 +325,7 @@ async function askAi(
   chart: { number: string; nameDe: string; nameFr: string; type: string; role: string | null }[],
   open: OpenInvoice[],
   ctx: {
-    language: "de" | "fr" | "en";
+    language: AppLocale;
     vatRegistered: boolean;
     legalForm: string | null;
     country: string;

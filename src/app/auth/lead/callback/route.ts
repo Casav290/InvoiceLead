@@ -8,6 +8,7 @@ import {
   SESSION_COOKIE,
 } from "@/lib/cookies";
 import { silentError, silentReturn } from "@/lib/lead-entry";
+import { regionCountry } from "@/lib/region";
 import { attachLeadIdentity } from "@/server/auth/attach";
 import {
   cookieBytes,
@@ -175,7 +176,19 @@ export async function GET(request: NextRequest) {
       // Le `state` n'est rendu que s'il est celui de ce cookie : sinon refus (state_mismatch).
       { state: stateOf(saved, state) ?? "", nonce: saved.nonce, verifier: saved.verifier },
     );
-    const { user, organization } = await attachLeadIdentity(db(), claims);
+    // Région : le pays de l'organisation donné par le Compte Lead (org_country), sinon celui de la
+    // personne (IP chez Vercel, puis langue) : pays et devise d'une entreprise ouverte à cette connexion
+    // (src/lib/region.ts).
+    const region =
+      (typeof claims.org_country === "string" && /^[A-Z]{2}$/i.test(claims.org_country)
+        ? claims.org_country.toUpperCase()
+        : undefined) ??
+      regionCountry({
+        ipCountry: request.headers.get("x-vercel-ip-country"),
+        acceptLanguage: request.headers.get("accept-language"),
+        accountLocale: claims.locale,
+      });
+    const { user, organization } = await attachLeadIdentity(db(), claims, region);
     // Entreprise de la session : celle de la page demandée (lien d'import de CRMlead : l'entreprise du
     // Compte Lead ; pièce : l'entreprise qui la possède, si la personne y a accès), sinon celle où la
     // fiduciaire travaillait (organizationForPage). Une invitation à accepter part de l'entreprise du
@@ -205,7 +218,7 @@ export async function GET(request: NextRequest) {
       await dropSessionsBefore(db(), user.id, new Date((credAt - 1) * 1000), session.id);
     // Retour sur la page demandée avant la connexion, sinon le tableau de bord : dans la langue de
     // l'adresse de départ, ou, sans elle (/login des lanceurs, racine « / »), dans celle du Compte Lead.
-    const home = asked?.auto ? pickLocale(user.locale) : locale;
+    const home = asked?.auto ? pickLocale(user.chosenLocale ?? user.locale) : locale;
     const landing = wanted ?? `/${home}/app`;
     const response = done(`${APP_URL}${landing}`);
     response.cookies.set(SESSION_COOKIE, session.token, cookieOptions(SESSION_HOURS * 3600));

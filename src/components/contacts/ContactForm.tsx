@@ -5,9 +5,10 @@ import { type ContactFormState, saveContact } from "@/app/[locale]/app/contacts/
 import { useCountryTranslations } from "@/components/app/CountryContext";
 import { FormSection, SelectField, TextField } from "@/components/forms/fields";
 import { Button } from "@/components/ui/button";
+import { LOCALES } from "@/i18n/locales";
 
 const KINDS = ["company", "person"];
-const LANGUAGES = ["de", "fr", "it", "en"];
+const LANGUAGES = LOCALES;
 const COUNTRIES = ["CH", "LI", "DE", "FR", "IT", "AT", "GB", "US"];
 
 export function ContactForm({

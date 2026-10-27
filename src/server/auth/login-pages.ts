@@ -37,7 +37,7 @@ export const PAGES_MAX = 20_000;
 export const PAGE_MAX_AGE_SECONDS = 8 * 24 * 3600;
 
 /** Page d'import de CRMlead, seule page longue gardée côté serveur. */
-const IMPORT_PAGE = /^\/(de|fr|en)\/app\/import\/crmlead\?d=([A-Za-z0-9_-]+)$/;
+const IMPORT_PAGE = /^\/(de|fr|en|it|es)\/app\/import\/crmlead\?d=([A-Za-z0-9_-]+)$/;
 
 function key(secret: string): Buffer {
   return Buffer.from(hkdfSync("sha256", secret, "", "il-lead-login-page", 32));

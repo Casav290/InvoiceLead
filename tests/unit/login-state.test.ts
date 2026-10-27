@@ -286,7 +286,8 @@ describe("page de retour", () => {
     expect(safeFinished("/fr/invite?token=court")).toBeUndefined();
     expect(safeFinished(`/fr/invite?token=${INVITE}&next=/x`)).toBeUndefined();
     expect(safeFinished(`https://evil.example/fr/invite?token=${INVITE}`)).toBeUndefined();
-    expect(safeFinished("/it/app")).toBeUndefined();
+    expect(safeFinished("/it/app")).toBe("/it/app");
+    expect(safeFinished("/pt/app")).toBeUndefined();
     expect(INVITE_PATH.exec(`/de/invite?token=${INVITE}`)?.[2]).toBe(INVITE);
   });
 

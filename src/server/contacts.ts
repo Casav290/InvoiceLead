@@ -2,12 +2,13 @@ import { and, asc, eq, ilike, isNull, or, sql } from "drizzle-orm";
 import { isValidUkPostcode } from "@/countries/gb/vat";
 import { isUsState, isValidZip } from "@/countries/us/tax";
 import { normalizeVatId } from "@/countries/vat-ids";
+import { LOCALES } from "@/i18n/locales";
 import type { Db } from "./db";
 import { auditLog, type Contact, contacts } from "./db/schema";
 import { lockQuota, organizationPlan, quotaAccess } from "./plans";
 
 export const CONTACT_KINDS = ["company", "person"] as const;
-export const DOCUMENT_LANGUAGES = ["de", "fr", "it", "en"] as const;
+export const DOCUMENT_LANGUAGES = LOCALES;
 /** Pays proposés au départ ; les autres viendront avec les packs pays. */
 export const CONTACT_COUNTRIES = ["CH", "LI", "DE", "FR", "IT", "AT", "GB", "US"] as const;
 

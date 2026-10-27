@@ -1,3 +1,4 @@
+import { LOCALES } from "@/i18n/locales";
 import { contactJson, invoiceJson, toForm } from "./api";
 import type { ApiCaller } from "./api-keys";
 import { bookFacts } from "./assistant";
@@ -98,7 +99,7 @@ const TOOLS: Tool[] = [
   {
     name: "create_contact",
     description:
-      "Create a customer. Fields: name (required), kind (company|person), email, street, buildingNumber, postalCode, town, country (ISO code), language (de|fr|en), uid, paymentTermDays.",
+      "Create a customer. Fields: name (required), kind (company|person), email, street, buildingNumber, postalCode, town, country (ISO code), language (de|fr|en|it|es), uid, paymentTermDays.",
     inputSchema: {
       type: "object",
       properties: {
@@ -109,7 +110,7 @@ const TOOLS: Tool[] = [
         postalCode: { type: "string" },
         town: { type: "string" },
         country: { type: "string" },
-        language: { type: "string", enum: ["de", "fr", "en"] },
+        language: { type: "string", enum: [...LOCALES] },
       },
       required: ["name"],
     },
@@ -133,7 +134,7 @@ const TOOLS: Tool[] = [
       properties: {
         contactId: { type: "string" },
         kind: { type: "string", enum: ["invoice", "quote"] },
-        language: { type: "string", enum: ["de", "fr", "en"] },
+        language: { type: "string", enum: [...LOCALES] },
         issueDate: { type: "string" },
         currency: { type: "string" },
         lines: {

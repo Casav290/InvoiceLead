@@ -25,7 +25,7 @@ function withParam(path: string, name: string, value: string | null, valid: RegE
 export function returnPage(pathname: string, search: string): string {
   const path = decoded(pathname);
   const q = new URLSearchParams(search);
-  const app = /^\/(de|fr|en)\/app\/(.+?)\/?$/i.exec(path);
+  const app = /^\/(de|fr|en|it|es)\/app\/(.+?)\/?$/i.exec(path);
   if (app) {
     const locale = (app[1] ?? "de").toLowerCase();
     const rest = app[2] ?? "";

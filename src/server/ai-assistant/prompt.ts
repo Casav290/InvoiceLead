@@ -44,6 +44,8 @@ const LANGUAGE: Record<string, string> = {
   de: "German",
   fr: "French",
   en: "English",
+  it: "Italian",
+  es: "Spanish",
 };
 
 export function contextPrompt(input: {
