@@ -1,6 +1,6 @@
 import { type BrowserContext, expect, test } from "@playwright/test";
 import { closeDb, setPlanRank } from "./db";
-import { APP, LEAD, login } from "./helpers";
+import { APP, LEAD, languageLink, login } from "./helpers";
 
 /**
  * Reconnexion par le Compte Lead : la personne revient toujours sur la page qu'elle demandait, même
@@ -775,9 +775,10 @@ test("un lien vers le retour posé par un autre site ne déconnecte jamais", asy
       "href",
       "/auth/lead/start?locale=fr&next=%2Ffr%2Fapp%2Finvoices&fresh=1",
     );
-    await expect(
-      page.locator("header").getByRole("link", { name: "de", exact: true }),
-    ).toHaveAttribute("href", "/de/login?erreur=session&next=%2Fde%2Fapp%2Finvoices&fresh=1");
+    await expect(await languageLink(page, "de")).toHaveAttribute(
+      "href",
+      "/de/login?erreur=session&next=%2Fde%2Fapp%2Finvoices&fresh=1",
+    );
     await alive();
   }
 

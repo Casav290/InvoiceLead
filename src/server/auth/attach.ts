@@ -1,20 +1,20 @@
 import { and, eq, isNull, sql } from "drizzle-orm";
+import { shortLocale } from "@/i18n/locales";
+import { type RegionDefaults, regionDefaults } from "@/lib/region";
 import type { Db } from "../db";
 import { auditLog, memberships, organizations, users } from "../db/schema";
 import type { LeadClaims } from "../lead-id/leadId";
 
 export const APP_CODE = "invoicelead";
-const LOCALES = ["de", "fr", "en"] as const;
 
-/** Langue du Compte Lead que connaît InvoiceLead (« fr-CH » → « fr »), ou undefined (« it », « es »). */
+/** Langue du Compte Lead que connaît InvoiceLead (« fr-CH » → « fr », « it », « es »), ou undefined. */
 function knownLocale(locale: string | undefined): string | undefined {
-  const short = (locale ?? "").slice(0, 2).toLowerCase();
-  return (LOCALES as readonly string[]).includes(short) ? short : undefined;
+  return shortLocale(locale);
 }
 
 /**
- * Langue d'arrivée de la personne (users.locale) : celle du Compte Lead ; absente ou inconnue
- * (« it », « es ») : le français, repli commun de la famille Lead.
+ * Langue d'arrivée de la personne (users.locale) : celle du Compte Lead (de, fr, en, it, es) ;
+ * absente ou inconnue : le français, repli commun de la famille Lead.
  */
 export function appLocale(locale: string | undefined): string {
   return knownLocale(locale) ?? "fr";
@@ -27,6 +27,16 @@ export function appLocale(locale: string | undefined): string {
  */
 function documentLocale(locale: string | undefined): string {
   return knownLocale(locale) ?? "de";
+}
+
+/** Pays et devise d'une nouvelle entreprise selon la région ; rien (CH, CHF du schéma) sans région. */
+function regionValues(defaults: RegionDefaults | undefined) {
+  if (!defaults) return {};
+  return {
+    country: defaults.country,
+    currency: defaults.currency,
+    regionCurrency: defaults.regionCurrency,
+  };
 }
 
 /**
@@ -45,7 +55,16 @@ export function hasInvoiceLeadAccess(claims: Pick<LeadClaims, "lead">): boolean 
  * par `sub` d'abord, puis par l'email seulement s'il est vérifié, sinon création. Même règle pour
  * l'organisation avec `org`. Met à jour nom, email, langue et droits à chaque connexion.
  */
-export async function attachLeadIdentity(database: Db, claims: LeadClaims) {
+export async function attachLeadIdentity(
+  database: Db,
+  claims: LeadClaims,
+  /**
+   * Région de la personne (pays de l'IP, sinon d'Accept-Language ou de la langue du Compte Lead,
+   * src/lib/region.ts) : pays et devise d'une entreprise créée à cette connexion. Une entreprise qui
+   * existe déjà ne change pas.
+   */
+  region?: string,
+) {
   if (!claims.sub || !claims.org || !claims.email) throw new Error("lead_id:incomplete_claims");
   const locale = appLocale(claims.locale);
 
@@ -88,7 +107,12 @@ export async function attachLeadIdentity(database: Db, claims: LeadClaims) {
     };
     const [org] = await tx
       .insert(organizations)
-      .values({ ...orgValues, leadOrg: claims.org, defaultLocale: documentLocale(claims.locale) })
+      .values({
+        ...orgValues,
+        ...regionValues(regionDefaults(region)),
+        leadOrg: claims.org,
+        defaultLocale: documentLocale(claims.locale),
+      })
       .onConflictDoUpdate({ target: organizations.leadOrg, set: orgValues })
       .returning();
     if (!org) throw new Error("lead_id:org_not_saved");

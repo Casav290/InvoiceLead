@@ -24,12 +24,14 @@ import { Button } from "@/components/ui/button";
 import { countryPack } from "@/countries";
 import { buildCii } from "@/countries/de/cii";
 import { forCountry } from "@/i18n/country";
+import { isLocale } from "@/i18n/locales";
 import { Link } from "@/i18n/navigation";
 import { formatAmountInput } from "@/lib/amount-input";
 import { formatDate } from "@/lib/fiscal-year";
 import { formatQuantity } from "@/lib/invoice-math";
 import { LEAD_FAMILY } from "@/lib/lead-apps";
 import { formatAmount } from "@/lib/money";
+import { defaultDocumentCurrency } from "@/lib/region";
 import { requireAppSession } from "@/server/auth/guard";
 import { getSessionCountryTranslations } from "@/server/country-translations";
 import { crmleadLeadOf } from "@/server/crmlead-sync";
@@ -280,13 +282,13 @@ export async function NewDocumentPage({
           country={organization.country}
           localRateBp={organization.salesTaxRateBp}
           currencyLock={await currencyLock(locale, organization)}
+          regionCurrency={organization.regionCurrency}
           initial={{
             contactId: chosen?.id ?? "",
-            language:
-              chosen && ["de", "fr", "en"].includes(chosen.language) ? chosen.language : locale,
+            language: chosen && isLocale(chosen.language) ? chosen.language : locale,
             issueDate: today,
             serviceDate: today,
-            currency: organization.currency,
+            currency: defaultDocumentCurrency(organization),
           }}
         />
       )}
@@ -604,6 +606,7 @@ export async function DocumentDetailPage({
             country={organization.country}
             localRateBp={organization.salesTaxRateBp}
             currencyLock={await currencyLock(locale, organization)}
+            regionCurrency={organization.regionCurrency}
             storedCurrency={invoice.currency}
             {...(await invoiceOptions(db(), organization.id, organization.country))}
             initial={{

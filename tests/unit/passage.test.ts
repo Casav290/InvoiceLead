@@ -3,6 +3,7 @@ import { NextRequest, type NextResponse } from "next/server";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { leadAppItems } from "@/lib/lead-apps";
 import { entryRedirect, safeFrom, silentError } from "@/lib/lead-entry";
+import { organizations, users } from "@/server/db/schema";
 import type { LeadClaims } from "@/server/lead-id/leadId";
 import { claims } from "../support/claims";
 import { testDb } from "../support/db";
@@ -456,16 +457,18 @@ describe("arrivée dans l'espace", () => {
   it("langue absente ou inconnue : le français, jamais l'allemand", async () => {
     const { pickLocale, localeFromRequest } = await import("@/server/auth/login-cookie");
     const { appLocale } = await import("@/server/auth/attach");
-    for (const value of [undefined, null, "", "it", "es", "xx"]) {
+    for (const value of [undefined, null, "", "pt", "nl", "xx"]) {
       expect(pickLocale(value), String(value)).toBe("fr");
       expect(appLocale(value ?? undefined), String(value)).toBe("fr");
     }
     expect(pickLocale("de")).toBe("de");
     expect(appLocale("de-CH")).toBe("de");
+    expect(appLocale("it-CH")).toBe("it");
+    expect(appLocale("es")).toBe("es");
     expect(localeFromRequest(undefined, null)).toBe("fr");
-    expect(localeFromRequest(undefined, "it-CH,it;q=0.9")).toBe("fr");
-    // Compte Lead en italien, arrivée par /login sans langue : l'espace en français.
-    ctx.claims = claims({ locale: "it" });
+    expect(localeFromRequest(undefined, "pt-PT,pt;q=0.9")).toBe("fr");
+    // Compte Lead en portugais, arrivée par /login sans langue : l'espace en français.
+    ctx.claims = claims({ locale: "pt" });
     const login = await start("/auth/lead/start");
     const state = new URL(where(login)).searchParams.get("state") ?? "";
     const back = await callback(`/auth/lead/callback?code=abc&state=${state}`, {
@@ -479,8 +482,10 @@ describe("arrivée dans l'espace", () => {
     // des factures, devis et contacts (organizations.default_locale) garde l'ancienne règle.
     const { attachLeadIdentity } = await import("@/server/auth/attach");
     const cases: [string | undefined, string, string][] = [
-      ["it", "fr", "de"],
-      ["es-ES", "fr", "de"],
+      ["pt", "fr", "de"],
+      ["nl-NL", "fr", "de"],
+      ["it", "it", "it"],
+      ["es-ES", "es", "es"],
       [undefined, "fr", "de"],
       ["fr-CH", "fr", "fr"],
       ["en", "en", "en"],
@@ -501,6 +506,39 @@ describe("arrivée dans l'espace", () => {
       claims({ locale: "it", sub: "sub-collegue", email: "bea@atelier.test", org: "org-fr-CH" }),
     );
     expect(organization.defaultLocale).toBe("fr");
+  });
+
+  it("devise d'une nouvelle entreprise : le pays de l'organisation donné par le Compte Lead", async () => {
+    ctx.claims = { ...claims({ locale: "es-ES" }), org_country: "US", org_currency: "USD" };
+    const login = await start("/auth/lead/start");
+    const state = new URL(where(login)).searchParams.get("state") ?? "";
+    const back = await callback(`/auth/lead/callback?code=abc&state=${state}`, {
+      cookies: setCookies(login),
+    });
+    expect(where(back)).toBe(`${APP}/es/app`);
+    const [org] = await t.database.select().from(organizations);
+    expect(org).toMatchObject({ country: "US", currency: "USD", defaultLocale: "es" });
+  });
+
+  it("la langue choisie avec le sélecteur passe avant celle du Compte Lead, à chaque arrivée", async () => {
+    ctx.claims = claims({ locale: "fr-CH" });
+    const login = await start("/auth/lead/start");
+    const state = new URL(where(login)).searchParams.get("state") ?? "";
+    const back = await callback(`/auth/lead/callback?code=abc&state=${state}`, {
+      cookies: setCookies(login),
+    });
+    expect(where(back)).toBe(`${APP}/fr/app`);
+    // Sélecteur de langue de l'espace : « Español » (chooseLocaleAction écrit users.chosen_locale).
+    await t.database.update(users).set({ chosenLocale: "es" });
+    // Reconnexion par le lanceur (/login sans langue) : l'espagnol, même si le Compte Lead dit fr.
+    const again = await start("/auth/lead/start");
+    const state2 = new URL(where(again)).searchParams.get("state") ?? "";
+    const back2 = await callback(`/auth/lead/callback?code=abc&state=${state2}`, {
+      cookies: setCookies(again),
+    });
+    expect(where(back2)).toBe(`${APP}/es/app`);
+    const [user] = await t.database.select().from(users);
+    expect(user).toMatchObject({ locale: "fr", chosenLocale: "es" });
   });
 
   it("la langue de l'adresse passe avant celle du Compte Lead, jamais celle du navigateur", async () => {
@@ -827,7 +865,7 @@ describe("garde-fous", () => {
       "/\\evil.example",
       "https://evil.example/",
       "/fr//evil",
-      "/it",
+      "/pt",
       "/fr#x",
       "/fr?a=<b>",
       `/fr?${"a".repeat(400)}`,

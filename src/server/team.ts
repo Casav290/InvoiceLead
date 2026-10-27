@@ -518,7 +518,7 @@ export async function resumeOrganization(
 }
 
 /** Lien d'import de CRMlead : il vient toujours du CRMlead de la personne, donc de son entreprise. */
-const IMPORT_PAGE = /^\/(?:de|fr|en)\/app\/import\/crmlead(?:[/?]|$)/;
+const IMPORT_PAGE = /^\/(?:de|fr|en|it|es)\/app\/import\/crmlead(?:[/?]|$)/;
 const UUID = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
 const UUID_RE = new RegExp(`^${UUID}$`, "i");
 
@@ -541,7 +541,7 @@ const RECORD_PAGES: { kind: RecordKind; page: RegExp }[] = (
   ] as const
 ).map(([kind, section]) => ({
   kind,
-  page: new RegExp(`^\\/(?:de|fr|en)\\/app\\/${section}\\/(${UUID})(?:[/?]|$)`, "i"),
+  page: new RegExp(`^\\/(?:de|fr|en|it|es)\\/app\\/${section}\\/(${UUID})(?:[/?]|$)`, "i"),
 }));
 
 /** Fiche demandée par cette adresse (« /fr/app/contacts/<uuid>… »), ou undefined. */

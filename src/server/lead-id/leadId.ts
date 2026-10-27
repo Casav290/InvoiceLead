@@ -39,6 +39,8 @@ export type LeadClaims = {
   email: string; email_verified: boolean
   name: string; locale: string; zoneinfo: string
   org: string; org_name: string; org_role: 'admin' | 'manager' | 'user'
+  /** Pays de l'organisation du Compte Lead (ERPlead, depuis le 27.10.2026) et devise qui en découle ; null sinon. */
+  org_country?: string | null; org_currency?: string | null
   lead: LeadEntitlements
   /** Session du Compte Lead (un navigateur) qui a donné ce jeton : la déconnexion ne ferme qu'elle. */
   sid?: string

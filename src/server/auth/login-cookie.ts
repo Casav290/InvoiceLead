@@ -1,5 +1,6 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import { z } from "zod";
+import { type AppLocale, isLocale, LOCALES } from "@/i18n/locales";
 import { LOGIN_COOKIE } from "@/lib/cookies";
 import { sign, unsign } from "./crypto";
 
@@ -14,7 +15,7 @@ export const INVITE_TOKEN = /^[A-Za-z0-9_-]{20,100}$/;
  * de caractère de contrôle ; « // » est refusé à part (safeNext). Rien d'autre n'est suivi.
  */
 export const NEXT_PATH =
-  /^\/(de|fr|en)\/app(\/[A-Za-z0-9_\-/]*)?(\?[A-Za-z0-9=&%._~+,:;!$'()*@/?|[\]{}^-]*)?$/;
+  /^\/(de|fr|en|it|es)\/app(\/[A-Za-z0-9_\-/]*)?(\?[A-Za-z0-9=&%._~+,:;!$'()*@/?|[\]{}^-]*)?$/;
 
 /**
  * Longueur maximale d'une page à rouvrir. Les liens « Créer la facture » de CRMlead
@@ -31,15 +32,15 @@ export function safeNext(value: string | null | undefined): string | undefined {
 }
 
 /**
- * Langue d'InvoiceLead (de, fr, en). Absente ou inconnue (« it », « es », vide) : le français, langue de
- * repli de la famille Lead, jamais l'allemand ni l'anglais par défaut.
+ * Langue d'InvoiceLead (de, fr, en, it, es). Absente ou inconnue : le français, langue de repli de la
+ * famille Lead, jamais l'allemand ni l'anglais par défaut.
  */
-export function pickLocale(value: unknown): "de" | "fr" | "en" {
-  return value === "de" || value === "en" ? value : "fr";
+export function pickLocale(value: unknown): AppLocale {
+  return isLocale(value) ? value : "fr";
 }
 
 /** Page d'une invitation de fiduciaire, à rouvrir après la connexion. */
-export const INVITE_PATH = /^\/(de|fr|en)\/invite\?token=([A-Za-z0-9_-]{20,100})$/;
+export const INVITE_PATH = /^\/(de|fr|en|it|es)\/invite\?token=([A-Za-z0-9_-]{20,100})$/;
 
 export function invitePath(locale: string, token: string): string {
   return `/${pickLocale(locale)}/invite?token=${token}`;
@@ -80,7 +81,7 @@ const saved = z
     /** Début de la demande, en millisecondes : les demandes les plus anciennes s'effacent d'abord. */
     at: z.number().int().positive().optional(),
     /** Ancien cookie : la langue. Elle voyage désormais dans le `state`. */
-    locale: z.enum(["de", "fr", "en"]).optional(),
+    locale: z.enum(LOCALES).optional(),
     /** Ancien cookie : jeton d'invitation de fiduciaire. Il voyage désormais dans le `state`. */
     invite: z.string().regex(INVITE_TOKEN).optional(),
     /**
@@ -215,8 +216,7 @@ export function localeFromRequest(
   nextLocaleCookie: string | undefined,
   acceptLanguage: string | null,
 ) {
-  if (nextLocaleCookie === "de" || nextLocaleCookie === "fr" || nextLocaleCookie === "en")
-    return nextLocaleCookie;
+  if (isLocale(nextLocaleCookie)) return nextLocaleCookie;
   const ranked = (acceptLanguage ?? "")
     .split(",")
     .map((part) => {
@@ -225,7 +225,7 @@ export function localeFromRequest(
       return { lang: tag.slice(0, 2).toLowerCase(), q: Number.isFinite(q) ? q : 0 };
     })
     .sort((a, b) => b.q - a.q);
-  const found = ranked.find((r) => r.q > 0 && ["de", "fr", "en"].includes(r.lang));
+  const found = ranked.find((r) => r.q > 0 && isLocale(r.lang));
   return found ? pickLocale(found.lang) : "fr";
 }
 

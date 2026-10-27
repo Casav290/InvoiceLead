@@ -113,3 +113,18 @@ export async function setupBilling(page: Page) {
   await page.getByTestId("product-save").click();
   await expect(page).toHaveURL(/\/fr\/app\/products\?saved=1$/);
 }
+
+/**
+ * Lien d'une langue dans le sélecteur de l'en-tête public (menu Français, Deutsch, English, Italiano,
+ * Español) : ouvre le menu, rend le lien de cette langue.
+ */
+export async function languageLink(page: Page, code: string) {
+  const options = page.getByTestId("locale-options");
+  // Le menu ne s'ouvre qu'une fois la page hydratée : on réessaie le clic jusqu'à le voir.
+  await expect(async () => {
+    if (!(await options.isVisible()))
+      await page.locator("header").getByTestId("locale-menu").click();
+    await expect(options).toBeVisible({ timeout: 1000 });
+  }).toPass({ timeout: 15000 });
+  return options.locator(`a[data-locale="${code}"]`);
+}

@@ -5,6 +5,7 @@ import { ustvaFigures } from "@/countries/de/vat-return";
 import { ca3Figures } from "@/countries/fr/vat-return";
 import { mtdFigures } from "@/countries/gb/vat-return";
 import { salesTaxFigures } from "@/countries/us/sales-tax-report";
+import type { AppLocale } from "@/i18n/locales";
 import { roundHalfAwayFromZero, vatOf } from "@/lib/money";
 import { aiLanguageName, chatJson } from "./ai";
 import type { Db } from "./db";
@@ -384,7 +385,7 @@ export async function aiReview(
   start: string,
   end: string,
   draft: VatReturnDraft,
-  language: "de" | "fr" | "en",
+  language: AppLocale,
 ): Promise<string[]> {
   const expenses = await database
     .select({

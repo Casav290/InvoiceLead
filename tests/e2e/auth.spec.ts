@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { APP, LEAD, login } from "./helpers";
+import { APP, LEAD, languageLink, login } from "./helpers";
 
 test("sans session, la page demandée passe par le Compte Lead puis se rouvre", async ({ page }) => {
   const res = await page.request.get("/fr/app/invoices?kind=quote", { maxRedirects: 0 });
@@ -285,7 +285,7 @@ test("écran d'erreur : en-tête, pied de page et langue gardent la page demand�
       zone.locator(`a[href="/auth/lead/start?locale=fr&signup=1&next=${enc}"]`),
     ).toHaveCount(1);
   }
-  const de = header.getByRole("link", { name: "de", exact: true });
+  const de = await languageLink(page, "de");
   await expect(de).toHaveAttribute("href", `/de/login?erreur=lead&next=${deNext}`);
   await de.click();
   await expect(page).toHaveURL(`${APP}/de/login?erreur=lead&next=${deNext}`);
@@ -308,23 +308,20 @@ test("écran d'erreur : en-tête, pied de page et langue gardent la page demand�
       zone.locator(`a[href="/auth/lead/start?locale=fr&signup=1&invite=${invite}"]`),
     ).toHaveCount(1);
   }
-  await expect(
-    page.locator("header").getByRole("link", { name: "en", exact: true }),
-  ).toHaveAttribute("href", `/en/login?erreur=lead&invite=${invite}`);
+  await expect(await languageLink(page, "en")).toHaveAttribute(
+    "href",
+    `/en/login?erreur=lead&invite=${invite}`,
+  );
 
   // Ailleurs, rien ne change : liens simples, langue sans recherche.
   await page.goto("/fr/pricing");
-  await expect(
-    page.locator("header").getByRole("link", { name: "de", exact: true }),
-  ).toHaveAttribute("href", "/de/pricing");
+  await expect(await languageLink(page, "de")).toHaveAttribute("href", "/de/pricing");
   await expect(page.locator('header a[href="/auth/lead/start?locale=fr"]')).toHaveCount(1);
   const plain = await page.request.get("/de/login", { maxRedirects: 0 });
   expect(plain.headers().location ?? "").toContain("/auth/lead/start?locale=de");
   // Écran d'erreur de l'inscription : la langue garde l'erreur.
   await page.goto("/fr/signup?erreur=lead");
-  await expect(
-    page.locator("header").getByRole("link", { name: "de", exact: true }),
-  ).toHaveAttribute("href", "/de/signup?erreur=lead");
+  await expect(await languageLink(page, "de")).toHaveAttribute("href", "/de/signup?erreur=lead");
 });
 
 test("un chemin encodé ne contourne pas le filtre du proxy", async ({ page }) => {

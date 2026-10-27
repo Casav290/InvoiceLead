@@ -1,3 +1,4 @@
+import type { AppLocale } from "@/i18n/locales";
 import "server-only";
 import { isSingleLine } from "@/lib/single-line";
 import { env } from "../env";
@@ -28,7 +29,7 @@ export type MemberInvite = {
   idToken: string;
   email: string;
   name: string;
-  locale: "de" | "fr" | "en";
+  locale: AppLocale;
 };
 
 export type InviteOutcome =

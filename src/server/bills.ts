@@ -2,6 +2,7 @@ import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { countryPack } from "@/countries";
 import { VAT_CODES, type VatCode } from "@/countries/ch/vat";
 import { chartPack } from "@/countries/charts";
+import type { AppLocale } from "@/i18n/locales";
 import { parseAmountToCents } from "@/lib/amount-input";
 import { CURRENCIES, toHome } from "@/lib/currencies";
 import { type IncomingInvoice, parseIncomingInvoice } from "@/lib/einvoice-in";
@@ -314,7 +315,7 @@ export async function billFromPhoto(
   database: Db,
   who: Who,
   file: { name: string; type: string; bytes: Buffer },
-  language: "de" | "fr" | "en",
+  language: AppLocale,
   today = new Date().toISOString().slice(0, 10),
 ): Promise<SupplierBill | PhotoFailure> {
   const org = await organizationPlan(database, who.organizationId);
@@ -805,7 +806,7 @@ export async function billProposals(
   database: Db,
   organizationId: string,
   pending: BankTransaction[],
-  language: "de" | "fr" | "en",
+  language: AppLocale,
 ): Promise<Map<string, BankProposal>> {
   const out = new Map<string, BankProposal>();
   const outgoing = pending.filter((t) => t.amountCents < 0);
@@ -822,8 +823,8 @@ export async function billProposals(
     )
     .orderBy(desc(supplierBills.dueDate));
   const used = new Set<string>();
-  const say = (fr: string, de: string, en: string) =>
-    language === "fr" ? fr : language === "en" ? en : de;
+  const say = (fr: string, de: string, en: string, it: string, es: string) =>
+    ({ fr, de, en, it, es })[language] ?? de;
   for (const t of outgoing) {
     const ref = compactRef(t.reference);
     const byRef = ref
@@ -857,11 +858,15 @@ export async function billProposals(
             `Référence de paiement de la facture ${bill.number ?? ""} de ${bill.supplierName}.`,
             `Zahlungsreferenz der Rechnung ${bill.number ?? ""} von ${bill.supplierName}.`,
             `Payment reference of invoice ${bill.number ?? ""} from ${bill.supplierName}.`,
+            `Riferimento di pagamento della fattura ${bill.number ?? ""} di ${bill.supplierName}.`,
+            `Referencia de pago de la factura ${bill.number ?? ""} de ${bill.supplierName}.`,
           )
         : say(
             `Même montant que la facture ${bill.number ?? ""} de ${bill.supplierName}.`,
             `Gleicher Betrag wie die Rechnung ${bill.number ?? ""} von ${bill.supplierName}.`,
             `Same amount as invoice ${bill.number ?? ""} from ${bill.supplierName}.`,
+            `Stesso importo della fattura ${bill.number ?? ""} di ${bill.supplierName}.`,
+            `Mismo importe que la factura ${bill.number ?? ""} de ${bill.supplierName}.`,
           ),
     });
   }

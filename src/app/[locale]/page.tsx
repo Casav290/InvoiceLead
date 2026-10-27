@@ -15,12 +15,25 @@ import { PLANS } from "@/server/plans";
 
 type Params = { params: Promise<{ locale: string }> };
 
-const OG_LOCALE: Record<string, string> = { de: "de_DE", fr: "fr_FR", en: "en_US" };
+const OG_LOCALE: Record<string, string> = {
+  de: "de_DE",
+  fr: "fr_FR",
+  en: "en_US",
+  it: "it_IT",
+  es: "es_ES",
+};
+/** Images de partage dessinées (public/landing/og-<langue>.jpg) ; l'italien et l'espagnol prennent l'anglaise. */
+const OG_IMAGES = new Set(["de", "fr", "en"]);
 
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { locale } = await params;
   const t = await getTranslations({ locale, namespace: "meta" });
-  const image = { url: `/landing/og-${locale}.jpg`, width: 1200, height: 630, alt: t("title") };
+  const image = {
+    url: `/landing/og-${OG_IMAGES.has(locale) ? locale : "en"}.jpg`,
+    width: 1200,
+    height: 630,
+    alt: t("title"),
+  };
   return {
     alternates: {
       canonical: `/${locale}`,
@@ -158,7 +171,10 @@ export default async function HomePage({ params }: Params) {
   const tMeta = await getTranslations({ locale, namespace: "meta" });
   const signup = leadLoginHref(locale, true);
   const host = `invoicelead.io/${locale}`;
-  const ticket = TICKETS[locale] ?? (TICKETS.en as (typeof TICKETS)[string]);
+  // L'italien et l'espagnol suivent l'exemple français (même entreprise que leur facture d'exemple).
+  const ticket =
+    TICKETS[locale === "it" || locale === "es" ? "fr" : locale] ??
+    (TICKETS.en as (typeof TICKETS)[string]);
 
   const doc = t.raw("doc") as HeroInvoiceCopy;
 
@@ -333,7 +349,7 @@ export default async function HomePage({ params }: Params) {
               { n: free.quotas.invoices, label: t("stats.invoices") },
               { n: free.quotas.aiReads, label: t("stats.aiReads") },
               { n: 3, label: t("stats.reminders") },
-              { n: 4, label: t("stats.languages") },
+              { n: 5, label: t("stats.languages") },
             ].map((stat, i) => (
               <div
                 key={stat.label}

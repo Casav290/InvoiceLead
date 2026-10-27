@@ -231,8 +231,8 @@
           "body": "Swiss QR-bill (SIX), VAT at 8.1%, 2.6% and 3.8%, SME chart of accounts, VAT return with eCH-0217 XML."
         },
         {
-          "title": "Documents in 4 languages",
-          "body": "German, French, Italian and English, chosen per client."
+          "title": "Documents in 5 languages",
+          "body": "German, French, English, Italian and Spanish, chosen per client."
         },
         {
           "title": "Multi-currency",
@@ -351,7 +351,8 @@
         "pro": "Pro",
         "pro_plus": "Pro+"
       },
-      "feedback": "Give feedback"
+      "feedback": "Give feedback",
+      "language": "Language"
     },
     "dashboard": {
       "title": "Hello {name}",
@@ -665,7 +666,8 @@
         "de": "German",
         "fr": "French",
         "it": "Italian",
-        "en": "English"
+        "en": "English",
+        "es": "Spanish"
       },
       "countries": {
         "CH": "Switzerland",
@@ -1101,7 +1103,9 @@
       "languages": {
         "de": "German",
         "fr": "French",
-        "en": "English"
+        "en": "English",
+        "it": "Italian",
+        "es": "Spanish"
       },
       "units": {
         "hour": "h",

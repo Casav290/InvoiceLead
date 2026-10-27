@@ -43,7 +43,7 @@ describe("cookie de connexion", () => {
     expect(openLogin(undefined, SECRET)).toBeNull();
     expect(openLogin(sealLogin(saved, SECRET), "x".repeat(40))).toBeNull();
     const forged = sign(
-      Buffer.from(JSON.stringify({ ...saved, locale: "it" })).toString("base64url"),
+      Buffer.from(JSON.stringify({ ...saved, locale: "pt" })).toString("base64url"),
       SECRET,
     );
     expect(openLogin(forged, SECRET)).toBeNull();
@@ -52,7 +52,9 @@ describe("cookie de connexion", () => {
   it("ramène toute langue inconnue au français, repli de la famille Lead", () => {
     expect(pickLocale("fr")).toBe("fr");
     expect(pickLocale("de")).toBe("de");
-    expect(pickLocale("it")).toBe("fr");
+    expect(pickLocale("it")).toBe("it");
+    expect(pickLocale("es")).toBe("es");
+    expect(pickLocale("pt")).toBe("fr");
     expect(pickLocale("en")).toBe("en");
     expect(pickLocale(null)).toBe("fr");
   });
@@ -63,11 +65,14 @@ describe("langue d'une requête sans demande en cours", () => {
     expect(localeFromRequest("fr", "de-CH")).toBe("fr");
     expect(localeFromRequest("de", "fr-CH")).toBe("de");
     expect(localeFromRequest(undefined, "fr-CH,fr;q=0.9,de;q=0.8")).toBe("fr");
-    expect(localeFromRequest(undefined, "it-CH,de;q=0.5,fr;q=0.7")).toBe("fr");
-    expect(localeFromRequest(undefined, "it-CH,de;q=0.8,fr;q=0.5")).toBe("de");
+    expect(localeFromRequest(undefined, "pt-PT,de;q=0.5,fr;q=0.7")).toBe("fr");
+    expect(localeFromRequest(undefined, "pt-PT,de;q=0.8,fr;q=0.5")).toBe("de");
     expect(localeFromRequest(undefined, "en-US")).toBe("en");
-    expect(localeFromRequest(undefined, "it-IT")).toBe("fr");
-    expect(localeFromRequest("it", null)).toBe("fr");
+    expect(localeFromRequest(undefined, "it-IT")).toBe("it");
+    expect(localeFromRequest(undefined, "es-ES,es;q=0.9")).toBe("es");
+    expect(localeFromRequest(undefined, "nl-NL")).toBe("fr");
+    expect(localeFromRequest("it", null)).toBe("it");
+    expect(localeFromRequest("pt", null)).toBe("fr");
     expect(localeFromRequest(undefined, "fr;q=0")).toBe("fr");
   });
 });

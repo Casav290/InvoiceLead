@@ -31,6 +31,12 @@ export const users = pgTable(
     name: text("name").notNull().default(""),
     locale: text("locale").notNull().default("de"),
     /**
+     * Langue choisie dans InvoiceLead avec le sélecteur de langue (de, fr, en, it, es). Elle passe
+     * avant celle du Compte Lead (`locale`, réécrite à chaque connexion) ; vide tant que la personne
+     * n'a rien choisi ici.
+     */
+    chosenLocale: text("chosen_locale"),
+    /**
      * Dernière entreprise choisie dans InvoiceLead (fiduciaire passée chez un client). Reprise à la
      * reconnexion, tant que l'accès de la fiduciaire y tient (team.ts, resumeOrganization).
      */
@@ -58,6 +64,13 @@ export const organizations = pgTable("organizations", {
   name: text("name").notNull(),
   country: text("country").notNull().default("CH"),
   currency: text("currency").notNull().default("CHF"),
+  /**
+   * Devise de la région d'où la personne a ouvert l'entreprise (en-tête x-vercel-ip-country, sinon
+   * Accept-Language), quand elle diffère de celle du pays de l'entreprise : un pays de la zone euro
+   * qu'InvoiceLead ne gère pas encore comme pays (Italie, Espagne, Autriche…) garde le pack suisse
+   * mais propose l'euro par défaut, jamais réservé à Pro (region.ts). Vide sinon.
+   */
+  regionCurrency: text("region_currency"),
   defaultLocale: text("default_locale").notNull().default("de"),
   leadPlan: text("lead_plan").notNull().default("free"),
   hasAccess: boolean("has_access").notNull().default(false),

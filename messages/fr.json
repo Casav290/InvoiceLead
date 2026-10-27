@@ -231,8 +231,8 @@
           "body": "QR-facture SIX, TVA à 8,1 %, 2,6 % et 3,8 %, plan PME, décompte AFC et XML eCH-0217."
         },
         {
-          "title": "Documents en 4 langues",
-          "body": "Allemand, français, italien et anglais, choisis pour chaque client."
+          "title": "Documents en 5 langues",
+          "body": "Allemand, français, anglais, italien et espagnol, choisis pour chaque client."
         },
         {
           "title": "Multidevise",
@@ -351,7 +351,8 @@
         "pro": "Pro",
         "pro_plus": "Pro+"
       },
-      "feedback": "Donner mon avis"
+      "feedback": "Donner mon avis",
+      "language": "Langue"
     },
     "dashboard": {
       "title": "Bonjour {name}",
@@ -665,7 +666,8 @@
         "de": "Allemand",
         "fr": "Français",
         "it": "Italien",
-        "en": "Anglais"
+        "en": "Anglais",
+        "es": "Espagnol"
       },
       "countries": {
         "CH": "Suisse",
@@ -1101,7 +1103,9 @@
       "languages": {
         "de": "Allemand",
         "fr": "Français",
-        "en": "Anglais"
+        "en": "Anglais",
+        "it": "Italien",
+        "es": "Espagnol"
       },
       "units": {
         "hour": "h",

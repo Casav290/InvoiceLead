@@ -8,6 +8,7 @@ import { FormSection, fieldClass, SelectField, TextField } from "@/components/fo
 import { Button } from "@/components/ui/button";
 import { countryPack, offeredVatCodes } from "@/countries";
 import { formatRate, type VatCode } from "@/countries/ch/vat";
+import { LOCALES } from "@/i18n/locales";
 import { parseAmountToCents } from "@/lib/amount-input";
 import { CURRENCIES } from "@/lib/currencies";
 import { computeTotals, parseQuantityToMilli } from "@/lib/invoice-math";
@@ -73,6 +74,7 @@ export function InvoiceForm({
   country = "CH",
   localRateBp = null,
   currencyLock = null,
+  regionCurrency = null,
   storedCurrency,
 }: {
   locale: string;
@@ -87,6 +89,8 @@ export function InvoiceForm({
   vatRegistered: boolean;
   /** Formule sans multidevise : devises étrangères grisées, marque Pro et lien. */
   currencyLock?: Lock | null;
+  /** Devise de la région d'inscription (l'euro en Italie) : jamais réservée à Pro (src/lib/region.ts). */
+  regionCurrency?: string | null;
   /** Devise déjà enregistrée du brouillon : elle reste choisissable. */
   storedCurrency?: string;
 }) {
@@ -116,6 +120,7 @@ export function InvoiceForm({
       country={country}
       localRateBp={localRateBp}
       currencyLock={currencyLock}
+      regionCurrency={regionCurrency}
       storedCurrency={storedCurrency}
       t={t}
     />
@@ -139,6 +144,7 @@ function InvoiceFormBody({
   country,
   localRateBp,
   currencyLock,
+  regionCurrency,
   storedCurrency,
   t,
 }: {
@@ -158,6 +164,7 @@ function InvoiceFormBody({
   country: string;
   localRateBp: number | null;
   currencyLock: Lock | null;
+  regionCurrency: string | null;
   storedCurrency?: string;
   t: ReturnType<typeof useCountryTranslations>;
 }) {
@@ -272,9 +279,11 @@ function InvoiceFormBody({
             onChange={(e) => setLanguage(e.target.value)}
             className={fieldClass}
           >
-            <option value="de">{t("languages.de")}</option>
-            <option value="fr">{t("languages.fr")}</option>
-            <option value="en">{t("languages.en")}</option>
+            {LOCALES.map((l) => (
+              <option key={l} value={l}>
+                {t(`languages.${l}`)}
+              </option>
+            ))}
           </select>
         </div>
         <TextField
@@ -302,7 +311,11 @@ function InvoiceFormBody({
             className={fieldClass}
           >
             {CURRENCIES.map((c) => {
-              const locked = !!currencyLock && c !== pack.currency && c !== storedCurrency;
+              const locked =
+                !!currencyLock &&
+                c !== pack.currency &&
+                c !== regionCurrency &&
+                c !== storedCurrency;
               return (
                 <option key={c} value={c} disabled={locked}>
                   {locked ? `${c} (${currencyLock?.tier === "proplus" ? "Pro+" : "Pro"})` : c}

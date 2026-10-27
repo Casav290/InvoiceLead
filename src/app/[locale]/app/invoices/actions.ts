@@ -25,7 +25,7 @@ import {
 } from "@/server/invoices";
 import { postPending } from "@/server/ledger";
 import { addPayment, deletePayment, parsePaymentForm } from "@/server/payments";
-import { featureAccess } from "@/server/plans";
+import { foreignWithoutPro } from "@/server/plans";
 import { flushWebhooks } from "@/server/webhooks";
 
 /** Comptabilise ce qui peut l'être ; une panne ici ne doit jamais bloquer la facturation. */
@@ -79,11 +79,7 @@ export async function saveInvoice(
   if (!parsed.ok) return { status: "invalid", errors: parsed.errors, values, round };
   // Facturer dans une autre devise que celle de l'entreprise fait partie de la formule Pro. Un
   // brouillon déjà en devise (créé en Pro, ou avoir d'une facture en devise) garde la sienne.
-  if (
-    parsed.data.currency &&
-    parsed.data.currency !== session.organization.currency &&
-    !featureAccess(session.organization, "multiCurrency").allowed
-  ) {
+  if (parsed.data.currency && foreignWithoutPro(session.organization, parsed.data.currency)) {
     const stored = id ? await getInvoice(db(), who.organizationId, id) : null;
     if (stored?.invoice.currency !== parsed.data.currency)
       return { status: "invalid", errors: { currency: "plan" }, values, round };

@@ -8,7 +8,7 @@ Le plan de développement est dans [docs/PLAN.md](docs/PLAN.md).
 ## Pile
 
 Next.js 16 (App Router, `src/proxy.ts`), React 19, TypeScript strict, Tailwind CSS v4 au visuel
-« Trait net », next-intl (`/de`, `/fr`), Drizzle ORM sur Postgres (Neon en production, `pg`),
+« Trait net », next-intl en cinq langues (`/de`, `/fr`, `/en`, `/it`, `/es`, liste unique `src/i18n/locales.ts`), Drizzle ORM sur Postgres (Neon en production, `pg`),
 connexion par le **Compte Lead** (OpenID Connect hébergé par CRMlead, kit `src/server/lead-id/leadId.ts`).
 Hébergement : Vercel. Base : projet Neon `tiny-shape-39858234`, branche `production`.
 
@@ -95,6 +95,21 @@ pages publiques) ouvre un fil où l'on demande ce qu'on veut. Code : `src/server
   `sessionStorage` de l'onglet.
 - Portes du chantier : `node scripts/assistant-actions-gates.mjs G1` à `G6` (inventaire, tests, contrôles
   complets, aperçu réel, refus, production).
+
+## Langues et devise par pays
+
+- Cinq langues partout (interface, e-mails, PDF, pages juridiques) : `messages/<langue>.json`,
+  `content/legal/<doc>-<langue>.md`. Le test `tests/unit/messages.test.ts` exige les mêmes clés et
+  variables dans les cinq fichiers ; `tests/unit/cinq-langues.test.ts` rend les PDF dans chaque langue.
+- Sélecteur de langue (`src/components/LocaleMenu.tsx`) dans l'en-tête de chaque page connectée et des
+  pages publiques. Dans l'espace, le choix est gardé dans le compte (`users.chosen_locale`) et passe avant
+  la langue du Compte Lead à chaque arrivée sans langue dans l'adresse.
+- Langue des documents choisie à part, parmi les cinq. La section paiement de la QR-facture n'existe qu'en
+  allemand, français, italien et anglais (norme SIX) : une pièce en espagnol l'imprime en anglais.
+- Devise d'une nouvelle entreprise selon la région (`src/lib/region.ts` : en-tête `x-vercel-ip-country`,
+  puis Accept-Language, puis langue du Compte Lead) : CH/LI → CHF, Allemagne et France → leur pays en EUR,
+  GB → GBP, US → USD, autre pays de la zone euro → pack suisse avec l'euro par défaut
+  (`organizations.region_currency`), jamais réservé à Pro.
 
 ## Variables d'environnement
 

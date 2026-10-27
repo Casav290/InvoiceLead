@@ -10,7 +10,7 @@ import { getSessionCountryTranslations } from "@/server/country-translations";
 import { db } from "@/server/db";
 import { inNativeApp } from "@/server/native";
 import { lockFor } from "@/server/plan-lock";
-import { featureAccess, quotaAccess, upgradeUrl } from "@/server/plans";
+import { foreignWithoutPro, quotaAccess, upgradeUrl } from "@/server/plans";
 import { listRecurring, runningRecurring } from "@/server/recurring";
 import { updateRecurringAction } from "./actions";
 
@@ -41,8 +41,7 @@ export default async function RecurringPage({ params, searchParams }: Props) {
   const usedUp = tp("used.recurring", { limit: slots.limit, plan: slots.tier });
   const lock = await lockFor(locale, slots, usedUp);
   // Sans la multidevise, une récurrence sur une facture en devise étrangère attend.
-  const multiCurrency = featureAccess(organization, "multiCurrency").allowed;
-  const foreign = (currency: string) => !multiCurrency && currency !== organization.currency;
+  const foreign = (currency: string) => foreignWithoutPro(organization, currency);
   return (
     <div className="mx-auto max-w-5xl px-4 py-10 sm:px-8">
       <p className="text-[13px]">

@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import { and, desc, eq, gte, inArray, isNull, lte } from "drizzle-orm";
 import { VAT_CODES } from "@/countries/ch/vat";
+import { type AppLocale, localized } from "@/i18n/locales";
 import { addDays, isIsoDate } from "@/lib/fiscal-year";
 import { aiLanguageName, chatJson } from "./ai";
 import type { Db } from "./db";
@@ -112,7 +113,7 @@ export async function readReceipt(
   database: Db,
   who: Who,
   id: string,
-  language: "de" | "fr" | "en",
+  language: AppLocale,
 ): Promise<"read" | ReadFailure> {
   const result = await extractReceipt(database, who, id, language);
   if (typeof result === "string") return result;
@@ -135,7 +136,7 @@ export async function extractReceipt(
   database: Db,
   who: Who,
   id: string,
-  language: "de" | "fr" | "en",
+  language: AppLocale,
   today = new Date().toISOString().slice(0, 10),
 ): Promise<ReceiptExtraction | ReadFailure> {
   if (!UUID.test(id)) return "notFound";
@@ -268,7 +269,7 @@ export async function extractReceipt(
  * Rattache chaque justificatif lu au mouvement bancaire qui le paie (même montant, payé entre 5 jours
  * avant et 60 jours après sa date), et en fait la proposition de ce mouvement.
  */
-export async function matchReceipts(database: Db, who: Who, language: "de" | "fr" | "en") {
+export async function matchReceipts(database: Db, who: Who, language: AppLocale) {
   const open = await database
     .select()
     .from(receipts)
@@ -336,10 +337,13 @@ export async function matchReceipts(database: Db, who: Who, language: "de" | "fr
             accountId: account.id,
             vatCode: x.vatCode,
             confidence,
-            explanation:
-              language === "fr"
-                ? `Justificatif de ${x.supplier ?? "fournisseur"}${x.invoiceNumber ? `, facture ${x.invoiceNumber}` : ""}${x.description ? ` : ${x.description}` : ""}.`
-                : `Beleg von ${x.supplier ?? "Lieferant"}${x.invoiceNumber ? `, Rechnung ${x.invoiceNumber}` : ""}${x.description ? `: ${x.description}` : ""}.`,
+            explanation: localized(language, {
+              de: `Beleg von ${x.supplier ?? "Lieferant"}${x.invoiceNumber ? `, Rechnung ${x.invoiceNumber}` : ""}${x.description ? `: ${x.description}` : ""}.`,
+              fr: `Justificatif de ${x.supplier ?? "fournisseur"}${x.invoiceNumber ? `, facture ${x.invoiceNumber}` : ""}${x.description ? ` : ${x.description}` : ""}.`,
+              en: `Receipt from ${x.supplier ?? "supplier"}${x.invoiceNumber ? `, invoice ${x.invoiceNumber}` : ""}${x.description ? `: ${x.description}` : ""}.`,
+              it: `Giustificativo di ${x.supplier ?? "fornitore"}${x.invoiceNumber ? `, fattura ${x.invoiceNumber}` : ""}${x.description ? `: ${x.description}` : ""}.`,
+              es: `Justificante de ${x.supplier ?? "proveedor"}${x.invoiceNumber ? `, factura ${x.invoiceNumber}` : ""}${x.description ? `: ${x.description}` : ""}.`,
+            }),
             source: "receipt",
           },
         })

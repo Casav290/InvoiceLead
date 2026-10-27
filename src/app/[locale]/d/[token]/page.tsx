@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { AppMark } from "@/components/brand/AppMark";
 import { InvoiceDocument } from "@/components/invoices/InvoiceDocument";
+import { LocaleMenu } from "@/components/LocaleMenu";
 import { Button } from "@/components/ui/button";
 import { db } from "@/server/db";
 import { organizations } from "@/server/db/schema";
@@ -42,6 +43,7 @@ export default async function SharedDocumentPage({ params, searchParams }: Props
           <span className="min-w-0 flex-1 truncate text-[15px] font-extrabold">
             {found.invoice.sender?.name}
           </span>
+          <LocaleMenu keepSearch />
           {payable ? (
             <form action={`/${locale}/d/${token}/pay`} method="post">
               <Button type="submit" size="sm" data-testid="shared-pay">

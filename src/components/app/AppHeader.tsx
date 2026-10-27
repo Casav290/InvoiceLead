@@ -1,5 +1,6 @@
 import { useTranslations } from "next-intl";
 import { AppMark } from "@/components/brand/AppMark";
+import { LocaleMenu } from "@/components/LocaleMenu";
 import { Link } from "@/i18n/navigation";
 import { type LeadAppItem, leadFamilyTexts } from "@/lib/lead-apps";
 import { AppNav } from "./AppNav";
@@ -56,6 +57,7 @@ export function AppHeader({
               {orgName}
             </span>
           )}
+          <LocaleMenu account />
           <AppSwitcher items={apps} texts={leadFamilyTexts(locale)} />
           <UserMenu
             name={user.name}

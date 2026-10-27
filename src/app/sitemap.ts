@@ -7,7 +7,7 @@ export function siteUrl(): string {
   return (process.env.APP_URL ?? "https://invoicelead.io").replace(/\/+$/, "");
 }
 
-/** Pages publiques, chacune avec ses trois langues (hreflang). */
+/** Pages publiques, chacune avec ses cinq langues (hreflang). */
 export default function sitemap(): MetadataRoute.Sitemap {
   const base = siteUrl();
   const pages = ["", "/pricing", "/faq", ...LEGAL_DOCS.map((doc) => `/legal/${doc}`)];
