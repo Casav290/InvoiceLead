@@ -2676,7 +2676,8 @@
           "create_expense_claimIntl": "Nota spese",
           "validate_vat_returnDe": "Convalidare il rendiconto IVA",
           "validate_vat_returnIntl": "Convalidare il rendiconto IVA",
-          "invoice_project_timeIntl": "Fatturare le ore"
+          "invoice_project_timeIntl": "Fatturare le ore",
+          "set_interface_language": "Lingua dell'interfaccia"
         },
         "fields": {
           "previousName": "Nome attuale",

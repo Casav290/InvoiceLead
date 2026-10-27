@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { VAT_CODES } from "@/countries/ch/vat";
+import { LOCALES } from "@/i18n/locales";
 import { toForm } from "../api";
 import { getContact } from "../contacts";
 import type { Product } from "../db/schema";
@@ -24,6 +25,7 @@ import {
   stopTimer,
   updateProject,
 } from "../time";
+import { chooseLocale, chosenLocale } from "../user-locale";
 import {
   type AssistantContext,
   amountText,
@@ -578,6 +580,38 @@ export const expenseClaimOp = defineOp({
         amountCents: claim.totalCents,
         currency,
       },
+    };
+  },
+});
+
+// Préférences de la personne
+
+export const interfaceLanguageOp = defineOp({
+  id: "set_interface_language",
+  permission: "self",
+  description:
+    "PROPOSE to switch the user's own interface language (as the language menu does): kept in their account; after Confirm the same page opens in that language. Not inside propose_batch.",
+  schema: z.object({ language: z.enum(LOCALES) }),
+  batch: false,
+  async run(ctx, input) {
+    const current = (await chosenLocale(ctx.database, ctx.userId)) ?? ctx.locale;
+    if (input.language === current && input.language === ctx.locale) return fail("no_change");
+    if (!(await chooseLocale(ctx.database, ctx.userId, input.language))) return fail("invalid");
+    return {
+      ok: true,
+      result: {
+        action: "set_interface_language",
+        id: ctx.userId,
+        entity: "user",
+        path: "",
+        label: input.language,
+        locale: input.language,
+      },
+      summary: {
+        action: "set_interface_language",
+        fields: [{ key: "language", value: input.language, before: ctx.locale }],
+      },
+      item: { action: "set_interface_language", label: input.language },
     };
   },
 });

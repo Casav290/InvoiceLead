@@ -27,6 +27,7 @@ import {
   recurringInvoices,
   supplierBills,
   timeEntries,
+  users,
   vatReturns,
 } from "@/server/db/schema";
 import { createInvoice, issueInvoice, parseInvoiceForm } from "@/server/invoices";
@@ -271,6 +272,12 @@ async function fingerprint(organizationId: string) {
   );
   parts.push(
     await hash(sql`select md5(o::text) as h from organizations o where o.id = ${organizationId}`),
+  );
+  // Les comptes des personnes de l'entreprise (préférences : langue choisie).
+  parts.push(
+    await hash(
+      sql`select md5(coalesce(string_agg(u::text, ',' order by u::text), '')) as h from users u where u.id in (select user_id from memberships where organization_id = ${organizationId})`,
+    ),
   );
   return parts.join(":");
 }
@@ -941,6 +948,15 @@ const SCENARIOS: Scenario[] = [
         legalName: "Atelier Muster GmbH",
         iban: "CH9300762011623852957",
       });
+    },
+  },
+  {
+    op: "set_interface_language",
+    setup: async () => ({ language: "it" }),
+    check: async (p, r) => {
+      const [u] = await db.select().from(users).where(eq(users.id, p.user.id));
+      expect(u?.chosenLocale).toBe("it");
+      expect(r).toMatchObject({ locale: "it" });
     },
   },
   {

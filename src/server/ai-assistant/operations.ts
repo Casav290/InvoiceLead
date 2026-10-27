@@ -52,6 +52,7 @@ import {
   createProductOp,
   createProjectOp,
   expenseClaimOp,
+  interfaceLanguageOp,
   invoiceProjectOp,
   startTimerOp,
   stopTimerOp,
@@ -108,6 +109,7 @@ export const OPERATIONS: Operation[] = [
   closeYearOp,
   companySettingsOp,
   reminderSettingsOp,
+  interfaceLanguageOp,
 ] as Operation[];
 
 export const OPS = new Map(OPERATIONS.map((o) => [o.id, o]));
@@ -369,6 +371,8 @@ export type Applied = {
   id: string;
   path: string;
   label: string;
+  /** Langue de l'interface choisie : la bulle rouvre la même page dans cette langue. */
+  locale?: string;
   /** Lot : ce que chaque opération a écrit. */
   items?: OpResult[];
 };
@@ -416,7 +420,16 @@ export async function applyAction(
   if (action.tool !== BATCH) {
     const [r] = results;
     if (!r) return { ok: false, error: "failed" };
-    return { ok: true, result: { action: r.action, id: r.id, path: r.path, label: r.label } };
+    return {
+      ok: true,
+      result: {
+        action: r.action,
+        id: r.id,
+        path: r.path,
+        label: r.label,
+        ...(r.locale ? { locale: r.locale } : {}),
+      },
+    };
   }
   return {
     ok: true,

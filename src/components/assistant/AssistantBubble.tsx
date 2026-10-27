@@ -342,6 +342,7 @@ export function AssistantBubble({ storageKey }: { storageKey: string }) {
           path: string;
           label: string;
           action: string;
+          locale?: string;
           items?: { action: string; id: string; path: string }[];
         };
         error?: string;
@@ -360,8 +361,11 @@ export function AssistantBubble({ storageKey }: { storageKey: string }) {
           `[The user clicked Confirm: ${saved}.]`,
         );
         // La page montre le résultat sans rechargement : celle de ce qui a été écrit, ou la page
-        // ouverte rafraîchie si c'est déjà elle.
-        if (r.path && pathOnly(r.path) !== pathname) router.push(r.path);
+        // ouverte rafraîchie si c'est déjà elle ; une autre langue d'interface rouvre la même page
+        // dans cette langue, comme le sélecteur.
+        if (r.locale && r.locale !== locale)
+          router.replace(`${pathname}${window.location.search}`, { locale: r.locale });
+        else if (r.path && pathOnly(r.path) !== pathname) router.push(r.path);
         else router.refresh();
         return;
       }

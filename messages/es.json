@@ -2676,7 +2676,8 @@
           "create_expense_claimIntl": "Nota de gastos",
           "validate_vat_returnDe": "Validar la declaración de IVA",
           "validate_vat_returnIntl": "Validar la declaración de IVA",
-          "invoice_project_timeIntl": "Facturar las horas"
+          "invoice_project_timeIntl": "Facturar las horas",
+          "set_interface_language": "Idioma de la interfaz"
         },
         "fields": {
           "previousName": "Nombre actual",

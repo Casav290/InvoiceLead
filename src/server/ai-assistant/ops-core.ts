@@ -42,7 +42,8 @@ export type Entity =
   | "vat_return"
   | "company"
   | "receipt"
-  | "ledger";
+  | "ledger"
+  | "user";
 
 export type OpResult = {
   action: string;
@@ -51,6 +52,8 @@ export type OpResult = {
   /** Page qui montre le résultat, sans la langue (« /app/quotes/… »). */
   path: string;
   label: string;
+  /** Langue de l'interface choisie : la bulle rouvre la même page dans cette langue. */
+  locale?: string;
 };
 
 /**
@@ -134,8 +137,11 @@ export type RefField = (typeof REF_FIELDS)[number];
 export type Operation<S extends z.ZodType = z.ZodType> = {
   /** Identifiant (outil `propose_<id>`, jeton, textes de la carte). */
   id: string;
-  /** Droit de l'action serveur de l'écran ; « member » : toute personne qui n'est pas en lecture seule. */
-  permission: Permission | "member";
+  /**
+   * Droit de l'action serveur de l'écran ; « member » : toute personne qui n'est pas en lecture seule ;
+   * « self » : toute personne connectée, pour ses propres préférences.
+   */
+  permission: Permission | "member" | "self";
   description: string;
   schema: S;
   /** Champs d'identifiant que le lot peut remplir par une clé, avec ce qu'ils désignent. */
@@ -172,6 +178,7 @@ export function rightProblem(
   ctx: Pick<AssistantContext, "membership" | "organization">,
   op: Pick<Operation, "permission">,
 ): string | null {
+  if (op.permission === "self") return null;
   if (op.permission === "member") {
     const role = appRoleOf(ctx.membership);
     return role === "readonly" || role === "none" ? "forbidden_role" : null;

@@ -2676,7 +2676,8 @@
           "close_fiscal_year": "Geschäftsjahr abschliessen",
           "update_company_settings": "Firmeneinstellungen",
           "update_reminder_settings": "Mahneinstellungen",
-          "invoice_project_timeIntl": "Stunden abrechnen"
+          "invoice_project_timeIntl": "Stunden abrechnen",
+          "set_interface_language": "Sprache der Oberfläche"
         },
         "fields": {
           "previousName": "Bisheriger Name",

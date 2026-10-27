@@ -2676,7 +2676,8 @@
           "create_expense_claimIntl": "Note de frais",
           "validate_vat_returnDe": "Valider le décompte TVA",
           "validate_vat_returnIntl": "Valider le décompte TVA",
-          "invoice_project_timeIntl": "Facturer le temps"
+          "invoice_project_timeIntl": "Facturer le temps",
+          "set_interface_language": "Langue de l'interface"
         },
         "fields": {
           "previousName": "Nom actuel",

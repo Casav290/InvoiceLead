@@ -2676,7 +2676,8 @@
           "create_expense_claimIntl": "Expense claim",
           "validate_vat_returnDe": "Validate the VAT return",
           "validate_vat_returnIntl": "Validate the VAT return",
-          "invoice_project_timeIntl": "Invoice the time"
+          "invoice_project_timeIntl": "Invoice the time",
+          "set_interface_language": "Interface language"
         },
         "fields": {
           "previousName": "Current name",

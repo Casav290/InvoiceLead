@@ -23,8 +23,9 @@ pas. Le contrôle `scripts/assistant-actions-gates.mjs G1` vérifie que rien ne 
   CRMlead (`src/server/pending-effects.ts`), comptabilisation et webhooks de l'entreprise après une
   émission.
 - Droits : ceux de l'action serveur de l'écran (`requirePermission` : facturation, comptabilité, mise
-  en place, entreprise ; les notes de frais : toute personne qui n'est pas en lecture seule), le plan
-  comptable du pays, et les fonctions de la formule (multidevise, décompte TVA, réglages des relances).
+  en place, entreprise ; les notes de frais : toute personne qui n'est pas en lecture seule ; la langue
+  de l'interface : toute personne connectée, pour elle-même), le plan comptable du pays, et les
+  fonctions de la formule (multidevise, décompte TVA, réglages des relances).
 - Après « Confirmer », la bulle ouvre la page qui montre le résultat (ou rafraîchit la page ouverte si
   c'est déjà elle) et dit en une ligne ce qui a été enregistré.
 
@@ -181,6 +182,7 @@ pas. Le contrôle `scripts/assistant-actions-gates.mjs G1` vérifie que rien ne 
 |---|---|---|---|
 | Avis | Envoyer un avis (copie par e-mail) | `sendFeedbackAction` | interdit : envoyer à l'extérieur |
 | Import CRMlead | Importer le client ou la pièce d'un lien CRMlead | `importCrmleadAction` | écran : lien |
+| Menu | Choisir la langue de l'interface (la sienne) | `chooseLocaleAction` | `propose_set_interface_language` (pas dans un lot) |
 | Menu | Changer d'entreprise | `switchOrgAction` | écran : session |
 | Menu | Se déconnecter | `/auth/lead/logout` | écran : session |
 
