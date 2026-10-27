@@ -15,17 +15,44 @@ import { formatMoney } from "@/lib/money";
  * l'onglet ; les écritures proposées s'affichent en cartes « À confirmer » et ne partent qu'au clic.
  */
 
+type Field = {
+  key: string;
+  value: string;
+  /** Modification : valeur actuelle, montrée « avant → après ». */
+  before?: string;
+  format?: "date" | "money" | "minutes" | "percent" | "enum" | "bool" | "month";
+  currency?: string;
+};
+
+type Line = {
+  description: string;
+  quantity: string;
+  unit: string;
+  unitPriceCents: number;
+  netCents: number;
+};
+
+type Totals = { currency: string; netCents: number; vatCents: number; totalCents: number };
+
+type GroupItem = {
+  action: string;
+  label: string;
+  detail?: string;
+  amountCents?: number;
+  currency?: string;
+  lines?: Line[];
+  totals?: Totals;
+};
+
 type Summary = {
   action: string;
-  fields: { key: string; value: string }[];
-  lines?: {
-    description: string;
-    quantity: string;
-    unit: string;
-    unitPriceCents: number;
-    netCents: number;
-  }[];
-  totals?: { currency: string; netCents: number; vatCents: number; totalCents: number };
+  fields: Field[];
+  lines?: Line[];
+  totals?: Totals;
+  notes?: string[];
+  /** Lot : opérations groupées par action, premières lignes de chaque groupe. */
+  groups?: { action: string; count: number; items: GroupItem[] }[];
+  count?: number;
 };
 
 type Action =
@@ -38,6 +65,7 @@ type CardState =
   | "done"
   | "cancelled"
   | "expired"
+  | "forbidden"
   | "planLimit"
   | "failed"
   | "session";
@@ -99,6 +127,48 @@ function withBold(text: string, locale: string) {
     );
 }
 
+/** 90 → « 1:30 ». */
+const hoursMinutes = (minutes: number) =>
+  `${Math.floor(minutes / 60)}:${String(Math.round(minutes) % 60).padStart(2, "0")}`;
+
+/** Chemin sans la requête, pour savoir si la page du résultat est déjà ouverte. */
+const pathOnly = (path: string) => path.split("?")[0] ?? path;
+
+/** Échec d'une confirmation : limite ou fonction de la formule, rôle, ou autre. */
+const failureState = (status: number, error: string | undefined): CardState => {
+  if (status === 401) return "session";
+  if (status === 403) return error === "forbidden_role" ? "forbidden" : "expired";
+  if (error && /(^|[\s:(])plan|plan_limit/.test(error)) return "planLimit";
+  return "failed";
+};
+
+/** Champs dont les valeurs ont déjà leurs libellés sur un écran de l'application (messages app.*). */
+const ENUM_SOURCES: Record<string, string> = {
+  unit: "products.units",
+  vatCode: "accounts.vatCodes",
+  type: "accounts.types",
+  chartTemplate: "accounts.templates",
+  receiptStatus: "receipts.status",
+  waitingReason: "accountingHome.reasons",
+  quoteStatus: "quotes.status",
+  "company.legalForm": "company.legalForms",
+  "company.vatMethod": "company.vatMethods",
+  "company.vatSettlement": "company.vatSettlements",
+};
+
+/** Libellé du numéro de TVA et du numéro fiscal selon le pays, comme l'écran des réglages. */
+const COMPANY_LABELS: Record<string, Record<string, string>> = {
+  uid: { DE: "ustId", FR: "frVatId", GB: "gbVat" },
+  taxNumber: { FR: "siret", GB: "companyNumber", US: "ein" },
+};
+
+/** Champ dont relève le « détail » d'une ligne de lot, pour le traduire. */
+const DETAIL_KEYS: Record<string, string> = {
+  install_chart: "chartTemplate",
+  set_quote_outcome: "quoteStatus",
+  create_expense_claim: "claimKind",
+};
+
 const ERROR_BY_STATUS: Record<number, string> = {
   400: "invalid",
   401: "session",
@@ -109,6 +179,7 @@ const ERROR_BY_STATUS: Record<number, string> = {
 export function AssistantBubble({ storageKey }: { storageKey: string }) {
   const t = useCountryTranslations("app.aiBubble");
   const tc = useCountryTranslations("app.aiBubble.confirm");
+  const ta = useCountryTranslations("app");
   const locale = useLocale();
   const country = useCountry();
   const pathname = usePathname();
@@ -249,33 +320,40 @@ export function AssistantBubble({ storageKey }: { storageKey: string }) {
       const res = await fetch("/api/assistant/confirm", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token: item.token }),
+        body: JSON.stringify({ token: item.token, locale }),
       });
       const body = (await res.json().catch(() => ({}))) as {
-        result?: { id: string; path: string; label: string; action: string };
+        result?: {
+          id: string;
+          path: string;
+          label: string;
+          action: string;
+          items?: { action: string; id: string; path: string }[];
+        };
         error?: string;
       };
       if (res.ok && body.result) {
         const r = body.result;
+        const saved = r.items
+          ? `batch of ${r.items.length} operations saved: ${r.items
+              .slice(0, 20)
+              .map((i) => `${i.action} (id ${i.id})`)
+              .join(", ")}${r.items.length > 20 ? ", …" : ""}`
+          : `${r.action} saved (id ${r.id}, page ${r.path})`;
         setCard(
           item.id,
           { state: "done", result: { path: r.path, label: r.label }, token: "" },
-          `[The user clicked Confirm: ${r.action} saved (id ${r.id}, page ${r.path}).]`,
+          `[The user clicked Confirm: ${saved}.]`,
         );
-        router.refresh();
+        // La page montre le résultat sans rechargement : celle de ce qui a été écrit, ou la page
+        // ouverte rafraîchie si c'est déjà elle.
+        if (r.path && pathOnly(r.path) !== pathname) router.push(r.path);
+        else router.refresh();
         return;
       }
-      const state: CardState =
-        res.status === 401
-          ? "session"
-          : res.status === 403
-            ? "expired"
-            : body.error === "plan_limit"
-              ? "planLimit"
-              : "failed";
       setCard(
         item.id,
-        { state },
+        { state: failureState(res.status, body.error) },
         `[Confirming ${item.summary.action} failed: ${body.error ?? res.status}.]`,
       );
     } catch {
@@ -307,20 +385,97 @@ export function AssistantBubble({ storageKey }: { storageKey: string }) {
       return code;
     }
   };
-  const shownValue = (key: string, value: string) => {
-    if (key === "issueDate" || key === "dueDate") return formatDate(value, dates);
-    if (key === "language") return names("language", value);
-    if (key === "country") return names("region", value);
-    if (key === "kind" || key === "documentKind")
-      return tc.has(`values.${value}`) ? tc(`values.${value}`) : value;
-    if (key === "status") return tc("values.draft");
-    if (key === "role")
+  /**
+   * Valeur d'une liste : d'abord celle propre au champ (« values.claimKind.expense »), puis les
+   * libellés des écrans de l'application (unités, codes TVA, types de comptes…), enfin la liste
+   * commune de la bulle.
+   */
+  const enumValue = (value: string, key?: string) => {
+    if (key && tc.has(`values.${key}.${value}`)) return tc(`values.${key}.${value}`);
+    const source = key ? ENUM_SOURCES[key] : undefined;
+    if (source && ta.has(`${source}.${value}`)) return ta(`${source}.${value}`);
+    return tc.has(`values.${value}`) ? tc(`values.${value}`) : value;
+  };
+  const percent = (value: string) =>
+    locale === "fr" ? `${value} %` : locale === "de" ? `${value} %` : `${value}%`;
+  /** Valeur d'un champ du résumé, selon sa présentation ; vide : « (vide) ». */
+  const shownValue = (f: Field, value: string) => {
+    if (value === "") return tc("values.empty");
+    if (f.key === "role" || f.key.endsWith(".role"))
       return value
         .split("+")
-        .map((v) => (tc.has(`values.${v}`) ? tc(`values.${v}`) : v))
+        .map((v) => enumValue(v))
         .join(", ");
+    switch (f.format) {
+      case "date":
+        return formatDate(value, dates);
+      case "money":
+        return money(Number(value), f.currency ?? "");
+      case "minutes":
+        return tc("values.hours", { time: hoursMinutes(Number(value)) });
+      case "percent":
+        return percent(value);
+      case "bool":
+        return tc(value === "true" ? "values.yes" : "values.no");
+      case "month":
+        return tc("values.everyMonths", { count: Number(value) });
+      case "enum":
+        return enumValue(value, f.key);
+    }
+    if (f.key === "language" || f.key.endsWith(".language")) return names("language", value);
+    if (f.key === "country" || f.key.endsWith(".country")) return names("region", value);
     return value;
   };
+  const fieldLabel = (key: string) => {
+    if (tc.has(`fields.${key}`)) return tc(`fields.${key}`);
+    // Réglages de l'entreprise : les libellés de l'écran, selon le pays (USt-IdNr., SIRET, EIN…).
+    if (key.startsWith("company.")) {
+      const name = key.slice("company.".length);
+      const label = COMPANY_LABELS[name]?.[country] ?? name;
+      if (ta.has(`company.fields.${label}`)) return ta(`company.fields.${label}`);
+    }
+    return key;
+  };
+  const title = (action: string) => (tc.has(`titles.${action}`) ? tc(`titles.${action}`) : action);
+  /** Ligne « Enregistré : … » d'un lot : chaque groupe et son nombre. */
+  const batchLabel = (s: Summary) =>
+    (s.groups ?? []).map((g) => `${title(g.action)} (${g.count})`).join(", ");
+
+  const linesTable = (lines: Line[], currency: string) => (
+    <table className="w-full table-fixed border-t border-line text-[12px]">
+      <thead className="bg-head text-ink-muted">
+        <tr>
+          <th className="px-3 py-1 text-left font-semibold">{tc("columns.description")}</th>
+          <th className="w-12 px-1 py-1 text-right font-semibold">{tc("columns.quantity")}</th>
+          <th className="w-24 px-3 py-1 text-right font-semibold">{tc("columns.amount")}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {lines.map((l, i) => (
+          <tr key={`${i}-${l.description}`} className="border-t border-line-cell">
+            <td className="break-words px-3 py-1">{l.description}</td>
+            <td className="px-1 py-1 text-right">{l.quantity}</td>
+            <td className="px-3 py-1 text-right tabular-nums">{money(l.netCents, currency)}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+
+  const totalsList = (totals: Totals) => (
+    <dl className="grid grid-cols-[1fr_auto] gap-x-3 border-t border-line px-3 py-2 text-[13px] tabular-nums">
+      <dt className="text-ink-muted">{tc("net")}</dt>
+      <dd className="text-right">{money(totals.netCents, totals.currency)}</dd>
+      {totals.vatCents !== 0 && (
+        <>
+          <dt className="text-ink-muted">{tc("tax")}</dt>
+          <dd className="text-right">{money(totals.vatCents, totals.currency)}</dd>
+        </>
+      )}
+      <dt className="font-bold">{tc("total")}</dt>
+      <dd className="text-right font-bold">{money(totals.totalCents, totals.currency)}</dd>
+    </dl>
+  );
 
   return (
     <>
@@ -453,69 +608,89 @@ export function AssistantBubble({ storageKey }: { storageKey: string }) {
                   data-testid="assistant-confirm-card"
                   data-state={it.state}
                 >
-                  <div className="flex items-center justify-between border-b border-line px-3 py-2">
+                  <div className="flex items-center justify-between gap-2 border-b border-line px-3 py-2">
                     <span className="text-[12px] font-semibold uppercase tracking-[0.06em] text-ink-muted">
                       {tc("heading")}
                     </span>
-                    <span className="text-[13px] font-bold">
-                      {tc.has(`titles.${s.action}`) ? tc(`titles.${s.action}`) : s.action}
+                    <span className="text-right text-[13px] font-bold">
+                      {s.groups ? tc("batchTitle", { count: s.count ?? 0 }) : title(s.action)}
                     </span>
                   </div>
-                  <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 px-3 py-2 text-[13px]">
-                    {s.fields.map((f) => (
-                      <div key={f.key} className="contents">
-                        <dt className="text-ink-muted">
-                          {tc.has(`fields.${f.key}`) ? tc(`fields.${f.key}`) : f.key}
-                        </dt>
-                        <dd className="break-words font-medium">{shownValue(f.key, f.value)}</dd>
-                      </div>
-                    ))}
-                  </dl>
-                  {s.lines && s.lines.length > 0 && (
-                    <table className="w-full table-fixed border-t border-line text-[12px]">
-                      <thead className="bg-head text-ink-muted">
-                        <tr>
-                          <th className="px-3 py-1 text-left font-semibold">
-                            {tc("columns.description")}
-                          </th>
-                          <th className="w-12 px-1 py-1 text-right font-semibold">
-                            {tc("columns.quantity")}
-                          </th>
-                          <th className="w-24 px-3 py-1 text-right font-semibold">
-                            {tc("columns.amount")}
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {s.lines.map((l, i) => (
-                          <tr key={`${i}-${l.description}`} className="border-t border-line-cell">
-                            <td className="break-words px-3 py-1">{l.description}</td>
-                            <td className="px-1 py-1 text-right">{l.quantity}</td>
-                            <td className="px-3 py-1 text-right tabular-nums">
-                              {money(l.netCents, s.totals?.currency ?? "")}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  )}
-                  {s.totals && (
-                    <dl className="grid grid-cols-[1fr_auto] gap-x-3 border-t border-line px-3 py-2 text-[13px] tabular-nums">
-                      <dt className="text-ink-muted">{tc("net")}</dt>
-                      <dd className="text-right">{money(s.totals.netCents, s.totals.currency)}</dd>
-                      {s.totals.vatCents !== 0 && (
-                        <>
-                          <dt className="text-ink-muted">{tc("tax")}</dt>
-                          <dd className="text-right">
-                            {money(s.totals.vatCents, s.totals.currency)}
+                  {s.fields.length > 0 && (
+                    <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 px-3 py-2 text-[13px]">
+                      {s.fields.map((f) => (
+                        <div key={f.key} className="contents">
+                          <dt className="text-ink-muted">{fieldLabel(f.key)}</dt>
+                          <dd className="break-words font-medium" data-testid="assistant-field">
+                            {f.before !== undefined && (
+                              <>
+                                <span className="font-normal text-ink-muted line-through">
+                                  {shownValue(f, f.before)}
+                                </span>{" "}
+                                <span aria-hidden="true">→</span>
+                                <span className="sr-only">{tc("becomes")}</span>{" "}
+                              </>
+                            )}
+                            {shownValue(f, f.value)}
                           </dd>
-                        </>
-                      )}
-                      <dt className="font-bold">{tc("total")}</dt>
-                      <dd className="text-right font-bold">
-                        {money(s.totals.totalCents, s.totals.currency)}
-                      </dd>
+                        </div>
+                      ))}
                     </dl>
+                  )}
+                  {s.groups && (
+                    <div className="px-3 py-2 text-[13px]" data-testid="assistant-batch">
+                      {s.groups.map((g) => (
+                        <section key={g.action} className="py-1">
+                          <h3 className="text-[12px] font-bold">
+                            {title(g.action)} ({g.count})
+                          </h3>
+                          <ul className="mt-1 space-y-1">
+                            {g.items.map((item, i) => (
+                              <li
+                                key={`${g.action}-${i}-${item.label}`}
+                                className="border-l-2 border-line pl-2"
+                              >
+                                <span className="break-words">
+                                  {[
+                                    item.detail
+                                      ? enumValue(item.detail, DETAIL_KEYS[item.action])
+                                      : "",
+                                    item.label,
+                                  ]
+                                    .filter(Boolean)
+                                    .join(" · ")}
+                                </span>
+                                {item.amountCents !== undefined && !item.totals && (
+                                  <span className="ml-2 tabular-nums text-ink-muted">
+                                    {money(item.amountCents, item.currency ?? "")}
+                                  </span>
+                                )}
+                                {item.lines && item.lines.length > 0 && (
+                                  <div className="mt-1 border border-line">
+                                    {linesTable(item.lines, item.totals?.currency ?? "")}
+                                    {item.totals && totalsList(item.totals)}
+                                  </div>
+                                )}
+                              </li>
+                            ))}
+                          </ul>
+                          {g.count > g.items.length && (
+                            <p className="mt-1 text-[12px] text-ink-muted">
+                              {tc("more", { count: g.count - g.items.length })}
+                            </p>
+                          )}
+                        </section>
+                      ))}
+                    </div>
+                  )}
+                  {s.lines && s.lines.length > 0 && linesTable(s.lines, s.totals?.currency ?? "")}
+                  {s.totals && totalsList(s.totals)}
+                  {s.notes && s.notes.length > 0 && (
+                    <ul className="space-y-1 border-t border-line px-3 py-2 text-[12px] text-ink-2">
+                      {s.notes.map((n) => (
+                        <li key={n}>{tc.has(`notes.${n}`) ? tc(`notes.${n}`) : n}</li>
+                      ))}
+                    </ul>
                   )}
                   <div className="border-t border-line px-3 py-2">
                     {(it.state === "pending" || it.state === "saving") && (
@@ -546,7 +721,9 @@ export function AssistantBubble({ storageKey }: { storageKey: string }) {
                         data-testid="assistant-done"
                       >
                         <span className="font-semibold text-ink">
-                          {tc("done", { label: it.result.label })}
+                          {tc("done", {
+                            label: s.groups ? batchLabel(s) : it.result.label || title(s.action),
+                          })}
                         </span>
                         <Link href={it.result.path} className="font-bold text-accent underline">
                           {tc("open")}
@@ -558,6 +735,9 @@ export function AssistantBubble({ storageKey }: { storageKey: string }) {
                     )}
                     {it.state === "expired" && (
                       <p className="text-[13px] text-hot-fg">{tc("expired")}</p>
+                    )}
+                    {it.state === "forbidden" && (
+                      <p className="text-[13px] text-hot-fg">{tc("forbidden")}</p>
                     )}
                     {it.state === "planLimit" && (
                       <p className="text-[13px] text-hot-fg">{tc("planLimit")}</p>

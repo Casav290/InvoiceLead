@@ -4,8 +4,11 @@ import { assistantPost } from "@/server/ai-assistant/handlers";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-/** Plusieurs appels au modèle et aux outils par message : jusqu'à une minute. */
-export const maxDuration = 60;
+/**
+ * Plusieurs appels au modèle et aux outils par message, et un plan complet en un seul appel d'outil :
+ * jusqu'à cinq minutes, le maximum du plan Hobby avec Fluid compute (le tour s'arrête à 270 s, run.ts).
+ */
+export const maxDuration = 300;
 
 /** Bulle « Assistant IA » : un message de la conversation (docs : src/server/ai-assistant). */
 export async function POST(request: Request) {

@@ -1,15 +1,16 @@
 "use server";
 
-import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { parseAmountToCents } from "@/lib/amount-input";
 import { requirePermission } from "@/server/auth/guard";
 import { pickLocale } from "@/server/auth/login-cookie";
 import { db } from "@/server/db";
-import { auditLog, organizations } from "@/server/db/schema";
-import { featureAccess } from "@/server/plans";
-import { sendAllReminders, sendReminder, waiveCharges } from "@/server/reminders";
+import {
+  saveReminderSettings,
+  sendAllReminders,
+  sendReminder,
+  waiveCharges,
+} from "@/server/reminders";
 
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -47,40 +48,17 @@ export async function saveReminderSettingsAction(form: FormData) {
   const locale = pickLocale(form.get("locale"));
   const session = await requirePermission(locale, "company");
   const path = `/${locale}/app/invoices/reminders`;
-  if (
-    !featureAccess(session.organization, "reminderAuto").allowed ||
-    !featureAccess(session.organization, "reminderCharges").allowed
-  )
-    redirect(`${path}?settings=plan`);
-  const fee = String(form.get("fee") ?? "").trim();
-  const feeCents = fee === "" ? 0 : parseAmountToCents(fee);
-  const rate = String(form.get("interest") ?? "")
-    .trim()
-    .replace(",", ".");
-  const interest = rate === "" ? null : Number(rate);
-  if (feeCents === null || feeCents < 0 || feeCents > 100_000)
-    redirect(`${path}?settings=invalidFee`);
-  if (interest !== null && !(/^\d{1,2}(\.\d{1,3})?$/.test(rate) && interest <= 20))
-    redirect(`${path}?settings=invalidRate`);
-  await db()
-    .update(organizations)
-    .set({
-      reminderAuto: form.get("auto") === "on",
-      reminderFeeCents: feeCents ?? 0,
-      lateInterestBp: interest === null || interest === 0 ? null : Math.round(interest * 1000) / 10,
-      updatedAt: new Date(),
-    })
-    .where(eq(organizations.id, session.organization.id));
-  await db()
-    .insert(auditLog)
-    .values({
-      organizationId: session.organization.id,
-      userId: session.user.id,
-      action: "reminders.settings",
-      entity: "organization",
-      entityId: session.organization.id,
-      data: { auto: form.get("auto") === "on", feeCents, interest },
-    });
+  const result = await saveReminderSettings(
+    db(),
+    { organizationId: session.organization.id, userId: session.user.id },
+    session.organization,
+    {
+      auto: form.get("auto") === "on",
+      fee: String(form.get("fee") ?? ""),
+      interest: String(form.get("interest") ?? ""),
+    },
+  );
+  if (result !== "saved") redirect(`${path}?settings=${result}`);
   revalidatePath(path);
   redirect(`${path}?settings=saved`);
 }

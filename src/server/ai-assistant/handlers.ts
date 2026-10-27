@@ -3,12 +3,12 @@ import type { BetaMessageParam } from "@anthropic-ai/sdk/resources/beta/messages
 import { routing } from "@/i18n/routing";
 import type { CurrentSession } from "../auth/session";
 import type { Db } from "../db";
-import { can } from "../roles";
+import { actionOperations, applyAction } from "./operations";
+import { type AssistantContext, rightProblem } from "./ops-core";
 import { recordUsage, reserveMessage } from "./quota";
 import { type RunResult, runAssistant } from "./run";
 import { claimAction, verifyAction } from "./token";
 import { safePagePath } from "./tools";
-import { type AssistantContext, executeWrite, isWriteTool } from "./writes";
 
 /** Session de la requête : absente (401), sans accès à InvoiceLead (403), ou valide. */
 export type AssistantAuth =
@@ -35,13 +35,24 @@ export const MAX_QUESTION = 4000;
 
 const today = () => new Date().toISOString().slice(0, 10);
 
-function context(session: CurrentSession, deps: Deps): AssistantContext {
+const LOCALES = ["de", "fr", "en"] as const;
+type Locale = (typeof LOCALES)[number];
+const localeOf = (value: unknown, fallback: string): Locale =>
+  (LOCALES as readonly string[]).includes(String(value))
+    ? (String(value) as Locale)
+    : (LOCALES as readonly string[]).includes(fallback)
+      ? (fallback as Locale)
+      : "de";
+
+function context(session: CurrentSession, deps: Deps, locale: unknown): AssistantContext {
   return {
     database: deps.database,
     userId: session.user.id,
+    userName: session.user.name ?? session.user.email,
     organization: session.organization,
     membership: session.membership,
     today: deps.today ?? today(),
+    locale: localeOf(locale, session.organization.defaultLocale),
   };
 }
 
@@ -128,7 +139,7 @@ export async function assistantPost(
   try {
     result = await run({
       client: new Anthropic({ apiKey: deps.apiKey, maxRetries: 1 }),
-      ctx: context(session, deps),
+      ctx: context(session, deps, locale),
       secret: deps.secret,
       locale,
       page,
@@ -159,7 +170,12 @@ export async function assistantPost(
   };
 }
 
-/** POST /api/assistant/confirm : exécute l'écriture d'un jeton « À confirmer ». */
+/**
+ * POST /api/assistant/confirm : applique l'écriture (ou le lot) d'un jeton « À confirmer ». Le
+ * jeton est vérifié (signature, personne, entreprise, 10 minutes), les droits de CHAQUE opération
+ * sont relus maintenant (rôle changé depuis la proposition), puis le jeton est consommé (usage
+ * unique) et l'écriture jouée dans une transaction : un échec n'écrit rien.
+ */
 export async function confirmPost(
   auth: AssistantAuth,
   body: unknown,
@@ -169,15 +185,16 @@ export async function confirmPost(
   if (auth.status === 403) return { status: 403, body: { error: "forbidden" } };
   const { session } = auth;
   const who = { organizationId: session.organization.id, userId: session.user.id };
-  const verified = verifyAction(isPlainObject(body) ? body.token : null, who, deps.secret);
-  if (!verified || !isWriteTool(verified.action.tool))
-    return { status: 403, body: { error: "invalid_token" } };
-  const ctx = context(session, deps);
-  // Droits relus maintenant (rôle changé depuis la proposition) avant de consommer le jeton.
-  if (!can(ctx.membership, "billing")) return { status: 403, body: { error: "forbidden_role" } };
+  const input = isPlainObject(body) ? body : {};
+  const verified = verifyAction(input.token, who, deps.secret);
+  const operations = verified ? actionOperations(verified.action) : null;
+  if (!verified || !operations) return { status: 403, body: { error: "invalid_token" } };
+  const ctx = context(session, deps, input.locale);
+  if (operations.some((op) => rightProblem(ctx, op)))
+    return { status: 403, body: { error: "forbidden_role" } };
   if (!(await claimAction(deps.database, verified, who)))
     return { status: 403, body: { error: "token_used" } };
-  const done = await executeWrite(ctx, verified.action.tool, verified.action.input);
+  const done = await applyAction(ctx, verified.action);
   if (!done.ok) return { status: 422, body: { error: done.error } };
   return { status: 200, body: { ok: true, result: done.result } };
 }

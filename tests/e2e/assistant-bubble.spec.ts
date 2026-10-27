@@ -133,7 +133,7 @@ test("bulle : carte « À confirmer », Annuler n'écrit rien, Confirmer appelle
   expect(JSON.stringify(second.messages.at(-1))).toContain("Cancel");
   await page.getByTestId("assistant-confirm").click();
   await expect(cards.nth(1)).toHaveAttribute("data-state", "done");
-  expect(confirmations).toEqual([{ token: "signed.token" }]);
+  expect(confirmations).toEqual([{ token: "signed.token", locale: "fr" }]);
   await expect(page.getByTestId("assistant-done")).toContainText("Kunde AG");
 
   // Le fil tient dans l'onglet (sessionStorage) : il revient après un rechargement.
@@ -143,6 +143,154 @@ test("bulle : carte « À confirmer », Annuler n'écrit rien, Confirmer appelle
   await page.getByTestId("assistant-new").click();
   await expect(page.getByTestId("assistant-confirm-card")).toHaveCount(0);
   await expect(page.getByTestId("assistant-suggestion-overdue")).toBeVisible();
+});
+
+test("bulle : carte d'un lot groupée et plafonnée, puis la page du résultat s'ouvre", async ({
+  page,
+}) => {
+  await login(page, "fr");
+  const contacts = Array.from({ length: 7 }, (_, i) => ({
+    action: "create_contact",
+    label: `Client ${i + 1} SA`,
+    detail: "company",
+  }));
+  await page.route("**/api/assistant", (route) => {
+    const body = route.request().postDataJSON() as { messages: unknown[] };
+    return route.fulfill({
+      json: {
+        messages: [...body.messages, { role: "assistant", content: "Prêt." }],
+        reply: "Les huit changements sont prêts à confirmer.",
+        actions: [
+          {
+            type: "confirm",
+            token: "batch.token",
+            summary: {
+              action: "batch",
+              fields: [],
+              count: 8,
+              groups: [
+                { action: "create_contact", count: 7, items: contacts.slice(0, 5) },
+                {
+                  action: "create_invoice_draft",
+                  count: 1,
+                  items: [
+                    {
+                      action: "create_invoice_draft",
+                      label: "Client 1 SA",
+                      detail: "quote",
+                      amountCents: 374000,
+                      currency: "CHF",
+                      lines: [
+                        {
+                          description: "Création site vitrine",
+                          quantity: "1",
+                          unit: "flat",
+                          unitPriceCents: 350000,
+                          netCents: 350000,
+                        },
+                        {
+                          description: "Hébergement 1 an",
+                          quantity: "1",
+                          unit: "flat",
+                          unitPriceCents: 24000,
+                          netCents: 24000,
+                        },
+                      ],
+                      totals: {
+                        currency: "CHF",
+                        netCents: 374000,
+                        vatCents: 0,
+                        totalCents: 374000,
+                      },
+                    },
+                  ],
+                },
+              ],
+            },
+          },
+        ],
+        notice: null,
+      },
+    });
+  });
+  const confirmations: unknown[] = [];
+  await page.route("**/api/assistant/confirm", async (route) => {
+    confirmations.push(route.request().postDataJSON());
+    await route.fulfill({
+      json: {
+        ok: true,
+        result: { action: "batch", id: "x", path: "/app/contacts", label: "8", items: [] },
+      },
+    });
+  });
+  await page.getByTestId("assistant-bubble").click();
+  await page.getByTestId("assistant-input").fill("Crée ces clients et le devis");
+  await page.getByTestId("assistant-input").press("Enter");
+  const card = page.getByTestId("assistant-confirm-card");
+  await expect(card).toHaveCount(1);
+  await expect(card).toContainText("8 changements");
+  await expect(card).toContainText("Nouveau contact (7)");
+  await expect(card).toContainText("Client 5 SA");
+  await expect(card).not.toContainText("Client 6 SA");
+  await expect(card).toContainText("+ 2 autres");
+  await expect(card).toContainText("Devis · Client 1 SA");
+  await expect(card).toContainText("Création site vitrine");
+  await expect(card).toContainText("CHF 3'740.00");
+  expect(await traitNetIssues(page)).toEqual([]);
+  await page.getByTestId("assistant-confirm").click();
+  await expect(card).toHaveAttribute("data-state", "done");
+  expect(confirmations).toEqual([{ token: "batch.token", locale: "fr" }]);
+  // La page qui montre le résultat s'ouvre ; la bulle reste ouverte et dit ce qui a été enregistré.
+  await page.waitForURL("**/fr/app/contacts");
+  await expect(page.getByTestId("assistant-done")).toContainText(
+    "Nouveau contact (7), Nouveau brouillon (1)",
+  );
+});
+
+test("bulle : une modification se lit « avant → après »", async ({ page }) => {
+  await login(page, "fr");
+  await page.route("**/api/assistant", (route) => {
+    const body = route.request().postDataJSON() as { messages: unknown[] };
+    return route.fulfill({
+      json: {
+        messages: [...body.messages, { role: "assistant", content: "Prêt." }],
+        reply: "La modification est prête.",
+        actions: [
+          {
+            type: "confirm",
+            token: "update.token",
+            summary: {
+              action: "update_product",
+              fields: [
+                { key: "product", value: "Maintenance" },
+                {
+                  key: "unitPrice",
+                  value: "9550",
+                  before: "9000",
+                  format: "money",
+                  currency: "CHF",
+                },
+                { key: "unit", value: "month", before: "flat", format: "enum" },
+              ],
+            },
+          },
+        ],
+        notice: null,
+      },
+    });
+  });
+  await page.getByTestId("assistant-bubble").click();
+  await page.getByTestId("assistant-input").fill("Passe la maintenance à 95.50 par mois");
+  await page.getByTestId("assistant-input").press("Enter");
+  const card = page.getByTestId("assistant-confirm-card");
+  await expect(card).toContainText("Modifier l'article");
+  await expect(card).toContainText("Prix unitaire HT");
+  await expect(card).toContainText("CHF 90.00");
+  await expect(card).toContainText("CHF 95.50");
+  await expect(card).toContainText("Forfait");
+  await expect(card).toContainText("Mois");
+  await expect(card.locator(".line-through").first()).toHaveText("CHF 90.00");
+  expect(await traitNetIssues(page)).toEqual([]);
 });
 
 test("bulle : erreur et quota affichés clairement dans le fil", async ({ page }) => {

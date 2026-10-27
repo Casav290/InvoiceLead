@@ -11,6 +11,8 @@ import { assistantConfirmations } from "../db/schema";
  * détectée.
  */
 export const CONFIRM_TTL_MS = 10 * 60_000;
+/** Un lot de 150 opérations (pièces de 100 lignes comprises) tient dans un jeton de cette taille. */
+export const MAX_TOKEN_LENGTH = 600_000;
 
 export type ProposedAction = { tool: string; input: Record<string, unknown> };
 
@@ -52,7 +54,7 @@ export function verifyAction(
   secret: string,
   now = Date.now(),
 ): VerifiedAction | null {
-  if (typeof token !== "string" || token.length > 20_000) return null;
+  if (typeof token !== "string" || token.length > MAX_TOKEN_LENGTH) return null;
   const dot = token.lastIndexOf(".");
   if (dot <= 0) return null;
   const body = token.slice(0, dot);

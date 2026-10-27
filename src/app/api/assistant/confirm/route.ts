@@ -5,6 +5,8 @@ import { confirmPost } from "@/server/ai-assistant/handlers";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+/** Un lot de 150 opérations dans une transaction, puis la comptabilisation : jusqu'à deux minutes. */
+export const maxDuration = 120;
 
 /** Bulle « Assistant IA » : exécute l'écriture que la personne vient de confirmer. */
 export async function POST(request: Request) {

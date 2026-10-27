@@ -4,17 +4,25 @@ import type {
   BetaMessageParam,
 } from "@anthropic-ai/sdk/resources/beta/messages/messages";
 import { isVatRegistered } from "../invoices";
-import { can } from "../roles";
+import { OPERATIONS } from "./operations";
+import { type AssistantContext, rightProblem } from "./ops-core";
 import { contextPrompt, STABLE_PROMPT } from "./prompt";
 import type { UsageReport } from "./quota";
 import { type AssistantAction, buildTools, type ToolState } from "./tools";
-import type { AssistantContext } from "./writes";
 
 export const MODEL = "claude-opus-5-5";
-export const MAX_TOKENS = 4000;
+/**
+ * Par appel au modèle : assez pour qu'un plan complet (un lot de 150 opérations, un devis de 100
+ * lignes) tienne dans un seul appel d'outil, sans dépasser la limite d'une requête sans streaming
+ * du SDK (21 333 jetons, environ dix minutes).
+ */
+export const MAX_TOKENS = 16_000;
 export const MAX_ITERATIONS = 10;
-/** Temps laissé au modèle, sous la limite de la fonction Vercel (60 s). */
-export const DEADLINE_MS = 52_000;
+/**
+ * Temps laissé au modèle et aux outils, sous la durée de la fonction Vercel (300 s : plan Hobby avec
+ * Fluid compute, src/app/api/assistant/route.ts), avec la marge pour journaliser et répondre.
+ */
+export const DEADLINE_MS = 270_000;
 
 /**
  * Fin anormale d'un message : refus du modèle, réponse coupée (max_tokens), tour inachevé (plafond
@@ -66,7 +74,8 @@ export async function runAssistant(input: {
       currency: ctx.organization.currency,
       vatRegistered: await isVatRegistered(ctx.database, ctx.organization.id),
     },
-    canWrite: can(ctx.membership, "billing"),
+    // Ce que le rôle permet, opération par opération (mêmes droits que les actions des écrans).
+    allowed: OPERATIONS.filter((op) => !rightProblem(ctx, op)).map((op) => op.id),
   });
   const signal = AbortSignal.timeout(DEADLINE_MS);
   const runner = input.client.beta.messages.toolRunner(

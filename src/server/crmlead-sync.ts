@@ -4,6 +4,7 @@ import { crmleadOutbox, invoices, organizations } from "./db/schema";
 import { env } from "./env";
 import { send } from "./lead-id/leadId";
 import { invoiceBalance } from "./payments";
+import { pendingEffects } from "./pending-effects";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 /**
@@ -268,6 +269,20 @@ export async function deliverCrmlead(
   return { delivered, failed, waiting };
 }
 
+/** Envoie la file CRMlead d'une entreprise après la réponse (ou tout de suite hors d'une requête). */
+export async function scheduleCrmleadDelivery(database: Db, organizationId: string) {
+  const run = () =>
+    deliverCrmlead(database, { organizationId }).catch((e: unknown) => {
+      console.error("[crmlead] envoi reporté", e instanceof Error ? e.message : "inconnu");
+    });
+  try {
+    const { after } = await import("next/server");
+    after(run);
+  } catch {
+    await run();
+  }
+}
+
 /** Met en file puis envoie après la réponse ; une panne de CRMlead ne bloque jamais la facturation. */
 export async function syncCrmlead(database: Db, organizationId: string, invoiceIds: string[]) {
   try {
@@ -275,16 +290,14 @@ export async function syncCrmlead(database: Db, organizationId: string, invoiceI
     for (const id of invoiceIds)
       queued = (await queueCrmlead(database, organizationId, id)) || queued;
     if (!queued) return;
-    const run = () =>
-      deliverCrmlead(database, { organizationId }).catch((e: unknown) => {
-        console.error("[crmlead] envoi reporté", e instanceof Error ? e.message : "inconnu");
-      });
-    try {
-      const { after } = await import("next/server");
-      after(run);
-    } catch {
-      await run();
+    // Écriture de l'Assistant IA jouée dans une transaction : l'envoi attend qu'elle soit validée
+    // (src/server/pending-effects.ts), il ne part jamais d'une transaction annulée.
+    const pending = pendingEffects();
+    if (pending) {
+      pending.crmlead.add(organizationId);
+      return;
     }
+    await scheduleCrmleadDelivery(database, organizationId);
   } catch (e) {
     console.error("[crmlead] mise en file impossible", e instanceof Error ? e.message : "inconnu");
   }

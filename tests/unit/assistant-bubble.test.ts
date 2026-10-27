@@ -9,11 +9,11 @@ import {
   confirmPost,
   type Deps,
 } from "@/server/ai-assistant/handlers";
+import type { AssistantContext } from "@/server/ai-assistant/ops-core";
 import { ORG_PER_DAY, USER_PER_HOUR } from "@/server/ai-assistant/quota";
 import type { RunResult } from "@/server/ai-assistant/run";
 import { signAction } from "@/server/ai-assistant/token";
 import { buildTools, safePagePath, type ToolState } from "@/server/ai-assistant/tools";
-import type { AssistantContext } from "@/server/ai-assistant/writes";
 import { attachLeadIdentity } from "@/server/auth/attach";
 import { createSession, findSession } from "@/server/auth/session";
 import { createContact, parseContactForm } from "@/server/contacts";
@@ -112,9 +112,11 @@ function toolCtx(p: Awaited<ReturnType<typeof person>>): AssistantContext {
   return {
     database: db,
     userId: p.user.id,
+    userName: p.user.name ?? "Ada",
     organization: p.session.organization,
     membership: p.session.membership,
     today: "2026-10-24",
+    locale: "fr",
   };
 }
 
@@ -284,32 +286,41 @@ describe("bulle Assistant IA : quota", () => {
 });
 
 describe("bulle Assistant IA : outils", () => {
-  it("n'offre aucun outil interdit (émettre, envoyer, paiement, supprimer, abonnement, équipe, clés)", async () => {
+  it("n'offre aucun outil interdit (envoyer, paiement, supprimer, abonnement, équipe, clés)", async () => {
     const p = await person("sub-ada");
     const names = tools(p)
       .list.map((x) => x.name)
       .sort();
-    expect(names).toEqual(
-      [
-        "create_contact",
-        "create_invoice_draft",
-        "get_books_summary",
-        "get_contact",
-        "get_document",
-        "get_key_figures",
-        "list_documents",
-        "list_due_reminders",
-        "list_payments_received",
-        "list_products",
-        "open_page",
-        "search_contacts",
-        "update_contact",
-        "update_invoice_draft",
-      ].sort(),
-    );
-    for (const n of names)
+    const reads = [
+      "get_books_summary",
+      "get_company_settings",
+      "get_contact",
+      "get_document",
+      "get_key_figures",
+      "list_accounts",
+      "list_documents",
+      "list_due_reminders",
+      "list_fiscal_years",
+      "list_payments_received",
+      "list_products",
+      "list_projects",
+      "list_receipts",
+      "list_recurring_invoices",
+      "list_supplier_bills",
+      "list_time_entries",
+      "list_vat_periods",
+      "open_page",
+      "search_contacts",
+    ];
+    for (const r of reads) expect(names).toContain(r);
+    const writes = names.filter((n) => !reads.includes(n));
+    expect(writes.length).toBeGreaterThan(30);
+    for (const n of writes) expect(n).toMatch(/^propose_/);
+    expect(writes).toContain("propose_batch");
+    expect(writes).toContain("propose_create_invoice_draft");
+    for (const n of writes)
       expect(n).not.toMatch(
-        /issue|send|remind_|record|payment_add|delete|archive|subscri|plan|member|api_key|_key$|pay$/,
+        /send|remind_|record_payment|payment|delete|archive|subscri|plan|member|role|invite|api_key|webhook|_key$|pay$|paid|stripe|share|refuse|bank|autopilot|logo/,
       );
   });
 
@@ -335,11 +346,11 @@ describe("bulle Assistant IA : outils", () => {
     expect(found.contacts.map((c: { name: string }) => c.name)).toEqual(["Kunde AG"]);
     expect(await call("get_contact", { contactId: theirs.id })).toEqual({ error: "not_found" });
     expect(
-      await call("create_invoice_draft", {
+      await call("propose_create_invoice_draft", {
         contactId: theirs.id,
         lines: [{ description: "x", unitPrice: "10" }],
       }),
-    ).toEqual({ error: "contact_not_found" });
+    ).toMatchObject({ error: "contact_not_found" });
   });
 
   it("une écriture proposée n'est pas exécutée sans confirmation", async () => {
@@ -350,13 +361,21 @@ describe("bulle Assistant IA : outils", () => {
       c: await countRows(contacts, p.organization.id),
       i: await countRows(invoices, p.organization.id),
     };
-    const proposed = await call("create_contact", { name: "Neu GmbH", email: "neu@example.test" });
+    const proposed = await call("propose_create_contact", {
+      name: "Neu GmbH",
+      email: "neu@example.test",
+    });
     expect(proposed.status).toBe("awaiting_user_confirmation");
-    const draft = await call("create_invoice_draft", {
+    const draft = await call("propose_create_invoice_draft", {
       contactId: kunde.id,
       lines: [{ description: "Beratung", quantity: "2", unit: "hour", unitPrice: "150" }],
     });
-    expect(draft.summary.totals).toMatchObject({ currency: "CHF", netCents: 30000 });
+    expect(draft.summary.totals).toMatchObject({ currency: "CHF", net: 300 });
+    const card = state.actions[1];
+    expect(card?.type === "confirm" && card.summary.totals).toMatchObject({
+      currency: "CHF",
+      netCents: 30000,
+    });
     expect(state.actions.map((a) => a.type)).toEqual(["confirm", "confirm"]);
     expect(await countRows(contacts, p.organization.id)).toBe(before.c);
     expect(await countRows(invoices, p.organization.id)).toBe(before.i);
@@ -388,9 +407,9 @@ describe("bulle Assistant IA : outils", () => {
       .set({ status: "issued", number: "RE-2026-0001" })
       .where(eq(invoices.id, draft.id));
     const { call } = tools(p);
-    expect(await call("update_invoice_draft", { documentId: draft.id, title: "x" })).toEqual({
-      error: "not_a_draft",
-    });
+    expect(
+      await call("propose_update_invoice_draft", { documentId: draft.id, title: "x" }),
+    ).toMatchObject({ error: "not_a_draft" });
   });
 });
 
@@ -399,7 +418,7 @@ describe("bulle Assistant IA : confirmation", () => {
     const p = await person("sub-ada");
     const kunde = await customer(p.organization.id, p.user.id);
     const { call, state } = tools(p);
-    await call("create_invoice_draft", {
+    await call("propose_create_invoice_draft", {
       contactId: kunde.id,
       title: "Oktober",
       lines: [{ description: "Beratung", quantity: "3", unit: "hour", unitPrice: "120" }],
@@ -475,7 +494,7 @@ describe("bulle Assistant IA : confirmation", () => {
       (await confirmPost({ status: 200, session: p.session }, { token: otherSecret }, deps()))
         .status,
     ).toBe(403);
-    // Un outil interdit glissé dans un jeton bien signé n'existe pas pour la confirmation.
+    // Une action inconnue (outil interdit) glissée dans un jeton bien signé n'existe pas pour la confirmation.
     const issue = signAction({ tool: "issue_invoice", input: { id: kunde.id } }, who, SECRET);
     expect(
       (await confirmPost({ status: 200, session: p.session }, { token: issue }, deps())).status,
@@ -506,14 +525,20 @@ describe("bulle Assistant IA : confirmation", () => {
     const session = await findSession(db, p.token);
     if (!session) throw new Error("session");
     const { call, state } = tools({ ...p, session });
-    expect(await call("create_contact", { name: "Neu GmbH" })).toEqual({ error: "forbidden_role" });
+    expect(await call("propose_create_contact", { name: "Neu GmbH" })).toMatchObject({
+      error: "forbidden_role",
+    });
     expect(state.actions).toEqual([]);
   });
 
   it("crée et modifie un contact après confirmation", async () => {
     const p = await person("sub-ada");
     const { call, state } = tools(p);
-    await call("create_contact", { name: "Neu GmbH", email: "neu@example.test", country: "DE" });
+    await call("propose_create_contact", {
+      name: "Neu GmbH",
+      email: "neu@example.test",
+      country: "DE",
+    });
     const first = state.actions[0];
     if (first?.type !== "confirm") throw new Error("proposition");
     const created = await confirmPost(
@@ -523,7 +548,7 @@ describe("bulle Assistant IA : confirmation", () => {
     );
     expect(created.status).toBe(200);
     const id = (created.body.result as { id: string }).id;
-    await call("update_contact", { contactId: id, email: "kontakt@neu.test" });
+    await call("propose_update_contact", { contactId: id, email: "kontakt@neu.test" });
     const second = state.actions[1];
     if (second?.type !== "confirm") throw new Error("proposition");
     expect(

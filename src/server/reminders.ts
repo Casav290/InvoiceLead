@@ -2,6 +2,7 @@ import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { getTranslations } from "next-intl/server";
 import { countryPack } from "@/countries";
 import { forCountry } from "@/i18n/country";
+import { parseAmountToCents } from "@/lib/amount-input";
 import { formatDate } from "@/lib/fiscal-year";
 import { formatAmount } from "@/lib/money";
 import {
@@ -24,10 +25,56 @@ import { emailConfigured, sendEmail } from "./email";
 import { getInvoice } from "./invoices";
 import { LedgerError, postPending, reverseEntry } from "./ledger";
 import { invoiceBalance } from "./payments";
-import { consumeQuota, featureAccess, refundQuota } from "./plans";
+import { consumeQuota, featureAccess, type OrgPlan, refundQuota } from "./plans";
 import { enableShareLink, shareUrl } from "./sharing";
 
 type Who = { organizationId: string; userId: string };
+
+export type ReminderSettingsResult = "saved" | "plan" | "invalidFee" | "invalidRate";
+
+/**
+ * Réglages des relances (écran des relances et Assistant IA) : envoi automatique, frais dès la
+ * deuxième relance, intérêt moratoire. Formule Pro : en formule gratuite, ils restent visibles mais
+ * grisés, et rien n'est enregistré (« plan »). Les saisies sont celles du formulaire (« 20.00 »,
+ * « 5 » pour 5 %).
+ */
+export async function saveReminderSettings(
+  database: Db,
+  who: Who,
+  organization: OrgPlan,
+  input: { auto: boolean; fee: string; interest: string },
+): Promise<ReminderSettingsResult> {
+  if (
+    !featureAccess(organization, "reminderAuto").allowed ||
+    !featureAccess(organization, "reminderCharges").allowed
+  )
+    return "plan";
+  const fee = input.fee.trim();
+  const feeCents = fee === "" ? 0 : parseAmountToCents(fee);
+  const rate = input.interest.trim().replace(",", ".");
+  const interest = rate === "" ? null : Number(rate);
+  if (feeCents === null || feeCents < 0 || feeCents > 100_000) return "invalidFee";
+  if (interest !== null && !(/^\d{1,2}(\.\d{1,3})?$/.test(rate) && interest <= 20))
+    return "invalidRate";
+  await database
+    .update(organizations)
+    .set({
+      reminderAuto: input.auto,
+      reminderFeeCents: feeCents,
+      lateInterestBp: interest === null || interest === 0 ? null : Math.round(interest * 1000) / 10,
+      updatedAt: new Date(),
+    })
+    .where(eq(organizations.id, who.organizationId));
+  await database.insert(auditLog).values({
+    organizationId: who.organizationId,
+    userId: who.userId,
+    action: "reminders.settings",
+    entity: "organization",
+    entityId: who.organizationId,
+    data: { auto: input.auto, feeCents, interest },
+  });
+  return "saved";
+}
 
 /** Jours après l'échéance où chaque niveau de relance devient dû (usage courant en Suisse). */
 export const REMINDER_DAYS = [10, 25, 40] as const;
