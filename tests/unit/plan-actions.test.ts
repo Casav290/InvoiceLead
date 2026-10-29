@@ -199,7 +199,7 @@ describe("décompte TVA (Pro)", () => {
   });
 });
 
-describe("lectures de pièces par l'IA (20 par mois en formule gratuite)", () => {
+describe("lectures de pièces par l'IA (10 par mois en formule gratuite)", () => {
   async function readsUsed(organizationId: string, used: number) {
     await db.insert(planUsage).values({
       organizationId,
@@ -213,9 +213,9 @@ describe("lectures de pièces par l'IA (20 par mois en formule gratuite)", () =>
   const stored = (organizationId: string) =>
     db.select().from(receipts).where(eq(receipts.organizationId, organizationId));
 
-  it("au-delà des 20 lectures, un dépôt forgé est refusé avant d'enregistrer la pièce", async () => {
+  it("au-delà des 10 lectures, un dépôt forgé est refusé avant d'enregistrer la pièce", async () => {
     const who = await signedIn(0);
-    await readsUsed(who.organizationId, 20);
+    await readsUsed(who.organizationId, 10);
     const ai = vi.fn(async () => new Response("inattendu", { status: 500 }));
     vi.stubGlobal("fetch", ai);
     try {
@@ -231,9 +231,9 @@ describe("lectures de pièces par l'IA (20 par mois en formule gratuite)", () =>
     }
   });
 
-  it("« Scanner un ticket » au-delà des 20 lectures : la photo forgée n'est pas enregistrée", async () => {
+  it("« Scanner un ticket » au-delà des 10 lectures : la photo forgée n'est pas enregistrée", async () => {
     const who = await signedIn(0);
-    await readsUsed(who.organizationId, 20);
+    await readsUsed(who.organizationId, 10);
     const ai = vi.fn(async () => new Response("inattendu", { status: 500 }));
     vi.stubGlobal("fetch", ai);
     try {
@@ -326,17 +326,17 @@ describe("factures fournisseurs prises en photo (une lecture du mois)", () => {
     }
   });
 
-  it("la 20e lecture passe, la 21e photo est refusée sans être enregistrée ni lue", async () => {
+  it("la 10e lecture passe, la 11e photo est refusée sans être enregistrée ni lue", async () => {
     const who = await signedIn(0);
-    await readsUsed(who.organizationId, 19);
+    await readsUsed(who.organizationId, 9);
     const ai = reader();
     vi.stubGlobal("fetch", ai);
     try {
-      expect(await redirected(send("vingtième"))).toMatch(/\?photo=1$/);
-      expect(await readsNow(who.organizationId)).toBe(20);
+      expect(await redirected(send("dixième"))).toMatch(/\?photo=1$/);
+      expect(await readsNow(who.organizationId)).toBe(10);
       expect(await redirected(send("de trop"))).toBe("/fr/app/accounting/bills?error=quota#photo");
       expect(ai).toHaveBeenCalledTimes(1);
-      expect(await readsNow(who.organizationId)).toBe(20);
+      expect(await readsNow(who.organizationId)).toBe(10);
       expect(await bills(who.organizationId)).toHaveLength(1);
       expect(await stored(who.organizationId)).toHaveLength(1);
       // Pro : 50 lectures, la même photo passe.

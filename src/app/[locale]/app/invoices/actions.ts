@@ -99,7 +99,7 @@ export async function issueInvoiceAction(form: FormData) {
   const session = await requirePermission(locale, "billing");
   const id = String(form.get("id") ?? "");
   const path = `/${locale}/app/${section(kindOf(form))}`;
-  // Les 10 factures du mois de la formule gratuite se comptent dans issueInvoice, d'après le type
+  // Les 5 factures du mois de la formule gratuite se comptent dans issueInvoice, d'après le type
   // du brouillon en base (« planLimit ») : le champ « kind » du formulaire ne sert qu'à l'adresse.
   const result = await issueInvoice(
     db(),

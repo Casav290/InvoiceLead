@@ -9,9 +9,10 @@ import { contacts, invoices, organizations, planUsage, recurringInvoices } from 
  * rang y vaut 0, 10 et 20 (table plans d'ERPlead). Le code fait foi, le rang n'est qu'un repli.
  *
  * Rien n'est caché à une formule : une fonction d'une formule supérieure reste visible, grisée, avec
- * sa marque et le lien de mise à niveau. La formule gratuite reçoit de petites allocations (20
- * lectures de pièces, 10 questions, 5 relances, 1 relevé bancaire par mois, 1 facture récurrente
- * active). Les limites s'appliquent aux nouvelles actions, jamais aux données déjà créées.
+ * sa marque et le lien de mise à niveau. La formule gratuite reçoit de petites allocations (5
+ * factures émises, 10 lectures de pièces, 10 questions, 5 relances, 1 relevé bancaire par mois,
+ * 1 facture récurrente active). Les limites s'appliquent aux nouvelles actions, jamais aux données
+ * déjà créées. Factures et lectures révisées par Ève le 29.10.2026 (auparavant 10 et 20 par mois).
  */
 export type Tier = "free" | "pro" | "proplus";
 
@@ -79,9 +80,9 @@ type Plan = {
 export const PLANS: Record<Tier, Plan> = {
   free: {
     quotas: {
-      invoices: 10,
+      invoices: 5,
       contacts: 50,
-      aiReads: 20,
+      aiReads: 10,
       assistant: 10,
       reminders: 5,
       bankImports: 1,

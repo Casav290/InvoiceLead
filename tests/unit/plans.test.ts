@@ -165,33 +165,54 @@ describe("formules", () => {
     expect(featureAccess(PLUS, "api")).toMatchObject({ allowed: true, tier: "proplus" });
   });
 
-  it("donnent les petites allocations décidées le 1er octobre 2026", () => {
-    expect(PLANS.free.quotas).toEqual({
-      invoices: 10,
-      contacts: 50,
-      aiReads: 20,
-      assistant: 10,
-      reminders: 5,
-      bankImports: 1,
-      recurring: 1,
+  it("donnent les petites allocations du 1er octobre 2026, factures et lectures révisées le 29.10.2026", () => {
+    // Demande d'Ève du 29.10.2026 : 5 factures émises et 10 lectures de pièces par mois en
+    // Gratuit (auparavant 10 et 20) ; rien d'autre ne change.
+    expect(PLANS.free).toEqual({
+      quotas: {
+        invoices: 5,
+        contacts: 50,
+        aiReads: 10,
+        assistant: 10,
+        reminders: 5,
+        bankImports: 1,
+        recurring: 1,
+      },
+      seats: 1,
+      poweredBy: true,
     });
-    expect(PLANS.pro.quotas.aiReads).toBe(50);
-    expect(PLANS.proplus.quotas.aiReads).toBe(300);
-    for (const q of ["invoices", "contacts", "assistant", "reminders", "bankImports", "recurring"])
-      expect(PLANS.pro.quotas[q as keyof typeof PLANS.pro.quotas]).toBe(Infinity);
+    // Pro et Pro+ inchangés.
+    const unlimited = {
+      invoices: Infinity,
+      contacts: Infinity,
+      assistant: Infinity,
+      reminders: Infinity,
+      bankImports: Infinity,
+      recurring: Infinity,
+    };
+    expect(PLANS.pro).toEqual({
+      quotas: { ...unlimited, aiReads: 50 },
+      seats: 1,
+      poweredBy: false,
+    });
+    expect(PLANS.proplus).toEqual({
+      quotas: { ...unlimited, aiReads: 300 },
+      seats: 5,
+      poweredBy: false,
+    });
   });
 });
 
 describe("allocations mensuelles", () => {
-  it("lectures de pièces : 20 en Gratuit, 50 en Pro, 300 en Pro+, puis refusées", async () => {
+  it("lectures de pièces : 10 en Gratuit (la 11e refusée), 50 en Pro, 300 en Pro+", async () => {
     const free = await company(0, "free");
     const pro = await company(1, "pro");
     const plus = await company(2, "plus");
-    expect(await consume(free, "aiReads", 21)).toBe(20);
+    expect(await consume(free, "aiReads", 11)).toBe(10);
     expect(await quotaAccess(db, free, "aiReads", "2026-10-15")).toMatchObject({
       allowed: false,
-      used: 20,
-      limit: 20,
+      used: 10,
+      limit: 10,
       upgradeTo: "pro",
     });
     expect(await consume(pro, "aiReads", 51)).toBe(50);
@@ -218,9 +239,9 @@ describe("allocations mensuelles", () => {
 
   it("rendent l'unité quand l'action échoue, sans descendre sous zéro", async () => {
     const free = await company(0);
-    expect(await consume(free, "aiReads", 20)).toBe(20);
+    expect(await consume(free, "aiReads", 10)).toBe(10);
     await refundQuota(db, free.id, "aiReads", "2026-10-01");
-    expect((await quotaAccess(db, free, "aiReads", "2026-10-01")).used).toBe(19);
+    expect((await quotaAccess(db, free, "aiReads", "2026-10-01")).used).toBe(9);
     expect(await consume(free, "aiReads", 2)).toBe(1);
     // Sans ligne du mois : rien à rendre, rien d'écrit.
     await refundQuota(db, free.id, "assistant", "2026-10-01");
@@ -241,13 +262,13 @@ describe("allocations mensuelles", () => {
   it("repartent à zéro le premier du mois (UTC) et restent propres à l'entreprise", async () => {
     const free = await company(0, "a");
     const other = await company(0, "b");
-    expect(await consume(free, "aiReads", 20, "2026-10-31")).toBe(20);
+    expect(await consume(free, "aiReads", 10, "2026-10-31")).toBe(10);
     expect((await consumeQuota(db, free, "aiReads", "2026-10-31")).allowed).toBe(false);
     expect((await consumeQuota(db, free, "aiReads", "2026-11-01")).allowed).toBe(true);
     expect((await consumeQuota(db, other, "aiReads", "2026-10-31")).allowed).toBe(true);
     const rows = await db.select().from(planUsage).where(eq(planUsage.organizationId, free.id));
     expect(rows.map((r) => [r.period, r.used]).sort()).toEqual([
-      ["2026-10", 20],
+      ["2026-10", 10],
       ["2026-11", 1],
     ]);
   });
@@ -257,8 +278,8 @@ describe("allocations mensuelles", () => {
     const results = await Promise.all(
       Array.from({ length: 30 }, () => consumeQuota(db, free, "aiReads", "2026-10-01")),
     );
-    expect(results.filter((r) => r.allowed)).toHaveLength(20);
-    expect((await quotaAccess(db, free, "aiReads", "2026-10-01")).used).toBe(20);
+    expect(results.filter((r) => r.allowed)).toHaveLength(10);
+    expect((await quotaAccess(db, free, "aiReads", "2026-10-01")).used).toBe(10);
     const imports = await Promise.all(
       Array.from({ length: 5 }, () => consumeQuota(db, free, "bankImports", "2026-10-01")),
     );
@@ -270,9 +291,9 @@ describe("allocations mensuelles", () => {
     await consume(free, "aiReads", 3);
     await consume(free, "assistant", 10);
     const usage = await planUsageOf(db, free, "2026-10-09");
-    expect(usage.aiReads).toMatchObject({ allowed: true, used: 3, limit: 20 });
+    expect(usage.aiReads).toMatchObject({ allowed: true, used: 3, limit: 10 });
     expect(usage.assistant).toMatchObject({ allowed: false, used: 10, upgradeTo: "pro" });
-    expect(usage.invoices).toMatchObject({ allowed: true, used: 0, limit: 10 });
+    expect(usage.invoices).toMatchObject({ allowed: true, used: 0, limit: 5 });
     expect(usage.recurring).toMatchObject({ allowed: true, used: 0, limit: 1 });
     expect(usage.bankImports).toMatchObject({ allowed: true, used: 0, limit: 1 });
   });

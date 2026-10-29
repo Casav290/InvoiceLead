@@ -2895,11 +2895,11 @@
         "tagline": "Per iniziare come libero professionista",
         "features": [
           "1 utente, 1 azienda",
-          "10 fatture al mese, preventivi illimitati",
+          "5 fatture al mese, preventivi illimitati",
           "50 contatti",
           "Fatture del Paese (GiroCode SEPA, fattura QR svizzera), documenti in DE, FR, IT, EN",
           "Contabilità alimentata dalle tue fatture",
-          "20 documenti letti dall'IA ogni mese (scontrini, giustificativi), fatture elettroniche ricevute senza limiti",
+          "10 documenti letti dall'IA ogni mese (scontrini, giustificativi), fatture elettroniche ricevute senza limiti",
           "Assistente: 10 domande al mese",
           "Primo sollecito manuale, 5 al mese",
           "1 fattura ricorrente attiva",
@@ -2971,7 +2971,7 @@
       },
       {
         "q": "Cosa include il piano gratuito?",
-        "a": "Ogni mese: 10 fatture, 20 documenti letti dall'IA, 10 domande all'assistente, 5 solleciti di primo livello e 1 estratto conto (un conto, al massimo un mese) con il pilota automatico. Include anche 50 contatti e 1 fattura ricorrente attiva, e ricevi fatture elettroniche senza limiti. Un solo utente, e i tuoi documenti riportano la dicitura «Creato con InvoiceLead». Le funzioni Pro e Pro+ restano visibili nell'applicazione, in grigio con il marchio Pro o Pro+, così sai che esistono."
+        "a": "Ogni mese: 5 fatture, 10 documenti letti dall'IA, 10 domande all'assistente, 5 solleciti di primo livello e 1 estratto conto (un conto, al massimo un mese) con il pilota automatico. Include anche 50 contatti e 1 fattura ricorrente attiva, e ricevi fatture elettroniche senza limiti. Un solo utente, e i tuoi documenti riportano la dicitura «Creato con InvoiceLead». Le funzioni Pro e Pro+ restano visibili nell'applicazione, in grigio con il marchio Pro o Pro+, così sai che esistono."
       },
       {
         "q": "Serve una carta di credito per iniziare?",

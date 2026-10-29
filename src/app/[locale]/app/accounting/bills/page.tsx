@@ -71,7 +71,7 @@ export default async function BillsPage({ params, searchParams }: Props) {
   const bills = await listBills(db(), organization.id);
   const toPay = bills.filter((b) => b.status === "approved");
   const hidden = <input type="hidden" name="locale" value={locale} />;
-  // Photo lue par l'IA : même compteur que les justificatifs et les tickets (Gratuit 20 par mois).
+  // Photo lue par l'IA : même compteur que les justificatifs et les tickets (Gratuit 10 par mois).
   const tp = await getSessionCountryTranslations({ locale, namespace: "app.plan" });
   const reads = await quotaAccess(db(), organization, "aiReads");
   const usedUp = tp("used.aiReads", { limit: reads.limit, plan: reads.tier });

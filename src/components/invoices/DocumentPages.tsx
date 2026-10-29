@@ -374,7 +374,7 @@ export async function DocumentDetailPage({
           t("issueCurrencyPlan", { currency: invoice.currency, home: organization.currency }),
         )
       : null;
-  // Formule gratuite : 10 factures émises par mois ; au-delà, « Émettre » est grisé (le brouillon
+  // Formule gratuite : 5 factures émises par mois ; au-delà, « Émettre » est grisé (le brouillon
   // reste modifiable).
   const issued =
     draft && kind === "invoice" ? await quotaAccess(db(), organization, "invoices") : null;

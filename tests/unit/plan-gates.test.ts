@@ -190,7 +190,7 @@ function aiJson(json: object) {
 }
 
 describe("lectures de pièces par l'IA", () => {
-  it("comptent chaque lecture et relecture, refusent la 21e et rendent l'unité si l'IA échoue", async () => {
+  it("comptent chaque lecture et relecture, refusent la 11e et rendent l'unité si l'IA échoue", async () => {
     const { org, who } = await company(0);
     const receipt = await uploadReceipt(db, who, {
       name: "ticket.png",
@@ -214,11 +214,11 @@ describe("lectures de pièces par l'IA", () => {
     // Une relecture (demande forgée sur une pièce déjà lue) compte aussi.
     expect(await readReceipt(db, who, receipt.id, "fr")).toBe("read");
     expect((await quotaAccess(db, org, "aiReads")).used).toBe(2);
-    for (let i = 0; i < 18; i++) await consumeQuota(db, org, "aiReads");
+    for (let i = 0; i < 8; i++) await consumeQuota(db, org, "aiReads");
     ai.mockClear();
     expect(await readReceipt(db, who, receipt.id, "fr")).toBe("quota");
     expect(ai).not.toHaveBeenCalled();
-    expect((await quotaAccess(db, org, "aiReads")).used).toBe(20);
+    expect((await quotaAccess(db, org, "aiReads")).used).toBe(10);
 
     // Pro : 50 lectures ; la même pièce se relit.
     await setRank(org.id, 1);
@@ -263,12 +263,16 @@ describe("relances", () => {
   it("formule gratuite : 5 premières relances par mois, la sixième refusée", async () => {
     const { org, who } = await company(0);
     const ids: string[] = [];
+    // Six factures émises en Pro, puis retour à Gratuit (5 factures émises par mois depuis le
+    // 29.10.2026) : les limites ne valent que pour les nouvelles actions, les factures restent.
+    await setRank(org.id, 1);
     for (let i = 0; i < 6; i++) {
       const draft = await invoiceFor(who, `Kunde ${i}`);
       const issued = await issueInvoice(db, who, draft.id);
       if (typeof issued !== "object") throw new Error(issued);
       ids.push(issued.id);
     }
+    await setRank(org.id, 0);
     for (const id of ids.slice(0, 5))
       expect(await sendReminder(db, who, id, "2026-04-10", true)).toBe("recorded");
     expect(await sendReminder(db, who, ids[5] ?? "", "2026-04-10", true)).toBe("quota");
@@ -287,11 +291,14 @@ describe("relances", () => {
 describe("relances envoyées par e-mail", () => {
   it("« Tout envoyer » s'arrête aux 5 relances du mois ; un envoi échoué rend son unité", async () => {
     const { org, who } = await company(0);
+    // Sept factures émises en Pro, puis retour à Gratuit (5 factures émises par mois).
+    await setRank(org.id, 1);
     for (let i = 0; i < 7; i++) {
       const draft = await invoiceFor(who, `Kunde ${i}`, `kunde${i}@example.test`);
       const issued = await issueInvoice(db, who, draft.id);
       if (typeof issued !== "object") throw new Error(issued);
     }
+    await setRank(org.id, 0);
     // Resend refuse le premier envoi, accepte les suivants.
     let calls = 0;
     const mail = vi.fn(async () =>
@@ -458,9 +465,9 @@ describe("factures récurrentes", () => {
     expect(await runRecurring(db, today())).toMatchObject({ created: 0, held: 600 });
   });
 
-  it("laisse en brouillon la facture du jour quand les 10 factures du mois sont émises", async () => {
+  it("laisse en brouillon la facture du jour quand les 5 factures du mois sont émises", async () => {
     const { who } = await company(0);
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < 5; i++) {
       const d = await invoiceFor(who, `Kunde ${i}`);
       const issued = await issueInvoice(db, who, d.id);
       if (typeof issued !== "object") throw new Error(issued);
@@ -631,28 +638,37 @@ describe("fonctions réservées", () => {
 });
 
 describe("factures émises du mois", () => {
-  it("se comptent d'après le type en base : la 11e facture est refusée, devis et avoirs passent", async () => {
-    const { who } = await company(0);
+  it("se comptent d'après le type en base : la 6e facture est refusée, devis et avoirs passent", async () => {
+    const { org, who } = await company(0);
     const issued = [];
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < 5; i++) {
       const d = await invoiceFor(who, `Kunde ${i}`);
       const r = await issueInvoice(db, who, d.id);
       if (typeof r !== "object") throw new Error(r);
       issued.push(r);
     }
-    const eleventh = await invoiceFor(who, "Kunde 11");
-    expect(await issueInvoice(db, who, eleventh.id)).toBe("planLimit");
-    const [still] = await db.select().from(invoices).where(eq(invoices.id, eleventh.id));
+    expect(await quotaAccess(db, org, "invoices")).toMatchObject({
+      allowed: false,
+      used: 5,
+      limit: 5,
+      upgradeTo: "pro",
+    });
+    const sixth = await invoiceFor(who, "Kunde 6");
+    expect(await issueInvoice(db, who, sixth.id)).toBe("planLimit");
+    const [still] = await db.select().from(invoices).where(eq(invoices.id, sixth.id));
     expect(still).toMatchObject({ status: "draft", number: null });
-    // Un avoir ne compte pas dans les 10 factures.
+    // Un devis émis ne compte pas : il passe à 5 sur 5.
+    const quote = await invoiceFor(who, "Kunde Offerte", undefined, undefined, "quote");
+    expect(await issueInvoice(db, who, quote.id)).toMatchObject({ kind: "quote" });
+    // Un avoir ne compte pas dans les 5 factures.
     const credit = await createCreditNote(db, who, issued[0]?.id ?? "", "2026-03-05");
     if (typeof credit !== "object") throw new Error(credit);
     expect(await issueInvoice(db, who, credit.id)).toMatchObject({ kind: "credit_note" });
   });
 
-  it("deux émissions simultanées à 9 sur 10 n'en laissent passer qu'une", async () => {
+  it("deux émissions simultanées à 4 sur 5 n'en laissent passer qu'une", async () => {
     const { org, who } = await company(0);
-    for (let i = 0; i < 9; i++) {
+    for (let i = 0; i < 4; i++) {
       const d = await invoiceFor(who, `Kunde ${i}`);
       const r = await issueInvoice(db, who, d.id);
       if (typeof r !== "object") throw new Error(r);
@@ -669,7 +685,7 @@ describe("factures émises du mois", () => {
     );
     expect(results.filter((r) => typeof r === "object")).toHaveLength(1);
     expect(results.filter((r) => r === "planLimit")).toHaveLength(1);
-    expect((await quotaAccess(db, org, "invoices")).used).toBe(10);
+    expect((await quotaAccess(db, org, "invoices")).used).toBe(5);
   });
 });
 
@@ -699,12 +715,12 @@ describe("serveur MCP au-delà des allocations", () => {
   it("refuse contact et émission par « plan_limit » si la formule a changé depuis la clé", async () => {
     const { org, who } = await company(0);
     for (let i = 0; i < 50; i++) await createContact(db, who, contactInput(`C${i}`));
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < 5; i++) {
       const d = await invoiceFor(who, `Kunde ${i}`);
       const r = await issueInvoice(db, who, d.id);
       if (typeof r !== "object") throw new Error(r);
     }
-    const draft = await invoiceFor(who, "Kunde 11");
+    const draft = await invoiceFor(who, "Kunde 6");
     const [row] = await db.select().from(organizations).where(eq(organizations.id, org.id));
     if (!row) throw new Error("organisation");
     // Appelant fabriqué : une entreprise revenue en formule gratuite après le contrôle de la clé.

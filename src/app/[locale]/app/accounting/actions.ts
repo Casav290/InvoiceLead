@@ -139,7 +139,7 @@ export async function deleteRuleAction(form: FormData) {
 
 /**
  * Boîte des justificatifs (et capture du téléphone) : chaque pièce lue par l'IA compte dans les
- * lectures du mois (Gratuit 20, Pro 50, Pro+ 300). Une pièce au-delà de l'allocation est refusée.
+ * lectures du mois (Gratuit 10, Pro 50, Pro+ 300). Une pièce au-delà de l'allocation est refusée.
  */
 export async function uploadReceiptsAction(form: FormData) {
   const locale = pickLocale(form.get("locale"));

@@ -26,7 +26,7 @@ async function guard(form: FormData) {
 /**
  * « Scanner un ticket » : la photo est gardée comme justificatif, lue par l'IA, et la note de frais
  * s'ouvre remplie (date, objet, montant, TVA, catégorie). La personne vérifie et envoie. Chaque
- * ticket lu compte dans les lectures du mois de la formule (Gratuit 20, Pro 50, Pro+ 300).
+ * ticket lu compte dans les lectures du mois de la formule (Gratuit 10, Pro 50, Pro+ 300).
  */
 export async function scanTicketAction(form: FormData) {
   const { locale, session, who } = await guard(form);

@@ -2895,11 +2895,11 @@
         "tagline": "Pour démarrer comme indépendant",
         "features": [
           "1 utilisateur, 1 entreprise",
-          "10 factures par mois, devis illimités",
+          "5 factures par mois, devis illimités",
           "50 contacts",
           "Factures du pays (GiroCode SEPA, QR-facture suisse), documents en DE, FR, IT, EN",
           "Comptabilité alimentée par vos factures",
-          "20 pièces lues par l'IA chaque mois (tickets, justificatifs), e-factures reçues sans limite",
+          "10 pièces lues par l'IA chaque mois (tickets, justificatifs), e-factures reçues sans limite",
           "Assistant : 10 questions par mois",
           "Première relance à la main, 5 par mois",
           "1 facture récurrente active",
@@ -2971,7 +2971,7 @@
       },
       {
         "q": "Que comprend la formule gratuite ?",
-        "a": "Chaque mois : 10 factures, 20 pièces lues par l'IA, 10 questions à l'assistant, 5 relances de premier niveau et 1 relevé bancaire (un compte, un mois au plus) avec le pilote automatique. Elle compte aussi 50 contacts et 1 facture récurrente active, et vous recevez les e-factures sans limite. Un seul utilisateur, et vos documents portent la mention « Créé avec InvoiceLead ». Les fonctions Pro et Pro+ restent visibles dans l'application, en gris avec la marque Pro ou Pro+, pour que vous sachiez qu'elles existent."
+        "a": "Chaque mois : 5 factures, 10 pièces lues par l'IA, 10 questions à l'assistant, 5 relances de premier niveau et 1 relevé bancaire (un compte, un mois au plus) avec le pilote automatique. Elle compte aussi 50 contacts et 1 facture récurrente active, et vous recevez les e-factures sans limite. Un seul utilisateur, et vos documents portent la mention « Créé avec InvoiceLead ». Les fonctions Pro et Pro+ restent visibles dans l'application, en gris avec la marque Pro ou Pro+, pour que vous sachiez qu'elles existent."
       },
       {
         "q": "Faut-il une carte bancaire pour commencer ?",

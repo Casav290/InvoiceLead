@@ -540,7 +540,7 @@ export type IssueResult =
  * Émet un brouillon : numéro définitif, expéditeur et destinataire figés. Le numéro est pris dans la
  * même transaction que le changement d'état, si bien qu'un échec ne laisse aucun trou.
  *
- * Les factures émises du mois (formule gratuite : 10) se comptent ici, d'après le type lu en base
+ * Les factures émises du mois (formule gratuite : 5) se comptent ici, d'après le type lu en base
  * et sous un verrou de l'entreprise : ni un type forgé dans le formulaire, ni deux émissions
  * simultanées, ni la tâche des récurrences ne passent au-delà. Devis et avoirs ne comptent pas.
  */

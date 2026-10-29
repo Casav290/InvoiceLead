@@ -308,7 +308,7 @@ export type PhotoFailure = "quota" | "type" | "size" | "duplicate" | "unread";
  * fournisseur, montant, dates, IBAN, référence, compte, TVA), que la personne vérifie puis approuve.
  *
  * Une lecture du mois de la formule, sur le même compteur que les justificatifs et les tickets
- * (Gratuit 20, Pro 50, Pro+ 300) : au-delà, la photo est refusée avant d'être enregistrée, sans
+ * (Gratuit 10, Pro 50, Pro+ 300) : au-delà, la photo est refusée avant d'être enregistrée, sans
  * appel à l'IA. La lecture est rendue si l'IA ne répond pas (extractReceipt).
  */
 export async function billFromPhoto(

@@ -116,10 +116,10 @@ describe("API au-delà des allocations", () => {
     expect(rows).toHaveLength(50);
   });
 
-  it("POST /api/v1/invoices/{id}/issue : 403 plan_limit pour la 11e facture du mois", async () => {
+  it("POST /api/v1/invoices/{id}/issue : 403 plan_limit pour la 6e facture du mois", async () => {
     const who = await freeCompany();
     const contact = await createContact(db, who, contactData("Kunde AG"));
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < 5; i++) {
       const r = await issueInvoice(db, who, (await draftFor(who, contact.id)).id);
       if (typeof r !== "object") throw new Error(r);
     }

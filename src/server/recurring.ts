@@ -259,7 +259,7 @@ export type RecurringRun = {
   issued: number;
   sent: number;
   failed: number;
-  /** Retenues par la formule gratuite : récurrence au-delà de la première, ou facture laissée en brouillon (10 factures du mois émises). */
+  /** Retenues par la formule gratuite : récurrence au-delà de la première, ou facture laissée en brouillon (5 factures du mois émises). */
   held: number;
 };
 
@@ -269,7 +269,7 @@ export type RecurringRun = {
  * `send` est injecté pour que la tâche planifiée utilise l'envoi réel (e-mail, PDF, lien).
  *
  * Formule gratuite : une seule récurrence tourne (la plus ancienne active), et la facture créée
- * reste en brouillon quand les 10 factures du mois sont déjà émises. Les récurrences retenues sont
+ * reste en brouillon quand les 5 factures du mois sont déjà émises. Les récurrences retenues sont
  * seulement comptées : elles n'entrent pas dans les 500 traitées par passage.
  */
 export async function runRecurring(
@@ -351,7 +351,7 @@ export async function runRecurring(
         .set({ nextDate: addMonths(r.nextDate, r.intervalMonths), lastInvoiceId: created.id })
         .where(eq(recurringInvoices.id, r.id));
       if (r.autoSend) {
-        // Formule gratuite : au-delà des 10 factures du mois, issueInvoice la laisse en brouillon.
+        // Formule gratuite : au-delà des 5 factures du mois, issueInvoice la laisse en brouillon.
         const issued = await issueInvoice(database, who, created.id);
         if (issued === "planLimit" || issued === "plan") run.held += 1;
         else if (typeof issued === "object") {

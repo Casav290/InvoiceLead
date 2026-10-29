@@ -48,7 +48,7 @@ export default async function ExpensesPage({ params, searchParams }: Props) {
   const tv = await getSessionCountryTranslations({ locale, namespace: "app.bank.vat" });
   const tp = await getSessionCountryTranslations({ locale, namespace: "app.plan" });
   const today = new Date().toISOString().slice(0, 10);
-  // Tickets lus par l'IA : même compteur que la boîte des justificatifs (Gratuit 20 par mois).
+  // Tickets lus par l'IA : même compteur que la boîte des justificatifs (Gratuit 10 par mois).
   const reads = await quotaAccess(db(), organization, "aiReads");
   const usedUp = tp("used.aiReads", { limit: reads.limit, plan: reads.tier });
   const scanLock = await lockFor(locale, reads, usedUp);

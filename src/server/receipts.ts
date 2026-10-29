@@ -128,7 +128,7 @@ export type ReadFailure = "notFound" | "unreadable" | "failed" | "quota";
  * Lit un justificatif avec l'assistant (texte pour un PDF natif, image sinon) et garde ce qui a été
  * lu. Sans rapprochement bancaire : un ticket de note de frais a été payé de la poche de quelqu'un.
  *
- * Chaque lecture par l'IA compte dans les lectures du mois de la formule (Gratuit 20, Pro 50, Pro+
+ * Chaque lecture par l'IA compte dans les lectures du mois de la formule (Gratuit 10, Pro 50, Pro+
  * 300), qu'elle vienne d'un ticket, de la boîte des justificatifs ou d'une relecture. L'unité est
  * réservée juste avant l'appel à l'IA et rendue si l'IA ne répond pas.
  */

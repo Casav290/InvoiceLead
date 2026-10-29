@@ -119,7 +119,7 @@ test("factures fournisseurs : « Prendre en photo », l'IA remplit le brouillon 
   await page.goto("/fr/app/accounting/bills");
   const block = page.getByTestId("bill-photo");
   await expect(block.getByRole("heading", { name: "Prendre en photo" })).toBeVisible();
-  await expect(page.getByTestId("bill-photo-quota")).toContainText("0 sur 20");
+  await expect(page.getByTestId("bill-photo-quota")).toContainText("0 sur 10");
   // Téléphone : l'appareil photo s'ouvre ; ordinateur : le choix d'une photo ou d'un PDF.
   const input = page.getByTestId("bill-photo-input");
   await expect(input).toHaveAttribute("capture", "environment");
@@ -151,7 +151,7 @@ test("factures fournisseurs : « Prendre en photo », l'IA remplit le brouillon 
 
   // Une lecture du mois de comptée ; la facture attend son paiement.
   await page.goto("/fr/app/accounting/bills");
-  await expect(page.getByTestId("bill-photo-quota")).toContainText("1 sur 20");
+  await expect(page.getByTestId("bill-photo-quota")).toContainText("1 sur 10");
   await expect(page.getByTestId("bills-approved")).toContainText("Imprimerie Muster SA");
 
   // Téléphone (390 px) : le bouton tient dans la largeur, sans débordement.

@@ -2895,11 +2895,11 @@
         "tagline": "Para empezar como autónomo",
         "features": [
           "1 usuario, 1 empresa",
-          "10 facturas al mes, presupuestos ilimitados",
+          "5 facturas al mes, presupuestos ilimitados",
           "50 contactos",
           "Facturas del país (GiroCode SEPA, factura QR suiza), documentos en DE, FR, IT, EN",
           "Contabilidad alimentada por tus facturas",
-          "20 documentos leídos por la IA cada mes (tiques, justificantes), facturas electrónicas recibidas sin límite",
+          "10 documentos leídos por la IA cada mes (tiques, justificantes), facturas electrónicas recibidas sin límite",
           "Asistente: 10 preguntas al mes",
           "Primer recordatorio manual, 5 al mes",
           "1 factura recurrente activa",
@@ -2971,7 +2971,7 @@
       },
       {
         "q": "¿Qué incluye el plan gratuito?",
-        "a": "Cada mes: 10 facturas, 20 documentos leídos por la IA, 10 preguntas al asistente, 5 recordatorios de primer nivel y 1 extracto bancario (una cuenta, un mes como máximo) con el piloto automático. También incluye 50 contactos y 1 factura recurrente activa, y recibes facturas electrónicas sin límite. Un solo usuario, y tus documentos llevan la mención «Creado con InvoiceLead». Las funciones Pro y Pro+ siguen visibles en la aplicación, en gris con el distintivo Pro o Pro+, para que sepas que existen."
+        "a": "Cada mes: 5 facturas, 10 documentos leídos por la IA, 10 preguntas al asistente, 5 recordatorios de primer nivel y 1 extracto bancario (una cuenta, un mes como máximo) con el piloto automático. También incluye 50 contactos y 1 factura recurrente activa, y recibes facturas electrónicas sin límite. Un solo usuario, y tus documentos llevan la mención «Creado con InvoiceLead». Las funciones Pro y Pro+ siguen visibles en la aplicación, en gris con el distintivo Pro o Pro+, para que sepas que existen."
       },
       {
         "q": "¿Hace falta una tarjeta para empezar?",

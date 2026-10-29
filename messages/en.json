@@ -2895,11 +2895,11 @@
         "tagline": "For getting started as a freelancer",
         "features": [
           "1 user, 1 company",
-          "10 invoices per month, unlimited quotes",
+          "5 invoices per month, unlimited quotes",
           "50 contacts",
           "Invoices to your country's rules (SEPA GiroCode, Swiss QR-bill), documents in DE, FR, IT, EN",
           "Accounting fed by your invoices",
-          "20 documents read by AI each month (receipts, supporting documents), e-invoices received without limit",
+          "10 documents read by AI each month (receipts, supporting documents), e-invoices received without limit",
           "Assistant: 10 questions per month",
           "First reminder sent by hand, 5 per month",
           "1 active recurring invoice",
@@ -2971,7 +2971,7 @@
       },
       {
         "q": "What does the Free plan include?",
-        "a": "Each month: 10 invoices, 20 documents read by AI, 10 questions to the assistant, 5 first-level reminders and 1 bank statement (one account, one month at most) with the autopilot. It also includes 50 contacts and 1 active recurring invoice, and you receive e-invoices without limit. One user, and your documents carry the “Created with InvoiceLead” notice. Pro and Pro+ features stay visible in the app, greyed out and labelled Pro or Pro+, so you know they exist."
+        "a": "Each month: 5 invoices, 10 documents read by AI, 10 questions to the assistant, 5 first-level reminders and 1 bank statement (one account, one month at most) with the autopilot. It also includes 50 contacts and 1 active recurring invoice, and you receive e-invoices without limit. One user, and your documents carry the “Created with InvoiceLead” notice. Pro and Pro+ features stay visible in the app, greyed out and labelled Pro or Pro+, so you know they exist."
       },
       {
         "q": "Do I need a payment card to start?",
