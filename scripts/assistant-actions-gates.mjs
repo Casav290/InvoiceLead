@@ -9,6 +9,10 @@
  *   node scripts/assistant-actions-gates.mjs G4   aperçu Vercel : scénario phare et lot, vrai modèle, compte TEST
  *   node scripts/assistant-actions-gates.mjs G5   aperçu Vercel : demandes interdites refusées
  *   node scripts/assistant-actions-gates.mjs G6   production (seulement après le feu vert de l'orchestrateur)
+ *   node scripts/assistant-actions-gates.mjs G7   alignement des bulles B1–B14 (statique) : tableau de
+ *                                                 docs/ASSISTANT-IA.md ↔ code ↔ tests, tests relancés
+ *   node scripts/assistant-actions-gates.mjs G8   aperçu Vercel : alignement vu dans le navigateur (vrai
+ *                                                 modèle, compte TEST, Playwright sans tête)
  *
  * À lancer à la racine du worktree (branche assistant-actions). Chaque porte vérifie vraiment et
  * n'imprime son jeton ASSISTANT_ACTIONS_Gn_OK qu'après toutes ses assertions. Aucun secret n'est
@@ -17,10 +21,19 @@
  */
 import { execFileSync, spawnSync } from "node:child_process";
 import { createHash, randomBytes } from "node:crypto";
-import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
 import { createRequire } from "node:module";
 import { homedir } from "node:os";
 import { join, relative } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const ROOT = process.cwd();
 const HOME = homedir();
@@ -37,9 +50,6 @@ const BRANCH = "assistant-actions";
  */
 const PROD_BASE = "26e0025292f17501297f0e9cafeb8eee7946e28d";
 const LOCAL_PG = (db) => `postgresql://ubuntu@localhost/${db}?host=/var/run/postgresql`;
-/** Durée permise de la fonction /api/assistant (plan Hobby, Fluid compute) et arrêt du tour (run.ts). */
-const MAX_DURATION_S = 300;
-const TURN_DEADLINE_S = 270;
 
 const results = [];
 function check(name, ok, detail = "") {
@@ -55,6 +65,19 @@ function finish(token) {
   console.log(token);
 }
 const read = (p) => readFileSync(join(ROOT, p), "utf8");
+/**
+ * Durée permise de la fonction /api/assistant (plan Hobby, Fluid compute) et arrêt du tour : lus dans
+ * le code (src/app/api/assistant/route.ts, src/server/ai-assistant/run.ts), jamais recopiés ici.
+ */
+const MAX_DURATION_S = Number(
+  /export const maxDuration = (\d+);/.exec(read("src/app/api/assistant/route.ts"))?.[1],
+);
+const TURN_DEADLINE_S =
+  Number(
+    /export const DEADLINE_MS = ([\d_]+);/
+      .exec(read("src/server/ai-assistant/run.ts"))?.[1]
+      ?.replaceAll("_", ""),
+  ) / 1000;
 const sh = (cmd, args, opts = {}) =>
   spawnSync(cmd, args, { cwd: ROOT, encoding: "utf8", maxBuffer: 256 * 1024 * 1024, ...opts });
 const git = (...args) => execFileSync("git", args, { cwd: ROOT, encoding: "utf8" }).trim();
@@ -217,6 +240,8 @@ function vitestJson(files, db, label, extra = []) {
   const tests = report.testResults.flatMap((f) =>
     f.assertionResults.map((a) => ({
       name: [...a.ancestorTitles, a.title].join(" > "),
+      file: relative(ROOT, f.name),
+      title: a.title,
       status: a.status,
     })),
   );
@@ -867,10 +892,17 @@ async function flagship(view, base, st, session, client, shotPrefix) {
   );
   check(`${shotPrefix} : la page ouverte est celle de ce devis`, q && url.endsWith(q.id));
   await page.screenshot({ path: join(CAPTURES, `${shotPrefix}-2-devis-ouvert.png`) });
+  // Rejeu depuis la même origine que la bulle : refusé parce que le jeton a déjà servi.
   const replay = await page.request.post(`${base}/api/assistant/confirm`, {
     data: { token: cards[0]?.token, locale: "fr" },
+    headers: { origin: base },
   });
-  check(`${shotPrefix} : rejeu du jeton confirmé = 403`, replay.status() === 403, replay.status());
+  const replayed = await replay.json().catch(() => ({}));
+  check(
+    `${shotPrefix} : rejeu du jeton confirmé = 403 « déjà utilisé »`,
+    replay.status() === 403 && replayed.error === "token_used",
+    `${replay.status()} ${replayed.error}`,
+  );
   return { quoteId: q?.id, seconds };
 }
 
@@ -1284,10 +1316,558 @@ async function g6() {
 }
 
 // ---------------------------------------------------------------------------------------------
+// G7 : alignement des bulles (B1–B14), statique : tableau de docs/ASSISTANT-IA.md ↔ code ↔ tests
+// ---------------------------------------------------------------------------------------------
+
+const ALIGN_DOC = "docs/ASSISTANT-IA.md";
+const ALIGN_TITLE = "## Alignement des bulles (28.10.2026)";
+const ALIGN_POINTS = Array.from({ length: 14 }, (_, i) => `B${i + 1}`);
+const escapeRe = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+/**
+ * Lignes du tableau de la section « Alignement des bulles (28.10.2026) », une par point :
+ * - code : références `fichier:ligne` « extrait » (l'extrait doit se trouver sur cette ligne) ;
+ * - tests : `tests/…/fichier › titre exact` (un it("…") de Vitest ou un test("…") de Playwright) ;
+ * - gates : assertions G4 / G8 « libellé » de ce script (aperçu, vrai modèle ; lancées par ces portes).
+ * null si la section manque.
+ */
+function parseAlignment(doc) {
+  const start = doc.indexOf(ALIGN_TITLE);
+  if (start < 0) return null;
+  const rest = doc.slice(start + ALIGN_TITLE.length);
+  const end = rest.search(/\n## /);
+  const section = end < 0 ? rest : rest.slice(0, end);
+  const rows = [];
+  for (const line of section.split("\n")) {
+    const m = /^\|\s*(B\d+)\s*\|/.exec(line);
+    if (!m) continue;
+    const cells = line
+      .split("|")
+      .slice(1, -1)
+      .map((c) => c.trim());
+    rows.push({
+      id: m[1],
+      code: [
+        ...(cells[2] ?? "").matchAll(/`([\w./[\]-]+):(\d+)`\s*«\s*(.+?)\s*»(?=\s*(?:;|$))/g),
+      ].map((x) => ({ file: x[1], line: Number(x[2]), excerpt: x[3] })),
+      tests: [
+        ...(cells[3] ?? "").matchAll(/`(tests\/[\w/.-]+\.(?:test|spec)\.ts) › ([^`]+)`/g),
+      ].map((x) => ({ file: x[1], title: x[2] })),
+      gates: [...(cells[3] ?? "").matchAll(/G([48]) «\s*(.+?)\s*»(?=\s*(?:;|$))/g)].map((x) => ({
+        gate: `G${x[1]}`,
+        label: x[2],
+      })),
+    });
+  }
+  return rows;
+}
+
+/** Ce qui ne va pas entre le tableau, le code, les tests passés (« fichier › titre ») et ce script. */
+function alignmentProblems(doc, passed, gateSource) {
+  const rows = parseAlignment(doc);
+  if (!rows) return [`section « ${ALIGN_TITLE.slice(3)} » absente de ${ALIGN_DOC}`];
+  const problems = [];
+  const ids = rows.map((r) => r.id);
+  if (JSON.stringify(ids) !== JSON.stringify(ALIGN_POINTS))
+    problems.push(
+      `points du tableau : ${ids.join(" ")} (attendu : B1 à B14, une fois chacun, dans l'ordre)`,
+    );
+  for (const r of rows) {
+    if (r.code.length === 0) problems.push(`${r.id} : aucune référence fichier:ligne « extrait »`);
+    if (r.tests.length === 0) problems.push(`${r.id} : aucun test nommé`);
+    for (const c of r.code) {
+      const path = join(ROOT, c.file);
+      const lines =
+        path.startsWith(`${ROOT}/`) && existsSync(path)
+          ? readFileSync(path, "utf8").split("\n")
+          : null;
+      if (!lines) problems.push(`${r.id} : fichier introuvable ${c.file}`);
+      else if (c.line < 1 || c.line > lines.length)
+        problems.push(`${r.id} : ${c.file}:${c.line} hors du fichier (${lines.length} lignes)`);
+      else if (!lines[c.line - 1].includes(c.excerpt))
+        problems.push(
+          `${r.id} : ${c.file}:${c.line} ne contient pas « ${c.excerpt} » (ligne : ${lines[c.line - 1].trim().slice(0, 100)})`,
+        );
+    }
+    for (const x of r.tests) {
+      const path = join(ROOT, x.file);
+      const source = existsSync(path) ? readFileSync(path, "utf8") : null;
+      const declared = new RegExp(`\\b(?:it|test)\\(\\s*"${escapeRe(x.title)}"`);
+      if (source === null) problems.push(`${r.id} : fichier de tests introuvable ${x.file}`);
+      else if (!declared.test(source))
+        problems.push(`${r.id} : test introuvable dans ${x.file} : « ${x.title} »`);
+      else if (!passed.has(`${x.file} › ${x.title}`))
+        problems.push(`${r.id} : test non passé : ${x.file} › « ${x.title} »`);
+    }
+    for (const g of r.gates) {
+      const fn = gateSource.indexOf(`async function ${g.gate.toLowerCase()}()`);
+      const body =
+        fn < 0 ? "" : gateSource.slice(fn, gateSource.indexOf("\nasync function ", fn + 1));
+      if (!new RegExp(`check\\(\\s*[\`"]${escapeRe(g.label)}`).test(body))
+        problems.push(`${r.id} : assertion ${g.gate} introuvable dans ce script : « ${g.label} »`);
+    }
+  }
+  return problems;
+}
+
+/** Tests d'un rapport JSON de Playwright : « tests/e2e/fichier › titre », passé ou non. */
+function playwrightTests(report) {
+  const out = [];
+  const walk = (suite) => {
+    for (const spec of suite.specs ?? [])
+      out.push({
+        key: `tests/e2e/${spec.file} › ${spec.title}`,
+        ok: spec.ok === true && spec.tests.every((t) => t.status === "expected"),
+      });
+    for (const child of suite.suites ?? []) walk(child);
+  };
+  for (const suite of report?.suites ?? []) walk(suite);
+  return out;
+}
+
+async function g7() {
+  const doc = read(ALIGN_DOC);
+  const gateSource = readFileSync(fileURLToPath(import.meta.url), "utf8");
+  const rows = parseAlignment(doc) ?? [];
+  check(
+    `section « ${ALIGN_TITLE.slice(3)} » de ${ALIGN_DOC} : ${rows.length} lignes`,
+    JSON.stringify(rows.map((r) => r.id)) === JSON.stringify(ALIGN_POINTS),
+    rows.map((r) => r.id).join(" "),
+  );
+
+  // Les tests nommés, relancés maintenant : leurs fichiers en entier (Vitest, puis Chromium).
+  const files = [...new Set(rows.flatMap((r) => r.tests.map((x) => x.file)))].sort();
+  const unit = files.filter((f) => f.startsWith("tests/unit/"));
+  const e2e = files.filter((f) => f.startsWith("tests/e2e/"));
+  check(
+    `fichiers de tests nommés : ${files.join(", ")}`,
+    unit.includes("tests/unit/assistant-alignement.test.ts") &&
+      unit.includes("tests/unit/assistant-rendu.test.ts") &&
+      e2e.includes("tests/e2e/assistant-bubble.spec.ts") &&
+      unit.length + e2e.length === files.length,
+  );
+  const v = vitestJson(unit, "invoicelead_actions_g7", "g7-vitest");
+  const unitFailed = v.tests.filter((x) => x.status !== "passed");
+  check(
+    `Vitest : ${v.tests.length} tests de ces fichiers, aucun en échec ni sauté`,
+    v.ok && unitFailed.length === 0 && v.tests.length >= 50,
+    `${unitFailed.length} non passés ${unitFailed
+      .slice(0, 3)
+      .map((x) => x.name)
+      .join(" | ")} ${v.why}`,
+  );
+  const build = sh("npx", ["next", "build"], {
+    env: { ...process.env, NEXT_TELEMETRY_DISABLED: "1" },
+    timeout: 1_800_000,
+  });
+  writeFileSync(join(TMP, "g7-build.log"), `${build.stdout ?? ""}\n${build.stderr ?? ""}`);
+  check("build Next du code actuel (servi aux tests du navigateur)", build.status === 0);
+  migrateLocal("invoicelead_actions_g7e2e");
+  const out = join(TMP, "g7-e2e.json");
+  rmSync(out, { force: true });
+  const pw = sh("npx", ["playwright", "test", ...e2e, "--reporter=json"], {
+    env: {
+      ...process.env,
+      PLAYWRIGHT_JSON_OUTPUT_NAME: out,
+      E2E_APP_PORT: "3170",
+      E2E_LEAD_PORT: "4070",
+      E2E_DATABASE_URL: LOCAL_PG("invoicelead_actions_g7e2e"),
+      NEXT_TELEMETRY_DISABLED: "1",
+    },
+    timeout: 1_800_000,
+  });
+  writeFileSync(join(TMP, "g7-e2e.log"), `${pw.stdout ?? ""}\n${pw.stderr ?? ""}`);
+  const browserTests = existsSync(out)
+    ? playwrightTests(JSON.parse(readFileSync(out, "utf8")))
+    : [];
+  const browserFailed = browserTests.filter((x) => !x.ok);
+  check(
+    `Playwright (Chromium sans tête) : ${browserTests.length} tests de ces fichiers, aucun en échec ni sauté`,
+    pw.status === 0 && browserTests.length >= 16 && browserFailed.length === 0,
+    browserFailed
+      .slice(0, 3)
+      .map((x) => x.key)
+      .join(" | "),
+  );
+  const passed = new Set([
+    ...v.tests.filter((x) => x.status === "passed").map((x) => `${x.file} › ${x.title}`),
+    ...browserTests.filter((x) => x.ok).map((x) => x.key),
+  ]);
+
+  const problems = alignmentProblems(doc, passed, gateSource);
+  for (const r of rows) {
+    const mine = problems.filter((p) => p.startsWith(`${r.id} :`));
+    check(
+      `${r.id} : ${r.code.length} référence(s) de code vérifiée(s) sur leur ligne, ${r.tests.length} test(s) passé(s)${
+        r.gates.length
+          ? `, ${r.gates.length} assertion(s) de G4 / G8 présentes (lancées sur l'aperçu)`
+          : ""
+      }`,
+      mine.length === 0 && r.code.length > 0 && r.tests.length > 0,
+      mine.join(" | "),
+    );
+  }
+  for (const p of problems.filter((x) => !/^B\d+ :/.test(x))) check(p, false);
+
+  // Quelques preuves lues directement dans le code (B1, B6), indépendantes du tableau.
+  const runSrc = read("src/server/ai-assistant/run.ts");
+  const handlersSrc = read("src/server/ai-assistant/handlers.ts");
+  const margin = MAX_DURATION_S * 1000 - TURN_DEADLINE_S * 1000;
+  check(
+    `B1 : délai du tour ${TURN_DEADLINE_S} s = maxDuration ${MAX_DURATION_S} s de la route moins 5 à 15 s`,
+    margin >= 5000 && margin <= 15000,
+  );
+  check(
+    "B1 : un seul AbortSignal.timeout pour le tour, passé aux options du runner ; client : maxRetries ≤ 2, timeout = délai du tour",
+    (runSrc.match(/AbortSignal\.timeout\(/g) ?? []).length === 1 &&
+      /\n {4}\{ signal \},\n {2}\);/.test(runSrc) &&
+      /maxRetries: [012],\n\s*timeout: deadlineMs,/.test(handlersSrc),
+  );
+  check(
+    "B1 : erreurs classées par le signal et par instanceof, jamais par le nom des classes",
+    /signal\.aborted/.test(runSrc) &&
+      /instanceof Anthropic\.BadRequestError/.test(runSrc) &&
+      !/\.name\s*===|constructor\.name|\.name\s*\)/.test(runSrc + handlersSrc),
+  );
+  const bubbleFiles = filesUnder("src/components/assistant", (f) => /\.(ts|tsx)$/.test(f));
+  check(
+    "B6 : la bulle n'écrit aucun HTML brut (ni innerHTML ni dangerouslySetInnerHTML)",
+    bubbleFiles.length >= 3 &&
+      bubbleFiles.every((f) => !/innerHTML|dangerouslySetInnerHTML/.test(read(f))),
+    bubbleFiles.join(", "),
+  );
+
+  // Contre-épreuves : le même contrôle voit une ligne décalée, un extrait faux, un test inconnu ou
+  // non passé, un point retiré, une assertion de porte inventée.
+  const b1 = rows.find((r) => r.id === "B1");
+  const ref = b1?.code[0];
+  const shifted = ref
+    ? doc.replace(`\`${ref.file}:${ref.line}\``, `\`${ref.file}:${ref.line + 1}\``)
+    : doc;
+  check(
+    "contre-épreuve : une référence décalée d'une ligne est vue",
+    shifted !== doc &&
+      alignmentProblems(shifted, passed, gateSource).some((p) => p.startsWith("B1 :")),
+  );
+  const wrongExcerpt = ref
+    ? doc.replace(`« ${ref.excerpt} »`, "« extrait qui n'existe pas »")
+    : doc;
+  check(
+    "contre-épreuve : un extrait absent de sa ligne est vu",
+    wrongExcerpt !== doc &&
+      alignmentProblems(wrongExcerpt, passed, gateSource).some((p) =>
+        p.includes("ne contient pas"),
+      ),
+  );
+  const unknownTest = doc.replace(
+    /`tests\/unit\/assistant-alignement\.test\.ts › [^`]+`/,
+    "`tests/unit/assistant-alignement.test.ts › test qui n'existe pas`",
+  );
+  check(
+    "contre-épreuve : un test inconnu est vu",
+    unknownTest !== doc &&
+      alignmentProblems(unknownTest, passed, gateSource).some((p) =>
+        p.includes("test introuvable"),
+      ),
+  );
+  const firstTest = b1?.tests[0];
+  const oneMissing = new Set(
+    [...passed].filter((x) => x !== `${firstTest?.file} › ${firstTest?.title}`),
+  );
+  check(
+    "contre-épreuve : un test nommé qui n'a pas passé est vu",
+    !!firstTest &&
+      alignmentProblems(doc, oneMissing, gateSource).some((p) => p.includes("test non passé")),
+  );
+  const noB9 = doc
+    .split("\n")
+    .filter((l) => !/^\|\s*B9\s*\|/.test(l))
+    .join("\n");
+  check(
+    "contre-épreuve : un point retiré du tableau (B9) est vu",
+    noB9 !== doc &&
+      alignmentProblems(noB9, passed, gateSource).some((p) => p.includes("points du tableau")),
+  );
+  const fakeGate = doc.replace(/G8 «\s*[^»]+?\s*»/, "G8 « assertion inventée »");
+  check(
+    "contre-épreuve : une assertion G8 inventée est vue",
+    fakeGate !== doc &&
+      alignmentProblems(fakeGate, passed, gateSource).some((p) =>
+        p.includes("assertion G8 introuvable"),
+      ),
+  );
+  finish("ASSISTANT_ACTIONS_G7_OK");
+}
+
+// ---------------------------------------------------------------------------------------------
+// G8 : alignement des bulles sur l'aperçu (vrai modèle, compte TEST, Playwright sans tête)
+// ---------------------------------------------------------------------------------------------
+
+/** Un chemin d'écran brut dans le fil (B5) : « /app… », « /fr/app… », l'adresse du site, une route. */
+const RAW_PATH = /(?:^|[\s(«"'])\/(?:(?:de|fr|en|it|es)\/)?app(?:\/|\b)|invoicelead\.io\/|\/api\//m;
+/** Le balisage qui ne doit jamais s'afficher dans le fil (B6). */
+const MARKUP = [
+  ["|---|", /\|\s*:?-{3,}/],
+  ["<br", /<br/i],
+  ["**", /\*\*/],
+  ["#", /#/],
+];
+const markupIn = (text) => MARKUP.filter(([, re]) => re.test(text)).map(([label]) => label);
+/** Le texte du fil hors messages de la personne : réponses, lignes « Page ouverte », erreurs, cartes. */
+const threadText = (page) =>
+  page.getByTestId("assistant-thread").evaluate((el) =>
+    Array.from(el.children)
+      .filter((c) => !c.matches(".ml-8"))
+      .map((c) => c.innerText)
+      .join("\n"),
+  );
+
+/** Fin de page, défilée jusqu'au bout : le contenu le plus bas de <main> et le rectangle de la bulle. */
+async function pageBottom(page) {
+  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+  await page.waitForTimeout(400);
+  return page.evaluate(() => {
+    const fab = document.querySelector('[data-testid="assistant-bubble"]')?.getBoundingClientRect();
+    let bottom = 0;
+    let last = null;
+    for (const el of document.querySelectorAll("main *")) {
+      const r = el.getBoundingClientRect();
+      if (r.width > 0 && r.height > 0 && r.bottom > bottom) {
+        bottom = r.bottom;
+        last = el;
+      }
+    }
+    const lr = last?.getBoundingClientRect();
+    return {
+      bottom: Math.round(bottom),
+      fabTop: Math.round(fab?.top ?? 0),
+      // Rectangles disjoints : le dernier contenu finit au-dessus de la bulle (ou à côté d'elle).
+      disjoint:
+        !!fab && !!lr && (lr.bottom <= fab.top || lr.right <= fab.left || lr.left >= fab.right),
+      last: last ? `${last.tagName.toLowerCase()}.${String(last.className).slice(0, 40)}` : "aucun",
+      atEnd:
+        Math.ceil(window.scrollY + window.innerHeight) >= document.documentElement.scrollHeight - 1,
+    };
+  });
+}
+
+async function g8() {
+  mkdirSync(CAPTURES, { recursive: true });
+  const started = Date.now();
+  const shot = (page, name) => page.screenshot({ path: join(CAPTURES, `alignement-${name}.png`) });
+  const st = state();
+  const prodHost = new URL(roUrlProduction()).hostname;
+  const { head, d } = await previewDeployment();
+  check(
+    "déploiement d'aperçu prêt au commit HEAD de la branche",
+    d?.readyState === "READY" && d.target !== "production",
+    d ? `${d.id} ${d.readyState} ${head.slice(0, 7)}` : `aucun pour ${head.slice(0, 7)}`,
+  );
+  if (!d) return finish("ASSISTANT_ACTIONS_G8_OK");
+  const base = `https://${d.url}`;
+  check(
+    `délai du tour lu dans le code : ${TURN_DEADLINE_S} s, sous le maxDuration de ${MAX_DURATION_S} s`,
+    TURN_DEADLINE_S > 0 && TURN_DEADLINE_S < MAX_DURATION_S,
+  );
+  // Les détecteurs eux-mêmes : ils voient un chemin brut et chaque balisage, pas un texte simple.
+  check(
+    "contre-épreuve : un chemin brut et chacun des balisages sont vus, un texte simple ne l'est pas",
+    RAW_PATH.test("voir /fr/app/invoices") &&
+      RAW_PATH.test("voir /app") &&
+      markupIn("| a |\n|---|\n<br> **x** # T").length === 4 &&
+      markupIn("Factures · Kunde AG · CHF 300.00").length === 0 &&
+      !RAW_PATH.test("Page ouverte : Factures"),
+  );
+  const bypass = await bypassSecret();
+  const session = await previewSession(st, prodHost);
+  // Rien ne doit être écrit par ces demandes de lecture : pièces, contacts et articles recomptés.
+  const footprint = () =>
+    readOnly(
+      st.secrets.roUrl,
+      async (c) =>
+        (
+          await c.query(
+            `select (select count(*)::int from invoices where organization_id = $1) invoices,
+               (select count(*)::int from contacts where organization_id = $1) contacts,
+               (select count(*)::int from products where organization_id = $1) products,
+               (select max(updated_at)::text from invoices where organization_id = $1) touched`,
+            [session.orgId],
+          )
+        ).rows[0],
+    );
+  const before = await footprint();
+  const br = await browser();
+  try {
+    // ------------------------------------------------------------- bureau
+    const desk = await appPage(br, base, session.token, bypass, { width: 1280, height: 860 });
+    const p = desk.page;
+    await p.goto(`${base}/fr/app`);
+    await p.getByTestId("assistant-bubble").click();
+    check(
+      "focus dans le champ dès l'ouverture du panneau",
+      await p.evaluate(
+        () => document.activeElement?.getAttribute("data-testid") === "assistant-input",
+      ),
+    );
+    const note = p.getByTestId("assistant-disclaimer");
+    const noteBox = await note.boundingBox();
+    const inputBox = await p.getByTestId("assistant-input").boundingBox();
+    check(
+      "mention « peut se tromper » visible sous le champ",
+      (await note.isVisible()) &&
+        /peut se tromper/.test(await note.innerText()) &&
+        !!noteBox &&
+        !!inputBox &&
+        noteBox.y >= inputBox.y + inputBox.height,
+      await note.innerText().catch(() => "absente"),
+    );
+
+    // « Ouvrez <écran> » : la bulle navigue, le fil dit « Page ouverte : <libellé> », aucun chemin.
+    const r1 = await ask(desk, "Ouvrez la liste de mes factures, s'il vous plaît.");
+    const nav = (r1.reply?.body?.actions ?? []).find((a) => a.type === "navigate");
+    console.log(
+      `« ouvrez mes factures » (${r1.seconds.toFixed(1)} s) : ${(r1.reply?.body?.reply ?? "").slice(0, 200)}`,
+    );
+    check(
+      `« ouvrez mes factures » : réponse 200 en ${r1.seconds.toFixed(1)} s, sous le délai du tour`,
+      r1.reply?.status === 200 && r1.seconds < TURN_DEADLINE_S,
+      r1.reply?.status,
+    );
+    check(
+      "la bulle navigue vers les factures avec le libellé de l'écran",
+      nav?.path === "/app/invoices" && nav.label === "Factures",
+      JSON.stringify(nav ?? null),
+    );
+    await p.waitForURL(/\/fr\/app\/invoices$/, { timeout: 30_000 }).catch(() => {});
+    check(
+      "la page est allée aux factures",
+      new URL(p.url()).pathname === "/fr/app/invoices",
+      p.url(),
+    );
+    const opened = await p
+      .getByTestId("assistant-navigated")
+      .last()
+      .innerText()
+      .catch(() => "");
+    check(
+      "le fil montre « Page ouverte : Factures »",
+      /^Page ouverte\s?:\s?Factures$/.test(opened.trim()),
+      opened,
+    );
+    const t1 = await threadText(p);
+    check("aucun chemin brut dans le fil", !RAW_PATH.test(t1), t1.slice(0, 300));
+    await shot(p, "bureau-page-ouverte");
+
+    // Une demande qui invite à un tableau : le fil n'affiche aucun balisage.
+    const r2 = await ask(
+      desk,
+      "Présentez-moi sous forme de tableau, avec un titre au-dessus, les articles de mon catalogue et leurs prix.",
+    );
+    const raw = r2.reply?.body?.reply ?? "";
+    console.log(
+      `« tableau » (${r2.seconds.toFixed(1)} s), balisage écrit par le modèle : ${markupIn(raw).join(", ") || "aucun"} ; ${raw.slice(0, 200)}`,
+    );
+    check(
+      `la demande « tableau » a une réponse en ${r2.seconds.toFixed(1)} s, sous le délai du tour`,
+      r2.reply?.status === 200 && raw.trim().length > 20 && r2.seconds < TURN_DEADLINE_S,
+      r2.reply?.status,
+    );
+    const t2 = await threadText(p);
+    check(
+      "fil sans balisage affiché (|---|, <br, **, #)",
+      markupIn(t2).length === 0,
+      markupIn(t2).join(", "),
+    );
+    check("aucun chemin brut dans le fil après la demande « tableau »", !RAW_PATH.test(t2));
+    check(
+      "aucune carte « À confirmer » pour ces demandes de lecture",
+      [r1, r2].every((r) => confirmCards(r.reply).length === 0),
+    );
+    await shot(p, "bureau-tableau");
+
+    // Échap depuis un bouton du panneau : fermé, focus rendu à la bulle.
+    await p.getByTestId("assistant-new").focus();
+    await p.keyboard.press("Escape");
+    check(
+      "Échap (focus sur un bouton du panneau) ferme le panneau et rend le focus à la bulle",
+      (await p.getByTestId("assistant-panel").count()) === 0 &&
+        (await p.evaluate(
+          () => document.activeElement?.getAttribute("data-testid") === "assistant-bubble",
+        )),
+    );
+    check("bureau : aucune erreur JavaScript", desk.errors.length === 0, desk.errors.join(" | "));
+    await desk.ctx.close();
+
+    // ------------------------------------------------------------- téléphone, 390 px
+    const phone = await appPage(br, base, session.token, bypass, { width: 390, height: 844 }, true);
+    const m = phone.page;
+    for (const [path, name] of [
+      ["/fr/app", "accueil"],
+      ["/fr/app/invoices", "factures"],
+      ["/fr/app/settings/company", "entreprise"],
+    ]) {
+      await m.goto(`${base}${path}`);
+      const g = await pageBottom(m);
+      check(
+        `390 px : le bas de la page défile au-dessus de la bulle, ${path} (${g.last} finit à ${g.bottom} px, bulle dès ${g.fabTop} px)`,
+        g.atEnd && g.bottom > 0 && g.disjoint,
+        JSON.stringify(g),
+      );
+      await shot(m, `mobile-bas-${name}`);
+    }
+    await m.getByTestId("assistant-bubble").click();
+    const panel = await m.getByTestId("assistant-panel").boundingBox();
+    const mNote = await m.getByTestId("assistant-disclaimer").boundingBox();
+    check(
+      "390 px : panneau plein écran, mention visible dans l'écran, focus dans le champ",
+      !!panel &&
+        panel.width >= 389 &&
+        panel.height >= 843 &&
+        !!mNote &&
+        mNote.y + mNote.height <= 845 &&
+        (await m.evaluate(
+          () => document.activeElement?.getAttribute("data-testid") === "assistant-input",
+        )),
+      JSON.stringify({ panel, mNote }),
+    );
+    await shot(m, "mobile-panneau");
+    check(
+      "téléphone : aucune erreur JavaScript",
+      phone.errors.length === 0,
+      phone.errors.join(" | "),
+    );
+    await phone.ctx.close();
+  } finally {
+    await br.close();
+    await session.write.end();
+  }
+  for (const name of [
+    "bureau-page-ouverte",
+    "bureau-tableau",
+    "mobile-bas-accueil",
+    "mobile-bas-factures",
+    "mobile-bas-entreprise",
+    "mobile-panneau",
+  ]) {
+    const file = join(CAPTURES, `alignement-${name}.png`);
+    check(
+      `capture alignement-${name}.png écrite pendant cette porte`,
+      existsSync(file) && statSync(file).size > 10_000 && statSync(file).mtimeMs >= started,
+    );
+  }
+  check(
+    "rien n'a été écrit pendant G8 (pièces, contacts, articles relus en lecture seule)",
+    JSON.stringify(await footprint()) === JSON.stringify(before),
+    JSON.stringify(before),
+  );
+  finish("ASSISTANT_ACTIONS_G8_OK");
+}
+
+// ---------------------------------------------------------------------------------------------
 // Point d'entrée
 // ---------------------------------------------------------------------------------------------
 
-const GATES = { G1: g1, G2: g2, G3: g3, G4: g4, G5: g5, G6: g6 };
+const GATES = { G1: g1, G2: g2, G3: g3, G4: g4, G5: g5, G6: g6, G7: g7, G8: g8 };
 const gate = process.argv[2];
 if (!GATES[gate]) {
   console.log(`usage : node scripts/assistant-actions-gates.mjs ${Object.keys(GATES).join("|")}`);
