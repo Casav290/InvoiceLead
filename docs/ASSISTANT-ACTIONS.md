@@ -27,10 +27,17 @@ pas. Le contrôle `scripts/assistant-actions-gates.mjs G1` vérifie que rien ne 
   opération suivante la cite à la place d'un identifiant (`"contactId": "@c1"`, `productId` des
   lignes, `projectId`, `documentId`, `quoteId`, `invoiceId`, `billId`, `accountId`). La carte groupe
   les opérations par action ; chaque ligne montre ce qu'elle écrit (« avant → après » pour une
-  modification) et les avertissements de toutes les opérations sont sous le lot. Les créations
-  simples sont plafonnées à cinq lignes par groupe (« + N autres ») ; une modification, une opération
-  qui a un avertissement, ou qui écrit des coordonnées de paiement ou un texte imprimé sur une pièce
-  est toujours montrée.
+  modification), et chaque avertissement est sous ce qu'il concerne : une fois sous le groupe si
+  toutes ses opérations l'ont, sinon sous l'opération (une facture et un devis émis ensemble). Les
+  créations simples sans texte libre sont plafonnées à cinq lignes par groupe (« + N autres ») ; une
+  modification, une pièce (avec ses lignes), une opération qui a un avertissement, ou qui écrit des
+  coordonnées de paiement, une adresse e-mail, une note ou un texte imprimé (introduction, fin,
+  description) est toujours montrée (suites du 29.10.2026).
+- Relances automatiques par e-mail (formule Pro, activées à l'écran) : après TOUTES les opérations
+  d'une carte, dans la même transaction et quel que soit leur ordre, une facture émise par la carte,
+  ou une facture émise d'un client qui reçoit sa première adresse e-mail, qui partirait en relance
+  sans la personne (échue avec un solde ouvert, ou relancée aujourd'hui ou demain) fait refuser la
+  carte (`auto_reminder_on_screen`) : la personne le fait à l'écran. Vérifié aussi au clic.
 - Dans un lot, une opération qui change l'entreprise (réglages, relances) est vue par les suivantes :
   l'entreprise est relue dans la transaction, deux réglages du même lot s'ajoutent.
 - Les suites de l'écran partent **après** la validation, jamais d'un essai à blanc : états vers
@@ -63,7 +70,7 @@ pas. Le contrôle `scripts/assistant-actions-gates.mjs G1` vérifie que rien ne 
 | Écran | Action dans l'interface | Fonction serveur | Assistant |
 |---|---|---|---|
 | Contacts | Nouveau contact (client ou fournisseur) | `saveContact` | `propose_create_contact` |
-| Contacts | Modifier un contact | `saveContact` | `propose_update_contact` |
+| Contacts | Modifier un contact | `saveContact` | `propose_update_contact` (avec les relances automatiques, la première adresse e-mail d'un client qui a une facture échue est refusée : une relance partirait, la personne l'ajoute à l'écran) |
 | Contacts | Archiver un contact | `archiveContactAction` | interdit : supprimer (l'archivage retire le contact des listes) |
 
 ## Factures, devis et avoirs
@@ -72,7 +79,7 @@ pas. Le contrôle `scripts/assistant-actions-gates.mjs G1` vérifie que rien ne 
 |---|---|---|---|
 | Factures, Devis | Nouveau brouillon de facture ou de devis | `saveInvoice` | `propose_create_invoice_draft` |
 | Factures, Devis, Avoirs | Modifier un brouillon (lignes, textes, dates, client, devise) | `saveInvoice` | `propose_update_invoice_draft` |
-| Pièce (brouillon) | Émettre (numéro définitif) | `issueInvoiceAction` | `propose_issue_document` (n'envoie rien ; avec les relances automatiques, la carte le dit, et une facture que la tâche du matin relancerait aussitôt est refusée : la personne l'émet à l'écran) |
+| Pièce (brouillon) | Émettre (numéro définitif) | `issueInvoiceAction` | `propose_issue_document` (n'envoie rien ; avec les relances automatiques, la carte le dit, et une facture que la tâche du matin relancerait aussitôt est refusée, aussi quand une autre opération de la carte donne une adresse e-mail au client : la personne l'émet à l'écran) |
 | Pièce (brouillon) | Supprimer le brouillon | `deleteDraftAction` | interdit : supprimer |
 | Devis | Accepté, refusé | `quoteOutcomeAction` | `propose_set_quote_outcome` |
 | Pièce (brouillon) | Détacher l'affaire CRMlead reprise d'un devis précédent | `detachCrmleadAction` | `propose_update_invoice_draft` (`detachCrmleadDeal`) |
