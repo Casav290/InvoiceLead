@@ -3,6 +3,7 @@ import type { BetaMessageParam } from "@anthropic-ai/sdk/resources/beta/messages
 import { type Locale, routing } from "@/i18n/routing";
 import type { CurrentSession } from "../auth/session";
 import type { Db } from "../db";
+import { assistantBudget, budgetView } from "../plans";
 import { actionOperations, applyAction } from "./operations";
 import { type AssistantContext, rightProblem } from "./ops-core";
 import { recordUsage, reserveMessage } from "./quota";
@@ -139,6 +140,12 @@ export async function assistantPost(
 
   const { session } = auth;
   const who = { organizationId: session.organization.id, userId: session.user.id };
+  // Formule gratuite (L4) : budget du mois atteint → aucun appel au modèle, aucune place de quota
+  // prise. La formule se décide par tierOf, comme partout dans l'application (plans.ts).
+  const day = deps.today ?? today();
+  const budget = await assistantBudget(deps.database, session.organization, day);
+  if (budget?.exhausted)
+    return { status: 429, body: { error: "free_limit", budget: budgetView(budget) } };
   const reserved = await reserveMessage(deps.database, who);
   if ("limit" in reserved) return { status: 429, body: { error: "quota", scope: reserved.limit } };
 
@@ -174,11 +181,17 @@ export async function assistantPost(
     return { status: 502, body: { error: "unavailable" } };
   }
   await recordUsage(deps.database, reserved.id, result.usage);
+  // Formule gratuite (L5) : le compteur de la bulle suit chaque tour, jetons de ce tour compris.
+  const left = budget
+    ? budgetView(await assistantBudget(deps.database, session.organization, day))
+    : null;
+  const counter = left ? { budget: left } : {};
   // Délai du tour dépassé (B1), fil refusé par le service (B3), service indisponible : chacun son
   // code et son texte dans la bulle.
-  if (result.notice === "timeout") return { status: 504, body: { error: "timeout" } };
-  if (result.notice === "history") return { status: 400, body: { error: "history" } };
-  if (result.notice === "unavailable") return { status: 502, body: { error: "unavailable" } };
+  if (result.notice === "timeout") return { status: 504, body: { error: "timeout", ...counter } };
+  if (result.notice === "history") return { status: 400, body: { error: "history", ...counter } };
+  if (result.notice === "unavailable")
+    return { status: 502, body: { error: "unavailable", ...counter } };
   return {
     status: 200,
     body: {
@@ -186,6 +199,7 @@ export async function assistantPost(
       reply: result.reply,
       actions: result.actions,
       notice: result.notice,
+      ...counter,
     },
   };
 }

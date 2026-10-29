@@ -1,7 +1,14 @@
-import { and, eq, gte, isNull, sql } from "drizzle-orm";
+import { and, eq, gte, isNull, lt, sql } from "drizzle-orm";
 import { homeCurrencies } from "@/lib/region";
 import type { Db } from "./db";
-import { contacts, invoices, organizations, planUsage, recurringInvoices } from "./db/schema";
+import {
+  assistantUsage,
+  contacts,
+  invoices,
+  organizations,
+  planUsage,
+  recurringInvoices,
+} from "./db/schema";
 
 /**
  * Formules d'InvoiceLead (docs/PLAN.md, section 9, décidée le 1er octobre 2026) : Gratuit, Pro et
@@ -10,9 +17,11 @@ import { contacts, invoices, organizations, planUsage, recurringInvoices } from 
  *
  * Rien n'est caché à une formule : une fonction d'une formule supérieure reste visible, grisée, avec
  * sa marque et le lien de mise à niveau. La formule gratuite reçoit de petites allocations (5
- * factures émises, 10 lectures de pièces, 10 questions, 5 relances, 1 relevé bancaire par mois,
- * 1 facture récurrente active). Les limites s'appliquent aux nouvelles actions, jamais aux données
- * déjà créées. Factures et lectures révisées par Ève le 29.10.2026 (auparavant 10 et 20 par mois).
+ * factures émises, 10 lectures de pièces, l'assistant IA à hauteur de 10 demandes (en jetons), 5
+ * relances, 1 relevé bancaire par mois, 1 facture récurrente active). Les limites s'appliquent aux
+ * nouvelles actions, jamais aux données déjà créées. Factures et lectures révisées par Ève le
+ * 29.10.2026 (auparavant 10 et 20 par mois) ; le même jour, les « 10 questions à l'assistant » sont
+ * devenues un budget de jetons commun à la bulle et à la page Assistant (ASSISTANT_TOKENS).
  */
 export type Tier = "free" | "pro" | "proplus";
 
@@ -52,8 +61,8 @@ export const FEATURE_TIER: Record<Feature, Tier> = {
 /**
  * Allocations. Par mois civil (UTC) : factures émises, lectures de pièces par l'IA (tickets de
  * notes de frais, justificatifs déposés ou relus, un seul compteur ; les e-factures, lues sans IA,
- * n'y comptent pas), questions à l'assistant, relances, imports de relevés. En tout : contacts
- * actifs, factures récurrentes actives.
+ * n'y comptent pas), assistant IA (jetons pondérés, voir ASSISTANT_TOKENS), relances, imports de
+ * relevés. En tout : contacts actifs, factures récurrentes actives.
  */
 export type Quota =
   | "invoices"
@@ -64,11 +73,31 @@ export type Quota =
   | "bankImports"
   | "recurring";
 
-/** Allocations tenues par un compteur réservé avant l'action (table plan_usage). */
-export const METERED = ["aiReads", "assistant", "reminders", "bankImports"] as const;
+/**
+ * Allocations tenues par un compteur réservé avant l'action (table plan_usage). L'assistant IA n'en
+ * est plus (29.10.2026) : sa consommation se lit dans son journal (assistant_usage), un seul compteur.
+ */
+export const METERED = ["aiReads", "reminders", "bankImports"] as const;
 export type MeteredQuota = (typeof METERED)[number];
 
 const UNLIMITED = Number.POSITIVE_INFINITY;
+
+/**
+ * Assistant IA (bulle et page Assistant), décision d'Ève du 29.10.2026 : en formule gratuite, un
+ * budget de jetons PONDÉRÉS par le prix, par mois civil (UTC) et par entreprise, « l'équivalent de 10
+ * demandes ». Seule source de ces nombres dans l'application (textes, compteur, tests).
+ *
+ * - weights : poids de chaque sorte de jeton du journal assistant_usage (entrée 1, écriture de
+ *   cache 1,25, lecture de cache 0,1, sortie 5), comme le prix du modèle ;
+ * - perRequest : une demande-type (mesuré en production le 29.10.2026 : médiane 5 000 à 18 000,
+ *   moyenne 7 000 à 27 000 selon l'application Lead) ;
+ * - free : le budget mensuel de la formule gratuite, 10 demandes-types.
+ */
+export const ASSISTANT_TOKENS = {
+  weights: { input: 1, cacheWrite: 1.25, cacheRead: 0.1, output: 5 },
+  perRequest: 20_000,
+  free: 200_000,
+} as const;
 
 type Plan = {
   quotas: Record<Quota, number>;
@@ -83,7 +112,8 @@ export const PLANS: Record<Tier, Plan> = {
       invoices: 5,
       contacts: 50,
       aiReads: 10,
-      assistant: 10,
+      // Jetons pondérés par mois (l'équivalent de 10 demandes), pas un nombre de questions.
+      assistant: ASSISTANT_TOKENS.free,
       reminders: 5,
       bankImports: 1,
       recurring: 1,
@@ -397,6 +427,10 @@ const todayUtc = () => new Date().toISOString().slice(0, 10);
 /** Mois civil des compteurs, le même que celui des factures émises : « AAAA-MM » (UTC). */
 export const periodOf = (today: string) => today.slice(0, 7);
 const monthStart = (today: string) => new Date(`${periodOf(today)}-01T00:00:00Z`);
+const nextMonthStart = (today: string) => {
+  const start = monthStart(today);
+  return new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth() + 1, 1));
+};
 
 async function countIssued(database: Db, organizationId: string, today: string) {
   const [row] = await database
@@ -431,6 +465,46 @@ async function countRecurring(database: Db, organizationId: string) {
   return row?.n ?? 0;
 }
 
+/** Jetons d'un message de l'assistant IA, pondérés par le prix (ASSISTANT_TOKENS.weights). */
+export function weightedTokens(usage: {
+  inputTokens: number;
+  outputTokens: number;
+  cacheReadTokens: number;
+  cacheWriteTokens: number;
+}): number {
+  const w = ASSISTANT_TOKENS.weights;
+  return (
+    usage.inputTokens * w.input +
+    usage.cacheWriteTokens * w.cacheWrite +
+    usage.cacheReadTokens * w.cacheRead +
+    usage.outputTokens * w.output
+  );
+}
+
+/**
+ * Jetons pondérés de l'assistant IA de l'entreprise pendant le mois civil (UTC) de `today`, lus dans
+ * son journal (assistant_usage : bulle et page Assistant), avec les poids d'ASSISTANT_TOKENS.
+ */
+async function assistantTokensUsed(database: Db, organizationId: string, today: string) {
+  const w = ASSISTANT_TOKENS.weights;
+  const u = assistantUsage;
+  const [row] = await database
+    .select({
+      n: sql<string>`coalesce(sum(
+        ${u.inputTokens} * ${w.input}::numeric + ${u.cacheWriteTokens} * ${w.cacheWrite}::numeric +
+        ${u.cacheReadTokens} * ${w.cacheRead}::numeric + ${u.outputTokens} * ${w.output}::numeric), 0)`,
+    })
+    .from(u)
+    .where(
+      and(
+        eq(u.organizationId, organizationId),
+        gte(u.createdAt, monthStart(today)),
+        lt(u.createdAt, nextMonthStart(today)),
+      ),
+    );
+  return Number(row?.n ?? 0);
+}
+
 async function meteredUsage(database: Db, organizationId: string, today: string) {
   const rows = await database
     .select({ key: planUsage.key, used: planUsage.used })
@@ -456,7 +530,9 @@ export async function quotaAccess(
         ? await countContacts(database, org.id)
         : quota === "recurring"
           ? await countRecurring(database, org.id)
-          : ((await meteredUsage(database, org.id, today)).get(quota) ?? 0);
+          : quota === "assistant"
+            ? await assistantTokensUsed(database, org.id, today)
+            : ((await meteredUsage(database, org.id, today)).get(quota) ?? 0);
   return quotaResult(tier, quota, used);
 }
 
@@ -467,11 +543,12 @@ export async function planUsageOf(
   today = todayUtc(),
 ): Promise<Record<Quota, Access>> {
   const tier = tierOf(org);
-  const [issued, live, recurring, metered] = await Promise.all([
+  const [issued, live, recurring, metered, assistantTokens] = await Promise.all([
     countIssued(database, org.id, today),
     countContacts(database, org.id),
     countRecurring(database, org.id),
     meteredUsage(database, org.id, today),
+    assistantTokensUsed(database, org.id, today),
   ]);
   const m = (q: MeteredQuota) => quotaResult(tier, q, metered.get(q) ?? 0);
   return {
@@ -479,11 +556,69 @@ export async function planUsageOf(
     contacts: quotaResult(tier, "contacts", live),
     recurring: quotaResult(tier, "recurring", recurring),
     aiReads: m("aiReads"),
-    assistant: m("assistant"),
+    assistant: quotaResult(tier, "assistant", assistantTokens),
     reminders: m("reminders"),
     bankImports: m("bankImports"),
   };
 }
+
+/** Demandes-types qui restent environ (arrondi inférieur) ; Infinity sans limite. */
+export function requestsLeft(access: Pick<Access, "used" | "limit">): number {
+  if (!Number.isFinite(access.limit)) return UNLIMITED;
+  return Math.floor(Math.max(0, access.limit - access.used) / ASSISTANT_TOKENS.perRequest);
+}
+
+/** L'assistant IA d'une entreprise en formule gratuite, ce mois-ci. */
+export type AssistantBudget = {
+  /** Jetons pondérés consommés ce mois-ci, et le budget. */
+  used: number;
+  limit: number;
+  /** Demandes-types qui restent environ (arrondi inférieur). */
+  left: number;
+  /** Budget atteint : plus aucun appel au modèle jusqu'au 1er du mois suivant. */
+  exhausted: boolean;
+  /** Le 1er du mois suivant (« AAAA-MM-01 », UTC), quand l'assistant revient. */
+  resetOn: string;
+  /** Le budget en demandes-types (10), pour les textes. */
+  requests: number;
+  /** La formule qui lève la limite (Pro). */
+  upgradeTo: Tier | null;
+};
+
+/**
+ * Budget de l'assistant IA de l'entreprise ce mois-ci, ou null quand sa formule n'a pas de limite.
+ * « Gratuit » se décide par tierOf, la même règle que tout le reste de l'application (Compte Lead,
+ * abonnement payé ici, essai en cours, formule échue ou trop ancienne) : Pro, Pro+ et un essai ne
+ * sont jamais limités, et ne coûtent aucune lecture du journal. Fin du budget : consommation du mois
+ * ≥ budget (un tour déjà commencé peut le dépasser un peu ; le suivant est refusé).
+ */
+export async function assistantBudget(
+  database: Db,
+  org: Org,
+  today = todayUtc(),
+): Promise<AssistantBudget | null> {
+  const tier = tierOf(org);
+  if (!Number.isFinite(PLANS[tier].quotas.assistant)) return null;
+  const access = quotaResult(tier, "assistant", await assistantTokensUsed(database, org.id, today));
+  return {
+    used: access.used,
+    limit: access.limit,
+    left: requestsLeft(access),
+    exhausted: !access.allowed,
+    resetOn: nextMonthStart(today).toISOString().slice(0, 10),
+    requests: Math.floor(access.limit / ASSISTANT_TOKENS.perRequest),
+    upgradeTo: access.upgradeTo,
+  };
+}
+
+/**
+ * Ce que la bulle et la page Assistant montrent de la formule gratuite : environ N demandes ce
+ * mois-ci, budget atteint (message, lien vers les formules, champ désactivé), date du retour, et le
+ * budget en demandes pour les textes. Rien (null) pour une formule sans limite.
+ */
+export type BudgetView = Pick<AssistantBudget, "left" | "exhausted" | "resetOn" | "requests">;
+export const budgetView = (b: AssistantBudget | null): BudgetView | null =>
+  b && { left: b.left, exhausted: b.exhausted, resetOn: b.resetOn, requests: b.requests };
 
 /**
  * Réserve une unité d'une allocation mensuelle avant l'action, en un seul ordre SQL : au-delà de

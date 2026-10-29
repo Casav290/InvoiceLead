@@ -227,16 +227,18 @@ describe("lectures de pièces par l'IA", () => {
 });
 
 describe("assistant", () => {
-  it("répond à 10 questions par mois en formule gratuite, refuse la onzième", async () => {
+  it("formule gratuite : le budget de jetons de l'assistant IA (sans décompte, une demande-type par réponse), refuse au-delà", async () => {
     const { org, who } = await company(0);
     const ai = vi.fn(async () => aiJson({ answer: "Rien à payer.", links: [] }));
     vi.stubGlobal("fetch", ai);
+    // Le faux modèle ne donne pas ses jetons : chaque réponse compte pour 20 000 (10 par mois).
     for (let i = 0; i < 10; i++)
       expect(await askAssistant(db, who, `Question ${i}`, "fr")).toMatchObject({
         answer: "Rien à payer.",
       });
     expect(await askAssistant(db, who, "Encore une ?", "fr")).toBe("quota");
     expect(ai).toHaveBeenCalledTimes(10);
+    expect((await quotaAccess(db, org, "assistant")).used).toBe(200_000);
     // Le mois suivant, les questions reviennent.
     expect(await askAssistant(db, who, "Et en novembre ?", "fr", "2099-11-02")).toMatchObject({
       answer: "Rien à payer.",
@@ -256,6 +258,37 @@ describe("assistant", () => {
     );
     expect(await askAssistant(db, who, "Qui me doit ?", "fr")).toBe("failed");
     expect((await quotaAccess(db, org, "assistant")).used).toBe(0);
+  });
+
+  it("compte les jetons que l'IA annonce (entrée, cache lu, sortie), une réponse illisible aussi", async () => {
+    const { org, who } = await company(0);
+    const usage = {
+      prompt_tokens: 5_000,
+      completion_tokens: 300,
+      prompt_tokens_details: { cached_tokens: 1_000 },
+    };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        Response.json({
+          choices: [{ message: { content: JSON.stringify({ answer: "CHF 0.00.", links: [] }) } }],
+          usage,
+        }),
+      ),
+    );
+    expect(await askAssistant(db, who, "Qui me doit ?", "fr")).toMatchObject({
+      answer: "CHF 0.00.",
+    });
+    // 4 000 en entrée + 0,1 × 1 000 lus en cache + 5 × 300 en sortie.
+    expect((await quotaAccess(db, org, "assistant")).used).toBe(4_000 + 100 + 1_500);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        Response.json({ choices: [{ message: { content: "pas du JSON" } }], usage }),
+      ),
+    );
+    expect(await askAssistant(db, who, "Et encore ?", "fr")).toBe("failed");
+    expect((await quotaAccess(db, org, "assistant")).used).toBe(2 * (4_000 + 100 + 1_500));
   });
 });
 

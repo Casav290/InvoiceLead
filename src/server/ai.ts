@@ -11,13 +11,23 @@ type ContentPart =
 
 export type ChatMessage = { role: "system" | "user"; content: string | ContentPart[] };
 
+/** Jetons d'une réponse, tels que l'API les compte (cached_tokens : partie déjà en cache de l'entrée). */
+export type AiUsage = { inputTokens: number; outputTokens: number; cacheReadTokens: number };
+
 /**
  * Appel d'un modèle par l'API « chat completions » compatible OpenAI (Z.ai GLM par défaut), avec une
  * réponse JSON. La réponse est lue avec prudence : l'appelant la valide toujours contre ses données.
  */
 export async function chatJson(
   messages: ChatMessage[],
-  options: { vision?: boolean } = {},
+  options: {
+    vision?: boolean;
+    /**
+     * Appelée dès que le modèle a répondu (avant de lire son JSON) avec les jetons de la réponse, ou
+     * null si l'API ne les donne pas.
+     */
+    onUsage?: (usage: AiUsage | null) => void;
+  } = {},
 ): Promise<unknown> {
   const { AI_API_KEY, AI_BASE_URL, AI_MODEL, AI_VISION_MODEL } = env();
   if (!AI_API_KEY) throw new Error("ai_not_configured");
@@ -34,7 +44,29 @@ export async function chatJson(
     signal: AbortSignal.timeout(60_000),
   });
   if (!res.ok) throw new Error(`ai_failed_${res.status}`);
-  const body = (await res.json()) as { choices?: { message?: { content?: string } }[] };
+  const body = (await res.json()) as {
+    choices?: { message?: { content?: string } }[];
+    usage?: {
+      prompt_tokens?: number;
+      completion_tokens?: number;
+      prompt_tokens_details?: { cached_tokens?: number } | null;
+    };
+  };
+  if (options.onUsage) {
+    const u = body.usage;
+    const prompt = Number(u?.prompt_tokens);
+    const cached = Number(u?.prompt_tokens_details?.cached_tokens ?? 0) || 0;
+    const output = Number(u?.completion_tokens);
+    options.onUsage(
+      Number.isFinite(prompt) && Number.isFinite(output)
+        ? {
+            inputTokens: Math.max(0, prompt - cached),
+            cacheReadTokens: cached,
+            outputTokens: output,
+          }
+        : null,
+    );
+  }
   const content = body.choices?.[0]?.message?.content ?? "";
   // Certains modèles entourent le JSON d'un bloc ```json … ```.
   const start = content.indexOf("{");

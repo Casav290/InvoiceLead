@@ -5,8 +5,9 @@ import { and, eq } from "drizzle-orm";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { attachLeadIdentity } from "@/server/auth/attach";
 import { createContact, parseContactForm } from "@/server/contacts";
-import { organizations, planUsage } from "@/server/db/schema";
+import { assistantUsage, organizations, planUsage } from "@/server/db/schema";
 import {
+  ASSISTANT_TOKENS,
   consumeQuota,
   type Feature,
   featureAccess,
@@ -45,6 +46,13 @@ async function company(rank: number, n = "a") {
     .set({ entitlements: { plan: leadPlan(rank) } })
     .where(eq(organizations.id, a.organization.id));
   return { ...a.organization, entitlements: { plan: leadPlan(rank) } };
+}
+
+/** Jetons de l'assistant IA déjà consommés (journal assistant_usage), pondérés = `weighted`. */
+async function spend(org: { id: string }, weighted: number, at = new Date("2026-10-01T12:00:00Z")) {
+  await db
+    .insert(assistantUsage)
+    .values({ organizationId: org.id, inputTokens: weighted, createdAt: at });
 }
 
 /** Consomme `n` unités et rend le nombre accepté. */
@@ -165,15 +173,21 @@ describe("formules", () => {
     expect(featureAccess(PLUS, "api")).toMatchObject({ allowed: true, tier: "proplus" });
   });
 
-  it("donnent les petites allocations du 1er octobre 2026, factures et lectures révisées le 29.10.2026", () => {
+  it("donnent les petites allocations du 1er octobre 2026, factures et lectures révisées le 29.10.2026, assistant IA en jetons", () => {
     // Demande d'Ève du 29.10.2026 : 5 factures émises et 10 lectures de pièces par mois en
-    // Gratuit (auparavant 10 et 20) ; rien d'autre ne change.
+    // Gratuit (auparavant 10 et 20) ; le même jour, l'assistant passe de 10 questions à un budget
+    // de 200 000 jetons pondérés (l'équivalent de 10 demandes) ; rien d'autre ne change.
+    expect(ASSISTANT_TOKENS).toEqual({
+      weights: { input: 1, cacheWrite: 1.25, cacheRead: 0.1, output: 5 },
+      perRequest: 20_000,
+      free: 200_000,
+    });
     expect(PLANS.free).toEqual({
       quotas: {
         invoices: 5,
         contacts: 50,
         aiReads: 10,
-        assistant: 10,
+        assistant: 200_000,
         reminders: 5,
         bankImports: 1,
         recurring: 1,
@@ -224,17 +238,34 @@ describe("allocations mensuelles", () => {
     });
   });
 
-  it("assistant 10, relances 5, relevé 1 en Gratuit ; sans limite en Pro", async () => {
+  it("assistant IA en jetons, relances 5, relevé 1 en Gratuit ; sans limite en Pro", async () => {
     const free = await company(0, "free");
     const pro = await company(1, "pro");
-    expect(await consume(free, "assistant", 11)).toBe(10);
+    await spend(free, 199_999);
+    expect(await quotaAccess(db, free, "assistant", "2026-10-15")).toMatchObject({
+      allowed: true,
+      used: 199_999,
+      limit: 200_000,
+    });
+    await spend(free, 1);
+    expect(await quotaAccess(db, free, "assistant", "2026-10-15")).toMatchObject({
+      allowed: false,
+      used: 200_000,
+      upgradeTo: "pro",
+    });
     expect(await consume(free, "reminders", 6)).toBe(5);
     expect(await consume(free, "bankImports", 2)).toBe(1);
-    expect(await consume(pro, "assistant", 25)).toBe(25);
+    await spend(pro, 2_500_000);
     expect(await consume(pro, "reminders", 12)).toBe(12);
     expect(await consume(pro, "bankImports", 4)).toBe(4);
     // Les formules sans limite comptent quand même (usage affiché).
-    expect((await quotaAccess(db, pro, "assistant", "2026-10-02")).used).toBe(25);
+    expect(await quotaAccess(db, pro, "assistant", "2026-10-02")).toMatchObject({
+      allowed: true,
+      used: 2_500_000,
+      limit: Infinity,
+    });
+    // L'assistant ne tient plus de compteur dans plan_usage (un seul compteur : son journal).
+    expect(await db.select().from(planUsage).where(eq(planUsage.key, "assistant"))).toEqual([]);
   });
 
   it("rendent l'unité quand l'action échoue, sans descendre sous zéro", async () => {
@@ -244,19 +275,19 @@ describe("allocations mensuelles", () => {
     expect((await quotaAccess(db, free, "aiReads", "2026-10-01")).used).toBe(9);
     expect(await consume(free, "aiReads", 2)).toBe(1);
     // Sans ligne du mois : rien à rendre, rien d'écrit.
-    await refundQuota(db, free.id, "assistant", "2026-10-01");
-    expect((await quotaAccess(db, free, "assistant", "2026-10-01")).used).toBe(0);
-    // Une ligne à 1, rendue deux fois (panne de l'IA rejouée) : elle reste à 0, sans erreur, même
+    await refundQuota(db, free.id, "reminders", "2026-10-01");
+    expect((await quotaAccess(db, free, "reminders", "2026-10-01")).used).toBe(0);
+    // Une ligne à 1, rendue deux fois (envoi échoué rejoué) : elle reste à 0, sans erreur, même
     // avec la contrainte « used >= 0 » de la table.
-    expect(await consume(free, "assistant", 1)).toBe(1);
-    await refundQuota(db, free.id, "assistant", "2026-10-01");
-    await expect(refundQuota(db, free.id, "assistant", "2026-10-01")).resolves.toBeUndefined();
+    expect(await consume(free, "reminders", 1)).toBe(1);
+    await refundQuota(db, free.id, "reminders", "2026-10-01");
+    await expect(refundQuota(db, free.id, "reminders", "2026-10-01")).resolves.toBeUndefined();
     const [row] = await db
       .select()
       .from(planUsage)
-      .where(and(eq(planUsage.organizationId, free.id), eq(planUsage.key, "assistant")));
+      .where(and(eq(planUsage.organizationId, free.id), eq(planUsage.key, "reminders")));
     expect(row?.used).toBe(0);
-    expect(await consume(free, "assistant", 10)).toBe(10);
+    expect(await consume(free, "reminders", 5)).toBe(5);
   });
 
   it("repartent à zéro le premier du mois (UTC) et restent propres à l'entreprise", async () => {
@@ -289,10 +320,15 @@ describe("allocations mensuelles", () => {
   it("se lisent toutes ensemble pour le tableau de bord", async () => {
     const free = await company(0);
     await consume(free, "aiReads", 3);
-    await consume(free, "assistant", 10);
+    await spend(free, 200_000);
     const usage = await planUsageOf(db, free, "2026-10-09");
     expect(usage.aiReads).toMatchObject({ allowed: true, used: 3, limit: 10 });
-    expect(usage.assistant).toMatchObject({ allowed: false, used: 10, upgradeTo: "pro" });
+    expect(usage.assistant).toMatchObject({
+      allowed: false,
+      used: 200_000,
+      limit: 200_000,
+      upgradeTo: "pro",
+    });
     expect(usage.invoices).toMatchObject({ allowed: true, used: 0, limit: 5 });
     expect(usage.recurring).toMatchObject({ allowed: true, used: 0, limit: 1 });
     expect(usage.bankImports).toMatchObject({ allowed: true, used: 0, limit: 1 });

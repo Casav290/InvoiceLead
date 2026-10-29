@@ -509,6 +509,9 @@ createServer(async (req, res) => {
         choices: [
           { message: { content: JSON.stringify({ answer, links: ["invoices", "nope"] }) } },
         ],
+        // Une demande-type de l'assistant IA : 18 000 jetons d'entrée + 5 × 400 en sortie = 20 000
+        // jetons pondérés (src/server/plans.ts, ASSISTANT_TOKENS) ; la formule gratuite en a 10.
+        usage: { prompt_tokens: 18_000, completion_tokens: 400 },
       });
     }
     if (system.includes("receipts")) {
