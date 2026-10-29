@@ -58,8 +58,16 @@ const STATE_FILE = join(HOME, ".invoicelead-actions-ia.json");
 const LOCALES = ["fr", "de", "en", "it", "es"];
 const TMP = join(ROOT, "tmp", "free-limits-gates");
 const LOCAL_PG = (db) => `postgresql://ubuntu@localhost/${db}?host=/var/run/postgresql`;
-/** Entreprise TEST gratuite de la base d'aperçu (banc lead-e2e, « abonnement par app »). */
-const TEST_ORG = "TEST Par app ProjectLead seul";
+/**
+ * Entreprises TEST gratuites de la base d'aperçu (banc lead-e2e, « abonnement par app »), dans
+ * l'ordre : G4 prend la première qui n'a pas encore émis 5 factures ce mois, pour rejouer tout le
+ * parcours (compteur de 0 à 5, puis la 6e) ; si toutes sont à 5, seule la 6e est rejouée.
+ */
+const TEST_ORGS = [
+  "TEST Par app ProjectLead seul",
+  "TEST Par app CRMlead + ProjectLead",
+  "TEST Par app ScanLead seul",
+];
 
 const results = [];
 function check(name, ok, detail = "") {
@@ -81,6 +89,8 @@ const sh = (cmd, args, opts = {}) =>
 const gitIn = (dir, ...args) =>
   execFileSync("git", args, { cwd: dir, encoding: "utf8", maxBuffer: 512 * 1024 * 1024 }).trim();
 const git = (...args) => gitIn(ROOT, ...args);
+/** JSON lisible : l'infini (sans limite) s'écrit « ∞ » au lieu de null. */
+const show = (v) => JSON.stringify(v, (_k, x) => (x === Infinity ? "∞" : x));
 const isAncestor = (dir, a, b) =>
   spawnSync("git", ["merge-base", "--is-ancestor", a, b], { cwd: dir }).status === 0;
 mkdirSync(TMP, { recursive: true });
@@ -223,15 +233,11 @@ async function g1() {
     isDeepStrictEqual(others(now.free), others(before.free)),
     JSON.stringify(others(now.free)),
   );
-  check(
-    "Pro identique à la production",
-    isDeepStrictEqual(now.pro, before.pro),
-    JSON.stringify(now.pro),
-  );
+  check("Pro identique à la production", isDeepStrictEqual(now.pro, before.pro), show(now.pro));
   check(
     "Pro+ identique à la production",
     isDeepStrictEqual(now.proplus, before.proplus),
-    JSON.stringify(now.proplus),
+    show(now.proplus),
   );
   check(
     "mêmes formules et mêmes allocations qu'en production",
@@ -747,8 +753,10 @@ function freeTexts(messages) {
 }
 function erpFreeText(rev, l) {
   const src = gitIn(ERP, "show", `${rev}:src/landingText.ts`);
-  // Le bloc de chaque langue commence par « const <l> = { » ; sa ligne il_free donne le texte.
-  const block = src.slice(src.indexOf(`const ${l} = {`));
+  // Le bloc de chaque langue commence par « const <l> = { » (fr) ou « const <l>: LandingText = { ».
+  const start = src.search(new RegExp(`^const ${l}(: LandingText)? = \\{`, "m"));
+  if (start < 0) throw new Error(`bloc ${l} introuvable`);
+  const block = src.slice(start);
   const m = /il_free: '([^']+)'/.exec(block);
   if (!m) throw new Error(`il_free ${l}`);
   return m[1];
@@ -912,12 +920,19 @@ async function freeCompanyScenario(br, base, bypass, st, prodHost) {
   const w = await pgClient(writeUrl);
   let sessionId = null;
   try {
-    const org = (
+    const orgs = (
       await w.query(
-        `select id, name, lead_plan, entitlements->'plan'->>'code' code, billing_plan from organizations where name = $1`,
-        [TEST_ORG],
+        `select id, name, lead_plan, entitlements->'plan'->>'code' code, billing_plan
+           from organizations where name = any($1::text[])`,
+        [TEST_ORGS],
       )
-    ).rows[0];
+    ).rows.sort((a, b) => TEST_ORGS.indexOf(a.name) - TEST_ORGS.indexOf(b.name));
+    let org = orgs[0];
+    for (const o of orgs)
+      if ((await issuedThisMonth(st.secrets.roUrl, o.id)) < 5) {
+        org = o;
+        break;
+      }
     const user = org
       ? (
           await w.query(
@@ -928,7 +943,7 @@ async function freeCompanyScenario(br, base, bypass, st, prodHost) {
         ).rows[0]
       : null;
     check(
-      `entreprise TEST « ${TEST_ORG} » de la base d'aperçu, en formule gratuite, avec son administrateur`,
+      `entreprise TEST « ${org?.name} » de la base d'aperçu, en formule gratuite, avec son administrateur`,
       org && user && org.code === "free" && !org.billing_plan,
       org ? `${org.lead_plan} / ${org.code}` : "absente",
     );
@@ -969,12 +984,18 @@ async function freeCompanyScenario(br, base, bypass, st, prodHost) {
     check("au départ : 5 factures émises ce mois au plus", n0 <= 5, n0);
     const first = await usage();
     check(`tableau de bord : compteur « ${n0} sur 5 » au départ`, counter(n0).test(first), first);
+    const reads = clean(await page.getByTestId("quota-aiReads").innerText());
+    check(
+      "tableau de bord : « Pièces lues par l'IA : x sur 10 ce mois-ci »",
+      /Pièces lues par l'IA : \d+ sur 10 ce mois-ci/.test(reads),
+      reads,
+    );
     await page.screenshot({ path: join(CAPTURES, `invoicelead-apercu-compteur-${n0}-sur-5.png`) });
 
     // Réglages de l'entreprise (une émission les exige) et un client d'essai, par les écrans.
     await page.goto(`${base}/fr/app/settings/company`);
     const company = page.getByTestId("company-form");
-    await company.getByLabel("Raison sociale").fill("TEST Par app ProjectLead seul Sàrl");
+    await company.getByLabel("Raison sociale").fill(`${org.name} Sàrl`);
     await company.getByLabel("Forme juridique").selectOption("gmbh");
     await company.getByLabel("Rue").fill("Rue du Test");
     await company.getByLabel("Numéro", { exact: true }).fill("5");
