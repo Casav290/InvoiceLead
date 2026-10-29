@@ -13,12 +13,24 @@ pas. Le contrôle `scripts/assistant-actions-gates.mjs G1` vérifie que rien ne 
   la carte « À confirmer » montre ce que la base contiendrait. Rien n'est écrit.
 - « Confirmer » envoie un jeton HMAC (personne, entreprise, 10 minutes, usage unique) à
   `/api/assistant/confirm`, qui relit les droits de chaque opération, consomme le jeton, puis joue
-  l'opération dans une transaction **validée**. Un échec n'écrit rien.
+  l'opération dans une transaction **validée**. Un échec n'écrit rien. Le jeton porte aussi
+  l'empreinte de ce que la carte montrait : si l'état réel donne une autre carte (pièce modifiée
+  entre-temps, autre numéro, IBAN du fournisseur changé…), la transaction est annulée et la
+  confirmation refusée (409 « stale ») ; la personne redemande une carte à jour.
+- La carte montre **tout ce qui sera écrit** : chaque champ que le formulaire de l'écran enregistre
+  (textes d'introduction et de fin, date de prestation et devise d'une pièce ; note et État d'un
+  contact ; IBAN, BIC, référence de paiement, adresse et devise d'une facture fournisseur ; devise et
+  raison sociale que les réglages de l'entreprise en déduisent), « avant → après » pour une
+  modification.
 - `propose_batch` regroupe jusqu'à **150 opérations** sous une seule carte, un seul clic et une seule
   transaction (tout ou rien). Une opération qui crée quelque chose porte une clé (`"key": "c1"`) ; une
   opération suivante la cite à la place d'un identifiant (`"contactId": "@c1"`, `productId` des
   lignes, `projectId`, `documentId`, `quoteId`, `invoiceId`, `billId`, `accountId`). La carte groupe
-  les opérations par action (cinq lignes par groupe, « + N autres »).
+  les opérations par action ; chaque ligne montre ce qu'elle écrit (« avant → après » pour une
+  modification) et les avertissements de toutes les opérations sont sous le lot. Les créations
+  simples sont plafonnées à cinq lignes par groupe (« + N autres ») ; une modification, une opération
+  qui a un avertissement, ou qui écrit des coordonnées de paiement ou un texte imprimé sur une pièce
+  est toujours montrée.
 - Dans un lot, une opération qui change l'entreprise (réglages, relances) est vue par les suivantes :
   l'entreprise est relue dans la transaction, deux réglages du même lot s'ajoutent.
 - Les suites de l'écran partent **après** la validation, jamais d'un essai à blanc : états vers
@@ -60,7 +72,7 @@ pas. Le contrôle `scripts/assistant-actions-gates.mjs G1` vérifie que rien ne 
 |---|---|---|---|
 | Factures, Devis | Nouveau brouillon de facture ou de devis | `saveInvoice` | `propose_create_invoice_draft` |
 | Factures, Devis, Avoirs | Modifier un brouillon (lignes, textes, dates, client, devise) | `saveInvoice` | `propose_update_invoice_draft` |
-| Pièce (brouillon) | Émettre (numéro définitif) | `issueInvoiceAction` | `propose_issue_document` (n'envoie rien) |
+| Pièce (brouillon) | Émettre (numéro définitif) | `issueInvoiceAction` | `propose_issue_document` (n'envoie rien ; avec les relances automatiques, la carte le dit, et une facture que la tâche du matin relancerait aussitôt est refusée : la personne l'émet à l'écran) |
 | Pièce (brouillon) | Supprimer le brouillon | `deleteDraftAction` | interdit : supprimer |
 | Devis | Accepté, refusé | `quoteOutcomeAction` | `propose_set_quote_outcome` |
 | Pièce (brouillon) | Détacher l'affaire CRMlead reprise d'un devis précédent | `detachCrmleadAction` | `propose_update_invoice_draft` (`detachCrmleadDeal`) |
