@@ -9,6 +9,7 @@ import { type AssistantContext, rightProblem } from "./ops-core";
 import { pageLabel, scrubPaths } from "./page-label";
 import { contextPrompt, STABLE_PROMPT } from "./prompt";
 import type { UsageReport } from "./quota";
+import { stripReasoningInPlace, withoutSilentMessages } from "./reasoning";
 import { type AssistantAction, buildTools, type ToolState } from "./tools";
 
 export const MODEL = "claude-opus-5-5";
@@ -137,6 +138,10 @@ export async function runAssistant(input: {
       model: MODEL,
       max_tokens: MAX_TOKENS,
       max_iterations: MAX_ITERATIONS,
+      // Réflexion adaptative dite en clair : c'est déjà le cas de claude-opus-5-5 sans ce champ, mais
+      // un modèle de repli (fallbacks) ne réfléchit pas sans lui et peut alors écrire sa réflexion
+      // dans le texte (« <reasoning>… », suites du 29.10.2026). L'effort reste bas.
+      thinking: { type: "adaptive" },
       output_config: { effort: "low" },
       betas: ["server-side-fallback-2026-07-01"],
       fallbacks: "default",
@@ -159,6 +164,9 @@ export async function runAssistant(input: {
   try {
     for await (const message of runner) {
       last = message;
+      // Notes internes entre balises (<reasoning>…) retirées sur place, avant que le runner garde ce
+      // message pour l'appel suivant : ni affichées, ni dans l'historique, ni relues (reasoning.ts).
+      stripReasoningInPlace(message.content);
       const text = textOf(message);
       if (text && !said.includes(text)) said.push(text);
       usage.inputTokens += message.usage.input_tokens ?? 0;
@@ -194,8 +202,12 @@ export async function runAssistant(input: {
     // Le fil est trop long pour le modèle : la bulle propose une nouvelle conversation (B3).
     return { messages: input.history, reply: "", actions: [], notice: "history", usage };
   }
-  // Coupé ou en pause : traité avant le texte, sans appel d'outil orphelin dans l'historique (B4).
-  const messages = withoutDanglingToolUse([...runner.params.messages] as BetaMessageParam[]);
+  // Coupé ou en pause : traité avant le texte, sans appel d'outil orphelin dans l'historique (B4) ;
+  // un message du tour qui n'était qu'une note interne ne reste pas vide dans l'historique.
+  const messages = withoutSilentMessages(
+    withoutDanglingToolUse([...runner.params.messages] as BetaMessageParam[]),
+    input.history,
+  );
   let notice: Notice | null = null;
   if (stop === "max_tokens") notice = "truncated";
   else if (stop !== "end_turn" && stop !== "stop_sequence") notice = "incomplete";

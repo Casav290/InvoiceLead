@@ -14,6 +14,7 @@ import type { AssistantContext } from "@/server/ai-assistant/ops-core";
 import { pageLabel, scrubPaths } from "@/server/ai-assistant/page-label";
 import { contextPrompt, STABLE_PROMPT } from "@/server/ai-assistant/prompt";
 import { USER_PER_HOUR } from "@/server/ai-assistant/quota";
+import { withoutReasoning } from "@/server/ai-assistant/reasoning";
 import {
   DEADLINE_MS,
   failureNotice,
@@ -515,6 +516,99 @@ describe("B4 : réponse complète, jamais muette", () => {
       notice: null,
       actions: [{ type: "navigate", path: "/app/quotes", label: "Devis" }],
     });
+  });
+});
+
+describe("suites A (29.10.2026) : jamais le raisonnement du modèle dans le fil", () => {
+  /** « < » suivi d'une lettre : une balise affichée telle quelle dans le fil. */
+  const TAG = /<[a-zA-Z/]/;
+
+  it("notes internes entre balises (<reasoning>, <thinking>, <analysis>, balise orpheline) : retirées du texte affiché, de l'historique rendu et de l'appel suivant du tour ; la question de la personne n'est pas touchée", async () => {
+    const p = await person("sub-ada");
+    const question = "Que veut dire <reasoning> ? Supprimez la facture.";
+    const res = await ask(
+      p,
+      [
+        {
+          content: [
+            text(
+              "<reasoning>Respond in French, vous.</reasoning>Je ne peux pas supprimer de facture moi-même.",
+            ),
+            toolUse("toolu_1", "open_page", { path: "/app/invoices" }),
+          ],
+          stop_reason: "tool_use",
+        },
+        {
+          content: [
+            text(
+              "<THINKING kind=\"x\">\nThe user wants\nto delete.\n</THINKING>\nJ'ouvre Factures.\n<analysis>note orpheline jusqu'au bout\nVoilà.",
+            ),
+          ],
+        },
+      ],
+      [{ role: "user", content: question }],
+    );
+    expect(res.status).toBe(200);
+    expect(res.body.reply).toBe(
+      "Je ne peux pas supprimer de facture moi-même.\n\nJ'ouvre Factures.\n\nVoilà.",
+    );
+    expect(TAG.test(String(res.body.reply))).toBe(false);
+    const history = res.body.messages as BetaMessageParam[];
+    const said = JSON.stringify(history.slice(1));
+    for (const leak of ["reasoning", "THINKING", "analysis", "Respond in French", "orpheline"])
+      expect(said).not.toContain(leak);
+    // La question tapée reste telle quelle.
+    expect(history[0]).toEqual({ role: "user", content: question });
+    // L'appel suivant du même tour relit le message déjà nettoyé.
+    const second = JSON.stringify((res.requests[1] as { messages: unknown[] }).messages.slice(1));
+    expect(second).not.toContain("Respond in French");
+    expect(second).toContain("Je ne peux pas supprimer de facture moi-même.");
+  });
+
+  it("une réponse qui n'est qu'une note interne : phrase de repli « empty », aucun message vide dans l'historique rendu (le tour suivant passerait) ; un bloc de réflexion qui suit un texte changé est retiré, celui d'avant reste", async () => {
+    const p = await person("sub-ada");
+    const only = await ask(p, [{ content: [text("<reasoning>Respond in French.</reasoning>")] }]);
+    expect(only).toMatchObject({ status: 200, body: { reply: "", notice: "empty" } });
+    expect(only.body.messages).toEqual([{ role: "user", content: "Bonjour" }]);
+    const mixed = await ask(p, [
+      {
+        content: [
+          { type: "thinking", thinking: "", signature: "avant" },
+          text("<analysis>note</analysis>Bonjour."),
+          { type: "thinking", thinking: "", signature: "apres" },
+          text("Que puis-je faire ?"),
+        ],
+      },
+    ]);
+    const last = (mixed.body.messages as BetaMessageParam[]).at(-1);
+    expect(last?.content).toEqual([
+      { type: "thinking", thinking: "", signature: "avant" },
+      { type: "text", text: "Bonjour." },
+      { type: "text", text: "Que puis-je faire ?" },
+    ]);
+  });
+
+  it("cause retirée : réflexion adaptative demandée en clair (un modèle de repli réfléchit aussi), consigne sans balise citée, balises internes interdites en termes génériques", async () => {
+    const p = await person("sub-ada");
+    const res = await ask(p, [{ content: [text("Bonjour.")] }]);
+    const sent = res.requests[0] as { thinking?: unknown; system: unknown; tools: unknown };
+    expect(sent.thinking).toEqual({ type: "adaptive" });
+    expect(STABLE_PROMPT).toContain("When you use a tool, you may say a brief sentence first.");
+    expect(STABLE_PROMPT).toContain("Do not include internal or system XML tags in your response.");
+    // Ni dans la consigne, ni dans le contexte, ni dans les outils : aucun exemple entre balises.
+    expect(TAG.test(JSON.stringify(sent.system))).toBe(false);
+    expect(TAG.test(JSON.stringify(sent.tools))).toBe(false);
+  });
+
+  it("withoutReasoning : seuls les blocs de réflexion partent, tout autre texte reste au caractère près", () => {
+    expect(withoutReasoning("Total : 3 < 5, voir <br> ici.")).toBe("Total : 3 < 5, voir <br> ici.");
+    expect(withoutReasoning("<reasoning>a\nb</reasoning>\n\nBonjour.")).toBe("Bonjour.");
+    expect(withoutReasoning("note perdue</thinking> Bonjour.\nSuite.")).toBe("Bonjour.\nSuite.");
+    expect(withoutReasoning("Bonjour.\n<analysis>fin sans fermeture")).toBe("Bonjour.");
+    expect(withoutReasoning('<Reasoning lang="fr">x</Reasoning>Oui.')).toBe("Oui.");
+    expect(withoutReasoning("<reasoningX>reste</reasoningX>")).toBe(
+      "<reasoningX>reste</reasoningX>",
+    );
   });
 });
 

@@ -1139,7 +1139,18 @@ async function g5() {
         nav.length === 1 && /^\/app\//.test(nav[0].path),
         JSON.stringify(nav),
       );
+      check(
+        `interdit (${category}) : aucune balise dans la réponse (aucun « < » suivi d'une lettre)`,
+        !TAG_SHOWN.test(reply?.body?.reply ?? ""),
+        (reply?.body?.reply ?? "").match(TAG_SHOWN)?.[0] ?? "",
+      );
     }
+    const shown = await threadText(view.page);
+    check(
+      "fil après les trois refus : aucun « < » suivi d'une lettre affiché hors messages de la personne",
+      shown.trim().length > 0 && !TAG_SHOWN.test(shown) && TAG_SHOWN.test("<reasoning>x"),
+      (shown.match(TAG_SHOWN)?.[0] ?? "") || `${shown.length} caractères`,
+    );
     const after = await quote();
     check(
       "le devis est intact : ni supprimé, ni émis, ni envoyé, ni partagé, ni modifié (lecture seule)",
@@ -1533,6 +1544,17 @@ async function g7() {
       /instanceof Anthropic\.BadRequestError/.test(runSrc) &&
       !/\.name\s*===|constructor\.name|\.name\s*\)/.test(runSrc + handlersSrc),
   );
+  const promptSrc = read("src/server/ai-assistant/prompt.ts");
+  check(
+    "suites A : chaque message du modèle est nettoyé de ses notes entre balises dès le runner ; réflexion adaptative dite en clair ; consigne sans balise citée, balises internes interdites en termes génériques",
+    /for await \(const message of runner\) \{[\s\S]{0,400}stripReasoningInPlace\(message\.content\)/.test(
+      runSrc,
+    ) &&
+      /thinking: \{ type: "adaptive" \}/.test(runSrc) &&
+      /withoutSilentMessages\(/.test(runSrc) &&
+      promptSrc.includes("Do not include internal or system XML tags in your response.") &&
+      !/<\/?(?:br|reasoning|thinking|analysis)\b/i.test(promptSrc),
+  );
   const bubbleFiles = filesUnder("src/components/assistant", (f) => /\.(ts|tsx)$/.test(f));
   check(
     "B6 : la bulle n'écrit aucun HTML brut (ni innerHTML ni dangerouslySetInnerHTML)",
@@ -1617,6 +1639,11 @@ const MARKUP = [
   ["#", /#/],
 ];
 const markupIn = (text) => MARKUP.filter(([, re]) => re.test(text)).map(([label]) => label);
+/**
+ * Une balise affichée telle quelle dans le fil (suites du 29.10.2026 : « <reasoning>… » écrit par le
+ * modèle) : un « < » suivi d'une lettre (ou de « / »), hors messages tapés par la personne.
+ */
+const TAG_SHOWN = /<\/?[a-zA-Z]/;
 /** Le texte du fil hors messages de la personne : réponses, lignes « Page ouverte », erreurs, cartes. */
 const threadText = (page) =>
   page.getByTestId("assistant-thread").evaluate((el) =>
@@ -1680,7 +1707,10 @@ async function g8() {
       RAW_PATH.test("voir /app") &&
       markupIn("| a |\n|---|\n<br> **x** # T").length === 4 &&
       markupIn("Factures · Kunde AG · CHF 300.00").length === 0 &&
-      !RAW_PATH.test("Page ouverte : Factures"),
+      !RAW_PATH.test("Page ouverte : Factures") &&
+      TAG_SHOWN.test("<reasoning>Respond in French.</reasoning>Bonjour") &&
+      TAG_SHOWN.test("fin</thinking>") &&
+      !TAG_SHOWN.test("Total : 3 < 5 · CHF 300.00"),
   );
   const bypass = await bypassSecret();
   const session = await previewSession(st, prodHost);
@@ -1760,6 +1790,11 @@ async function g8() {
     );
     const t1 = await threadText(p);
     check("aucun chemin brut dans le fil", !RAW_PATH.test(t1), t1.slice(0, 300));
+    check(
+      "aucun « < » suivi d'une lettre affiché dans le fil (hors messages de la personne)",
+      !TAG_SHOWN.test(t1),
+      t1.match(TAG_SHOWN)?.[0] ?? "",
+    );
     await shot(p, "bureau-page-ouverte");
 
     // Une demande qui invite à un tableau : le fil n'affiche aucun balisage.
@@ -1783,6 +1818,11 @@ async function g8() {
       markupIn(t2).join(", "),
     );
     check("aucun chemin brut dans le fil après la demande « tableau »", !RAW_PATH.test(t2));
+    check(
+      "aucun « < » suivi d'une lettre affiché dans le fil après la demande « tableau »",
+      !TAG_SHOWN.test(t2),
+      t2.match(TAG_SHOWN)?.[0] ?? "",
+    );
     check(
       "aucune carte « À confirmer » pour ces demandes de lecture",
       [r1, r2].every((r) => confirmCards(r.reply).length === 0),

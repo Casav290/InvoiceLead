@@ -136,7 +136,9 @@ export const batchSchema = z.object({
   operations: z
     .array(
       z.object({
-        op: z.enum(BATCHABLE).describe("operation, as in the propose_<op> tools"),
+        op: z
+          .enum(BATCHABLE)
+          .describe('operation: the name of a propose_* tool without "propose_"'),
         key: z
           .string()
           .regex(/^[A-Za-z][A-Za-z0-9_-]{0,39}$/)
@@ -144,7 +146,7 @@ export const batchSchema = z.object({
           .describe("local key of what this operation creates, for later operations: @key"),
         input: z
           .record(z.string(), z.unknown())
-          .describe("same fields as the matching propose_<op> tool"),
+          .describe("same fields as the matching propose_* tool"),
       }),
     )
     .min(1)

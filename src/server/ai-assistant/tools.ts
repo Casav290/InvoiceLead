@@ -815,7 +815,7 @@ export function buildTools(ctx: AssistantContext, state: ToolState, secret: stri
 
   const batchTool = betaZodTool({
     name: toolName(BATCH),
-    description: `PROPOSE several changes as ONE confirmation card, applied all together in one transaction (all or nothing), up to ${MAX_BATCH} operations: e.g. several contacts or products, a new customer and its quote, a project and its time entries. Each operation is {op, key?, input}: op is the name of a propose_<op> tool without "propose_", input has exactly the fields of that tool. An operation that creates something can have a key (e.g. "c1"); a later operation uses "@c1" in place of the id (contactId, productId in lines, projectId, documentId, quoteId, invoiceId, billId, accountId). Operations run in order. Use it whenever there is more than one change.`,
+    description: `PROPOSE several changes as ONE confirmation card, applied all together in one transaction (all or nothing), up to ${MAX_BATCH} operations: e.g. several contacts or products, a new customer and its quote, a project and its time entries. Each operation is {op, key?, input}: op is the name of a propose_* tool without "propose_", input has exactly the fields of that tool. An operation that creates something can have a key (e.g. "c1"); a later operation uses "@c1" in place of the id (contactId, productId in lines, projectId, documentId, quoteId, invoiceId, billId, accountId). Operations run in order. Use it whenever there is more than one change.`,
     inputSchema: batchSchema,
     run: (input) => propose(BATCH, input as Record<string, unknown>),
   });
