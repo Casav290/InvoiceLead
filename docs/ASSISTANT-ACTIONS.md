@@ -36,7 +36,7 @@ pas. Le contrôle `scripts/assistant-actions-gates.mjs G1` vérifie que rien ne 
 - `propose_…` : appliqué depuis la conversation (carte « À confirmer »).
 - **interdit : <catégorie>** : catégories du cahier (A7), inchangées : *supprimer*, *payer*,
   *formule et abonnement*, *membres et droits*, *clés API*, *envoyer à l'extérieur*. L'assistant
-  l'explique et ouvre l'écran (`open_page`).
+  l'explique et ouvre l'écran (`open_page`), même si la personne y est déjà.
 - **écran : fichier** : l'action part d'un fichier choisi sur l'appareil (photo, PDF, relevé
   bancaire, e-facture, logo) ; la conversation ne transporte pas de fichier. L'assistant ouvre
   l'écran ; une fois le fichier déposé, ce qui suit (lire, transformer en facture) a son outil.

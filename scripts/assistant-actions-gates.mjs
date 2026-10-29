@@ -421,6 +421,10 @@ async function g2() {
       "interdit : désactiver un compte, aucune carte ; libellé du compte dans la langue",
       "désactiver un compte est refusé",
     ],
+    [
+      "interdit : la consigne dit non, où le faire, et ouvre l'écran même si la personne y est déjà",
+      "consigne d'une demande interdite : le dire, dire où le faire et ouvrir l'écran",
+    ],
     ["lot : clés en double, mauvais type, lecture IA refusées", "refuse les clés en double"],
     [
       "lot : droit retiré avant le clic = 403, jeton gardé",

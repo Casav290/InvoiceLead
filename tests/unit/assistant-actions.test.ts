@@ -5,6 +5,7 @@ import { createFirstFiscalYear, getAccount, installChart, listAccounts } from "@
 import { confirmPost, type Deps } from "@/server/ai-assistant/handlers";
 import { BATCH, MAX_BATCH, OPERATIONS, toolName } from "@/server/ai-assistant/operations";
 import type { AssistantContext } from "@/server/ai-assistant/ops-core";
+import { STABLE_PROMPT } from "@/server/ai-assistant/prompt";
 import { buildTools, type ToolState } from "@/server/ai-assistant/tools";
 import { attachLeadIdentity } from "@/server/auth/attach";
 import { createSession, findSession } from "@/server/auth/session";
@@ -1421,6 +1422,16 @@ describe("interdits au bord des actions permises (A7)", () => {
     const done = await confirmAs(p, token);
     expect(done.status, JSON.stringify(done.body)).toBe(200);
     expect((done.body.result as Applied).label).toBe(`6500 ${a.nameFr}`);
+  });
+
+  it("consigne d'une demande interdite : le dire, dire où le faire et ouvrir l'écran, même si la personne y est déjà (A4 d)", () => {
+    // Sur la page du devis, « supprime ce devis » doit aussi donner le lien de l'écran dans le fil :
+    // sans cette précision, le modèle jugeait l'ouverture inutile (essai réel du 29.10.2026, G5).
+    expect(STABLE_PROMPT).toContain("saying plainly that you cannot do it yourself");
+    expect(STABLE_PROMPT).toContain("explain in one or two sentences where the user does it");
+    expect(STABLE_PROMPT).toContain(
+      "always open that page with open_page, even when the user is already on it",
+    );
   });
 });
 
