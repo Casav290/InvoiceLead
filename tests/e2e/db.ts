@@ -66,6 +66,29 @@ export async function setPlanRank(leadOrg: string, tier: number) {
   if (rowCount !== 1) throw new Error(`organisation ${leadOrg} introuvable`);
 }
 
+/**
+ * Assistant IA : jetons pondérés déjà consommés ce mois-ci par l'entreprise, posés dans son journal
+ * (assistant_usage, une ligne de `weighted` jetons d'entrée, poids 1).
+ */
+export async function spendAssistant(leadOrg: string, weighted: number) {
+  const { rowCount } = await base().query(
+    `insert into assistant_usage (organization_id, input_tokens)
+     select id, $2 from organizations where lead_org = $1`,
+    [leadOrg, weighted],
+  );
+  if (rowCount !== 1) throw new Error(`organisation ${leadOrg} introuvable`);
+}
+
+/** Lignes du journal de l'assistant IA de l'entreprise : chaque appel au modèle en laisse une. */
+export async function assistantUsageRows(leadOrg: string): Promise<number> {
+  const { rows } = await base().query<{ n: number }>(
+    `select count(*)::int n from assistant_usage u join organizations o on o.id = u.organization_id
+     where o.lead_org = $1`,
+    [leadOrg],
+  );
+  return rows[0]?.n ?? 0;
+}
+
 export async function closeDb() {
   await pool?.end();
   pool = null;

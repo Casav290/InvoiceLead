@@ -1,5 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
-import { appIds } from "./db";
+import { appIds, assistantUsageRows, closeDb, spendAssistant } from "./db";
 import { login, traitNetIssues } from "./helpers";
 
 /**
@@ -42,6 +42,8 @@ async function fakeAssistant(page: Page, sent: unknown[]) {
     });
   });
 }
+
+test.afterAll(() => closeDb());
 
 test("la bulle n'apparaît pas sur les pages publiques", async ({ page }) => {
   for (const path of ["/de", "/fr/pricing", "/en/faq", "/fr/login?erreur=lead"]) {
@@ -833,4 +835,143 @@ test.describe("rien de masqué (téléphone, impression)", () => {
     await page.emulateMedia({ media: "screen" });
     await expect(page.getByTestId("assistant-bubble")).toBeVisible();
   });
+});
+
+/*
+ * Périmètre et limite gratuite (29.10.2026, ~/projets/.unlazy/ia-limites/CAHIER.md, L4–L5) : en
+ * formule gratuite, la bulle dit ce qui reste ce mois-ci, puis, budget atteint, le dit avec la date
+ * du retour et le lien des formules, champ désactivé ; une formule payante ne voit rien de tout cela.
+ */
+
+/** Une entreprise neuve du Compte Lead, rien que pour ce test ; rend son organisation. */
+async function newCompany(page: Page, tag: string, plan?: "pro" | "proplus"): Promise<string> {
+  const run = `${tag}-${Date.now()}`;
+  await login(page, "fr", {
+    sub: `sub-${run}`,
+    email: `${run}@budget.test`,
+    org: `org-${run}`,
+    org_name: "Budget Sàrl",
+    ...(plan ? { plan } : {}),
+  });
+  return `org-${run}`;
+}
+
+/** « novembre » : le mois qui suit, comme la bulle l'écrit. */
+const nextMonth = () => {
+  const now = new Date();
+  return new Intl.DateTimeFormat("fr", { month: "long", timeZone: "UTC" }).format(
+    new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1)),
+  );
+};
+
+test("formule gratuite : compteur « environ N demandes » mis à jour après chaque tour, puis message de fin, lien des formules et champ désactivé", async ({
+  page,
+}) => {
+  await newCompany(page, "compteur");
+  await page.getByTestId("assistant-bubble").click();
+  const counter = page.getByTestId("assistant-budget");
+  await expect(counter).toHaveText(
+    "Formule gratuite\u202f: il vous reste environ 10 demandes ce mois-ci.",
+  );
+  let budget = { left: 3, exhausted: false, resetOn: "2026-11-01", requests: 10 };
+  await page.route("**/api/assistant", async (route) => {
+    const body = route.request().postDataJSON() as { messages: unknown[] };
+    await route.fulfill({
+      json: {
+        messages: [...body.messages, { role: "assistant", content: "Voici." }],
+        reply: "Voici.",
+        actions: [],
+        notice: null,
+        budget,
+      },
+    });
+  });
+  const input = page.getByTestId("assistant-input");
+  await input.fill("Combien ai-je encaissé ce mois-ci ?");
+  await input.press("Enter");
+  await expect(counter).toHaveText(
+    "Formule gratuite\u202f: il vous reste environ 3 demandes ce mois-ci.",
+  );
+  budget = { ...budget, left: 1 };
+  await input.fill("Et le mois passé ?");
+  await input.press("Enter");
+  await expect(counter).toHaveText(
+    "Formule gratuite\u202f: il vous reste environ 1 demande ce mois-ci.",
+  );
+  budget = { ...budget, left: 0 };
+  await input.fill("Et l'an passé ?");
+  await input.press("Enter");
+  await expect(counter).toHaveText(
+    "Formule gratuite\u202f: il vous reste moins d'une demande ce mois-ci.",
+  );
+  await expect(input).toBeEnabled();
+  // Le tour qui atteint le budget : message de fin, date du retour, lien des formules.
+  budget = { ...budget, exhausted: true };
+  await input.fill("Une dernière ?");
+  await input.press("Enter");
+  const limit = page.getByTestId("assistant-free-limit");
+  await expect(limit).toContainText(
+    "Vous avez utilisé l'assistant IA prévu par la formule gratuite pour ce mois (l'équivalent de 10 demandes). Il revient le 1er novembre.",
+  );
+  await expect(limit).toContainText("Avec la formule Pro, il n'a pas cette limite.");
+  await expect(page.getByTestId("assistant-plans-link")).toHaveText("Voir les formules");
+  await expect(page.getByTestId("assistant-plans-link")).toHaveAttribute(
+    "href",
+    "/fr/app/settings/plan?plan=pro",
+  );
+  await expect(counter).toHaveCount(0);
+  await expect(input).toBeDisabled();
+  await expect(page.getByTestId("assistant-send")).toBeDisabled();
+  await expect(limit).toBeFocused();
+  expect(await traitNetIssues(page)).toEqual([]);
+});
+
+test("formule gratuite : budget du mois atteint en base → message dès l'ouverture, champ désactivé, /api/assistant refuse sans appel au modèle ; une formule payante n'est pas limitée", async ({
+  page,
+}) => {
+  const org = await newCompany(page, "budget-atteint");
+  await spendAssistant(org, 200_000);
+  const rows = await assistantUsageRows(org);
+  await page.reload();
+  await page.getByTestId("assistant-bubble").click();
+  const limit = page.getByTestId("assistant-free-limit");
+  await expect(limit).toContainText(`Il revient le 1er ${nextMonth()}.`);
+  await expect(limit).toBeFocused();
+  await expect(page.getByTestId("assistant-input")).toBeDisabled();
+  await expect(page.getByTestId("assistant-suggestion-overdue")).toBeDisabled();
+  // Demande forgée depuis la page (même origine, même session) : refusée, aucun appel au modèle.
+  const forged = await page.evaluate(async () => {
+    const r = await fetch("/api/assistant", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ messages: [{ role: "user", content: "Bonjour" }], locale: "fr" }),
+    });
+    return { status: r.status, body: await r.json() };
+  });
+  expect(forged.status).toBe(429);
+  expect(forged.body).toMatchObject({
+    error: "free_limit",
+    budget: { left: 0, exhausted: true, requests: 10 },
+  });
+  expect(await assistantUsageRows(org)).toBe(rows);
+  // La confirmation d'une carte reste permise (elle n'appelle pas le modèle) : un jeton illisible est
+  // refusé pour lui-même (403), pas pour la limite.
+  const confirm = await page.evaluate(async () => {
+    const r = await fetch("/api/assistant/confirm", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token: "x.y" }),
+    });
+    return { status: r.status, body: await r.json() };
+  });
+  expect(confirm).toEqual({ status: 403, body: { error: "invalid_token" } });
+
+  // Formule payante, même consommation : ni compteur ni limite.
+  const pro = await newCompany(page, "budget-pro", "pro");
+  await spendAssistant(pro, 5_000_000);
+  await page.reload();
+  await page.getByTestId("assistant-bubble").click();
+  await expect(page.getByTestId("assistant-input")).toBeFocused();
+  await expect(page.getByTestId("assistant-budget")).toHaveCount(0);
+  await expect(page.getByTestId("assistant-free-limit")).toHaveCount(0);
 });

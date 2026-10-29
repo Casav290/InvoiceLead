@@ -95,7 +95,7 @@ test("formule gratuite : chaque fonction Pro reste visible, grisée, avec sa mar
   );
   const quotas: [string, RegExp][] = [
     ["quota-aiReads", /0 sur 10 ce mois-ci/],
-    ["quota-assistant", /0 sur 10 ce mois-ci/],
+    ["quota-assistant", /Assistant IA\u202f: environ 10 demandes restantes ce mois-ci/],
     ["quota-reminders", /0 sur 5 ce mois-ci/],
     ["quota-bankImports", /0 sur 1 ce mois-ci/],
     ["quota-recurring", /0 sur 1/],
@@ -165,7 +165,9 @@ test("formule gratuite : chaque fonction Pro reste visible, grisée, avec sa mar
   await expect(page.getByTestId("scan-quota")).toContainText(/0 sur 10/);
   await page.goto("/fr/app/assistant");
   await expect(page.getByTestId("assistant-ask")).toBeEnabled();
-  await expect(page.getByTestId("assistant-quota")).toContainText(/0 sur 10 ce mois-ci/);
+  await expect(page.getByTestId("assistant-quota")).toContainText(
+    /environ 10 demandes restantes ce mois-ci/,
+  );
 
   // Pilote automatique ouvert ; son récapitulatif du lundi grisé.
   await page.goto("/fr/app/accounting/review");
@@ -321,21 +323,34 @@ test("formule gratuite : l'import du mois utilisé, la banque se grise et le ser
   await expect(page.getByTestId("bank-review").locator(":scope > li")).toHaveCount(before);
 });
 
-test("formule gratuite : dix questions à l'assistant, puis la boîte grisée et la onzième refusée", async ({
+test("formule gratuite : l'assistant IA à hauteur de dix demandes (jetons), puis la boîte grisée et la onzième refusée", async ({
   page,
 }) => {
+  // Décision d'Ève du 29.10.2026 : un budget de jetons pondérés, l'équivalent de 10 demandes ; le
+  // faux modèle compte 20 000 jetons pondérés par réponse (tests/support/fake-lead-id.mjs).
   await freeCompany(page, "assistant");
   await page.goto("/fr/app/assistant");
   const box = page.getByTestId("assistant-form");
-  for (let i = 1; i <= 10; i++) {
+  const left = (n: number) =>
+    n === 1 ? "environ 1 demande restante" : `environ ${n} demandes restantes`;
+  for (let i = 1; i <= 9; i++) {
     await box.getByLabel("Votre question").fill(`Qui me doit de l'argent ? (${i})`);
     await page.getByTestId("assistant-ask").click();
-    await expect(page.getByTestId("assistant-quota")).toContainText(
-      new RegExp(`${i} sur 10 ce mois-ci`),
-    );
+    await expect(page.getByTestId("assistant-quota")).toContainText(`${left(10 - i)} ce mois-ci`);
   }
+  await box.getByLabel("Votre question").fill("Qui me doit de l'argent ? (10)");
+  await page.getByTestId("assistant-ask").click();
   const lock = page.getByTestId("assistant-lock");
-  await expectLocked(lock, "Pro", "Vous avez posé vos 10 questions gratuites de ce mois.");
+  const now = new Date();
+  const month = new Intl.DateTimeFormat("fr", { month: "long", timeZone: "UTC" }).format(
+    new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1)),
+  );
+  await expectLocked(
+    lock,
+    "Pro",
+    `Vous avez utilisé l'assistant IA prévu par la formule gratuite pour ce mois (l'équivalent de 10 demandes). Il revient le 1er ${month}.`,
+  );
+  await expect(page.getByTestId("assistant-quota")).toHaveCount(0);
   await expect(page.getByTestId("assistant-ask")).toBeDisabled();
   expect(await traitNetIssues(page)).toEqual([]);
 
@@ -345,9 +360,19 @@ test("formule gratuite : dix questions à l'assistant, puis la boîte grisée et
   await page.getByTestId("assistant-ask").click();
   await expect(page.getByRole("alert").filter({ hasText: "Question non envoyée." })).toBeVisible();
   await page.reload();
-  await expect(page.getByTestId("assistant-quota")).toContainText(/10 sur 10 ce mois-ci/);
+  await expect(page.getByTestId("assistant-lock")).toBeVisible();
+  await expect(page.getByTestId("assistant-quota")).toHaveCount(0);
   await page.goto("/fr/app");
   await expect(page.getByTestId("dashboard-assistant").getByTestId("pro-badge")).toHaveText("Pro");
+  await expect(page.getByTestId("quota-assistant")).toContainText(
+    "Assistant IA\u202f: plus aucune demande ce mois-ci",
+  );
+  // Un seul compteur : la bulle de la même entreprise montre le même budget atteint.
+  await page.getByTestId("assistant-bubble").click();
+  await expect(page.getByTestId("assistant-free-limit")).toContainText(
+    "l'équivalent de 10 demandes",
+  );
+  await expect(page.getByTestId("assistant-input")).toBeDisabled();
 });
 
 test("formule gratuite : cinq factures émises par mois, la sixième reste en brouillon et le serveur la refuse", async ({
@@ -633,7 +658,7 @@ test("tarifs et FAQ : les allocations gratuites décidées sont annoncées", asy
     "10 pièces lues par l'IA chaque mois (tickets, justificatifs), e-factures reçues sans limite",
   );
   await expect(free).toContainText("5 factures par mois, devis illimités");
-  await expect(free).toContainText("10 questions par mois");
+  await expect(free).toContainText("Assistant IA\u202f: l'équivalent de 10 demandes par mois");
   await expect(free).toContainText("Première relance à la main, 5 par mois");
   await expect(free).toContainText("1 facture récurrente active");
   await expect(free).toContainText(
@@ -652,7 +677,7 @@ test("tarifs et FAQ : les allocations gratuites décidées sont annoncées", asy
   await page.getByText("Que comprend la formule gratuite\u202f?").click();
   await expect(
     page.getByText(
-      "Chaque mois\u202f: 5 factures, 10 pièces lues par l'IA, 10 questions à l'assistant, 5 relances de premier niveau et 1 relevé bancaire (un compte, un mois au plus) avec le pilote automatique.",
+      "Chaque mois\u202f: 5 factures, 10 pièces lues par l'IA, l'assistant IA (l'équivalent de 10 demandes), 5 relances de premier niveau et 1 relevé bancaire (un compte, un mois au plus) avec le pilote automatique.",
       { exact: false },
     ),
   ).toBeVisible();
@@ -663,7 +688,7 @@ test("tarifs et FAQ : les allocations gratuites décidées sont annoncées", asy
   await page.getByText("Was umfasst das Gratis-Abo?").click();
   await expect(
     page.getByText(
-      "Jeden Monat: 5 Rechnungen, 10 von der KI gelesene Belege, 10 Fragen an den Assistenten, 5 Mahnungen der ersten Stufe und 1 Kontoauszug (ein Konto, höchstens ein Monat) mit Autopilot.",
+      "Jeden Monat: 5 Rechnungen, 10 von der KI gelesene Belege, den KI-Assistenten im Umfang von 10 Anfragen, 5 Mahnungen der ersten Stufe und 1 Kontoauszug (ein Konto, höchstens ein Monat) mit Autopilot.",
       { exact: false },
     ),
   ).toBeVisible();
