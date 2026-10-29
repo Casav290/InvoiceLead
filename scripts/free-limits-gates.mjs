@@ -15,8 +15,17 @@
  *                                           build, Playwright) et ERPlead (types, build, Vitest)
  *   node scripts/free-limits-gates.mjs G4   aperçus Vercel : tarifs et FAQ d'InvoiceLead en 5 langues,
  *                                           accueil d'ERPlead en 5 langues, entreprise TEST gratuite
- *                                           de la base d'APERÇU : compteur « x sur 5 », 6e facture
- *                                           refusée avec l'offre Pro ; captures
+ *                                           créée pour le passage dans la base d'APERÇU : compteur
+ *                                           « x sur 5 », 6e facture refusée avec l'offre Pro ;
+ *                                           entreprises du banc intactes ; branche GitHub
+ *                                           assistant-actions remise en place ; captures
+ *   node scripts/free-limits-gates.mjs AVANT   juste avant la mise en ligne, par qui met en ligne
+ *                                           (lecture seule) : la production est contenue dans les deux
+ *                                           branches (bon dossier ERPlead : erplead-gratuit-5-10),
+ *                                           assistant-actions sans le chantier, aucune entreprise
+ *                                           gratuite hors TEST déjà au-delà de 5 factures ou 10
+ *                                           lectures ce mois-ci (base de production en lecture
+ *                                           seule ; --apercu : essai sur la base d'aperçu, sans jeton)
  *   node scripts/free-limits-gates.mjs G5   production (après la mise en ligne seulement) : lecture
  *                                           seule de invoicelead.io et erplead.io, PROD.md
  *
@@ -28,8 +37,14 @@
  *
  * Écritures : G4 n'écrit que dans la base d'APERÇU d'InvoiceLead (branche Neon du chantier
  * assistant-actions, vérifiée différente de la production avant toute écriture), pour une entreprise
- * TEST ; l'aperçu d'ERPlead, qui lit la base de production, n'est que lu (GET de l'accueil). G5 ne
- * fait que des lectures.
+ * et une personne TEST qu'elle crée à chaque passage (« TEST Gratuit G4 … », test+g4gratuit@…) et
+ * qui y restent ; elle ne touche plus aux entreprises du banc. L'aperçu d'ERPlead, qui lit la base
+ * de production, n'est que lu (GET de l'accueil). AVANT et G5 ne font que des lectures.
+ *
+ * Un aperçu d'InvoiceLead pour un nouveau HEAD : pousser HEAD sur la branche GitHub assistant-actions
+ * (seule à avoir la base d'aperçu), attendre l'aperçu prêt, puis remettre assistant-actions sur la
+ * production (git push --force-with-lease=assistant-actions:<HEAD> origin 682bd09:assistant-actions)
+ * avant G4, qui le vérifie.
  */
 import { execFileSync, spawnSync } from "node:child_process";
 import { createHash, randomBytes } from "node:crypto";
@@ -59,15 +74,21 @@ const LOCALES = ["fr", "de", "en", "it", "es"];
 const TMP = join(ROOT, "tmp", "free-limits-gates");
 const LOCAL_PG = (db) => `postgresql://ubuntu@localhost/${db}?host=/var/run/postgresql`;
 /**
- * Entreprises TEST gratuites de la base d'aperçu (banc lead-e2e, « abonnement par app »), dans
- * l'ordre : G4 prend la première qui n'a pas encore émis 5 factures ce mois, pour rejouer tout le
- * parcours (compteur de 0 à 5, puis la 6e) ; si toutes sont à 5, seule la 6e est rejouée.
+ * Entreprises TEST gratuites du banc lead-e2e (« abonnement par app ») dans la base d'aperçu. G4 n'y
+ * écrit plus (relecture du 29.10.2026 : ses deux premiers passages y avaient réécrit les réglages et
+ * émis 5 factures) : elle les relit avant et après pour prouver qu'elles sont intactes, et copie la
+ * formule gratuite (droits du Compte Lead) de « ScanLead seul » sur l'entreprise qu'elle crée.
  */
 const TEST_ORGS = [
   "TEST Par app ProjectLead seul",
   "TEST Par app CRMlead + ProjectLead",
   "TEST Par app ScanLead seul",
 ];
+/** Entreprise et personne TEST créées par chaque passage de G4 dans la base d'aperçu (jamais ailleurs). */
+const G4_ORG_PREFIX = "TEST Gratuit G4";
+const G4_EMAIL = "test+g4gratuit@scanlead.io";
+/** Branche GitHub qui porte la base d'aperçu ; remise sur la production après chaque aperçu. */
+const PREVIEW_BRANCH = "assistant-actions";
 
 const results = [];
 function check(name, ok, detail = "") {
@@ -326,36 +347,103 @@ async function g1() {
 // ---------------------------------------------------------------------------------------------
 
 /**
- * Les anciens chiffres de la formule gratuite, dans les cinq langues, en chiffres et en lettres, et
- * dans le code (PLANS, commentaires, tests). Chaque motif vise la formule gratuite d'InvoiceLead :
- * « 10 questions » (assistant, inchangé) ou « 10 jours » n'y répondent pas.
+ * Les anciens chiffres de la formule gratuite, dans les cinq langues, en chiffres et en lettres,
+ * déclinés (« 20 Belegen »), en compteur (« 3 sur 20 », « 3 von 20 », « 3 of 20 », « 3 su 20 »,
+ * « 3 de 20 ») et en ordinal (« 11e facture », « elfte Rechnung », « 21st receipt »…), et dans le
+ * code (PLANS, commentaires, tests). Chaque motif vise la formule gratuite d'InvoiceLead :
+ * « 10 questions » (assistant, inchangé), « 10 jours » ou le nouveau « 3 sur 10 » des lectures n'y
+ * répondent pas (OLD_SAMPLES, contrôlé au début de G2).
  */
 const OLD = [
   ["fr : 10 factures", /\b(10|dix) factures\b(?! récurrentes)/i],
-  ["fr : 20 pièces / lectures / justificatifs", /\b(20|vingt) (pièces|lectures|justificatifs)\b/i],
+  [
+    "fr : 20 pièces / lectures / justificatifs / tickets",
+    /\b(20|vingt) (pièces|lectures|justificatifs|tickets|reçus|documents)\b/i,
+  ],
   ["fr : (Gratuit 20)", /\bGratuit 20\b/],
   ["de : 10 Rechnungen", /\b(10|zehn) Rechnungen\b/i],
   [
-    "de : 20 Belege / Beleglesungen",
-    /\b(20|zwanzig) (von der KI gelesene Belege|Beleglesungen|Belege)\b/i,
+    "de : 20 Belege / Belegen / Beleglesungen / Quittungen",
+    /\b(20|zwanzig) (von der KI gelesenen? )?(Beleg\w*|Quittung\w*|Dokument\w*|Lesung\w*)/i,
   ],
   ["en : 10 invoices", /\b(10|ten) invoices\b/i],
   [
-    "en : 20 documents / receipt scans / reads",
-    /\b(20|twenty) (documents read|receipt scans|reads|receipts)\b/i,
+    "en : 20 documents / receipts / scans / reads",
+    /\b(20|twenty) (AI )?(documents?|receipts?|receipt scans?|scans|reads)\b/i,
   ],
   ["it : 10 fatture", /\b(10|dieci) fatture\b/i],
-  ["it : 20 documenti / letture", /\b(20|venti) (documenti letti|letture)\b/i],
+  [
+    "it : 20 documenti / letture / scontrini / giustificativi",
+    /\b(20|venti) (documenti|letture|scontrini|giustificativi|ricevute)\b/i,
+  ],
   ["es : 10 facturas", /\b(10|diez) facturas\b/i],
-  ["es : 20 documentos / lecturas", /\b(20|veinte) (documentos leídos|lecturas)\b/i],
+  [
+    "es : 20 documentos / lecturas / justificantes / tiques",
+    /\b(20|veinte) (documentos|lecturas|justificantes|tiques|tickets|recibos|comprobantes)\b/i,
+  ],
   ["code : invoices: 10", /\binvoices: 10\b/],
   ["code : aiReads: 20", /\baiReads: 20\b/],
-  ["tests : compteur « sur 20 »", /\b\d+ sur 20\b/],
+  ["compteur « x sur 20 » (5 langues)", /\b\d+ (sur|von|of|su|de) 20\b/],
   [
-    "tests : 21e lecture / 11e facture / 9 sur 10",
+    "compteur « x factures sur 10 » (5 langues)",
+    /\b(factures?|Rechnungen|invoices?|fatture|fattura|facturas?) (sur|von|of|su|de) 10\b/i,
+  ],
+  [
+    "ordinaux : 11e facture / 21e lecture (5 langues)",
+    /\b(11e|11\.|onzième|elfte|11th|eleventh|11ª|11a|undicesima|undécima) (facture|Rechnung|invoice|fattura|factura)|\b(21e|21\.|vingt et unième|einundzwanzigste|21st|twenty-first|21ª|21a|ventunesima|vigésima primera) (lecture|pièce|Beleg|Lesung|read|receipt|document|scan|lettura|documento|lectura)/i,
+  ],
+  [
+    "tests : 21e / 11e facture / Kunde 11 / 9 sur 10",
     /\b21e\b|\b11e facture|\bKunde 11\b|\b9 sur 10\b/,
   ],
 ];
+/**
+ * Contre-épreuve des motifs eux-mêmes : chaque ancienne tournure (dont celles que la relecture du
+ * 29.10.2026 avait vues passer : datif, « von/of/su/de 20 », « 20 documents » seul, scontrini,
+ * giustificativi, tiques, justificantes) est trouvée, et aucun des nouveaux textes ne l'est.
+ */
+const OLD_SAMPLES = {
+  found: [
+    "10 factures par mois",
+    "20 lectures de justificatifs par mois",
+    "20 tickets lus",
+    "mit 20 Belegen pro Monat",
+    "20 von der KI gelesene Belege",
+    "20 Beleglesungen pro Monat",
+    "3 von 20 Belegen",
+    "3 of 20 documents",
+    "20 documents each month",
+    "twenty receipts",
+    "3 su 20",
+    "20 scontrini al mese",
+    "20 giustificativi",
+    "3 de 20 lecturas",
+    "20 tiques al mes",
+    "20 justificantes",
+    "Pièces lues par l'IA : 12 sur 20 ce mois-ci",
+    "9 factures sur 10 ce mois-ci",
+    "die elfte Rechnung",
+    "the 11th invoice",
+    "21st receipt",
+    "la 21e lecture",
+    "invoices: 10,",
+    "aiReads: 20,",
+  ],
+  clean: [
+    "5 factures par mois, devis illimités",
+    "10 pièces lues par l'IA chaque mois",
+    "Pièces lues par l'IA : 3 sur 10 ce mois-ci",
+    "Formule gratuite : 2 factures sur 5 ce mois-ci, 1 contact sur 50.",
+    "10 questions à l'assistant",
+    "10 Beleglesungen pro Monat",
+    "10 receipt scans per month",
+    "10 letture di giustificativi al mese",
+    "10 lecturas de justificantes al mes",
+    "payable à 10 jours",
+    "TVA au taux de 20 %",
+    "la 6e facture est refusée, la 11e lecture aussi",
+  ],
+};
 const TEXT_FILE = /\.(ts|tsx|mts|mjs|js|json|md|css|html|txt|ya?ml|sql)$/;
 /** Ce script cite les anciens motifs pour les chercher : il est le seul fichier écarté du balayage. */
 const SELF = "scripts/free-limits-gates.mjs";
@@ -414,6 +502,16 @@ async function g2() {
     "ERPlead : arbre propre (la recherche porte sur le commit)",
     dirty(ERP).length === 0,
     dirty(ERP).join(", "),
+  );
+
+  // Les motifs : chaque ancienne tournure trouvée, aucun nouveau texte pris pour elle.
+  const hit = (s) => OLD.some(([, re]) => re.test(s));
+  const missed = OLD_SAMPLES.found.filter((s) => !hit(s));
+  const wrong = OLD_SAMPLES.clean.filter(hit);
+  check(
+    `motifs : les ${OLD_SAMPLES.found.length} anciennes tournures trouvées (datif, « von/of/su/de 20 », ordinaux, 5 langues), les ${OLD_SAMPLES.clean.length} nouveaux textes laissés`,
+    missed.length === 0 && wrong.length === 0,
+    `manquées : ${missed.join(" | ")} ; prises à tort : ${wrong.join(" | ")}`,
   );
 
   // Contre-épreuve d'abord : le même balayage trouve l'ancien texte dans la production.
@@ -541,6 +639,44 @@ async function g2() {
 // G3 : contrôles complets des deux applications
 // ---------------------------------------------------------------------------------------------
 
+/** Suite Playwright d'InvoiceLead au 29.10.2026 : 217 tests ; moins, c'est qu'il en manque. */
+const E2E_MIN = 217;
+const E2E_FREE_TITLE =
+  "formule gratuite : cinq factures émises par mois, la sixième reste en brouillon et le serveur la refuse";
+/**
+ * Lecture du rapport « list » de Playwright : le total annoncé (« Running N tests »), tous passés,
+ * aucun sauté (« - » devant la ligne, « N skipped »), instable, interrompu, non lancé ni en échec, et
+ * la ligne du test de la formule gratuite marquée ✓.
+ */
+function playwrightVerdict(out, status) {
+  const planned = Number(/^Running (\d+) tests? using/m.exec(out)?.[1] ?? 0);
+  const count = (word) => Number(new RegExp(`^\\s+(\\d+) ${word}\\b`, "m").exec(out)?.[1] ?? 0);
+  const n = {
+    passed: count("passed"),
+    failed: count("failed"),
+    skipped: count("skipped"),
+    flaky: count("flaky"),
+    interrupted: count("interrupted"),
+    notRun: count("did not run"),
+  };
+  const title = E2E_FREE_TITLE.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const freeRan = new RegExp(
+    `^\\s*✓\\s+\\d+ \\[chromium\\] › tests/e2e/free-plan\\.spec\\.ts:\\d+:\\d+ › ${title}`,
+    "m",
+  ).test(out);
+  const ok =
+    status === 0 &&
+    planned >= E2E_MIN &&
+    n.passed === planned &&
+    n.failed + n.skipped + n.flaky + n.interrupted + n.notRun === 0 &&
+    freeRan;
+  return {
+    ok,
+    freeRan,
+    why: `prévus ${planned}, passés ${n.passed}, en échec ${n.failed}, sautés ${n.skipped}, instables ${n.flaky}, interrompus ${n.interrupted}, non lancés ${n.notRun}, code ${status}`,
+  };
+}
+
 async function g3() {
   worktrees();
   check(
@@ -599,8 +735,26 @@ async function g3() {
     build.status === 0,
     build.status === 0 ? "" : `${build.stdout}`.slice(-400),
   );
+  // Le lecteur du rapport, essayé d'abord sur des sorties fabriquées : un test sauté, un test.only
+  // oublié ou un total en baisse doivent faire échouer la porte.
+  const sample = (mark, n, total) =>
+    `\nRunning ${total} tests using 1 worker\n\n  ${mark}   67 [chromium] › tests/e2e/free-plan.spec.ts:353:1 › ${E2E_FREE_TITLE} (7.4s)\n\n  ${n}\n`;
+  const fakes = [
+    ["test sauté", sample("-", `216 passed (5.3m)\n  1 skipped`, E2E_MIN)],
+    ["test.only (un seul test)", sample("✓", "1 passed (9s)", 1)],
+    ["un test en échec", sample("✘", `216 passed (5.3m)\n  1 failed`, E2E_MIN)],
+    ["test instable", sample("✓", `216 passed (5.3m)\n  1 flaky`, E2E_MIN)],
+  ];
+  const fooled = fakes.filter(([, out]) => playwrightVerdict(out, 0).ok);
+  const plain = playwrightVerdict(sample("✓", `${E2E_MIN} passed (5.3m)`, E2E_MIN), 0);
+  check(
+    "contre-épreuve du lecteur Playwright : un test sauté, un test.only, un échec ou un test instable font échouer la porte, une suite complète la passe",
+    fooled.length === 0 && plain.ok,
+    `${fooled.map(([name]) => name).join(", ")} ${plain.why}`,
+  );
   migrateLocal("invoicelead_gratuit_e2e");
-  const e2e = step(ROOT, "e2e", "npx", ["playwright", "test"], {
+  // --forbid-only : un test.only oublié fait échouer la suite au lieu de n'en lancer qu'un.
+  const e2e = step(ROOT, "e2e", "npx", ["playwright", "test", "--forbid-only", "--reporter=list"], {
     env: {
       ...process.env,
       E2E_APP_PORT: "3172",
@@ -609,17 +763,15 @@ async function g3() {
       NEXT_TELEMETRY_DISABLED: "1",
     },
   });
-  const passed = /(\d+) passed/.exec(e2e.stdout)?.[1];
-  const failedE2e = /(\d+) failed/.exec(e2e.stdout)?.[1];
+  const verdict = playwrightVerdict(e2e.stdout, e2e.status);
   check(
-    "InvoiceLead : Playwright complet (dont la 6e facture refusée à l'écran et par le serveur)",
-    e2e.status === 0 && !failedE2e && Number(passed) > 0,
-    `${passed ?? 0} passés${failedE2e ? `, ${failedE2e} en échec` : ""}`,
+    `InvoiceLead : Playwright complet, --forbid-only : tous les tests prévus passent (au moins ${E2E_MIN}), aucun sauté, instable, interrompu ni en échec`,
+    verdict.ok,
+    verdict.why,
   );
   check(
-    "InvoiceLead : le test « cinq factures émises par mois » a tourné",
-    /cinq factures émises par mois, la sixième reste en brouillon/.test(e2e.stdout) &&
-      !/✘[^\n]*cinq factures émises par mois/.test(e2e.stdout),
+    "InvoiceLead : le test « cinq factures émises par mois, la sixième reste en brouillon » a tourné et passé (✓ sur sa ligne)",
+    verdict.freeRan,
   );
 
   // ERPlead
@@ -775,6 +927,27 @@ const headersFor = (bypass) =>
 // G4 : aperçus
 // ---------------------------------------------------------------------------------------------
 
+/**
+ * Commits du chantier (production → HEAD) que porte encore la branche GitHub de l'aperçu, relue sur
+ * GitHub. Elle n'y est avancée que le temps de construire l'aperçu, puis remise sur la production :
+ * sinon, fusionner assistant-actions dans main mettrait les nouvelles limites en ligne sans décision.
+ */
+function chantierOnPreviewBranch(il) {
+  execFileSync(
+    "git",
+    [
+      "fetch",
+      "--quiet",
+      "origin",
+      `+refs/heads/${PREVIEW_BRANCH}:refs/remotes/origin/${PREVIEW_BRANCH}`,
+    ],
+    { cwd: ROOT, stdio: "ignore" },
+  );
+  const remote = git("rev-parse", `refs/remotes/origin/${PREVIEW_BRANCH}`);
+  const ours = git("rev-list", `${IL_PROD}..${il}`).split("\n").filter(Boolean);
+  return { remote, ours, carried: ours.filter((c) => isAncestor(ROOT, c, remote)) };
+}
+
 async function g4() {
   const { il, erp } = worktrees();
   mkdirSync(CAPTURES, { recursive: true });
@@ -814,6 +987,12 @@ async function g4() {
       new URL(st.secrets.databaseUrlUnpooled).hostname === st.neon.host &&
       new URL(st.secrets.roUrl).hostname === st.neon.host,
     `branche ${ilD.meta?.githubCommitRef}, base ${st.neon.branchId}`,
+  );
+  const pb = chantierOnPreviewBranch(il);
+  check(
+    `GitHub : la branche ${PREVIEW_BRANCH} est remise en place après l'aperçu (aucun des ${pb.ours.length} commits du chantier n'y est ; la fusionner dans main ne met rien en ligne)`,
+    ilD.meta?.githubCommitRef === PREVIEW_BRANCH && pb.ours.length > 0 && pb.carried.length === 0,
+    `${PREVIEW_BRANCH} = ${pb.remote.slice(0, 7)}${pb.carried.length ? ` ; porte encore ${pb.carried.map((c) => c.slice(0, 7)).join(", ")}` : ""}`,
   );
 
   const now = {};
@@ -913,41 +1092,82 @@ async function issuedThisMonth(roUrl, orgId) {
   );
 }
 
+/**
+ * Les entreprises TEST du banc dans la base d'aperçu : réglages et colonnes de l'entreprise (hors
+ * relecture des droits du Compte Lead), nombre de pièces, de contacts et de membres.
+ */
+async function bancSnapshot(roUrl) {
+  return readOnly(
+    roUrl,
+    async (c) =>
+      (
+        await c.query(
+          `select o.name,
+                  to_jsonb(o) - array['entitlements', 'entitlements_at', 'updated_at', 'lead_plan', 'has_access'] as row,
+                  (select count(*)::int from invoices i where i.organization_id = o.id) docs,
+                  (select count(*)::int from contacts ct where ct.organization_id = o.id) contacts,
+                  (select count(*)::int from memberships m where m.organization_id = o.id) members
+             from organizations o where o.name = any($1::text[]) order by o.name`,
+          [TEST_ORGS],
+        )
+      ).rows,
+  );
+}
+
 async function freeCompanyScenario(br, base, bypass, st, prodHost) {
   const writeUrl = st.secrets.databaseUrlUnpooled;
   if (new URL(writeUrl).hostname !== st.neon.host || st.neon.host === prodHost)
     throw new Error("la base d'écriture n'est pas celle de l'aperçu");
+  const bancBefore = await bancSnapshot(st.secrets.roUrl);
+  check(
+    "entreprises TEST du banc relues dans la base d'aperçu avant le parcours (G4 n'y écrit pas)",
+    bancBefore.length === TEST_ORGS.length,
+    bancBefore.map((r) => `${r.name} : ${r.docs} pièces`).join(" ; "),
+  );
   const w = await pgClient(writeUrl);
   let sessionId = null;
   try {
-    const orgs = (
+    // Une entreprise et une personne TEST neuves, à elles seules : la formule gratuite (droits du
+    // Compte Lead) est copiée de « TEST Par app ScanLead seul », relue « à l'instant » ; sans
+    // lead_org, rien n'est jamais redemandé au Compte Lead pour elle. Elles restent dans la base
+    // d'aperçu après le passage (des pièces émises ne s'effacent pas : journal en ajout seul).
+    const earlier = (
+      await w.query("select count(*)::int n from organizations where name like $1", [
+        `${G4_ORG_PREFIX} %`,
+      ])
+    ).rows[0].n;
+    note(`entreprises « ${G4_ORG_PREFIX} … » des passages précédents : ${earlier}`);
+    const name = `${G4_ORG_PREFIX} ${new Date().toISOString().slice(0, 16).replace("T", " ")}`;
+    await w.query("begin");
+    const org = (
       await w.query(
-        `select id, name, lead_plan, entitlements->'plan'->>'code' code, billing_plan
-           from organizations where name = any($1::text[])`,
-        [TEST_ORGS],
+        `insert into organizations (name, country, currency, default_locale, lead_plan, has_access, entitlements, entitlements_at)
+           select $1, 'CH', 'CHF', 'fr', 'free', true, entitlements, now() from organizations
+            where name = $2 and entitlements->'plan'->>'code' = 'free'
+         returning id, name, lead_org, lead_plan, entitlements->'plan'->>'code' code, billing_plan`,
+        [name, TEST_ORGS[2]],
       )
-    ).rows.sort((a, b) => TEST_ORGS.indexOf(a.name) - TEST_ORGS.indexOf(b.name));
-    let org = orgs[0];
-    for (const o of orgs)
-      if ((await issuedThisMonth(st.secrets.roUrl, o.id)) < 5) {
-        org = o;
-        break;
-      }
-    const user = org
-      ? (
-          await w.query(
-            `select u.id from users u join memberships m on m.user_id = u.id
-              where m.organization_id = $1 and m.removed_at is null and m.role = 'admin' order by m.created_at limit 1`,
-            [org.id],
-          )
-        ).rows[0]
-      : null;
-    check(
-      `entreprise TEST « ${org?.name} » de la base d'aperçu, en formule gratuite, avec son administrateur`,
-      org && user && org.code === "free" && !org.billing_plan,
-      org ? `${org.lead_plan} / ${org.code}` : "absente",
+    ).rows[0];
+    if (!org) {
+      await w.query("rollback");
+      throw new Error(`formule gratuite de « ${TEST_ORGS[2]} » introuvable`);
+    }
+    const user = (
+      await w.query(
+        `insert into users (lead_sub, email, name, locale) values ($1, $2, 'Contrôle Gratuit G4', 'fr') returning id`,
+        [`test-g4-gratuit-${randomBytes(6).toString("hex")}`, G4_EMAIL],
+      )
+    ).rows[0];
+    await w.query(
+      "insert into memberships (organization_id, user_id, role, created_at) values ($1, $2, 'admin', now())",
+      [org.id, user.id],
     );
-    if (!org || !user) return;
+    await w.query("commit");
+    check(
+      `entreprise TEST neuve « ${org.name} » dans la base d'aperçu, en formule gratuite, sans lien au Compte Lead, administrée par sa personne TEST (${G4_EMAIL})`,
+      org.code === "free" && org.lead_plan === "free" && !org.billing_plan && org.lead_org === null,
+      `${org.lead_plan} / ${org.code}`,
+    );
     const token = randomBytes(32).toString("base64url");
     sessionId = createHash("sha256").update(token).digest("hex");
     await w.query(
@@ -981,7 +1201,7 @@ async function freeCompanyScenario(br, base, bypass, st, prodHost) {
     const counter = (n) => new RegExp(`Formule gratuite : ${n} factures? sur 5 ce mois-ci`);
 
     const n0 = await issuedThisMonth(st.secrets.roUrl, org.id);
-    check("au départ : 5 factures émises ce mois au plus", n0 <= 5, n0);
+    check("au départ : aucune facture émise (entreprise neuve)", n0 === 0, n0);
     const first = await usage();
     check(`tableau de bord : compteur « ${n0} sur 5 » au départ`, counter(n0).test(first), first);
     const reads = clean(await page.getByTestId("quota-aiReads").innerText());
@@ -1114,6 +1334,171 @@ async function freeCompanyScenario(br, base, bypass, st, prodHost) {
     if (sessionId) await w.query("delete from sessions where id = $1", [sessionId]).catch(() => {});
     await w.end();
   }
+  // Les entreprises du banc n'ont pas bougé : mêmes réglages, mêmes pièces, contacts et membres.
+  const bancAfter = await bancSnapshot(st.secrets.roUrl);
+  const moved = bancAfter.filter((r, i) => !isDeepStrictEqual(r, bancBefore[i]));
+  check(
+    "entreprises TEST du banc intactes dans la base d'aperçu (réglages, pièces, contacts, membres identiques avant et après)",
+    bancAfter.length === bancBefore.length && moved.length === 0,
+    moved.map((r) => r.name).join(", "),
+  );
+}
+
+// ---------------------------------------------------------------------------------------------
+// AVANT : juste avant la mise en ligne, lecture seule, par qui met en ligne
+// ---------------------------------------------------------------------------------------------
+
+/**
+ * Entreprises au-delà des nouvelles limites gratuites ce mois-ci (mois UTC, comme l'application) :
+ * factures émises (comme countIssued) et lectures de pièces (plan_usage « aiReads »), formule de
+ * chaque entreprise calculée par tierOf de src/server/plans.ts (tsx), sans recopier sa règle.
+ * Lecture seule ; seuls les noms des entreprises TEST sont rendus.
+ */
+async function freeUsage(url) {
+  const rows = await readOnly(
+    url,
+    async (c) =>
+      (
+        await c.query(
+          `select o.name like 'TEST %' as test,
+                  case when o.name like 'TEST %' then o.name end as test_name,
+                  o.lead_plan "leadPlan", o.entitlements, o.entitlements_at "entitlementsAt",
+                  o.billing_plan "billingPlan", o.billing_plan_until "billingPlanUntil",
+                  (select count(*)::int from invoices i
+                    where i.organization_id = o.id and i.kind = 'invoice' and i.status = 'issued'
+                      and i.issued_at >= date_trunc('month', now() at time zone 'utc') at time zone 'utc') issued,
+                  coalesce((select u.used from plan_usage u
+                    where u.organization_id = o.id and u.key = 'aiReads'
+                      and u.period = to_char(now() at time zone 'utc', 'YYYY-MM')), 0)::int reads
+             from organizations o`,
+        )
+      ).rows,
+  );
+  const plans = rows.map(
+    ({ leadPlan, entitlements, entitlementsAt, billingPlan, billingPlanUntil }) => ({
+      leadPlan,
+      entitlements,
+      entitlementsAt,
+      billingPlan,
+      billingPlanUntil,
+    }),
+  );
+  const res = sh(
+    "npx",
+    [
+      "tsx",
+      "-e",
+      'import("./src/server/plans.ts").then(async (m) => { let s = ""; for await (const c of process.stdin) s += c; console.log(JSON.stringify(JSON.parse(s).map((o) => m.tierOf(o)))); })',
+    ],
+    { input: JSON.stringify(plans), timeout: 120_000 },
+  );
+  if (res.status !== 0) throw new Error(`tierOf : ${`${res.stderr}`.slice(-300)}`);
+  const tiers = JSON.parse(res.stdout.trim().split("\n").pop());
+  return rows
+    .map((r, i) => ({
+      test: r.test,
+      name: r.test_name,
+      issued: r.issued,
+      reads: r.reads,
+      tier: tiers[i],
+    }))
+    .filter((r) => r.tier === "free");
+}
+
+async function avant() {
+  const apercu = process.argv.includes("--apercu");
+  const { il, erp } = worktrees();
+  check("InvoiceLead : arbre propre", dirty(ROOT).length === 0, dirty(ROOT).join(", "));
+  check("ERPlead : arbre propre", dirty(ERP).length === 0, dirty(ERP).join(", "));
+
+  // Ce qui est en ligne maintenant est contenu dans ce qu'on va mettre en ligne : rien n'est annulé.
+  const ilP = (await vapi(`/v9/projects/${IL_PROJECT}`)).targets?.production;
+  const erpP = (await vapi(`/v9/projects/${ERP_PROJECT}`)).targets?.production;
+  const ilLive = shaOf(ilP ?? {});
+  const erpLive = shaOf(erpP ?? {});
+  check(
+    `InvoiceLead : la production en ligne (${ilLive?.slice(0, 7)}) est un ancêtre du HEAD de ${BRANCH} (${il.slice(0, 7)})`,
+    !!ilLive && isAncestor(ROOT, ilLive, il),
+  );
+  execFileSync("git", ["fetch", "--quiet", "origin", "+refs/heads/main:refs/remotes/origin/main"], {
+    cwd: ROOT,
+    stdio: "ignore",
+  });
+  const main = git("rev-parse", "refs/remotes/origin/main");
+  check(
+    `InvoiceLead : main sur GitHub (${main.slice(0, 7)}) est un ancêtre du HEAD : la pousser sur main est une avance rapide`,
+    isAncestor(ROOT, main, il),
+  );
+  check(
+    `ERPlead : la production en ligne (${erpLive?.slice(0, 7)}) est un ancêtre du HEAD de ${ERP} (${erp.slice(0, 7)}) : c'est ce dossier qui se met en ligne`,
+    !!erpLive && isAncestor(ERP, erpLive, erp),
+  );
+  // Le dossier à ne pas prendre (relecture du 29.10.2026) : ~/projets/erplead-gratuit est la branche
+  // gratuit-total du 21.10, sans la production ; la mettre en ligne annulerait des commits en ligne.
+  const wrong = join(HOME, "projets", "erplead-gratuit");
+  if (existsSync(join(wrong, ".git")) && erpLive) {
+    const w = gitIn(wrong, "rev-parse", "HEAD");
+    const behind = isAncestor(wrong, erpLive, w)
+      ? 0
+      : Number(gitIn(wrong, "rev-list", "--count", `${w}..${erpLive}`));
+    note(
+      `NE PAS mettre en ligne depuis ${wrong} (branche ${gitIn(wrong, "branch", "--show-current")}, ${w.slice(0, 7)}) : ${behind ? `${behind} commits de la production y manquent` : "contient la production, mais ce n'est pas la branche des portes"}`,
+    );
+  }
+  const pb = chantierOnPreviewBranch(il);
+  check(
+    `GitHub : la branche ${PREVIEW_BRANCH} ne porte aucun commit du chantier (${pb.remote.slice(0, 7)})`,
+    pb.ours.length > 0 && pb.carried.length === 0,
+    pb.carried.map((c) => c.slice(0, 7)).join(", "),
+  );
+
+  // Mesure du mois en cours : une entreprise gratuite déjà au-delà verrait « 7 factures sur 5 » ou
+  // « 15 sur 10 » jusqu'au 1er du mois suivant (même affichage qu'un retour de Pro à Gratuit).
+  const url = apercu
+    ? state().secrets.roUrl
+    : readFileSync(join(HOME, ".lead-e2e-ro.env"), "utf8")
+        .split("\n")
+        .find((l) => l.startsWith("INVOICELEAD_RO_URL="))
+        ?.slice("INVOICELEAD_RO_URL=".length);
+  if (!url) throw new Error("adresse en lecture seule absente");
+  if (!apercu && new URL(url).hostname === state().neon.host)
+    throw new Error("la mesure de production lirait la base d'aperçu");
+  const free = await freeUsage(url);
+  const over = (r) => r.issued > 5 || r.reads > 10;
+  const real = free.filter((r) => !r.test);
+  const realOver = real.filter(over);
+  note(
+    `base ${apercu ? "d'APERÇU (essai)" : "de PRODUCTION"} : ${free.length} entreprises gratuites, dont ${real.length} hors TEST ; hors TEST au-delà : ${realOver.filter((r) => r.issued > 5).length} pour les factures, ${realOver.filter((r) => r.reads > 10).length} pour les lectures ; à la limite (5 factures ou 10 lectures) : ${real.filter((r) => !over(r) && (r.issued === 5 || r.reads === 10)).length}`,
+  );
+  for (const r of free.filter((x) => x.test && (x.issued >= 5 || x.reads >= 10)))
+    note(`TEST : « ${r.name} » ${r.issued} factures émises, ${r.reads} lectures ce mois-ci`);
+  check(
+    "aucune entreprise gratuite hors TEST au-delà de 5 factures émises ou de 10 lectures ce mois-ci (sinon : en parler à Ève avant la mise en ligne)",
+    realOver.length === 0,
+    realOver.map((r) => `${r.issued} factures, ${r.reads} lectures`).join(" ; "),
+  );
+  check(
+    "entreprises TEST gratuites du banc : aucune au-delà des nouvelles limites (listées ci-dessus à partir de la limite)",
+    free.filter((r) => r.test && over(r)).length === 0,
+    free
+      .filter((r) => r.test && over(r))
+      .map((r) => r.name)
+      .join(", "),
+  );
+  if (apercu) {
+    // Contre-épreuve du compte : les entreprises de G4 ont chacune 5 factures émises ce mois-ci.
+    const g4 = free.filter((r) => r.name?.startsWith(`${G4_ORG_PREFIX} `));
+    check(
+      `contre-épreuve (aperçu) : les entreprises « ${G4_ORG_PREFIX} … » comptent chacune 5 factures émises ce mois-ci`,
+      g4.length > 0 && g4.every((r) => r.issued === 5),
+      g4.map((r) => `${r.name} : ${r.issued}`).join(" ; "),
+    );
+    const bad = results.filter((r) => !r.ok);
+    console.log(`${results.length - bad.length} verts, ${bad.length} rouges`);
+    console.log("essai sur la base d'aperçu : le jeton n'est donné que sur la production");
+    process.exit(bad.length ? 1 : 0);
+  }
+  finish("FREE_LIMITS_AVANT_OK");
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -1182,10 +1567,10 @@ async function g5() {
   finish("FREE_LIMITS_G5_OK");
 }
 
-const gates = { G1: g1, G2: g2, G3: g3, G4: g4, G5: g5 };
+const gates = { G1: g1, G2: g2, G3: g3, G4: g4, AVANT: avant, G5: g5 };
 const which = process.argv[2];
 if (!gates[which]) {
-  console.log("usage : node scripts/free-limits-gates.mjs G1|G2|G3|G4|G5");
+  console.log("usage : node scripts/free-limits-gates.mjs G1|G2|G3|G4|AVANT [--apercu]|G5");
   process.exit(2);
 }
 gates[which]().catch((e) => {
