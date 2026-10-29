@@ -5,18 +5,21 @@ import { type AssistantAnswer, askAssistant } from "@/server/assistant";
 import { requirePermission } from "@/server/auth/guard";
 import { pickLocale } from "@/server/auth/login-cookie";
 import { db } from "@/server/db";
-import { quotaAccess } from "@/server/plans";
+import { assistantBudget, type BudgetView, budgetView } from "@/server/plans";
 
 export type AssistantState = {
   question?: string;
   result?: AssistantAnswer;
   error?: "quota" | "off" | "empty" | "failed";
-  /** Questions posées ce mois-ci, pour tenir le compteur à jour sans recharger la page. */
-  used?: number;
+  /** Formule gratuite : ce qui reste ce mois-ci, pour tenir le compteur à jour sans recharger. */
+  budget?: BudgetView | null;
   round: number;
 };
 
-/** Formule gratuite : 10 questions par mois ; le serveur refuse la onzième (« quota »). */
+/**
+ * Formule gratuite : le budget de jetons de l'assistant IA (commun avec la bulle) ; une fois atteint,
+ * le serveur refuse avant tout appel à l'IA (« quota »).
+ */
 export async function askAction(prev: AssistantState, form: FormData): Promise<AssistantState> {
   const locale = pickLocale(form.get("locale"));
   const session = await requirePermission(locale, "accounting");
@@ -29,7 +32,7 @@ export async function askAction(prev: AssistantState, form: FormData): Promise<A
     question,
     locale,
   );
-  const { used } = await quotaAccess(db(), session.organization, "assistant");
-  if (typeof result === "string") return { round, question, error: result, used };
-  return { round, question, result, used };
+  const budget = budgetView(await assistantBudget(db(), session.organization));
+  if (typeof result === "string") return { round, question, error: result, budget };
+  return { round, question, result, budget };
 }

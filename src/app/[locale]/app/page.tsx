@@ -11,7 +11,7 @@ import { currentPlanUsage, markOf } from "@/server/current-plan";
 import { dashboardFigures } from "@/server/dashboard";
 import { db } from "@/server/db";
 import { inNativeApp } from "@/server/native";
-import { type Quota, tierOf, upgradeUrl } from "@/server/plans";
+import { type Quota, requestsLeft, tierOf, upgradeUrl } from "@/server/plans";
 
 const NEXT_STEPS = ["company", "contacts", "invoice"] as const;
 /** Allocations montrées sous la ligne de la formule, quand elles ont une limite. */
@@ -136,7 +136,13 @@ export default async function DashboardPage({
                 className={`inline-flex items-center gap-2 border px-2 py-1 text-[12px] ${mark ? "border-line-strong bg-muted text-ink-2" : "border-line bg-panel text-ink-2"}`}
                 data-testid={`quota-${q}`}
               >
-                {tp(`quota.${q}`, { used: quotas[q].used, limit: quotas[q].limit })}
+                {q === "assistant"
+                  ? // Assistant IA : un budget de jetons, montré en demandes qui restent.
+                    tp("quota.assistant", {
+                      n: requestsLeft(quotas.assistant),
+                      done: quotas.assistant.allowed ? "no" : "yes",
+                    })
+                  : tp(`quota.${q}`, { used: quotas[q].used, limit: quotas[q].limit })}
                 {mark ? <ProBadge tier={mark} /> : null}
               </li>
             );

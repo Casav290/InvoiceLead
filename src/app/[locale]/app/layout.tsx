@@ -8,7 +8,7 @@ import { requireAppSession } from "@/server/auth/guard";
 import { getSessionCountryTranslations } from "@/server/country-translations";
 import { db } from "@/server/db";
 import { inNativeApp } from "@/server/native";
-import { tierOf, upgradeUrl } from "@/server/plans";
+import { assistantBudget, budgetView, tierOf, upgradeUrl } from "@/server/plans";
 import { listUserOrganizations } from "@/server/team";
 
 export default async function AppLayout({
@@ -24,6 +24,8 @@ export default async function AppLayout({
   const tier = tierOf(organization);
   // Sans clé côté serveur, pas de bulle (et /api/assistant répond 503).
   const bubble = assistantConfigured();
+  // Formule gratuite : ce qui reste de l'assistant IA ce mois-ci (null sans limite, sans lecture).
+  const budget = bubble ? budgetView(await assistantBudget(db(), organization)) : null;
   const tp = await getSessionCountryTranslations({ locale, namespace: "app.plan" });
   // Dans l'app Android / iOS : pas de « Passer à Pro » (lib/native.ts).
   const upgrade =
@@ -62,7 +64,14 @@ export default async function AppLayout({
           {children}
         </main>
         {/* B10 : le fil de l'onglet est propre à l'entreprise ET à la personne. */}
-        {bubble && <AssistantBubble storageKey={`il-assistant:${organization.id}:${user.id}`} />}
+        {bubble && (
+          <AssistantBubble
+            storageKey={`il-assistant:${organization.id}:${user.id}`}
+            budget={budget}
+            // Lien vers les formules quand le budget gratuit est atteint (jamais dans l'app mobile).
+            plansHref={upgrade?.href ?? null}
+          />
+        )}
       </div>
     </CountryProvider>
   );

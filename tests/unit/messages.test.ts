@@ -1,6 +1,6 @@
 import { type MessageFormatElement, parse, TYPE } from "@formatjs/icu-messageformat-parser";
 import { describe, expect, it } from "vitest";
-import { PLANS } from "@/server/plans";
+import { ASSISTANT_TOKENS, PLANS } from "@/server/plans";
 import de from "../../messages/de.json";
 import en from "../../messages/en.json";
 import es from "../../messages/es.json";
@@ -106,6 +106,8 @@ describe("tarifs et FAQ face aux formules", () => {
   };
   const numbers = (text: string) => (text.match(/\d+/g) ?? []).map(Number);
   const free = PLANS.free.quotas;
+  /** L'assistant IA est un budget de jetons, dit en demandes-types (« l'équivalent de 10 demandes »). */
+  const assistantRequests = free.assistant / ASSISTANT_TOKENS.perRequest;
 
   for (const [lang, copy] of [
     ["de", de],
@@ -121,7 +123,7 @@ describe("tarifs et FAQ face aux formules", () => {
         [plans.free.features[1], free.invoices],
         [plans.free.features[2], free.contacts],
         [plans.free.features[5], free.aiReads],
-        [plans.free.features[6], free.assistant],
+        [plans.free.features[6], assistantRequests],
         [plans.free.features[7], free.reminders],
         [plans.free.features[8], free.recurring],
         [plans.free.features[9], free.bankImports],
@@ -135,7 +137,7 @@ describe("tarifs et FAQ face aux formules", () => {
       expect(numbers(copy.faq.items[7]?.a ?? "")).toEqual([
         free.invoices,
         free.aiReads,
-        free.assistant,
+        assistantRequests,
         free.reminders,
         free.bankImports,
         free.contacts,

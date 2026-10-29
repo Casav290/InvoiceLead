@@ -264,8 +264,8 @@
           "pro": "{n} a month"
         },
         "assistant": {
-          "label": "Questions to the accounting assistant",
-          "free": "{n} a month"
+          "label": "AI assistant",
+          "free": "The equivalent of {n} requests a month"
         },
         "reminders": {
           "label": "Reminders",
@@ -1867,14 +1867,15 @@
       "lockedPlus": "Pro+ feature. Upgrade to Pro+ to use it.",
       "quota": {
         "aiReads": "Documents read by AI: {used} of {limit} this month",
-        "assistant": "Questions to the assistant: {used} of {limit} this month",
+        "assistant": "AI assistant: {done, select, yes {no requests left this month} other {{n, plural, =0 {less than one request} one {about # request} other {about # requests}} left this month}}",
         "reminders": "Reminders: {used} of {limit} this month",
         "bankImports": "Bank statements imported: {used} of {limit} this month",
         "recurring": "Active recurring invoices: {used} of {limit}"
       },
       "used": {
         "aiReads": "{plan, select, free {Your {limit} free reads for this month are used up.} other {Your {limit} reads for this month are used up.}}",
-        "assistant": "{plan, select, free {Your {limit} free questions for this month are used up.} other {Your {limit} questions for this month are used up.}}",
+        "assistant": "You have used the AI assistant included in the free plan for this month (the equivalent of {n} requests). It is back on 1 {month}.",
+        "assistantUs": "You have used the AI assistant included in the free plan for this month (the equivalent of {n} requests). It is back on {month} 1.",
         "reminders": "{plan, select, free {Your {limit} free reminders for this month have been sent.} other {Your {limit} reminders for this month have been sent.}}",
         "bankImports": "{limit, plural, one {Your free bank statement for this month has been imported.} other {Your # free bank statements for this month have been imported.}}",
         "recurring": "{limit, plural, one {The Free plan includes one active recurring invoice.} other {The Free plan includes # active recurring invoices.}} Pause one, or upgrade to Pro to add more.",
@@ -2842,6 +2843,13 @@
         "becomes": "becomes",
         "forbidden": "Your role does not allow this change. Nothing was saved.",
         "stale": "The data has changed since this proposal. Nothing was saved; ask the assistant again to see the current proposal."
+      },
+      "budget": {
+        "left": "Free plan: {n, plural, =0 {less than one request} one {about # request} other {about # requests}} left this month.",
+        "reached": "You have used the AI assistant included in the free plan for this month (the equivalent of {n} requests). It is back on 1 {month}.",
+        "reachedUs": "You have used the AI assistant included in the free plan for this month (the equivalent of {n} requests). It is back on {month} 1.",
+        "pro": "With the Pro plan, it has no such limit.",
+        "plans": "See plans"
       }
     }
   },
@@ -2900,7 +2908,7 @@
           "Invoices to your country's rules (SEPA GiroCode, Swiss QR-bill), documents in DE, FR, IT, EN",
           "Accounting fed by your invoices",
           "10 documents read by AI each month (receipts, supporting documents), e-invoices received without limit",
-          "Assistant: 10 questions per month",
+          "AI assistant: the equivalent of 10 requests per month",
           "First reminder sent by hand, 5 per month",
           "1 active recurring invoice",
           "1 bank statement per month (one account, one month at most), autopilot included",
@@ -2971,7 +2979,7 @@
       },
       {
         "q": "What does the Free plan include?",
-        "a": "Each month: 5 invoices, 10 documents read by AI, 10 questions to the assistant, 5 first-level reminders and 1 bank statement (one account, one month at most) with the autopilot. It also includes 50 contacts and 1 active recurring invoice, and you receive e-invoices without limit. One user, and your documents carry the “Created with InvoiceLead” notice. Pro and Pro+ features stay visible in the app, greyed out and labelled Pro or Pro+, so you know they exist."
+        "a": "Each month: 5 invoices, 10 documents read by AI, the AI assistant (the equivalent of 10 requests), 5 first-level reminders and 1 bank statement (one account, one month at most) with the autopilot. It also includes 50 contacts and 1 active recurring invoice, and you receive e-invoices without limit. One user, and your documents carry the “Created with InvoiceLead” notice. Pro and Pro+ features stay visible in the app, greyed out and labelled Pro or Pro+, so you know they exist."
       },
       {
         "q": "Do I need a payment card to start?",

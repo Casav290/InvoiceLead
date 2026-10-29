@@ -6,6 +6,7 @@ import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { useCountry, useCountryTranslations } from "@/components/app/CountryContext";
 import { countryPack } from "@/countries";
 import { Link, usePathname, useRouter } from "@/i18n/navigation";
+import { budgetMonth } from "@/lib/assistant-budget";
 import { pageLabel } from "@/lib/assistant-pages";
 import { formatDate } from "@/lib/fiscal-year";
 import { formatMoney } from "@/lib/money";
@@ -103,6 +104,18 @@ type Item =
 
 type Stored = { history: unknown[]; items: Item[]; notes: string[] };
 
+/**
+ * Formule gratuite (src/server/plans.ts, assistantBudget) : environ `left` demandes ce mois-ci ;
+ * `exhausted` : budget atteint, le champ se désactive et le message dit quand l'assistant revient
+ * (`resetOn`, le 1er du mois suivant). null : formule sans limite, rien n'est affiché.
+ */
+export type BubbleBudget = {
+  left: number;
+  exhausted: boolean;
+  resetOn: string;
+  requests: number;
+};
+
 const EMPTY: Stored = { history: [], items: [], notes: [] };
 const uid = () => Math.random().toString(36).slice(2);
 
@@ -193,7 +206,25 @@ const CARD_ERRORS = [
   "network",
 ];
 
-export function AssistantBubble({ storageKey }: { storageKey: string }) {
+const isBudget = (v: unknown): v is BubbleBudget =>
+  !!v &&
+  typeof v === "object" &&
+  typeof (v as BubbleBudget).left === "number" &&
+  typeof (v as BubbleBudget).exhausted === "boolean" &&
+  typeof (v as BubbleBudget).resetOn === "string" &&
+  typeof (v as BubbleBudget).requests === "number";
+
+export function AssistantBubble({
+  storageKey,
+  budget: initialBudget = null,
+  plansHref = null,
+}: {
+  storageKey: string;
+  /** Formule gratuite : ce qui reste de l'assistant ce mois-ci (null : sans limite). */
+  budget?: BubbleBudget | null;
+  /** Page des formules (« Passer à Pro ») ; null dans l'application mobile. */
+  plansHref?: string | null;
+}) {
   const t = useCountryTranslations("app.aiBubble");
   const tc = useCountryTranslations("app.aiBubble.confirm");
   const ta = useCountryTranslations("app");
@@ -213,6 +244,13 @@ export function AssistantBubble({ storageKey }: { storageKey: string }) {
   const noteId = useId();
   /** Le panneau a été ouvert : à sa fermeture, le focus revient à la bulle. */
   const wasOpen = useRef(false);
+  const limitRef = useRef<HTMLDivElement>(null);
+  // Formule gratuite : la page donne l'état au chargement, chaque réponse le met à jour.
+  const [budget, setBudget] = useState<BubbleBudget | null>(initialBudget);
+  const exhausted = budget?.exhausted === true;
+  useEffect(() => {
+    setBudget(initialBudget);
+  }, [initialBudget]);
 
   useEffect(() => setData(load(storageKey)), [storageKey]);
 
@@ -236,7 +274,9 @@ export function AssistantBubble({ storageKey }: { storageKey: string }) {
       return;
     }
     wasOpen.current = true;
-    inputRef.current?.focus();
+    // Budget gratuit atteint : le champ est désactivé, le focus va sur le message qui le dit.
+    if (inputRef.current?.disabled) limitRef.current?.focus();
+    else inputRef.current?.focus();
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") close();
     };
@@ -251,12 +291,14 @@ export function AssistantBubble({ storageKey }: { storageKey: string }) {
   }, [open, count]);
 
   useEffect(() => {
-    if (!busy && open) inputRef.current?.focus();
-  }, [busy, open]);
+    if (busy || !open) return;
+    if (exhausted) limitRef.current?.focus();
+    else inputRef.current?.focus();
+  }, [busy, open, exhausted]);
 
   async function send(text: string) {
     const question = text.trim();
-    if (!question || busy) return;
+    if (!question || busy || exhausted) return;
     const content = data.notes.length
       ? [...data.notes.map((n) => ({ type: "text", text: n })), { type: "text", text: question }]
       : question;
@@ -280,7 +322,12 @@ export function AssistantBubble({ storageKey }: { storageKey: string }) {
         notice?: string | null;
         error?: string;
         scope?: string;
+        budget?: unknown;
       };
+      // Formule gratuite : le compteur suit chaque tour (L5) ; budget atteint, la réponse dédiée
+      // (« free_limit ») n'a appelé aucun modèle et le message s'affiche sous le fil (L4).
+      if (isBudget(body.budget)) setBudget(body.budget);
+      if (res.status === 429 && body.error === "free_limit") return;
       if (!res.ok) {
         const code =
           res.status === 429
@@ -632,7 +679,7 @@ export function AssistantBubble({ storageKey }: { storageKey: string }) {
                         type="button"
                         data-testid={`assistant-suggestion-${k}`}
                         onClick={() => send(t(`suggestions.${k}`))}
-                        disabled={busy}
+                        disabled={busy || exhausted}
                         className="w-full border border-line-strong bg-paper px-3 py-2 text-left hover:border-accent hover:bg-accent-veil"
                       >
                         {t(`suggestions.${k}`)}
@@ -857,6 +904,40 @@ export function AssistantBubble({ storageKey }: { storageKey: string }) {
               send(draft);
             }}
           >
+            {/* Formule gratuite : ce qui reste ce mois-ci (L5), ou le budget atteint (L4). */}
+            {budget && !exhausted && (
+              <p data-testid="assistant-budget" className="w-full text-[12px] text-ink-2">
+                {t("budget.left", { n: budget.left })}
+              </p>
+            )}
+            {budget && exhausted && (
+              <div
+                ref={limitRef}
+                tabIndex={-1}
+                role="status"
+                data-testid="assistant-free-limit"
+                className="w-full border border-line-strong bg-muted px-3 py-2 text-[13px] text-ink-2 outline-none focus-visible:outline-2 focus-visible:outline-accent"
+              >
+                <p>
+                  {t("budget.reached", {
+                    n: budget.requests,
+                    month: budgetMonth(budget.resetOn, locale),
+                  })}
+                </p>
+                {plansHref && (
+                  <p className="mt-1">
+                    {t("budget.pro")}{" "}
+                    <a
+                      href={plansHref}
+                      data-testid="assistant-plans-link"
+                      className="font-semibold text-accent-dark underline"
+                    >
+                      {t("budget.plans")}
+                    </a>
+                  </p>
+                )}
+              </div>
+            )}
             <label htmlFor={`${panelId}-input`} className="sr-only">
               {t("inputLabel")}
             </label>
@@ -872,7 +953,7 @@ export function AssistantBubble({ storageKey }: { storageKey: string }) {
                   send(draft);
                 }
               }}
-              disabled={busy}
+              disabled={busy || exhausted}
               rows={2}
               maxLength={4000}
               placeholder={t("placeholder")}
@@ -883,7 +964,7 @@ export function AssistantBubble({ storageKey }: { storageKey: string }) {
             <button
               type="submit"
               data-testid="assistant-send"
-              disabled={busy || !draft.trim()}
+              disabled={busy || exhausted || !draft.trim()}
               className="h-[44px] bg-accent px-4 text-[14px] font-bold text-white hover:bg-accent-dark disabled:opacity-50"
             >
               {t("send")}

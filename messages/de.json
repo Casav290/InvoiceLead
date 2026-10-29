@@ -264,8 +264,8 @@
           "pro": "{n} pro Monat"
         },
         "assistant": {
-          "label": "Fragen an den Buchhaltungs­assistenten",
-          "free": "{n} pro Monat"
+          "label": "KI-Assistent",
+          "free": "Entspricht {n} Anfragen pro Monat"
         },
         "reminders": {
           "label": "Mahnungen",
@@ -1867,14 +1867,15 @@
       "lockedPlus": "Pro+-Funktion. Wechseln Sie auf Pro+, um sie zu nutzen.",
       "quota": {
         "aiReads": "Von der KI gelesene Belege: {used} von {limit} diesen Monat",
-        "assistant": "Fragen an den Assistenten: {used} von {limit} diesen Monat",
+        "assistant": "KI-Assistent: {done, select, yes {keine Anfrage mehr diesen Monat} other {{n, plural, =0 {weniger als eine Anfrage} one {noch etwa # Anfrage} other {noch etwa # Anfragen}} diesen Monat}}",
         "reminders": "Mahnungen: {used} von {limit} diesen Monat",
         "bankImports": "Importierte Kontoauszüge: {used} von {limit} diesen Monat",
         "recurring": "Aktive wiederkehrende Rechnungen: {used} von {limit}"
       },
       "used": {
         "aiReads": "{plan, select, free {Das Gratis-Kontingent von {limit} Belegen ist für diesen Monat aufgebraucht.} other {Das Kontingent von {limit} Belegen ist für diesen Monat aufgebraucht.}}",
-        "assistant": "{plan, select, free {Sie haben Ihre {limit} Gratis-Fragen für diesen Monat gestellt.} other {Sie haben Ihre {limit} Fragen für diesen Monat gestellt.}}",
+        "assistant": "Sie haben den KI-Assistenten des Gratis-Abos für diesen Monat aufgebraucht (entspricht {n} Anfragen). Er ist ab dem 1. {month} wieder da.",
+        "assistantUs": "Sie haben den KI-Assistenten des Gratis-Abos für diesen Monat aufgebraucht (entspricht {n} Anfragen). Er ist ab dem 1. {month} wieder da.",
         "reminders": "{plan, select, free {Ihre {limit} Gratis-Mahnungen dieses Monats sind verschickt.} other {Ihre {limit} Mahnungen dieses Monats sind verschickt.}}",
         "bankImports": "{limit, plural, one {Ihr Gratis-Kontoauszug dieses Monats ist importiert.} other {Ihre # Gratis-Kontoauszüge dieses Monats sind importiert.}}",
         "recurring": "{limit, plural, one {Das Gratis-Abo umfasst eine aktive wiederkehrende Rechnung.} other {Das Gratis-Abo umfasst # aktive wiederkehrende Rechnungen.}} Pausieren Sie eine oder wechseln Sie auf Pro, um weitere hinzuzufügen.",
@@ -2842,6 +2843,13 @@
         "becomes": "wird zu",
         "forbidden": "Ihre Rolle erlaubt diese Änderung nicht. Nichts wurde gespeichert.",
         "stale": "Die Daten haben sich seit diesem Vorschlag geändert. Nichts wurde gespeichert; fragen Sie den Assistenten erneut, um den aktuellen Vorschlag zu sehen."
+      },
+      "budget": {
+        "left": "Gratis-Abo: {n, plural, =0 {diesen Monat bleibt Ihnen weniger als eine Anfrage} one {diesen Monat bleibt Ihnen noch etwa # Anfrage} other {diesen Monat bleiben Ihnen noch etwa # Anfragen}}.",
+        "reached": "Sie haben den KI-Assistenten des Gratis-Abos für diesen Monat aufgebraucht (entspricht {n} Anfragen). Er ist ab dem 1. {month} wieder da.",
+        "reachedUs": "Sie haben den KI-Assistenten des Gratis-Abos für diesen Monat aufgebraucht (entspricht {n} Anfragen). Er ist ab dem 1. {month} wieder da.",
+        "pro": "Mit dem Pro-Abo gibt es diese Limite nicht.",
+        "plans": "Abos ansehen"
       }
     }
   },
@@ -2900,7 +2908,7 @@
           "Rechnungen nach Landesregeln (GiroCode, Schweizer QR-Rechnung), Dokumente auf DE, FR, IT, EN",
           "Buchhaltung direkt aus Ihren Rechnungen",
           "10 von der KI gelesene Belege pro Monat (Kassenbons, Eingangsrechnungen), E-Rechnungen ohne Limit",
-          "Assistent: 10 Fragen pro Monat",
+          "KI-Assistent: entspricht 10 Anfragen pro Monat",
           "Erste Mahnung von Hand, 5 pro Monat",
           "1 aktive wiederkehrende Rechnung",
           "1 Kontoauszug pro Monat (ein Konto, höchstens ein Monat), Autopilot inbegriffen",
@@ -2971,7 +2979,7 @@
       },
       {
         "q": "Was umfasst das Gratis-Abo?",
-        "a": "Jeden Monat: 5 Rechnungen, 10 von der KI gelesene Belege, 10 Fragen an den Assistenten, 5 Mahnungen der ersten Stufe und 1 Kontoauszug (ein Konto, höchstens ein Monat) mit Autopilot. Dazu kommen 50 Kontakte und 1 aktive wiederkehrende Rechnung, und E-Rechnungen empfangen Sie ohne Limit. Ein Benutzer, und Ihre Dokumente tragen den Hinweis „Erstellt mit InvoiceLead“. Die Funktionen von Pro und Pro+ bleiben in der App sichtbar, grau und mit dem Hinweis Pro oder Pro+, damit Sie wissen, dass es sie gibt."
+        "a": "Jeden Monat: 5 Rechnungen, 10 von der KI gelesene Belege, den KI-Assistenten im Umfang von 10 Anfragen, 5 Mahnungen der ersten Stufe und 1 Kontoauszug (ein Konto, höchstens ein Monat) mit Autopilot. Dazu kommen 50 Kontakte und 1 aktive wiederkehrende Rechnung, und E-Rechnungen empfangen Sie ohne Limit. Ein Benutzer, und Ihre Dokumente tragen den Hinweis „Erstellt mit InvoiceLead“. Die Funktionen von Pro und Pro+ bleiben in der App sichtbar, grau und mit dem Hinweis Pro oder Pro+, damit Sie wissen, dass es sie gibt."
       },
       {
         "q": "Brauche ich für den Start eine Kreditkarte?",

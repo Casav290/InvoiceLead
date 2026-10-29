@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import { AssistantBox } from "@/components/assistant/AssistantBox";
+import { budgetMonth } from "@/lib/assistant-budget";
 import { requireAppSession } from "@/server/auth/guard";
 import { getSessionCountryTranslations } from "@/server/country-translations";
 import { db } from "@/server/db";
 import { planLock } from "@/server/plan-lock";
-import { quotaAccess } from "@/server/plans";
+import { assistantBudget, budgetView } from "@/server/plans";
 
 type Props = { params: Promise<{ locale: string }> };
 
@@ -14,20 +15,22 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return { title: t("title"), robots: { index: false } };
 }
 
-/** Assistant : formule gratuite 10 questions par mois, puis la boîte grisée avec la marque Pro. */
+/**
+ * Assistant : en formule gratuite, le budget de jetons de l'assistant IA (le même que la bulle,
+ * l'équivalent de 10 demandes par mois), puis la boîte grisée avec la marque Pro.
+ */
 export default async function AssistantPage({ params }: Props) {
   const { locale } = await params;
   const { organization } = await requireAppSession(locale);
   const t = await getSessionCountryTranslations({ locale, namespace: "app.assistant" });
   const tp = await getSessionCountryTranslations({ locale, namespace: "app.plan" });
-  const access = await quotaAccess(db(), organization, "assistant");
-  const limited = Number.isFinite(access.limit);
-  // Verrou prêt pour le moment où la dernière question du mois est posée.
-  const lock = limited
+  const budget = await assistantBudget(db(), organization);
+  // Verrou prêt pour le moment où le budget du mois est atteint.
+  const lock = budget
     ? await planLock(
         locale,
-        access.upgradeTo,
-        tp("used.assistant", { limit: access.limit, plan: access.tier }),
+        budget.upgradeTo,
+        tp("used.assistant", { n: budget.requests, month: budgetMonth(budget.resetOn, locale) }),
       )
     : null;
   return (
@@ -36,7 +39,7 @@ export default async function AssistantPage({ params }: Props) {
       <p className="mt-2 text-[15px] text-ink-muted">{t("subtitle")}</p>
       <AssistantBox
         locale={locale}
-        quota={limited ? { used: access.used, limit: access.limit } : null}
+        budget={budgetView(budget)}
         lock={lock}
         suggestions={[
           t("suggestions.owed"),

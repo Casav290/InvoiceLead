@@ -264,8 +264,8 @@
           "pro": "{n} al mes"
         },
         "assistant": {
-          "label": "Preguntas al asistente contable",
-          "free": "{n} al mes"
+          "label": "Asistente IA",
+          "free": "El equivalente a {n} solicitudes al mes"
         },
         "reminders": {
           "label": "Recordatorios",
@@ -1867,14 +1867,15 @@
       "lockedPlus": "Función Pro+. Pasa a Pro+ para usarla.",
       "quota": {
         "aiReads": "Documentos leídos por la IA: {used} de {limit} este mes",
-        "assistant": "Preguntas al asistente: {used} de {limit} este mes",
+        "assistant": "Asistente IA: {done, select, yes {ninguna solicitud restante este mes} other {{n, plural, =0 {menos de una solicitud restante} one {aproximadamente # solicitud restante} other {aproximadamente # solicitudes restantes}} este mes}}",
         "reminders": "Recordatorios: {used} de {limit} este mes",
         "bankImports": "Extractos bancarios importados: {used} de {limit} este mes",
         "recurring": "Facturas recurrentes activas: {used} de {limit}"
       },
       "used": {
         "aiReads": "{plan, select, free {Has usado tus {limit} lecturas gratuitas de este mes.} other {Has usado tus {limit} lecturas de este mes.}}",
-        "assistant": "{plan, select, free {Has hecho tus {limit} preguntas gratuitas de este mes.} other {Has hecho tus {limit} preguntas de este mes.}}",
+        "assistant": "Has usado el asistente IA previsto en el plan gratuito para este mes (el equivalente a {n} solicitudes). Vuelve el 1 de {month}.",
+        "assistantUs": "Has usado el asistente IA previsto en el plan gratuito para este mes (el equivalente a {n} solicitudes). Vuelve el 1 de {month}.",
         "reminders": "{plan, select, free {Has enviado tus {limit} recordatorios gratuitos de este mes.} other {Has enviado tus {limit} recordatorios de este mes.}}",
         "bankImports": "{limit, plural, one {Ya has importado tu extracto gratuito de este mes.} other {Ya has importado tus # extractos gratuitos de este mes.}}",
         "recurring": "{limit, plural, one {El plan gratuito incluye una factura recurrente activa.} other {El plan gratuito incluye # facturas recurrentes activas.}} Pausa una o pasa a Pro para añadir más.",
@@ -2842,6 +2843,13 @@
         "becomes": "pasa a",
         "forbidden": "Tu rol no permite este cambio. No se ha guardado nada.",
         "stale": "Los datos han cambiado desde esta propuesta. No se ha guardado nada; vuelve a pedírsela al asistente para ver la propuesta actualizada."
+      },
+      "budget": {
+        "left": "Plan gratuito: {n, plural, =0 {te queda menos de una solicitud} one {te queda aproximadamente # solicitud} other {te quedan aproximadamente # solicitudes}} este mes.",
+        "reached": "Has usado el asistente IA previsto en el plan gratuito para este mes (el equivalente a {n} solicitudes). Vuelve el 1 de {month}.",
+        "reachedUs": "Has usado el asistente IA previsto en el plan gratuito para este mes (el equivalente a {n} solicitudes). Vuelve el 1 de {month}.",
+        "pro": "Con el plan Pro, no tiene este límite.",
+        "plans": "Ver los planes"
       }
     }
   },
@@ -2900,7 +2908,7 @@
           "Facturas del país (GiroCode SEPA, factura QR suiza), documentos en DE, FR, IT, EN",
           "Contabilidad alimentada por tus facturas",
           "10 documentos leídos por la IA cada mes (tiques, justificantes), facturas electrónicas recibidas sin límite",
-          "Asistente: 10 preguntas al mes",
+          "Asistente IA: el equivalente a 10 solicitudes al mes",
           "Primer recordatorio manual, 5 al mes",
           "1 factura recurrente activa",
           "1 extracto bancario al mes (una cuenta, un mes como máximo), piloto automático incluido",
@@ -2971,7 +2979,7 @@
       },
       {
         "q": "¿Qué incluye el plan gratuito?",
-        "a": "Cada mes: 5 facturas, 10 documentos leídos por la IA, 10 preguntas al asistente, 5 recordatorios de primer nivel y 1 extracto bancario (una cuenta, un mes como máximo) con el piloto automático. También incluye 50 contactos y 1 factura recurrente activa, y recibes facturas electrónicas sin límite. Un solo usuario, y tus documentos llevan la mención «Creado con InvoiceLead». Las funciones Pro y Pro+ siguen visibles en la aplicación, en gris con el distintivo Pro o Pro+, para que sepas que existen."
+        "a": "Cada mes: 5 facturas, 10 documentos leídos por la IA, el asistente IA (el equivalente a 10 solicitudes), 5 recordatorios de primer nivel y 1 extracto bancario (una cuenta, un mes como máximo) con el piloto automático. También incluye 50 contactos y 1 factura recurrente activa, y recibes facturas electrónicas sin límite. Un solo usuario, y tus documentos llevan la mención «Creado con InvoiceLead». Las funciones Pro y Pro+ siguen visibles en la aplicación, en gris con el distintivo Pro o Pro+, para que sepas que existen."
       },
       {
         "q": "¿Hace falta una tarjeta para empezar?",

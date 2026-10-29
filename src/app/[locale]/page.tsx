@@ -11,7 +11,7 @@ import { PublicHeader } from "@/components/public/PublicHeader";
 import { Button } from "@/components/ui/button";
 import { routing } from "@/i18n/routing";
 import { leadLoginHref } from "@/lib/lead-login";
-import { PLANS } from "@/server/plans";
+import { ASSISTANT_TOKENS, PLANS } from "@/server/plans";
 
 type Params = { params: Promise<{ locale: string }> };
 
@@ -235,7 +235,10 @@ export default async function HomePage({ params }: Params) {
     {
       key: "assistant",
       label: t("pricing.rows.assistant.label"),
-      free: t("pricing.rows.assistant.free", { n: free.quotas.assistant }),
+      // Un budget de jetons, dit en demandes-types : « l'équivalent de 10 demandes par mois ».
+      free: t("pricing.rows.assistant.free", {
+        n: free.quotas.assistant / ASSISTANT_TOKENS.perRequest,
+      }),
       pro: t("pricing.unlimited"),
     },
     {

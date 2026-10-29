@@ -19,19 +19,20 @@ const LINKS: Record<string, string> = {
 };
 
 /**
- * Question en langage naturel sur sa comptabilité, réponse tirée des chiffres des livres. Avec une
- * allocation (formule gratuite), le compteur du mois est affiché ; une fois les questions du mois
- * posées, la boîte reste visible mais grisée, avec la marque Pro et le lien de mise à niveau.
+ * Question en langage naturel sur sa comptabilité, réponse tirée des chiffres des livres. En formule
+ * gratuite, ce qui reste de l'assistant IA ce mois-ci est affiché (le même budget que la bulle) ;
+ * une fois le budget atteint, la boîte reste visible mais grisée, avec la marque Pro et le lien de
+ * mise à niveau.
  */
 export function AssistantBox({
   locale,
   suggestions,
-  quota,
+  budget: initial,
   lock,
 }: {
   locale: string;
   suggestions: string[];
-  quota: { used: number; limit: number } | null;
+  budget: { left: number; exhausted: boolean } | null;
   lock: Lock | null;
 }) {
   const t = useCountryTranslations("app.assistant");
@@ -40,8 +41,8 @@ export function AssistantBox({
     round: 0,
   });
   const input = useRef<HTMLTextAreaElement>(null);
-  const used = state.used ?? quota?.used ?? 0;
-  const exhausted = quota !== null && used >= quota.limit;
+  const budget = state.budget !== undefined ? state.budget : initial;
+  const exhausted = budget?.exhausted === true;
   const form = (
     <form
       action={action}
@@ -79,9 +80,9 @@ export function AssistantBox({
           </button>
         ))}
       </div>
-      {quota ? (
+      {budget && !exhausted ? (
         <p className="mt-3 text-[12px] text-ink-muted" data-testid="assistant-quota">
-          {tp("quota.assistant", { used, limit: quota.limit })}
+          {tp("quota.assistant", { n: budget.left, done: "no" })}
         </p>
       ) : null}
     </form>
