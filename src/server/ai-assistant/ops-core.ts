@@ -102,6 +102,11 @@ export type BatchItem = {
   currency?: string;
   lines?: SummaryLine[];
   totals?: SummaryTotals;
+  /**
+   * Lot : remarques propres à CETTE opération (clés des textes « notes »), quand toutes les
+   * opérations de son groupe ne les partagent pas (une facture et un devis émis ensemble).
+   */
+  notes?: string[];
 };
 
 export type ConfirmSummary = {
@@ -116,12 +121,28 @@ export type ConfirmSummary = {
    * Lot : les opérations groupées par action, dans l'ordre de leur première apparition ; chaque
    * groupe garde son total et ses premières lignes (le reste : « + N autres »).
    */
-  groups?: { action: string; count: number; items: BatchItem[] }[];
+  groups?: {
+    action: string;
+    count: number;
+    items: BatchItem[];
+    /** Remarques communes à toutes les opérations du groupe, montrées une fois sous le groupe. */
+    notes?: string[];
+  }[];
   /** Lot : nombre total d'opérations. */
   count?: number;
 };
 
-export type OpSuccess = { ok: true; result: OpResult; summary: ConfirmSummary; item: BatchItem };
+export type OpSuccess = {
+  ok: true;
+  result: OpResult;
+  summary: ConfirmSummary;
+  item: BatchItem;
+  /**
+   * Relances automatiques à surveiller une fois TOUTES les opérations jouées (operations.ts) : une
+   * facture émise, ou le client qui vient de recevoir sa première adresse e-mail.
+   */
+  reminders?: { invoiceId?: string; contactId?: string };
+};
 export type OpFailure = { ok: false; error: string };
 export type OpOutcome = OpSuccess | OpFailure;
 

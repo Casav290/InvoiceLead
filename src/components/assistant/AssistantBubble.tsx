@@ -51,6 +51,8 @@ type GroupItem = {
   currency?: string;
   lines?: Line[];
   totals?: Totals;
+  /** Remarques propres à cette opération (celles que tout son groupe partage sont sous le groupe). */
+  notes?: string[];
 };
 
 type Summary = {
@@ -60,7 +62,7 @@ type Summary = {
   totals?: Totals;
   notes?: string[];
   /** Lot : opérations groupées par action, premières lignes de chaque groupe. */
-  groups?: { action: string; count: number; items: GroupItem[] }[];
+  groups?: { action: string; count: number; items: GroupItem[]; notes?: string[] }[];
   count?: number;
 };
 
@@ -550,6 +552,14 @@ export function AssistantBubble({ storageKey }: { storageKey: string }) {
       <dd className="text-right font-bold">{money(totals.totalCents, totals.currency)}</dd>
     </dl>
   );
+  /** Remarques d'une opération ou d'un groupe d'un lot, sous ce à quoi elles s'appliquent. */
+  const noteList = (notes: string[]) => (
+    <ul className="mt-1 space-y-0.5 text-[12px] text-ink-2" data-testid="assistant-batch-notes">
+      {notes.map((n) => (
+        <li key={n}>{tc.has(`notes.${n}`) ? tc(`notes.${n}`) : n}</li>
+      ))}
+    </ul>
+  );
 
   return (
     <>
@@ -745,6 +755,7 @@ export function AssistantBubble({ storageKey }: { storageKey: string }) {
                                     {item.totals && totalsList(item.totals)}
                                   </div>
                                 )}
+                                {item.notes && item.notes.length > 0 && noteList(item.notes)}
                               </li>
                             ))}
                           </ul>
@@ -753,6 +764,7 @@ export function AssistantBubble({ storageKey }: { storageKey: string }) {
                               {tc("more", { count: g.count - g.items.length })}
                             </p>
                           )}
+                          {g.notes && g.notes.length > 0 && noteList(g.notes)}
                         </section>
                       ))}
                     </div>

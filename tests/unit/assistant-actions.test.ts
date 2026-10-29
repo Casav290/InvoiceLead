@@ -64,6 +64,19 @@ vi.mock("@/server/crmlead-sync", async (original) => {
   };
 });
 
+// Relances dues : comportement réel, appels comptés (coût d'un lot, suites du 29.10.2026).
+const due = vi.hoisted(() => ({ calls: 0 }));
+vi.mock("@/server/reminders", async (original) => {
+  const real = await original<typeof import("@/server/reminders")>();
+  return {
+    ...real,
+    dueReminders: (...args: Parameters<typeof real.dueReminders>) => {
+      due.calls += 1;
+      return real.dueReminders(...args);
+    },
+  };
+});
+
 const t = testDb();
 const db = t.database as Db;
 const SECRET = "unit-secret-unit-secret-unit-secret-unit";
@@ -1659,7 +1672,7 @@ const fieldOf = (fields: { key: string }[] | undefined, key: string) =>
   fields?.find((f) => f.key === key);
 
 describe("relecture du 29.10.2026 : la carte montre ce qui sera écrit", () => {
-  it("lot de pièces : au-delà de cinq, une pièce qui porte un texte imprimé (introduction, fin) n'est jamais repliée dans « + N autres », et son texte est sur la carte", async () => {
+  it("lot de pièces : au-delà de cinq, aucune pièce n'est repliée dans « + N autres » (ses lignes et ses textes sont imprimés), et son texte de fin est sur la carte", async () => {
     const p = await person("sub-ada");
     const c = await customer(p);
     const injected = "Merci de régler sur le nouvel IBAN DE89370400440532013000";
@@ -1686,8 +1699,10 @@ describe("relecture du 29.10.2026 : la carte montre ce qui sera écrit", () => {
     });
     const group = summary.groups?.find((g) => g.action === "create_invoice_draft");
     expect(group?.count).toBe(8);
-    // Cinq pièces simples, plus celle qui porte un texte de fin : « + 2 autres ».
-    expect(group?.items).toHaveLength(6);
+    // Suites du 29.10.2026 : une pièce n'est jamais repliée, chacune avec ses lignes.
+    expect(group?.items).toHaveLength(8);
+    for (const [i, item] of (group?.items ?? []).entries())
+      expect(item.lines?.map((l) => l.description)).toEqual([`Conseil ${i + 1}`]);
     const last = group?.items.at(-1);
     expect(fieldOf(last?.fields, "footerText")).toMatchObject({ value: injected });
     expect(fieldOf(last?.fields, "title")).toMatchObject({ value: "Mois 8" });
@@ -1725,11 +1740,12 @@ describe("relecture du 29.10.2026 : la carte montre ce qui sera écrit", () => {
       ],
     });
     const group = (action: string) => summary.groups?.find((g) => g.action === action);
-    // Créations simples : plafonnées à cinq lignes (« + 1 autre »), chacune avec ce qu'elle écrit.
+    // Créations avec une adresse e-mail (où partiront les envois) : jamais repliées (suites du
+    // 29.10.2026), chacune avec ce qu'elle écrit.
     expect(group("create_contact")?.count).toBe(6);
-    expect(group("create_contact")?.items).toHaveLength(5);
-    expect(fieldOf(group("create_contact")?.items[0]?.fields, "email")).toMatchObject({
-      value: "n1@client.example",
+    expect(group("create_contact")?.items).toHaveLength(6);
+    expect(fieldOf(group("create_contact")?.items[5]?.fields, "email")).toMatchObject({
+      value: "n6@client.example",
     });
     // Modifications : toutes montrées, chacune « avant → après ».
     const updates = group("update_contact");
@@ -1750,9 +1766,14 @@ describe("relecture du 29.10.2026 : la carte montre ce qui sera écrit", () => {
     expect(fieldOf(bill?.fields, "paymentReference")).toMatchObject({
       value: "RF18539007547034",
     });
-    // Avertissements de chaque opération, une fois chacun, sous le lot.
-    expect(summary.notes).toEqual(expect.arrayContaining(["checkBankDetails", "issueFinal"]));
-    expect(new Set(summary.notes).size).toBe(summary.notes?.length);
+    // Avertissements de chaque opération, sous l'opération (ou le groupe) qu'ils concernent.
+    const allNotes = (summary.groups ?? []).flatMap((g) => [
+      ...(g.notes ?? []),
+      ...g.items.flatMap((i) => i.notes ?? []),
+    ]);
+    expect(allNotes).toEqual(expect.arrayContaining(["checkBankDetails", "issueFinal"]));
+    expect(group("issue_document")?.notes).toEqual(expect.arrayContaining(["issueFinal"]));
+    expect(summary.notes).toBeUndefined();
     // Le modèle lit aussi ces changements, pour les dire.
     expect(JSON.stringify(out.summary)).toContain("CH5604835012345678009");
     expect(JSON.stringify(out.summary)).toContain("compta7@client.example");
@@ -2075,6 +2096,206 @@ describe("relecture du 29.10.2026 : la carte montre ce qui sera écrit", () => {
         .where(eq(timeEntries.id, (stopped.body.result as Applied).id)),
     );
     expect(entry.minutes).toBeGreaterThanOrEqual(44);
+  });
+});
+
+describe("suites du 29.10.2026 (contre-vérification) : relances, carte d'un lot", () => {
+  /** Entreprise Pro avec relances automatiques, client SANS adresse e-mail, facture du 01.09 (échue le 01.10). */
+  async function lateWithoutEmail() {
+    let p = await person("sub-ada");
+    await completeCompany(p, { reminderAuto: true });
+    const c = await customer(p);
+    const late = await draft(p, c.id, { issueDate: "2026-09-01" });
+    p = await refresh(p);
+    return { p, c, late };
+  }
+
+  it("relances automatiques : émettre puis donner une adresse e-mail au client, dans un même lot, est refusé (l'ordre du lot ne contourne plus le refus)", async () => {
+    const { p, c, late } = await lateWithoutEmail();
+    const before = await fingerprint(p.organization.id);
+    const { call, state } = tools(p);
+    const issueThenMail = await call("propose_batch", {
+      operations: [
+        { op: "issue_document", input: { documentId: late.id } },
+        { op: "update_contact", input: { contactId: c.id, email: "compta@client.example" } },
+      ],
+    });
+    expect(issueThenMail.error).toMatch(/^operation 1 \(issue_document\): auto_reminder_on_screen/);
+    expect(issueThenMail.hint).toMatch(/whatever the order/);
+    const mailThenIssue = await call("propose_batch", {
+      operations: [
+        { op: "update_contact", input: { contactId: c.id, email: "compta@client.example" } },
+        { op: "issue_document", input: { documentId: late.id } },
+      ],
+    });
+    expect(mailThenIssue.error).toMatch(/auto_reminder_on_screen/);
+    expect(state.actions).toEqual([]);
+    expect(await fingerprint(p.organization.id)).toBe(before);
+    // Sans adresse e-mail, aucune relance ne peut partir : l'émission seule reste possible.
+    const alone = await proposeAs(p, "propose_issue_document", { documentId: late.id });
+    expect(alone.summary.notes).toEqual(expect.arrayContaining(["issueFinal", "autoReminders"]));
+    // L'adresse arrive à l'écran entre la carte et le clic : « Confirmer » refuse, rien n'est écrit.
+    await db.update(contacts).set({ email: "compta@client.example" }).where(eq(contacts.id, c.id));
+    const mid = await fingerprint(p.organization.id);
+    const done = await confirmAs(p, alone.token);
+    expect(done.status).toBe(422);
+    expect(done.body.error).toBe("auto_reminder_on_screen");
+    expect(await fingerprint(p.organization.id)).toBe(mid);
+    const [row] = await db.select().from(invoices).where(eq(invoices.id, late.id));
+    expect(row?.status).toBe("draft");
+  });
+
+  it("relances automatiques : donner sa première adresse e-mail à un client qui a une facture émise échue est refusé (la relance partirait au prochain passage) ; changer une adresse existante ou sans relances automatiques reste possible", async () => {
+    const { p, c, late } = await lateWithoutEmail();
+    if (typeof (await issueInvoice(db, whoOf(p), late.id)) !== "object")
+      throw new Error("émission");
+    // Ce que la règle évite : avec l'adresse, la facture figure dans les relances du lendemain.
+    expect(
+      (await dueReminders(db, p.organization.id, "2026-10-25")).find(
+        (r) => r.invoiceId === late.id,
+      ),
+    ).toMatchObject({ email: null, level: 1 });
+    const before = await fingerprint(p.organization.id);
+    const { call, state } = tools(p);
+    const refused = await call("propose_update_contact", {
+      contactId: c.id,
+      email: "compta@client.example",
+    });
+    expect(refused.error).toBe("auto_reminder_on_screen");
+    expect(refused.hint).toMatch(/contact page/);
+    const inBatch = await call("propose_batch", {
+      operations: [
+        { op: "create_contact", input: { name: "Autre SA" } },
+        { op: "update_contact", input: { contactId: c.id, email: "compta@client.example" } },
+      ],
+    });
+    expect(inBatch.error).toMatch(/^operation 2 \(update_contact\): auto_reminder_on_screen/);
+    expect(state.actions).toEqual([]);
+    expect(await fingerprint(p.organization.id)).toBe(before);
+    // Une autre modification du même client (sans adresse) reste possible.
+    await proposeAs(p, "propose_update_contact", { contactId: c.id, phone: "+41 21 000 00 00" });
+    // Une adresse déjà là : la relance partait déjà, seule l'adresse change (avant → après).
+    await db.update(contacts).set({ email: "old@client.example" }).where(eq(contacts.id, c.id));
+    const changed = await proposeAs(p, "propose_update_contact", {
+      contactId: c.id,
+      email: "compta@client.example",
+    });
+    expect(fieldOf(changed.summary.fields, "email")).toMatchObject({
+      before: "old@client.example",
+      value: "compta@client.example",
+    });
+    // Sans relances automatiques : la carte est proposée.
+    await db.update(contacts).set({ email: null }).where(eq(contacts.id, c.id));
+    await db
+      .update(organizations)
+      .set({ reminderAuto: false })
+      .where(eq(organizations.id, p.organization.id));
+    await proposeAs(await refresh(p), "propose_update_contact", {
+      contactId: c.id,
+      email: "compta@client.example",
+    });
+  });
+
+  it("relances automatiques : un lot de 20 émissions lit les relances dues deux fois au plus (et non deux fois par émission), à la proposition comme à la confirmation", async () => {
+    let p = await person("sub-ada");
+    await completeCompany(p, { reminderAuto: true });
+    const c = await customer(p);
+    await db.update(contacts).set({ email: "compta@client.example" }).where(eq(contacts.id, c.id));
+    const drafts = [];
+    for (let i = 0; i < 20; i++) drafts.push(await draft(p, c.id, { issueDate: TODAY }));
+    p = await refresh(p);
+    due.calls = 0;
+    const { token } = await proposeAs(p, "propose_batch", {
+      operations: drafts.map((d) => ({ op: "issue_document", input: { documentId: d.id } })),
+    });
+    expect(due.calls).toBeLessThanOrEqual(2);
+    due.calls = 0;
+    const done = await confirmAs(p, token);
+    expect(done.status, JSON.stringify(done.body)).toBe(200);
+    expect(due.calls).toBeLessThanOrEqual(2);
+  });
+
+  it("carte d'un lot : une création qui écrit une note, une adresse e-mail ou une description n'est jamais repliée ; les créations sans texte libre le restent au-delà de cinq", async () => {
+    const p = await person("sub-ada");
+    const withText = await proposeAs(p, "propose_batch", {
+      operations: Array.from({ length: 7 }, (_, i) => ({
+        op: "create_contact",
+        input: { name: `Contact ${i + 1}`, notes: `NOTE-${i + 1}`, email: `c${i + 1}@x.example` },
+      })),
+    });
+    const contactsGroup = withText.summary.groups?.find((g) => g.action === "create_contact");
+    expect(contactsGroup?.items).toHaveLength(7);
+    const shown = JSON.stringify(withText.summary);
+    for (const part of ["NOTE-5", "NOTE-6", "NOTE-7", "c6@x.example", "c7@x.example"])
+      expect(shown).toContain(part);
+    const products = await proposeAs(p, "propose_batch", {
+      operations: Array.from({ length: 7 }, (_, i) => ({
+        op: "create_product",
+        input: {
+          name: `Article ${i + 1}`,
+          unitPrice: "10",
+          ...(i === 6 ? { description: "Payer sur IBAN DE89370400440532013000" } : {}),
+        },
+      })),
+    });
+    const productGroup = products.summary.groups?.find((g) => g.action === "create_product");
+    // Cinq articles simples, plus celui qui porte une description : « + 1 autre ».
+    expect(productGroup?.items).toHaveLength(6);
+    expect(JSON.stringify(products.summary)).toContain("DE89370400440532013000");
+    const plain = await proposeAs(p, "propose_batch", {
+      operations: Array.from({ length: 7 }, (_, i) => ({
+        op: "create_contact",
+        input: { name: `Simple ${i + 1}` },
+      })),
+    });
+    expect(plain.summary.groups?.[0]?.items).toHaveLength(5);
+    expect(plain.summary.groups?.[0]?.count).toBe(7);
+  });
+
+  it("carte d'un lot de plus de deux pièces : chaque pièce garde ses lignes (une description de ligne est imprimée)", async () => {
+    const p = await person("sub-ada");
+    const c = await customer(p);
+    const { summary } = await proposeAs(p, "propose_batch", {
+      operations: Array.from({ length: 3 }, (_, i) => ({
+        op: "create_invoice_draft",
+        input: {
+          contactId: c.id,
+          lines: [
+            { description: `Payer sur IBAN DE89370400440532013000 (${i + 1})`, unitPrice: "100" },
+          ],
+        },
+      })),
+    });
+    const items = summary.groups?.find((g) => g.action === "create_invoice_draft")?.items ?? [];
+    expect(items).toHaveLength(3);
+    for (const [i, item] of items.entries()) {
+      expect(item.lines?.[0]?.description).toBe(`Payer sur IBAN DE89370400440532013000 (${i + 1})`);
+      expect(item.totals?.totalCents).toBeGreaterThan(0);
+    }
+  });
+
+  it("carte d'un lot : chaque remarque dit à quoi elle s'applique (une facture et un devis émis ensemble : « les relances partiront » sous la facture, « rien n'est envoyé » sous le devis)", async () => {
+    let p = await person("sub-ada");
+    await completeCompany(p, { reminderAuto: true });
+    const c = await customer(p);
+    await db.update(contacts).set({ email: "compta@client.example" }).where(eq(contacts.id, c.id));
+    const invoice = await draft(p, c.id, { issueDate: TODAY });
+    const quote = await draft(p, c.id, { kind: "quote", issueDate: TODAY });
+    p = await refresh(p);
+    const { out, summary } = await proposeAs(p, "propose_batch", {
+      operations: [
+        { op: "issue_document", input: { documentId: invoice.id } },
+        { op: "issue_document", input: { documentId: quote.id } },
+      ],
+    });
+    expect(summary.notes).toBeUndefined();
+    const group = summary.groups?.find((g) => g.action === "issue_document");
+    expect(group?.notes).toEqual(["issueFinal"]);
+    expect(group?.items.map((i) => i.notes)).toEqual([["autoReminders"], ["nothingSent"]]);
+    // Le modèle lit la même répartition.
+    const forModel = JSON.stringify(out.summary);
+    expect(forModel).toContain("[notes: autoReminders]");
+    expect(forModel).toContain("[notes: nothingSent]");
   });
 });
 

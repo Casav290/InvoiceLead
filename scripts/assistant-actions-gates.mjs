@@ -443,6 +443,31 @@ async function g2() {
     ["jeton : expiré ou falsifié 403", "expiré ou falsifié"],
     ["rôle changé avant le clic : 403", "rôle ne permet plus la facturation"],
     ["aucun outil interdit donné au modèle", "n'offre aucun outil interdit"],
+    // Suites du 29.10.2026 (contre-vérification) : chacun échouait sur f596b95.
+    [
+      "suites B1 : émettre puis donner une adresse e-mail dans un même lot = refusé (relances automatiques), dans les deux ordres et au clic",
+      "émettre puis donner une adresse e-mail au client, dans un même lot, est refusé",
+    ],
+    [
+      "suites B2 : première adresse e-mail d'un client qui a une facture échue = refusé (relances automatiques)",
+      "donner sa première adresse e-mail à un client qui a une facture émise échue est refusé",
+    ],
+    [
+      "suites B6 : un lot de 20 émissions lit les relances dues deux fois au plus",
+      "un lot de 20 émissions lit les relances dues deux fois au plus",
+    ],
+    [
+      "suites B3 : note, adresse e-mail ou description jamais repliée sur la carte d'un lot",
+      "une création qui écrit une note, une adresse e-mail ou une description n'est jamais repliée",
+    ],
+    [
+      "suites B4 : plus de deux pièces, chacune garde ses lignes sur la carte",
+      "carte d'un lot de plus de deux pièces : chaque pièce garde ses lignes",
+    ],
+    [
+      "suites B5 : chaque remarque sous l'opération ou le groupe qu'elle concerne",
+      "chaque remarque dit à quoi elle s'applique",
+    ],
   ];
   for (const [label, part] of named) check(label, passed(part));
   const failed = v.tests.filter((t) => t.status !== "passed");

@@ -1,4 +1,4 @@
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, inArray, or, sql } from "drizzle-orm";
 import { z } from "zod";
 import { VAT_CODES } from "@/countries/ch/vat";
 import { formatQuantity } from "@/lib/invoice-math";
@@ -14,7 +14,7 @@ import {
 } from "../contacts";
 import { detachCrmlead } from "../crmlead-sync";
 import type { Contact, Organization } from "../db/schema";
-import { recurringInvoices, webhookDeliveries } from "../db/schema";
+import { contacts, invoices, recurringInvoices, webhookDeliveries } from "../db/schema";
 import {
   convertQuoteToInvoice,
   createCreditNote,
@@ -30,6 +30,7 @@ import {
   setQuoteOutcome,
   updateInvoice,
 } from "../invoices";
+import { invoiceBalance } from "../payments";
 import { featureAccess } from "../plans";
 import { addMonths, createRecurring, INTERVALS, setRecurringActive } from "../recurring";
 import { dueReminders, waiveCharges } from "../reminders";
@@ -246,7 +247,7 @@ export const updateContactOp = defineOp({
   id: "update_contact",
   permission: "billing",
   description:
-    "PROPOSE changes to an existing contact: its id and only the fields to change. Nothing is saved until the user confirms.",
+    "PROPOSE changes to an existing contact: its id and only the fields to change. Nothing is saved until the user confirms. When the company's automatic e-mail reminders are on, giving a customer their first e-mail address is refused if one of their issued invoices is overdue (or reminded at the next daily run): the user adds it on the contact page.",
   schema: z.object({ contactId: z.string(), ...contactFields }),
   refs: { contactId: "contact" },
   async run(ctx, input) {
@@ -261,7 +262,11 @@ export const updateContactOp = defineOp({
     const named = fields.some((f) => f.key === "name")
       ? fields
       : [text("contact", updated.name), ...fields];
+    // Première adresse e-mail du client : ses factures émises deviennent relançables par e-mail ;
+    // vérifié une fois toutes les opérations jouées (triggeredReminder).
+    const firstEmail = !current.email?.trim() && !!updated.email?.trim();
     return {
+      ...(firstEmail ? { reminders: { contactId: updated.id } } : {}),
       ok: true,
       result: {
         action: "update_contact",
@@ -539,22 +544,72 @@ const autoReminders = (org: Organization) =>
   org.reminderAuto && featureAccess(org, "reminderAuto").allowed;
 
 /**
- * La facture émise partirait-elle en relance par e-mail aussitôt ? Déjà échue (la relance suit dès
- * que son délai est atteint), ou due au passage d'aujourd'hui ou de demain (rappel courtois d'un
- * client retardataire) ; seulement si le client a une adresse e-mail, comme l'envoi automatique.
+ * Relances automatiques que des opérations déclencheraient, vérifiées une fois TOUTES les opérations
+ * jouées, dans la même transaction (operations.ts) : l'ordre d'un lot ne change donc rien (émettre puis
+ * donner une adresse e-mail au client = l'inverse). Sont surveillées les factures émises par les
+ * opérations et les factures émises des clients qui viennent de recevoir leur première adresse e-mail.
+ * Une telle facture partirait en relance par e-mail sans la personne si son client a une adresse et
+ * si elle est échue avec un solde ouvert (la relance suit dès que son délai est atteint), ou si la
+ * tâche quotidienne la relancerait aujourd'hui ou demain (rappel courtois d'un client retardataire).
+ * Rend l'indice de la première opération en cause, ou null. Ciblé : une requête pour les factures
+ * surveillées, le solde de la facture échue en cause, et au plus deux listes des relances dues pour
+ * les factures pas encore échues, quel que soit le nombre d'opérations (lot de 150 émissions).
  */
-async function reminderSoon(
+export async function triggeredReminder(
   ctx: AssistantContext,
-  invoice: { id: string; dueDate: string | null },
-  email: string | null,
-) {
-  if (!email) return false;
-  if (invoice.dueDate && invoice.dueDate < ctx.today) return true;
+  outcomes: { reminders?: { invoiceId?: string; contactId?: string } }[],
+): Promise<number | null> {
+  if (!autoReminders(ctx.organization)) return null;
+  const byInvoice = new Map<string, number>();
+  const byContact = new Map<string, number>();
+  outcomes.forEach((o, i) => {
+    const { invoiceId, contactId } = o.reminders ?? {};
+    if (invoiceId && !byInvoice.has(invoiceId)) byInvoice.set(invoiceId, i);
+    if (contactId && !byContact.has(contactId)) byContact.set(contactId, i);
+  });
+  if (byInvoice.size === 0 && byContact.size === 0) return null;
+  const watched = [
+    ...(byInvoice.size ? [inArray(invoices.id, [...byInvoice.keys()])] : []),
+    ...(byContact.size ? [inArray(invoices.contactId, [...byContact.keys()])] : []),
+  ];
+  const rows = await ctx.database
+    .select({
+      id: invoices.id,
+      contactId: invoices.contactId,
+      dueDate: invoices.dueDate,
+      totalCents: invoices.totalCents,
+      email: contacts.email,
+    })
+    .from(invoices)
+    .innerJoin(contacts, eq(contacts.id, invoices.contactId))
+    .where(
+      and(
+        eq(invoices.organizationId, ctx.organization.id),
+        eq(invoices.kind, "invoice"),
+        eq(invoices.status, "issued"),
+        or(...watched),
+      ),
+    );
+  const cause = (r: { id: string; contactId: string }) =>
+    Math.min(
+      byInvoice.get(r.id) ?? Number.POSITIVE_INFINITY,
+      byContact.get(r.contactId) ?? Number.POSITIVE_INFINITY,
+    );
+  // Comme l'envoi automatique : seulement vers une adresse e-mail.
+  const mailed = rows.filter((r) => !!r.email?.trim()).sort((a, b) => cause(a) - cause(b));
+  for (const r of mailed) {
+    if (!r.dueDate || r.dueDate >= ctx.today) continue;
+    const balance = await invoiceBalance(ctx.database, r.id, r.totalCents);
+    if (balance.openCents - (balance.chargesCents ?? 0) > 0) return cause(r);
+  }
+  const coming = mailed.filter((r) => !r.dueDate || r.dueDate >= ctx.today);
+  if (coming.length === 0) return null;
   for (const day of [ctx.today, nextDay(ctx.today)]) {
     const due = await dueReminders(ctx.database, ctx.organization.id, day);
-    if (due.some((r) => r.invoiceId === invoice.id && r.email && !r.locked)) return true;
+    const hit = coming.find((r) => due.some((d) => d.invoiceId === r.id && d.email && !d.locked));
+    if (hit) return cause(hit);
   }
-  return false;
+  return null;
 }
 
 /** Webhooks de l'entreprise mis en file par l'émission (envoyés après la validation). */
@@ -587,15 +642,18 @@ export const issueDocumentOp = defineOp({
     const issued = await issueInvoice(ctx.database, who(ctx), found.invoice.id);
     if (typeof issued === "string") return fail(issued);
     const notes = ["issueFinal"];
-    if (issued.kind === "invoice" && autoReminders(ctx.organization)) {
-      // Une relance partirait par e-mail au prochain passage de la tâche quotidienne : envoyer à
-      // l'extérieur reste à la personne, qui émet depuis la page de la pièce (cahier, A7).
-      if (await reminderSoon(ctx, issued, found.contact.email))
-        return fail("auto_reminder_on_screen");
-      notes.push("autoReminders");
-    } else notes.push("nothingSent");
+    // Une relance qui partirait par e-mail au prochain passage de la tâche quotidienne est refusée
+    // une fois toutes les opérations jouées (triggeredReminder) : envoyer à l'extérieur reste à la
+    // personne, qui émet depuis la page de la pièce (cahier, A7).
+    notes.push(
+      issued.kind === "invoice" && autoReminders(ctx.organization)
+        ? "autoReminders"
+        : "nothingSent",
+    );
     if (await webhooksQueued(ctx, issued.id)) notes.push("webhooksNotified");
-    return documentOutcome(ctx, "issue_document", issued.id, undefined, [], notes);
+    const outcome = await documentOutcome(ctx, "issue_document", issued.id, undefined, [], notes);
+    if (outcome.ok && issued.kind === "invoice") outcome.reminders = { invoiceId: issued.id };
+    return outcome;
   },
   // Comme l'action « Émettre » : comptabilisation de ce qui peut l'être, puis webhooks de l'entreprise.
   effects: ["post", "webhooks"],

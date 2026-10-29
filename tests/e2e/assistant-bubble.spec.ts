@@ -294,22 +294,22 @@ test("bulle : une modification se lit « avant → après »", async ({ page }) 
   expect(await traitNetIssues(page)).toEqual([]);
 });
 
-test("carte d'un lot : chaque ligne montre ce qu'elle écrit (« avant → après », IBAN, référence de paiement, devise d'avant), avertissements sous le lot ; données changées depuis la carte → refus 409 « stale »", async ({
+test("carte d'un lot : chaque ligne montre ce qu'elle écrit (« avant → après », IBAN, référence de paiement, devise d'avant), chaque avertissement sous ce qu'il concerne ; données changées depuis la carte → refus 409 « stale »", async ({
   page,
 }) => {
   await login(page, "fr");
-  // Ce que rend batchSummary (src/server/ai-assistant/operations.ts) pour trois modifications.
+  // Ce que rend batchSummary (src/server/ai-assistant/operations.ts) pour trois modifications et
+  // l'émission d'une facture et d'un devis (remarques par groupe et par opération).
   await page.route(
     "**/api/assistant",
-    reply("Les trois changements sont prêts.", [
+    reply("Les cinq changements sont prêts.", [
       {
         type: "confirm",
         token: "batch.token",
         summary: {
           action: "batch",
           fields: [],
-          count: 3,
-          notes: ["checkBankDetails", "autoReminders"],
+          count: 5,
           groups: [
             {
               action: "update_contact",
@@ -341,6 +341,24 @@ test("carte d'un lot : chaque ligne montre ce qu'elle écrit (« avant → aprè
                     },
                     { key: "company.currency", value: "EUR", before: "CHF" },
                   ],
+                  notes: ["checkBankDetails"],
+                },
+              ],
+            },
+            {
+              action: "issue_document",
+              count: 2,
+              notes: ["issueFinal"],
+              items: [
+                {
+                  action: "issue_document",
+                  label: "Brouillon facture · Client SA",
+                  notes: ["autoReminders"],
+                },
+                {
+                  action: "issue_document",
+                  label: "Brouillon devis · Client SA",
+                  notes: ["nothingSent"],
                 },
               ],
             },
@@ -380,7 +398,7 @@ test("carte d'un lot : chaque ligne montre ce qu'elle écrit (« avant → aprè
   await page.getByTestId("assistant-input").fill("Mets à jour ces trois fiches");
   await page.getByTestId("assistant-input").press("Enter");
   const card = page.getByTestId("assistant-confirm-card");
-  await expect(card).toContainText("3 changements");
+  await expect(card).toContainText("5 changements");
   const fields = card.getByTestId("assistant-batch-field");
   // Le nom répété (« Client SA ») n'est pas une ligne de plus ; chaque champ écrit l'est.
   await expect(fields).toHaveText([
@@ -403,9 +421,23 @@ test("carte d'un lot : chaque ligne montre ce qu'elle écrit (« avant → aprè
   ])
     await expect(card.getByText(label, { exact: true })).toBeVisible();
   await expect(card).not.toContainText(/company\.|supplierCountry|paymentReference/);
-  // Les avertissements de chaque opération sont sous le lot.
-  await expect(card).toContainText("Vérifiez les coordonnées bancaires");
-  await expect(card).toContainText("Les relances automatiques de votre entreprise sont activées");
+  // Chaque avertissement est sous ce qu'il concerne (suites du 29.10.2026) : la facture dit que les
+  // relances partiront, le devis que rien n'est envoyé, le groupe que le numéro est définitif.
+  const itemOf = (label: string) => card.locator("li", { hasText: label });
+  await expect(itemOf("Atelier SA").getByTestId("assistant-batch-notes")).toHaveText(
+    "Vérifiez les coordonnées bancaires : elles figurent sur vos factures.",
+  );
+  await expect(itemOf("Brouillon facture").getByTestId("assistant-batch-notes")).toHaveText(
+    /^Les relances automatiques de votre entreprise sont activées/,
+  );
+  await expect(itemOf("Brouillon facture")).not.toContainText("Rien n'est envoyé");
+  await expect(itemOf("Brouillon devis").getByTestId("assistant-batch-notes")).toHaveText(
+    /^Rien n.est envoyé au client/,
+  );
+  await expect(itemOf("Brouillon devis")).not.toContainText("relances automatiques");
+  await expect(card.getByTestId("assistant-batch-notes").last()).toHaveText(
+    /^Le numéro est définitif/,
+  );
   expect(await traitNetIssues(page)).toEqual([]);
   await page.getByTestId("assistant-confirm").click();
   await expect(card).toHaveAttribute("data-state", "stale");

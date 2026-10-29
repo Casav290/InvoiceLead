@@ -17,6 +17,7 @@ import {
   quoteOutcomeOp,
   recurringOp,
   recurringStatusOp,
+  triggeredReminder,
   updateContactOp,
   updateDraftOp,
   waiveChargesOp,
@@ -236,7 +237,8 @@ export function cardDigest(items: { op: Operation }[], outcomes: OpSuccess[]): s
 /**
  * Joue les opérations dans l'ordre, sur `ctx.database` ; s'arrête à la première qui échoue. Après une
  * opération qui change l'entreprise (réglages, relances), les suivantes lisent l'entreprise telle
- * qu'elle est maintenant dans la transaction : deux réglages d'un même lot ne s'écrasent pas.
+ * qu'elle est maintenant dans la transaction : deux réglages d'un même lot ne s'écrasent pas. Les
+ * relances automatiques sont vérifiées à la fin, sur l'état laissé par toutes les opérations.
  */
 async function runItems(start: AssistantContext, items: Item[]): Promise<Run> {
   let ctx = start;
@@ -264,7 +266,7 @@ async function runItems(start: AssistantContext, items: Item[]): Promise<Run> {
     if (!out.ok) return { ok: false, error: out.error, index };
     if (item.key) refs.set(item.key, { id: out.result.id, entity: out.result.entity });
     outcomes.push(out);
-    if (out.result.entity === "company" && index < items.length - 1) {
+    if (out.result.entity === "company") {
       const [organization] = await ctx.database
         .select()
         .from(organizations)
@@ -272,6 +274,11 @@ async function runItems(start: AssistantContext, items: Item[]): Promise<Run> {
       if (organization) ctx = { ...ctx, organization };
     }
   }
+  // Une relance automatique par e-mail que l'ENSEMBLE des opérations déclencherait (facture émise
+  // échue, première adresse e-mail d'un client qui a une facture échue), quel que soit leur ordre :
+  // refusée, la personne le fait à l'écran (cahier, A7).
+  const reminded = await triggeredReminder(ctx, outcomes);
+  if (reminded !== null) return { ok: false, error: "auto_reminder_on_screen", index: reminded };
   return { ok: true, outcomes, digest: cardDigest(items, outcomes) };
 }
 
@@ -327,9 +334,11 @@ function batchItems(input: unknown): { ok: true; items: Item[] } | { ok: false; 
 }
 
 /**
- * Champs où va l'argent, et textes libres imprimés sur les pièces (introduction, fin : là où une
- * consigne de paiement se glisserait) : une opération qui en écrit un n'est jamais repliée dans
- * « + N autres ».
+ * Champs où va l'argent, adresse où partiront les envois, et textes libres qu'une personne ne doit
+ * pas découvrir après coup : imprimés sur les pièces (introduction, fin, description d'un article ou
+ * d'une saisie de temps : là où une consigne de paiement se glisserait) ou relus plus tard par
+ * l'assistant (note d'un contact, que get_contact rend). Une opération qui en écrit un n'est jamais
+ * repliée dans « + N autres ».
  */
 const SENSITIVE_KEYS = new Set([
   "iban",
@@ -338,56 +347,84 @@ const SENSITIVE_KEYS = new Set([
   "paymentReference",
   "introText",
   "footerText",
+  "description",
+  "notes",
+  "email",
 ]);
 
 /**
  * Une opération que la carte d'un lot montre toujours en entier : une modification (« avant →
- * après »), une opération qui a un avertissement (émission, approbation, clôture…), ou qui écrit des
- * coordonnées de paiement ou un texte imprimé sur une pièce. Seules les créations simples sont
- * plafonnées par groupe.
+ * après »), une opération qui a un avertissement (émission, approbation, clôture…), qui écrit des
+ * coordonnées de paiement, une adresse e-mail ou un texte libre, ou une pièce (ses lignes sont
+ * imprimées). Seules les créations simples sans texte libre sont plafonnées par groupe.
  */
 function alwaysShown(o: OpSuccess): boolean {
   return (
     o.summary.fields.some(
-      (f) => f.before !== undefined || SENSITIVE_KEYS.has(f.key.replace(/^company\./, "")),
-    ) || (o.summary.notes?.length ?? 0) > 0
+      (f) =>
+        f.before !== undefined ||
+        (f.value !== "" && SENSITIVE_KEYS.has(f.key.replace(/^company\./, ""))),
+    ) ||
+    (o.summary.notes?.length ?? 0) > 0 ||
+    (o.item.lines?.length ?? 0) > 0
   );
 }
 
+/** Remarques que toutes les listes ont en commun, dans l'ordre de la première. */
+const shared = (lists: string[][]) =>
+  (lists[0] ?? []).filter((n) => lists.every((l) => l.includes(n)));
+
 /**
  * Carte d'un lot : groupes par action ; chaque ligne porte les champs de sa propre carte (ce qui
- * sera écrit, « avant → après » pour une modification) ; les avertissements de toutes les opérations
- * sous le lot, une fois chacun. Les créations simples sont plafonnées à cinq par groupe (« + N
- * autres ») ; les modifications et les opérations sensibles ne le sont jamais. Lignes des pièces
- * s'il y en a peu, et toujours pour une pièce modifiée.
+ * sera écrit, « avant → après » pour une modification) et, pour une pièce, ses lignes. Les créations
+ * simples sans texte libre sont plafonnées à cinq par groupe (« + N autres ») ; les modifications, les
+ * pièces et les opérations sensibles ne le sont jamais. Les remarques disent à quoi elles
+ * s'appliquent : une fois sous le groupe si toutes ses opérations les ont, sinon sous chaque
+ * opération concernée (une facture et un devis émis ensemble n'ont pas les mêmes).
  */
 export function batchSummary(outcomes: OpSuccess[]): ConfirmSummary {
-  const withLines = outcomes.filter((o) => o.item.lines).length <= 2;
-  const groups: { action: string; count: number; items: BatchItem[]; plain: number }[] = [];
-  const notes: string[] = [];
+  const groups: {
+    action: string;
+    count: number;
+    items: BatchItem[];
+    plain: number;
+    notes: string[][];
+  }[] = [];
   for (const o of outcomes) {
     let g = groups.find((x) => x.action === o.item.action);
     if (!g) {
-      g = { action: o.item.action, count: 0, items: [], plain: 0 };
+      g = { action: o.item.action, count: 0, items: [], plain: 0, notes: [] };
       groups.push(g);
     }
     g.count += 1;
-    for (const n of o.summary.notes ?? []) if (!notes.includes(n)) notes.push(n);
-    const important = alwaysShown(o);
-    if (!important) {
+    g.notes.push(o.summary.notes ?? []);
+    if (!alwaysShown(o)) {
       if (g.plain >= GROUP_SHOWN) continue;
       g.plain += 1;
     }
-    const { lines, totals, ...rest } = o.item;
-    const item = withLines || important ? o.item : rest;
-    g.items.push({ ...item, fields: o.summary.fields });
+    g.items.push({
+      ...o.item,
+      fields: o.summary.fields,
+      ...(o.summary.notes?.length ? { notes: o.summary.notes } : {}),
+    });
   }
   return {
     action: BATCH,
     fields: [],
-    groups: groups.map(({ plain: _plain, ...g }) => g),
+    groups: groups.map((g) => {
+      const common = shared(g.notes);
+      const items = g.items.map(({ notes, ...item }) => {
+        const own = (notes ?? []).filter((n) => !common.includes(n));
+        return own.length ? { ...item, notes: own } : item;
+      });
+      return {
+        action: g.action,
+        count: g.count,
+        items,
+        ...(common.length ? { notes: common } : {}),
+      };
+    }),
     count: outcomes.length,
-    ...(notes.length ? { notes } : {}),
   };
 }
 

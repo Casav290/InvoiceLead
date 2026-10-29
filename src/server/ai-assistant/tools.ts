@@ -111,8 +111,10 @@ function forModel(summary: ConfirmSummary) {
             .filter(Boolean)
             .join(" · ");
           const changed = itemChanges(i.fields);
-          return changed ? `${head} — ${changed}` : head;
+          const own = i.notes?.length ? ` [notes: ${i.notes.join(", ")}]` : "";
+          return `${changed ? `${head} — ${changed}` : head}${own}`;
         }),
+        ...(g.notes ? { notes: g.notes } : {}),
       })),
       ...(summary.notes ? { notes: summary.notes } : {}),
     };
@@ -172,7 +174,7 @@ function hint(error: string): string | undefined {
   if (error.includes("platform_bill_on_screen"))
     return "This bill came through the e-invoicing platform: approving it sends its acceptance to the platform and the supplier, which you never do. Say so and open the bill's page, where the user approves it.";
   if (error.includes("auto_reminder_on_screen"))
-    return "The company's automatic e-mail reminders are on and this invoice is already overdue (or would be reminded at the next daily run): issuing it would make InvoiceLead e-mail a reminder to the customer, which you never trigger. Say so and open the document page, where the user issues it.";
+    return "The company's automatic e-mail reminders are on: after these changes an invoice that is already overdue (or reminded at the next daily run) would be issued with a customer e-mail address, so InvoiceLead would e-mail a reminder to the customer by itself, which you never trigger, whatever the order of the operations. Say so and open the page where the user does it: the document page to issue the invoice, or the contact page to add the e-mail address.";
   if (error.includes("auto_send_on_screen"))
     return "This recurring invoice e-mails its invoices automatically: resuming it would send them, which you never do. Say so and open /app/invoices/recurring, where the user resumes it.";
   return undefined;
