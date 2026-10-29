@@ -1060,6 +1060,57 @@ async function g4() {
       names.every((n) => listText.includes(n)),
     );
     await desk.page.screenshot({ path: join(CAPTURES, "bureau-4-articles.png") });
+
+    // Lot de MODIFICATIONS avec le vrai modèle (point resté ouvert au 29.10.2026) : deux prix
+    // changés en une carte, chaque ligne « avant → après » à l'écran, écrit exactement au clic.
+    await desk.page.getByTestId("assistant-new").click();
+    const changed = await ask(
+      desk,
+      `Change le prix de l'article « ${names[0]} » à 95 CHF par mois et celui de « ${names[1]} » à 160 CHF de l'heure.`,
+    );
+    const changeCards = confirmCards(changed.reply);
+    const ug = changeCards[0]?.summary?.groups?.find((x) => x.action === "update_product");
+    const priceOf = (label) =>
+      ug?.items
+        ?.find((i) => i.label === label)
+        ?.fields?.find((f) => f.key === "unitPrice" && f.before !== undefined);
+    check(
+      `lot de modifications : une seule carte pour les deux prix (tour de ${changed.seconds.toFixed(1)} s)`,
+      changeCards.length === 1 && changeCards[0].summary.action === "batch" && ug?.count === 2,
+      JSON.stringify(changeCards.map((c) => [c.summary?.action, c.summary?.count])),
+    );
+    check(
+      "lot de modifications : chaque ligne porte « avant → après » (90 → 95, 150 → 160)",
+      priceOf(names[0])?.before === "9000" &&
+        priceOf(names[0])?.value === "9500" &&
+        priceOf(names[1])?.before === "15000" &&
+        priceOf(names[1])?.value === "16000",
+      JSON.stringify(ug?.items?.map((i) => [i.label, i.fields])),
+    );
+    const shownFields = await desk.page
+      .getByTestId("assistant-confirm-card")
+      .last()
+      .getByTestId("assistant-batch-field")
+      .allInnerTexts();
+    check(
+      "lot de modifications : la carte à l'écran montre les deux « avant → après »",
+      shownFields.some((t) => /90\.00.*→.*95\.00/s.test(t)) &&
+        shownFields.some((t) => /150\.00.*→.*160\.00/s.test(t)),
+      JSON.stringify(shownFields),
+    );
+    check(
+      "lot de modifications : rien changé en base avant le clic (lecture seule)",
+      JSON.stringify((await productsOf()).map((r) => r.price)) ===
+        JSON.stringify(rows.map((r) => r.price)),
+    );
+    await desk.page.screenshot({ path: join(CAPTURES, "bureau-4b-carte-modifications.png") });
+    await confirmLast(desk.page);
+    const updated = Object.fromEntries((await productsOf()).map((r) => [r.name, r.price]));
+    check(
+      "lot de modifications : au clic, exactement les deux prix écrits, le troisième intact (lecture seule)",
+      updated[names[0]] === 9500 && updated[names[1]] === 16000 && updated[names[2]] === 2500,
+      JSON.stringify(updated),
+    );
     check("bureau : aucune erreur JavaScript", desk.errors.length === 0, desk.errors.join(" | "));
 
     // Téléphone : le même scénario, panneau plein écran.
@@ -1084,7 +1135,7 @@ async function g4() {
       phone.errors.join(" | "),
     );
     console.log(
-      `durées des tours : phare bureau ${one.seconds.toFixed(1)} s, lot ${seconds.toFixed(1)} s, phare téléphone ${two.seconds.toFixed(1)} s (maxDuration ${MAX_DURATION_S} s)`,
+      `durées des tours : phare bureau ${one.seconds.toFixed(1)} s, lot ${seconds.toFixed(1)} s, lot de modifications ${changed.seconds.toFixed(1)} s, phare téléphone ${two.seconds.toFixed(1)} s (maxDuration ${MAX_DURATION_S} s)`,
     );
   } finally {
     await br.close();
