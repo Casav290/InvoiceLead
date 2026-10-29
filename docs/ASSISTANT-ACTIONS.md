@@ -139,6 +139,7 @@ pas. Le contrôle `scripts/assistant-actions-gates.mjs G1` vérifie que rien ne 
 | Factures fournisseurs | Nouvelle facture fournisseur | `saveBillAction` | `propose_create_supplier_bill` |
 | Factures fournisseurs | Modifier un brouillon | `saveBillAction` | `propose_update_supplier_bill` |
 | Facture fournisseur | Approuver (comptabiliser) | `approveBillAction` | `propose_approve_supplier_bill` |
+| Facture fournisseur reçue par la plateforme | Approuver (l'acceptation part à la plateforme et au fournisseur) | `approveBillAction` | interdit : envoyer à l'extérieur |
 | Facture fournisseur | Supprimer | `deleteBillAction` | interdit : supprimer |
 | Facture fournisseur reçue par la plateforme | Refuser, avec motif | `refuseBillAction` | interdit : envoyer à l'extérieur (le refus part à la plateforme et au fournisseur) |
 | Facture fournisseur | Marquer payée | `markBillPaidAction` | interdit : payer |

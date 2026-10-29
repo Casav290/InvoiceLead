@@ -241,12 +241,15 @@ export const approveBillOp = defineOp({
   id: "approve_supplier_bill",
   permission: "accounting",
   description:
-    "PROPOSE to approve a draft supplier bill or expense claim (billId): it is booked (expense against payables). With dual approval, the first approval only records it and a second person approves. Nobody approves their own expense claim. Approving pays nothing.",
+    "PROPOSE to approve a draft supplier bill or expense claim (billId): it is booked (expense against payables). With dual approval, the first approval only records it and a second person approves. Nobody approves their own expense claim. Approving pays nothing. A bill received through the e-invoicing platform is approved by the user on its page (its acceptance is sent to the platform and the supplier).",
   schema: z.object({ billId: z.string() }),
   refs: { billId: "bill" },
   async run(ctx, input) {
     const bill = await getBill(ctx.database, ctx.organization.id, input.billId);
     if (!bill) return fail("bill_not_found");
+    // Reçue par la plateforme agréée : l'approbation y repart (« acceptée », au fournisseur aussi),
+    // comme le refus. Envoyer à l'extérieur reste à la personne, sur la page de la facture.
+    if (bill.platformRef) return fail("platform_bill_on_screen");
     const approved = await approveBill(ctx.database, who(ctx), bill.id);
     if (typeof approved === "string") return fail(approved);
     const first = approved.status === "draft";

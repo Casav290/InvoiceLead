@@ -1353,6 +1353,48 @@ describe("interdits au bord des actions permises (A7)", () => {
     expect(row).toMatchObject({ active: false, autoSend: true });
   });
 
+  it("une facture reçue par la plateforme ne s'approuve pas depuis la bulle (l'acceptation lui repart)", async () => {
+    const p = await person("sub-ada");
+    await books(p);
+    const expense = (await listAccounts(db, p.organization.id)).find((a) => a.number === "4400");
+    if (!expense) throw new Error("compte 4400");
+    const b = await createBill(db, whoOf(p), {
+      supplierName: "Fournisseur Plateforme TEST",
+      supplierStreet: null,
+      supplierPostalCode: null,
+      supplierTown: null,
+      supplierCountry: null,
+      iban: null,
+      bic: null,
+      paymentReference: null,
+      number: "PA-1",
+      issueDate: "2026-10-01",
+      dueDate: "2026-10-31",
+      currency: "CHF",
+      totalCents: 12000,
+      vatCode: null,
+      accountId: expense.id,
+      description: null,
+    });
+    await db
+      .update(supplierBills)
+      .set({ platformRef: "pa-test-1" })
+      .where(eq(supplierBills.id, b.id));
+    const before = await fingerprint(p.organization.id);
+    const { call, state } = tools(p);
+    const out = await call("propose_approve_supplier_bill", { billId: b.id });
+    expect(out.error).toBe("platform_bill_on_screen");
+    expect(out.hint).toMatch(/platform/);
+    const batch = await call("propose_batch", {
+      operations: [{ op: "approve_supplier_bill", input: { billId: b.id } }],
+    });
+    expect(batch.error).toMatch(/platform_bill_on_screen/);
+    expect(state.actions).toEqual([]);
+    expect(await fingerprint(p.organization.id)).toBe(before);
+    const [row] = await db.select().from(supplierBills).where(eq(supplierBills.id, b.id));
+    expect(row?.status).toBe("draft");
+  });
+
   it("plan comptable : désactiver un compte est refusé (comme archiver), le libellé suit la langue", async () => {
     const p = await person("sub-ada");
     await books(p);

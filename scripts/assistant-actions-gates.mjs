@@ -389,6 +389,10 @@ async function g2() {
       "une récurrence qui s'envoie par e-mail ne reprend pas",
     ],
     [
+      "interdit : approuver une facture reçue par la plateforme, aucune carte, rien d'écrit",
+      "une facture reçue par la plateforme ne s'approuve pas",
+    ],
+    [
       "interdit : désactiver un compte, aucune carte ; libellé du compte dans la langue",
       "désactiver un compte est refusé",
     ],

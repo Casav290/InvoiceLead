@@ -188,16 +188,21 @@ function hint(error: string): string | undefined {
     return "The user's role does not allow this change; an administrator can change roles in /app/settings/team. Say so; do not retry.";
   if (error.includes("forbidden_country"))
     return "Accounting is not available for this company's country.";
-  if (/plan_|planLimit|plan_limit|"plan"| plan$/.test(error) || error.endsWith(": plan"))
+  // « plan » seul (émission, récurrence en devise) ou au bout d'une opération d'un lot.
+  if (/plan_|planLimit|plan_limit|"plan"|(^|[\s:])plan$/.test(error))
     return "The company's plan does not include this or its limit is reached; the user can see plans in /app/settings/plan. Explain it; do not retry.";
+  if (error.includes("companyIncomplete"))
+    return "The company settings are not complete enough to issue (address, IBAN…): get_company_settings, then propose the missing fields with propose_update_company_settings, or ask for the one value you lack.";
   if (error.includes("invalid"))
     return "Fix the fields listed (same rules as the form) and propose again in the same answer.";
-  if (error.includes("not_found"))
+  if (error.includes("not_found") || error.includes("notFound"))
     return "Look the item up with the read tools first, or create it in the same propose_batch and reference it with @key.";
   if (error.includes("unknown_ref") || error.includes("ref_"))
     return "In propose_batch, a reference @key must name the key of an EARLIER operation that creates that kind of item.";
   if (error.includes("no_change"))
     return "Nothing would change: the values are already the current ones.";
+  if (error.includes("platform_bill_on_screen"))
+    return "This bill came through the e-invoicing platform: approving it sends its acceptance to the platform and the supplier, which you never do. Say so and open the bill's page, where the user approves it.";
   if (error.includes("auto_send_on_screen"))
     return "This recurring invoice e-mails its invoices automatically: resuming it would send them, which you never do. Say so and open /app/invoices/recurring, where the user resumes it.";
   return undefined;
