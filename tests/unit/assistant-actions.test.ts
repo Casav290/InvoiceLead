@@ -1285,6 +1285,103 @@ describe("lot : une carte, un clic, une transaction (A2, A3)", () => {
   });
 });
 
+describe("lot : l'entreprise relue après un réglage (A2)", () => {
+  it("deux réglages de l'entreprise dans un même lot s'ajoutent, le second n'efface pas le premier", async () => {
+    let p = await person("sub-ada");
+    await completeCompany(p);
+    p = await refresh(p);
+    const { call, lastToken } = tools(p);
+    const out = await call("propose_batch", {
+      operations: [
+        { op: "update_reminder_settings", input: { fee: "20" } },
+        { op: "update_reminder_settings", input: { interestPercent: 5 } },
+        { op: "update_company_settings", input: { phone: "+41 21 000 00 00" } },
+        { op: "update_company_settings", input: { website: "https://atelier.example" } },
+      ],
+    });
+    expect(out.status, JSON.stringify(out)).toBe("awaiting_user_confirmation");
+    const done = await confirmAs(p, lastToken().token);
+    expect(done.status, JSON.stringify(done.body)).toBe(200);
+    const o = await one(
+      db.select().from(organizations).where(eq(organizations.id, p.organization.id)),
+    );
+    expect(o).toMatchObject({
+      reminderFeeCents: 2000,
+      lateInterestBp: 500,
+      phone: "+41 21 000 00 00",
+      website: "https://atelier.example",
+    });
+  });
+});
+
+describe("interdits au bord des actions permises (A7)", () => {
+  it("une récurrence qui s'envoie par e-mail ne reprend pas depuis la bulle ; la pause reste permise", async () => {
+    const p = await person("sub-ada");
+    await completeCompany(p);
+    const i = await issued(p, (await customer(p)).id);
+    const rec = await createRecurring(db, whoOf(p), i.id, {
+      intervalMonths: 1,
+      nextDate: "2026-11-01",
+      autoSend: true,
+    });
+    if (typeof rec === "string") throw new Error(rec);
+    const { call, state, lastToken } = tools(await refresh(p));
+    // Pause : permise, rien n'est envoyé.
+    const pause = await call("propose_set_recurring_status", {
+      recurringId: rec.id,
+      active: false,
+    });
+    expect(pause.status, JSON.stringify(pause)).toBe("awaiting_user_confirmation");
+    expect((await confirmAs(p, lastToken().token)).status).toBe(200);
+    // Reprise d'une récurrence à envoi automatique : refusée, aucune carte, rien d'écrit.
+    const before = await fingerprint(p.organization.id);
+    const cards = state.actions.length;
+    const resume = await call("propose_set_recurring_status", {
+      recurringId: rec.id,
+      active: true,
+    });
+    expect(resume.error).toBe("auto_send_on_screen");
+    expect(resume.hint).toMatch(/recurring/);
+    expect(state.actions).toHaveLength(cards);
+    const batch = await call("propose_batch", {
+      operations: [{ op: "set_recurring_status", input: { recurringId: rec.id, active: true } }],
+    });
+    expect(batch.error).toMatch(/auto_send_on_screen/);
+    expect(state.actions).toHaveLength(cards);
+    expect(await fingerprint(p.organization.id)).toBe(before);
+    const [row] = await db.select().from(recurringInvoices).where(eq(recurringInvoices.id, rec.id));
+    expect(row).toMatchObject({ active: false, autoSend: true });
+  });
+
+  it("plan comptable : désactiver un compte est refusé (comme archiver), le libellé suit la langue", async () => {
+    const p = await person("sub-ada");
+    await books(p);
+    const a = (await listAccounts(db, p.organization.id)).find((x) => x.number === "6500");
+    if (!a) throw new Error("compte 6500");
+    expect(a.nameFr).not.toBe(a.nameDe);
+    const before = await fingerprint(p.organization.id);
+    const { call, state, lastToken } = tools(p);
+    await expect(
+      call("propose_update_account", { accountId: a.id, active: false }),
+    ).rejects.toThrow();
+    const batch = await call("propose_batch", {
+      operations: [{ op: "update_account", input: { accountId: a.id, active: false } }],
+    });
+    expect(batch.error).toMatch(/^operation 1 \(update_account\): invalid_input/);
+    expect(state.actions).toEqual([]);
+    expect(await fingerprint(p.organization.id)).toBe(before);
+    // Une modification permise : la carte et le résultat nomment le compte en français (langue de
+    // la session), jamais avec le libellé allemand.
+    const out = await call("propose_update_account", { accountId: a.id, nameEn: "Admin TEST" });
+    expect(out.status, JSON.stringify(out)).toBe("awaiting_user_confirmation");
+    const { token, summary } = lastToken();
+    expect(summary.fields[0]).toMatchObject({ key: "account", value: `6500 ${a.nameFr}` });
+    const done = await confirmAs(p, token);
+    expect(done.status, JSON.stringify(done.body)).toBe(200);
+    expect((done.body.result as Applied).label).toBe(`6500 ${a.nameFr}`);
+  });
+});
+
 describe("droits : les mêmes que les actions des écrans", () => {
   async function asRole(appRole: string) {
     const admin = await person("sub-ada");

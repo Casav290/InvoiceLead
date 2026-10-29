@@ -1,6 +1,8 @@
+import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { scheduleCrmleadDelivery } from "../crmlead-sync";
 import type { Db } from "../db";
+import { organizations } from "../db/schema";
 import { postPending } from "../ledger";
 import { collectEffects } from "../pending-effects";
 import { flushWebhooks } from "../webhooks";
@@ -207,8 +209,13 @@ const issues = (e: z.ZodError) =>
     .map((i) => `${i.path.join(".") || "input"}: ${i.message}`)
     .join("; ");
 
-/** Joue les opérations dans l'ordre, sur `ctx.database` ; s'arrête à la première qui échoue. */
-async function runItems(ctx: AssistantContext, items: Item[]): Promise<Run> {
+/**
+ * Joue les opérations dans l'ordre, sur `ctx.database` ; s'arrête à la première qui échoue. Après une
+ * opération qui change l'entreprise (réglages, relances), les suivantes lisent l'entreprise telle
+ * qu'elle est maintenant dans la transaction : deux réglages d'un même lot ne s'écrasent pas.
+ */
+async function runItems(start: AssistantContext, items: Item[]): Promise<Run> {
+  let ctx = start;
   const refs = new Map<string, Ref>();
   const outcomes: OpSuccess[] = [];
   for (const [index, item] of items.entries()) {
@@ -233,6 +240,13 @@ async function runItems(ctx: AssistantContext, items: Item[]): Promise<Run> {
     if (!out.ok) return { ok: false, error: out.error, index };
     if (item.key) refs.set(item.key, { id: out.result.id, entity: out.result.entity });
     outcomes.push(out);
+    if (out.result.entity === "company" && index < items.length - 1) {
+      const [organization] = await ctx.database
+        .select()
+        .from(organizations)
+        .where(eq(organizations.id, ctx.organization.id));
+      if (organization) ctx = { ...ctx, organization };
+    }
   }
   return { ok: true, outcomes };
 }

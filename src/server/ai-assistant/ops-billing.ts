@@ -743,7 +743,7 @@ export const recurringStatusOp = defineOp({
   id: "set_recurring_status",
   permission: "billing",
   description:
-    "PROPOSE to pause (active=false) or resume (active=true) a recurring invoice (recurringId from list_recurring_invoices). Resuming counts in the plan's active recurring invoices.",
+    "PROPOSE to pause (active=false) or resume (active=true) a recurring invoice (recurringId from list_recurring_invoices). Resuming counts in the plan's active recurring invoices. A recurring invoice with automatic sending (autoSend) is resumed by the user on the screen, never by the assistant: it would e-mail invoices.",
   schema: z.object({ recurringId: z.string(), active: z.boolean() }),
   refs: { recurringId: "recurring" },
   async run(ctx, input) {
@@ -751,6 +751,7 @@ export const recurringStatusOp = defineOp({
     const [row] = await ctx.database
       .select({
         active: recurringInvoices.active,
+        autoSend: recurringInvoices.autoSend,
         sourceInvoiceId: recurringInvoices.sourceInvoiceId,
         nextDate: recurringInvoices.nextDate,
       })
@@ -763,6 +764,9 @@ export const recurringStatusOp = defineOp({
       );
     if (!row) return fail("recurring_not_found");
     if (row.active === input.active) return fail("no_change");
+    // Reprendre une récurrence qui s'envoie toute seule ferait partir des factures par e-mail :
+    // envoyer à l'extérieur reste à la personne, sur l'écran des récurrences.
+    if (input.active && row.autoSend) return fail("auto_send_on_screen");
     const done = await setRecurringActive(ctx.database, who(ctx), input.recurringId, input.active);
     if (done === "planLimit") return fail("plan_limit_recurring");
     if (done === "plan") return fail("plan_multi_currency");

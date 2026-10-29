@@ -19,6 +19,8 @@ pas. Le contrôle `scripts/assistant-actions-gates.mjs G1` vérifie que rien ne 
   opération suivante la cite à la place d'un identifiant (`"contactId": "@c1"`, `productId` des
   lignes, `projectId`, `documentId`, `quoteId`, `invoiceId`, `billId`, `accountId`). La carte groupe
   les opérations par action (cinq lignes par groupe, « + N autres »).
+- Dans un lot, une opération qui change l'entreprise (réglages, relances) est vue par les suivantes :
+  l'entreprise est relue dans la transaction, deux réglages du même lot s'ajoutent.
 - Les suites de l'écran partent **après** la validation, jamais d'un essai à blanc : états vers
   CRMlead (`src/server/pending-effects.ts`), comptabilisation et webhooks de l'entreprise après une
   émission.
@@ -71,7 +73,8 @@ pas. Le contrôle `scripts/assistant-actions-gates.mjs G1` vérifie que rien ne 
 | Pièce émise | Lien de partage public | `shareLinkAction` | interdit : envoyer à l'extérieur |
 | Facture émise | Rendre récurrente | `createRecurringAction` | `propose_create_recurring_invoice` (sans envoi automatique) |
 | Facture émise | Rendre récurrente avec envoi automatique | `createRecurringAction` | interdit : envoyer à l'extérieur (l'envoi automatique se coche à l'écran) |
-| Factures récurrentes | Mettre en pause, reprendre | `updateRecurringAction` | `propose_set_recurring_status` |
+| Factures récurrentes | Mettre en pause, reprendre (sans envoi automatique) | `updateRecurringAction` | `propose_set_recurring_status` |
+| Factures récurrentes | Reprendre une récurrence avec envoi automatique | `updateRecurringAction` | interdit : envoyer à l'extérieur (elle enverrait les factures par e-mail) |
 | Factures récurrentes | Supprimer une récurrence | `updateRecurringAction` | interdit : supprimer |
 | Relances | Envoyer une relance (e-mail ou courrier noté) | `sendReminderAction` | interdit : envoyer à l'extérieur |
 | Relances | Envoyer toutes les relances dues | `sendAllRemindersAction` | interdit : envoyer à l'extérieur |
@@ -139,6 +142,7 @@ pas. Le contrôle `scripts/assistant-actions-gates.mjs G1` vérifie que rien ne 
 | Facture fournisseur | Supprimer | `deleteBillAction` | interdit : supprimer |
 | Facture fournisseur reçue par la plateforme | Refuser, avec motif | `refuseBillAction` | interdit : envoyer à l'extérieur (le refus part à la plateforme et au fournisseur) |
 | Facture fournisseur | Marquer payée | `markBillPaidAction` | interdit : payer |
+| Factures fournisseurs | Fichier de paiement pain.001 des factures approuvées (elles passent « planifiées ») | `/app/accounting/bills/export` | interdit : payer |
 | Factures fournisseurs | Importer des e-factures (XML, PDF) | `importEInvoicesAction` | écran : fichier |
 | Justificatifs | Facture fournisseur depuis un justificatif lu | `billFromReceiptAction` | `propose_create_bill_from_receipt` |
 | Factures fournisseurs | Prendre en photo | `billFromPhotoAction` | écran : fichier |
@@ -152,7 +156,8 @@ pas. Le contrôle `scripts/assistant-actions-gates.mjs G1` vérifie que rien ne 
 | Entreprise | Déposer le logo | `uploadLogoAction` | écran : fichier |
 | Entreprise | Retirer le logo | `removeLogoAction` | interdit : supprimer |
 | Plan comptable | Nouveau compte | `saveAccount` | `propose_create_account` |
-| Plan comptable | Modifier un compte | `saveAccount` | `propose_update_account` |
+| Plan comptable | Modifier un compte (libellés, numéro, type, code TVA ; réactiver) | `saveAccount` | `propose_update_account` |
+| Plan comptable | Désactiver un compte | `saveAccount` | interdit : supprimer (le compte disparaît des listes, comme un contact archivé) |
 | Plan comptable | Installer le plan comptable type | `installChartAction` | `propose_install_chart` |
 | Exercices | Ouvrir le premier exercice | `openFirstFiscalYearAction` | `propose_open_first_fiscal_year` |
 | Exercices | Ouvrir l'exercice suivant | `openNextFiscalYearAction` | `propose_open_next_fiscal_year` |
@@ -185,6 +190,7 @@ pas. Le contrôle `scripts/assistant-actions-gates.mjs G1` vérifie que rien ne 
 | Menu | Choisir la langue de l'interface (la sienne) | `chooseLocaleAction` | `propose_set_interface_language` (pas dans un lot) |
 | Menu | Changer d'entreprise | `switchOrgAction` | écran : session |
 | Menu | Se déconnecter | `/auth/lead/logout` | écran : session |
+| Pièce partagée (page publique du client) | Payer en ligne, par le client | `/d/[token]/pay` | interdit : payer |
 
 ## Plusieurs changements à la fois
 

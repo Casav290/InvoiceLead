@@ -438,7 +438,14 @@ const accountFields = {
     .optional()
     .describe("must match the account class"),
   vatCode: z.enum(VAT_CODES).optional(),
-  active: z.boolean().optional().describe("default true"),
+  // Désactiver un compte le retire des listes, comme l'archivage d'un contact ou d'un article :
+  // l'assistant ne fait que réactiver (docs/ASSISTANT-ACTIONS.md, « interdit : supprimer »).
+  active: z
+    .literal(true)
+    .optional()
+    .describe(
+      "true reactivates an inactive account; deactivating is done by the user on the screen",
+    ),
 };
 
 function accountForm(a: AccountInput): Json {
@@ -515,7 +522,7 @@ export const createAccountOp = defineOp({
         id: created.id,
         entity: "account",
         path: "/app/settings/accounts",
-        label: `${created.number} ${created.nameDe}`,
+        label: `${created.number} ${accountName(created, ctx.locale)}`,
       },
       summary: {
         action: "create_account",
@@ -527,7 +534,10 @@ export const createAccountOp = defineOp({
           })),
         ),
       },
-      item: { action: "create_account", label: `${created.number} ${created.nameDe}` },
+      item: {
+        action: "create_account",
+        label: `${created.number} ${accountName(created, ctx.locale)}`,
+      },
     };
   },
 });
@@ -536,7 +546,7 @@ export const updateAccountOp = defineOp({
   id: "update_account",
   permission: "setup",
   description:
-    "PROPOSE changes to an account of the chart (accountId from list_accounts): names, number, type, default VAT code, active. System accounts stay active.",
+    "PROPOSE changes to an account of the chart (accountId from list_accounts): names, number, type, default VAT code; active=true reactivates an inactive account. Deactivating an account is done by the user on the chart screen.",
   schema: z.object({ accountId: z.string(), ...accountFields }),
   refs: { accountId: "account" },
   async run(ctx, input) {
@@ -568,15 +578,18 @@ export const updateAccountOp = defineOp({
         id: updated.id,
         entity: "account",
         path: "/app/settings/accounts",
-        label: `${updated.number} ${updated.nameDe}`,
+        label: `${updated.number} ${accountName(updated, ctx.locale)}`,
       },
       summary: {
         action: "update_account",
         fields: fields.some((f) => f.key === "number")
           ? fields
-          : [text("account", `${current.number} ${current.nameDe}`), ...fields],
+          : [text("account", `${current.number} ${accountName(current, ctx.locale)}`), ...fields],
       },
-      item: { action: "update_account", label: `${updated.number} ${updated.nameDe}` },
+      item: {
+        action: "update_account",
+        label: `${updated.number} ${accountName(updated, ctx.locale)}`,
+      },
     };
   },
 });

@@ -198,6 +198,8 @@ function hint(error: string): string | undefined {
     return "In propose_batch, a reference @key must name the key of an EARLIER operation that creates that kind of item.";
   if (error.includes("no_change"))
     return "Nothing would change: the values are already the current ones.";
+  if (error.includes("auto_send_on_screen"))
+    return "This recurring invoice e-mails its invoices automatically: resuming it would send them, which you never do. Say so and open /app/invoices/recurring, where the user resumes it.";
   return undefined;
 }
 

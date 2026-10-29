@@ -77,7 +77,7 @@ pages publiques) ouvre un fil où l'on demande ce qu'on veut. Code : `src/server
 - Outils = fonctions d'InvoiceLead avec l'entreprise et les droits de la session. Lecture : chiffres,
   livres, contacts, pièces, paiements reçus, relances dues, articles, projets et temps, factures
   fournisseurs, justificatifs, récurrences, plan comptable, exercices, périodes TVA, réglages.
-- Écriture : chaque action permise d'un écran a son outil `propose_…` (36 opérations, inventaire et
+- Écriture : chaque action permise d'un écran a son outil `propose_…` (37 opérations, inventaire et
   raisons des refus dans [docs/ASSISTANT-ACTIONS.md](docs/ASSISTANT-ACTIONS.md)), et `propose_batch`
   regroupe jusqu'à 150 opérations sous une carte, un clic, une transaction (tout ou rien, clés locales
   `@c1`). Proposer = l'opération jouée dans une transaction annulée (rien n'est écrit, la carte montre
@@ -86,8 +86,9 @@ pages publiques) ouvre un fil où l'on demande ce qu'on veut. Code : `src/server
   comptabilisation et webhooks seulement après (`src/server/pending-effects.ts`). La page du résultat
   s'ouvre ensuite.
 - Jamais : envoyer quoi que ce soit (pièce, relance, lien de partage, plateforme de facturation
-  électronique, envoi automatique), payer ou enregistrer un paiement (rapprochement bancaire
-  compris), supprimer ou archiver, toucher à l'abonnement, à l'équipe et aux droits ou aux clés.
+  électronique, envoi automatique, reprise d'une récurrence qui s'envoie seule), payer ou enregistrer
+  un paiement (rapprochement bancaire et fichier pain.001 compris), supprimer, archiver ou désactiver
+  (un compte du plan comptable compris), toucher à l'abonnement, à l'équipe et aux droits ou aux clés.
   L'assistant le dit et ouvre l'écran. Émettre une pièce est permis (numéro définitif, rien n'est
   envoyé).
 - Quota : 40 messages par heure et par personne, 400 par jour et par entreprise (`assistant_usage`,

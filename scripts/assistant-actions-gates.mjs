@@ -31,8 +31,11 @@ const CAPTURES = join(HOME, "projets", ".unlazy", "assistant-actions", "captures
 const TEAM = "team_mRhlABdvm1jvEPoDzuDDgpon";
 const PROJECT = "prj_BGHqP1Lyg3MWz3KoDYQ9qms5Epll";
 const BRANCH = "assistant-actions";
-/** Commit de production d'où part la branche (déploiement dpl_J9tvZS1U8w7BAy8z5nmpnpL6j5dm, main). */
-const PROD_BASE = "bafcece83de404f4dc1744705ae032345064143e";
+/**
+ * Commit de production contenu dans la branche (main 26e0025, déploiement
+ * dpl_F3ZgZa8g4erD8QYhKPdpYKKSfNsc, fusionné en 7fcf503 ; relu par l'API Vercel le 29.10.2026).
+ */
+const PROD_BASE = "26e0025292f17501297f0e9cafeb8eee7946e28d";
 const LOCAL_PG = (db) => `postgresql://ubuntu@localhost/${db}?host=/var/run/postgresql`;
 /** Durée permise de la fonction /api/assistant (plan Hobby, Fluid compute) et arrêt du tour (run.ts). */
 const MAX_DURATION_S = 300;
@@ -93,13 +96,24 @@ function serverActions() {
   return out;
 }
 
-/** Routes d'écriture que les écrans appellent directement (formulaires POST, liens d'action). */
+/**
+ * Routes d'écriture que les écrans appellent directement : formulaires vers /api ou /auth, liens
+ * d'action (Stripe, abonnement), et formulaires vers une route de page sous la langue
+ * (`action={`/${locale}/app/…`}`) quand cette route accepte un POST (fichier de paiement, paiement
+ * en ligne) ; une route qui ne répond qu'en GET est un téléchargement, pas une écriture.
+ */
 function uiWriteRoutes() {
   const found = new Set();
   for (const f of filesUnder("src", (x) => x.endsWith(".tsx"))) {
     const text = read(f);
     for (const m of text.matchAll(/action="(\/(?:api|auth)\/[\w/-]+)"/g)) found.add(m[1]);
     for (const m of text.matchAll(/href=\{`(\/api\/(?:stripe|billing)\/[\w-]+)/g)) found.add(m[1]);
+    for (const m of text.matchAll(/action=\{`\/\$\{locale\}(\/[\w/${}.-]+)`\}/g)) {
+      const route = m[1].replace(/\$\{(\w+)\}/g, "[$1]");
+      const file = join("src/app/[locale]", route, "route.ts");
+      if (existsSync(join(ROOT, file)) && /export async function POST\b/.test(read(file)))
+        found.add(route);
+    }
   }
   return [...found].sort();
 }
@@ -248,6 +262,14 @@ async function g1() {
     routes.length >= 3,
     routes.join(", "),
   );
+  // Contrôle positif du relevé : les formulaires sous la langue qui postent (fichier de paiement,
+  // paiement en ligne) sont trouvés ; le téléchargement DATEV (GET seulement) ne l'est pas.
+  check(
+    "relevé : formulaires POST sous la langue trouvés, téléchargement GET écarté",
+    routes.includes("/app/accounting/bills/export") &&
+      routes.includes("/d/[token]/pay") &&
+      !routes.includes("/app/accounting/reports/datev"),
+  );
   const reg = registeredOperations();
   check(
     "registre lisible (chaque opération listée a son identifiant)",
@@ -358,6 +380,18 @@ async function g2() {
       "une référence vers une opération plus loin",
     ],
     ["lot : plafond de 150 opérations", "plafond : 150 opérations"],
+    [
+      "lot : deux réglages de l'entreprise s'ajoutent (entreprise relue)",
+      "deux réglages de l'entreprise dans un même lot",
+    ],
+    [
+      "interdit : reprendre une récurrence à envoi automatique, aucune carte, rien d'écrit",
+      "une récurrence qui s'envoie par e-mail ne reprend pas",
+    ],
+    [
+      "interdit : désactiver un compte, aucune carte ; libellé du compte dans la langue",
+      "désactiver un compte est refusé",
+    ],
     ["lot : clés en double, mauvais type, lecture IA refusées", "refuse les clés en double"],
     [
       "lot : droit retiré avant le clic = 403, jeton gardé",
