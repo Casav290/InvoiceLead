@@ -1,4 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
+import { appIds } from "./db";
 import { login, traitNetIssues } from "./helpers";
 
 /**
@@ -322,5 +323,360 @@ test.describe("bulle sur téléphone", () => {
     expect(await traitNetIssues(page)).toEqual([]);
     await page.getByTestId("assistant-close").click();
     await expect(page.getByTestId("assistant-bubble")).toBeFocused();
+  });
+});
+
+/*
+ * Alignement des bulles des applications Lead (cahier du 28.10.2026, B1–B14) : ce que la personne
+ * voit et fait dans le navigateur. Le tableau de docs/ASSISTANT-IA.md renvoie à ces tests ; la porte
+ * G7 les relance (scripts/assistant-actions-gates.mjs).
+ */
+
+/** Une réponse simulée de /api/assistant : texte, actions, notice. */
+function reply(text: string, actions: unknown[] = [], notice: string | null = null) {
+  return async (route: import("@playwright/test").Route) => {
+    const body = route.request().postDataJSON() as { messages: unknown[] };
+    await route.fulfill({
+      json: {
+        messages: [...body.messages, { role: "assistant", content: text || "…" }],
+        reply: text,
+        actions,
+        notice,
+      },
+    });
+  };
+}
+
+/** Texte du fil hors messages de la personne : réponses, lignes « Page ouverte », erreurs, cartes. */
+const threadText = (page: Page) =>
+  page.getByTestId("assistant-thread").evaluate((el) =>
+    Array.from(el.children)
+      .filter((c) => !c.matches(".ml-8"))
+      .map((c) => (c as HTMLElement).innerText)
+      .join("\n"),
+  );
+
+/** Fin de page : le contenu le plus bas de <main> et la bulle, une fois défilé jusqu'au bout. */
+async function pageBottom(page: Page) {
+  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+  await page.waitForTimeout(200);
+  return page.evaluate(() => {
+    const fab = document.querySelector('[data-testid="assistant-bubble"]')?.getBoundingClientRect();
+    let bottom = 0;
+    for (const el of Array.from(document.querySelectorAll("main *"))) {
+      const r = el.getBoundingClientRect();
+      if (r.width > 0 && r.height > 0 && r.bottom > bottom) bottom = r.bottom;
+    }
+    return {
+      bottom,
+      fabTop: fab?.top ?? 0,
+      atEnd:
+        Math.ceil(window.scrollY + window.innerHeight) >= document.documentElement.scrollHeight - 1,
+    };
+  });
+}
+
+test("délai dépassé et fil refusé : chacun son texte ; « Nouvelle conversation » dans le message du fil refusé, pas dans les autres erreurs", async ({
+  page,
+}) => {
+  await login(page, "fr");
+  const answers = [
+    { status: 504, json: { error: "timeout" } },
+    { status: 502, json: { error: "unavailable" } },
+    { status: 400, json: { error: "history" } },
+  ];
+  await page.route("**/api/assistant", (route) => route.fulfill(answers.shift() ?? answers[0]));
+  await page.getByTestId("assistant-bubble").click();
+  const input = page.getByTestId("assistant-input");
+  const notices = page.getByTestId("assistant-notice");
+  for (const q of ["Un", "Deux", "Trois"]) {
+    await input.fill(q);
+    await input.press("Enter");
+    await expect(input).toBeEnabled();
+  }
+  await expect(notices).toHaveCount(3);
+  await expect(notices.nth(0)).toContainText("La demande a pris trop de temps.");
+  await expect(notices.nth(1)).toContainText("L'assistant ne répond pas pour le moment.");
+  await expect(notices.nth(2)).toContainText("Cette conversation ne peut pas continuer.");
+  for (const i of [0, 1, 2]) await expect(notices.nth(i)).toHaveAttribute("role", "alert");
+  await expect(notices.nth(0).getByTestId("assistant-reset-inline")).toHaveCount(0);
+  await expect(notices.nth(1).getByTestId("assistant-reset-inline")).toHaveCount(0);
+  const again = notices.nth(2).getByTestId("assistant-reset-inline");
+  await expect(again).toHaveText("Nouvelle conversation");
+  expect(await traitNetIssues(page)).toEqual([]);
+  await again.click();
+  await expect(notices).toHaveCount(0);
+  await expect(page.getByTestId("assistant-suggestion-overdue")).toBeVisible();
+  await expect(input).toBeFocused();
+});
+
+test("« Page ouverte : <libellé> » quand la bulle navigue, jamais de chemin brut dans le fil", async ({
+  page,
+}) => {
+  await login(page, "fr");
+  await page.route(
+    "**/api/assistant",
+    reply("J'ouvre l'écran de votre entreprise.", [
+      { type: "navigate", path: "/app/settings/company", label: "Réglages › Entreprise" },
+    ]),
+  );
+  await page.getByTestId("assistant-bubble").click();
+  await page.getByTestId("assistant-input").fill("Ouvre les réglages de l'entreprise");
+  await page.getByTestId("assistant-input").press("Enter");
+  await page.waitForURL("**/fr/app/settings/company");
+  const opened = page.getByTestId("assistant-navigated");
+  await expect(opened).toHaveText("Page ouverte : Réglages › Entreprise");
+  expect(await threadText(page)).not.toMatch(/\/app|\/fr\/|#/);
+  // La bulle reste ouverte sur la nouvelle page.
+  await expect(page.getByTestId("assistant-panel")).toBeVisible();
+});
+
+test("rendu dans le navigateur : gras, <br>, titre, tableau en ligne simple, <script> reste du texte", async ({
+  page,
+}) => {
+  await login(page, "fr");
+  const dialogs: string[] = [];
+  page.on("dialog", (d) => {
+    dialogs.push(d.message());
+    void d.dismiss();
+  });
+  await page.route(
+    "**/api/assistant",
+    reply(
+      '## Vos devis\n| Numéro | Client |\n|---|---|\n| OF-1 | Kunde AG |\nTotal : **3 740 CHF**<br>Fin. <script>alert("x")</script>',
+    ),
+  );
+  await page.getByTestId("assistant-bubble").click();
+  await page.getByTestId("assistant-input").fill("Mes devis en tableau");
+  await page.getByTestId("assistant-input").press("Enter");
+  const answer = page.getByTestId("assistant-reply");
+  await expect(answer.locator("strong")).toHaveText("3 740 CHF");
+  const shown = await answer.innerText();
+  expect(shown).toContain("Vos devis\nNuméro · Client\nOF-1 · Kunde AG");
+  expect(shown).toContain('Fin. <script>alert("x")</script>');
+  expect(shown).not.toMatch(/\|\s*-{3}|<br|\*\*|^#/m);
+  await expect(answer.locator("script")).toHaveCount(0);
+  expect(dialogs).toEqual([]);
+});
+
+test("carte lisible : dates du pays, langue et pays en toutes lettres, montant avec devise, « avant → après » lu « devient », refus distincts", async ({
+  page,
+}) => {
+  await login(page, "fr");
+  await page.route(
+    "**/api/assistant",
+    reply("La modification est prête.", [
+      {
+        type: "confirm",
+        token: "update.token",
+        summary: {
+          action: "update_contact",
+          fields: [
+            { key: "contact", value: "Kunde AG" },
+            { key: "country", value: "DE", before: "CH" },
+            { key: "language", value: "fr", before: "de" },
+            { key: "dueDate", value: "2026-11-30", before: "2026-11-15", format: "date" },
+            {
+              key: "unitPrice",
+              value: "9550",
+              before: "9000",
+              format: "money",
+              currency: "CHF",
+            },
+          ],
+        },
+      },
+    ]),
+  );
+  let confirmCalls = 0;
+  await page.route("**/api/assistant/confirm", (route) => {
+    confirmCalls += 1;
+    // Premier clic : réseau coupé ; second : la proposition a déjà servi (autre onglet).
+    return confirmCalls === 1
+      ? route.abort("internetdisconnected")
+      : route.fulfill({ status: 403, json: { error: "token_used" } });
+  });
+  await page.getByTestId("assistant-bubble").click();
+  await page.getByTestId("assistant-input").fill("Passe Kunde AG en Allemagne");
+  await page.getByTestId("assistant-input").press("Enter");
+  const card = page.getByTestId("assistant-confirm-card");
+  const fields = card.getByTestId("assistant-field");
+  await expect(fields.nth(1)).toHaveText("Suisse → devient Allemagne");
+  await expect(fields.nth(2)).toHaveText("allemand → devient français");
+  await expect(fields.nth(3)).toHaveText("15.11.2026 → devient 30.11.2026");
+  await expect(fields.nth(4)).toHaveText("CHF 90.00 → devient CHF 95.50");
+  // La flèche est cachée aux lecteurs d'écran, qui lisent « devient ».
+  await expect(fields.nth(1).locator('[aria-hidden="true"]')).toHaveText("→");
+  await expect(fields.nth(1).locator(".sr-only")).toHaveText("devient");
+  // Jamais un code (« CH », « de ») à la place d'un nom.
+  expect((await fields.allInnerTexts()).join("\n")).not.toMatch(/\b(CH|DE|de|fr)\b/);
+  await page.getByTestId("assistant-confirm").click();
+  const error = card.getByTestId("assistant-card-error");
+  await expect(error).toContainText("La connexion a été perdue.");
+  await expect(error).toHaveAttribute("role", "alert");
+  await expect(card).toHaveAttribute("data-state", "network");
+  await page.getByTestId("assistant-confirm").click();
+  await expect(card).toHaveAttribute("data-state", "used");
+  await expect(error).toHaveText(
+    "Cette proposition a déjà été utilisée. Rien n'a été enregistré une seconde fois.",
+  );
+  await expect(page.getByTestId("assistant-confirm")).toHaveCount(0);
+});
+
+test("clavier : focus dans le champ à l'ouverture, Échap ferme d'où que ce soit et rend le focus à la bulle, IME, préfixes masqués, fil aria-live", async ({
+  page,
+}) => {
+  await login(page, "fr");
+  let calls = 0;
+  await page.route("**/api/assistant", async (route) => {
+    calls += 1;
+    await reply("Voici la réponse.")(route);
+  });
+  const bubble = page.getByTestId("assistant-bubble");
+  await bubble.click();
+  // Sans délai : le focus est déjà dans le champ quand le panneau s'affiche.
+  expect(
+    await page.evaluate(
+      () => document.activeElement?.getAttribute("data-testid") === "assistant-input",
+    ),
+  ).toBe(true);
+  await page.getByTestId("assistant-new").focus();
+  await page.keyboard.press("Escape");
+  await expect(page.getByTestId("assistant-panel")).toHaveCount(0);
+  await expect(page.getByTestId("assistant-bubble")).toBeFocused();
+  await page.keyboard.press("Enter");
+  const input = page.getByTestId("assistant-input");
+  await expect(input).toBeFocused();
+  await input.fill("Bonjour");
+  // Entrée pendant une composition IME (japonais, chinois…) : rien n'est envoyé.
+  await input.evaluate((el) =>
+    el.dispatchEvent(
+      new KeyboardEvent("keydown", {
+        key: "Enter",
+        isComposing: true,
+        bubbles: true,
+        cancelable: true,
+      }),
+    ),
+  );
+  await page.waitForTimeout(300);
+  expect(calls).toBe(0);
+  await expect(input).toHaveValue("Bonjour");
+  await input.press("Enter");
+  await expect(page.getByTestId("assistant-reply")).toContainText("Voici la réponse.");
+  expect(calls).toBe(1);
+  const thread = page.getByTestId("assistant-thread");
+  await expect(thread).toHaveAttribute("aria-live", "polite");
+  await expect(thread.locator(".ml-8 .sr-only")).toHaveText("Vous: ");
+  await expect(page.getByTestId("assistant-reply").locator(".sr-only")).toHaveText(
+    "Assistant IA: ",
+  );
+  // Échap depuis la carte ou le fil : fermé aussi.
+  await page.getByTestId("assistant-reply").click();
+  await page.keyboard.press("Escape");
+  await expect(page.getByTestId("assistant-panel")).toHaveCount(0);
+  await expect(bubble).toBeFocused();
+});
+
+test("mention « peut se tromper » visible sous le champ, liée au champ", async ({ page }) => {
+  await login(page, "fr");
+  await page.getByTestId("assistant-bubble").click();
+  const note = page.getByTestId("assistant-disclaimer");
+  await expect(note).toHaveText("L'assistant peut se tromper : vérifiez avant de confirmer.");
+  const [noteBox, inputBox] = [
+    await note.boundingBox(),
+    await page.getByTestId("assistant-input").boundingBox(),
+  ];
+  expect(noteBox && inputBox && noteBox.y >= inputBox.y + inputBox.height).toBe(true);
+  await expect(page.getByTestId("assistant-input")).toHaveAttribute(
+    "aria-describedby",
+    (await note.getAttribute("id")) ?? "absent",
+  );
+});
+
+test("fil propre à la personne et à l'entreprise (clé de l'onglet), stockage refusé toléré", async ({
+  page,
+  browser,
+}) => {
+  await login(page, "fr");
+  await page.route("**/api/assistant", reply("Bien reçu."));
+  await page.getByTestId("assistant-bubble").click();
+  await page.getByTestId("assistant-input").fill("Bonjour");
+  await page.getByTestId("assistant-input").press("Enter");
+  await expect(page.getByTestId("assistant-reply")).toContainText("Bien reçu.");
+  const ids = await appIds("org-atelier", "ada@atelier.test");
+  const keys = await page.evaluate(() =>
+    Object.keys(window.sessionStorage).filter((k) => k.startsWith("il-assistant")),
+  );
+  expect(keys).toEqual([`il-assistant:${ids.org}:${ids.user}`]);
+
+  // Stockage plein ou refusé : la bulle marche quand même, sans erreur.
+  const ctx = await browser.newContext({ locale: "fr-CH" });
+  await ctx.addInitScript(() => {
+    // Seul le fil de la bulle : le reste de la page garde son stockage.
+    const mine = (k: string) => String(k).startsWith("il-assistant");
+    const { getItem, setItem } = Storage.prototype;
+    Storage.prototype.setItem = function (k: string, v: string) {
+      if (mine(k)) throw new DOMException("plein", "QuotaExceededError");
+      return setItem.call(this, k, v);
+    };
+    Storage.prototype.getItem = function (k: string) {
+      if (mine(k)) throw new DOMException("refusé", "SecurityError");
+      return getItem.call(this, k);
+    };
+  });
+  const other = await ctx.newPage();
+  const errors: string[] = [];
+  other.on("pageerror", (e) => errors.push(e.message));
+  await login(other, "fr");
+  await other.route("**/api/assistant", reply("Toujours là."));
+  await other.getByTestId("assistant-bubble").click();
+  await other.getByTestId("assistant-input").fill("Bonjour");
+  await other.getByTestId("assistant-input").press("Enter");
+  await expect(other.getByTestId("assistant-reply")).toContainText("Toujours là.");
+  expect(errors).toEqual([]);
+  await ctx.close();
+});
+
+test.describe("rien de masqué (téléphone, impression)", () => {
+  test.use({ viewport: { width: 390, height: 844 } });
+
+  test("rien de masqué : à 390 px le bas de la page défile au-dessus de la bulle, champ en 16 px, panneau plein écran jusqu'à 640 px, rien à l'impression", async ({
+    page,
+  }) => {
+    await login(page, "fr");
+    for (const path of ["/fr/app/settings/company", "/fr/app"]) {
+      await page.goto(path);
+      const g = await pageBottom(page);
+      expect(g.atEnd, path).toBe(true);
+      expect(g.bottom, path).toBeGreaterThan(0);
+      expect(g.bottom, `${path} : ${JSON.stringify(g)}`).toBeLessThanOrEqual(g.fabTop - 16);
+    }
+    await page.getByTestId("assistant-bubble").click();
+    const input = page.getByTestId("assistant-input");
+    expect(await input.evaluate((el) => getComputedStyle(el).fontSize)).toBe("16px");
+    expect(await page.getByTestId("assistant-panel").boundingBox()).toMatchObject({
+      x: 0,
+      y: 0,
+      width: 390,
+      height: 844,
+    });
+    await page.setViewportSize({ width: 640, height: 800 });
+    expect(await page.getByTestId("assistant-panel").boundingBox()).toMatchObject({
+      x: 0,
+      width: 640,
+      height: 800,
+    });
+    await page.setViewportSize({ width: 641, height: 800 });
+    expect((await page.getByTestId("assistant-panel").boundingBox())?.width).toBeLessThanOrEqual(
+      400,
+    );
+    expect(await input.evaluate((el) => getComputedStyle(el).fontSize)).toBe("14px");
+    await page.emulateMedia({ media: "print" });
+    await expect(page.getByTestId("assistant-panel")).toBeHidden();
+    await page.getByTestId("assistant-close").evaluate((el) => (el as HTMLElement).click());
+    await expect(page.getByTestId("assistant-bubble")).toBeHidden();
+    await page.emulateMedia({ media: "screen" });
+    await expect(page.getByTestId("assistant-bubble")).toBeVisible();
   });
 });

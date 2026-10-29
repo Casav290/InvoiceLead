@@ -2596,6 +2596,7 @@
       "close": "Fermer l'assistant",
       "newConversation": "Nouvelle conversation",
       "placeholder": "Demandez ce que vous voulez…",
+      "disclaimer": "L'assistant peut se tromper : vérifiez avant de confirmer.",
       "inputLabel": "Votre demande à l'assistant IA",
       "send": "Envoyer",
       "working": "L'assistant travaille…",
@@ -2609,7 +2610,7 @@
       },
       "you": "Vous",
       "assistant": "Assistant IA",
-      "opened": "Page ouverte dans l'application.",
+      "opened": "Page ouverte : {label}",
       "errors": {
         "unavailable": "L'assistant ne répond pas pour le moment. Réessayez dans un instant.",
         "network": "La connexion a été perdue. Vérifiez votre réseau et réessayez.",
@@ -2617,10 +2618,13 @@
         "quotaOrg": "Votre entreprise a atteint 400 messages aujourd'hui. L'assistant revient demain.",
         "session": "Votre session a expiré. Rechargez la page pour vous reconnecter.",
         "forbidden": "Votre accès à InvoiceLead ne permet pas d'utiliser l'assistant.",
-        "invalid": "Cette demande n'a pas pu être lue. Commencez une nouvelle conversation.",
+        "invalid": "Cette demande n'a pas pu être lue. Reformulez-la et réessayez.",
         "refusal": "Je ne peux pas traiter cette demande.",
         "truncated": "La réponse a été coupée. Posez une question plus précise.",
-        "incomplete": "Je n'ai pas pu terminer. Reformulez ou découpez la demande."
+        "incomplete": "Je n'ai pas pu terminer. Reformulez ou découpez la demande.",
+        "timeout": "La demande a pris trop de temps. Essayez une demande plus courte ou réessayez.",
+        "history": "Cette conversation ne peut pas continuer. Commencez une nouvelle conversation.",
+        "empty": "Je n'ai pas de réponse à donner à cette demande. Reformulez-la ou précisez-la."
       },
       "confirm": {
         "heading": "À confirmer",
@@ -2630,7 +2634,10 @@
         "cancelled": "Annulé. Rien n'a été enregistré.",
         "done": "Enregistré : {label}",
         "open": "Ouvrir",
-        "expired": "Cette proposition a expiré ou a déjà servi. Redemandez-la à l'assistant.",
+        "expired": "Cette proposition a expiré. Redemandez-la à l'assistant.",
+        "used": "Cette proposition a déjà été utilisée. Rien n'a été enregistré une seconde fois.",
+        "gone": "L'élément à modifier n'existe plus. Rien n'a été enregistré.",
+        "network": "La connexion a été perdue. Vérifiez votre réseau, puis cliquez à nouveau sur « Confirmer ».",
         "planLimit": "La formule de votre entreprise ne le permet pas, ou sa limite est atteinte. Rien n'a été enregistré.",
         "failed": "L'enregistrement n'a pas abouti. Les données ont peut-être changé ; redemandez à l'assistant.",
         "titles": {

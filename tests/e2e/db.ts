@@ -80,3 +80,14 @@ export async function leadSidsOf(sub: string): Promise<(string | null)[]> {
   );
   return rows.map((r: { lead_sid: string | null }) => r.lead_sid);
 }
+
+/** Identifiants InvoiceLead d'une entreprise (organisation du Compte Lead) et d'une personne. */
+export async function appIds(leadOrg: string, email: string) {
+  const { rows } = await base().query<{ org: string; user: string }>(
+    `select o.id as org, u.id as "user" from organizations o, users u
+     where o.lead_org = $1 and lower(u.email) = lower($2)`,
+    [leadOrg, email],
+  );
+  if (rows.length !== 1) throw new Error(`entreprise ${leadOrg} ou personne ${email} introuvable`);
+  return rows[0] as { org: string; user: string };
+}

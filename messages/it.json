@@ -2596,6 +2596,7 @@
       "close": "Chiudi l'assistente",
       "newConversation": "Nuova conversazione",
       "placeholder": "Chiedi quello che vuoi…",
+      "disclaimer": "L'assistente può sbagliare: verifica prima di confermare.",
       "inputLabel": "La tua richiesta all'assistente IA",
       "send": "Invia",
       "working": "L'assistente sta lavorando…",
@@ -2609,7 +2610,7 @@
       },
       "you": "Tu",
       "assistant": "Assistente IA",
-      "opened": "Pagina aperta nell'applicazione.",
+      "opened": "Pagina aperta: {label}",
       "errors": {
         "unavailable": "L'assistente non risponde al momento. Riprova tra un istante.",
         "network": "La connessione si è interrotta. Controlla la rete e riprova.",
@@ -2617,10 +2618,13 @@
         "quotaOrg": "La tua azienda ha raggiunto 400 messaggi oggi. L'assistente torna disponibile domani.",
         "session": "La sessione è scaduta. Ricarica la pagina per accedere di nuovo.",
         "forbidden": "Il tuo accesso a InvoiceLead non consente di usare l'assistente.",
-        "invalid": "Non è stato possibile leggere questa richiesta. Inizia una nuova conversazione.",
+        "invalid": "Non è stato possibile leggere questa richiesta. Riformulala e riprova.",
         "refusal": "Non posso gestire questa richiesta.",
         "truncated": "La risposta è stata interrotta. Fai una domanda più precisa.",
-        "incomplete": "Non sono riuscito a terminare. Riformula o suddividi la richiesta."
+        "incomplete": "Non sono riuscito a terminare. Riformula o suddividi la richiesta.",
+        "timeout": "La richiesta ha richiesto troppo tempo. Prova con una richiesta più breve o riprova.",
+        "history": "Questa conversazione non può continuare. Inizia una nuova conversazione.",
+        "empty": "Non ho una risposta da dare a questa richiesta. Riformulala o precisala."
       },
       "confirm": {
         "heading": "Da confermare",
@@ -2630,7 +2634,10 @@
         "cancelled": "Annullato. Non è stato salvato nulla.",
         "done": "Salvato: {label}",
         "open": "Apri",
-        "expired": "Questa proposta è scaduta o è già stata usata. Richiedila all'assistente.",
+        "expired": "Questa proposta è scaduta. Richiedila all'assistente.",
+        "used": "Questa proposta è già stata usata. Non è stato salvato nulla una seconda volta.",
+        "gone": "L'elemento da modificare non esiste più. Non è stato salvato nulla.",
+        "network": "La connessione si è interrotta. Controlla la rete, poi clicca di nuovo su «Conferma».",
         "planLimit": "Il piano della tua azienda non lo include, oppure il suo limite è raggiunto. Non è stato salvato nulla.",
         "failed": "Il salvataggio non è riuscito. I dati potrebbero essere cambiati; chiedi di nuovo all'assistente.",
         "titles": {

@@ -6,8 +6,11 @@ import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { useCountry, useCountryTranslations } from "@/components/app/CountryContext";
 import { countryPack } from "@/countries";
 import { Link, usePathname, useRouter } from "@/i18n/navigation";
+import { pageLabel } from "@/lib/assistant-pages";
 import { formatDate } from "@/lib/fiscal-year";
 import { formatMoney } from "@/lib/money";
+import { failureState } from "./confirm-state";
+import { replyNodes } from "./reply-text";
 
 /**
  * Bulle « Assistant IA » (cahier commun de la famille Lead, 24.10.2026) : en bas à droite de toutes
@@ -58,7 +61,7 @@ type Summary = {
 };
 
 type Action =
-  | { type: "navigate"; path: string }
+  | { type: "navigate"; path: string; label?: string }
   | { type: "confirm"; token: string; summary: Summary };
 
 type CardState =
@@ -67,16 +70,20 @@ type CardState =
   | "done"
   | "cancelled"
   | "expired"
+  | "used"
   | "forbidden"
+  | "gone"
   | "planLimit"
   | "failed"
-  | "session";
+  | "session"
+  /** Réseau coupé pendant « Confirmer » : la carte reste à confirmer, avec un message. */
+  | "network";
 
 type Item =
   | { id: string; kind: "user"; text: string }
   | { id: string; kind: "assistant"; text: string }
   | { id: string; kind: "notice"; code: string }
-  | { id: string; kind: "navigated"; path: string }
+  | { id: string; kind: "navigated"; path: string; label?: string }
   | {
       id: string;
       kind: "confirm";
@@ -112,37 +119,12 @@ function save(key: string, value: Stored) {
   }
 }
 
-/** **gras** du modèle rendu en <strong>, sans jamais interpréter de HTML. */
-function withBold(text: string, locale: string) {
-  // Français : guillemets et ponctuation haute collés par une espace fine insécable, comme l'interface.
-  const typeset =
-    locale === "fr"
-      ? text
-          .replace(/«\s+/g, "«\u202f")
-          .replace(/\s+»/g, "\u202f»")
-          .replace(/ +([?!;:])(?=\s|$)/g, "\u202f$1")
-      : text;
-  return typeset
-    .split(/(\*\*[^*\n]+\*\*)/g)
-    .map((part, i) =>
-      /^\*\*[^*\n]+\*\*$/.test(part) ? <strong key={i}>{part.slice(2, -2)}</strong> : part,
-    );
-}
-
 /** 90 → « 1:30 ». */
 const hoursMinutes = (minutes: number) =>
   `${Math.floor(minutes / 60)}:${String(Math.round(minutes) % 60).padStart(2, "0")}`;
 
 /** Chemin sans la requête, pour savoir si la page du résultat est déjà ouverte. */
 const pathOnly = (path: string) => path.split("?")[0] ?? path;
-
-/** Échec d'une confirmation : limite ou fonction de la formule, rôle, ou autre. */
-const failureState = (status: number, error: string | undefined): CardState => {
-  if (status === 401) return "session";
-  if (status === 403) return error === "forbidden_role" ? "forbidden" : "expired";
-  if (error && /(^|[\s:(])plan|plan_limit/.test(error)) return "planLimit";
-  return "failed";
-};
 
 /**
  * Présentation par défaut selon la clé : les cartes du 24.10.2026 (sans « format ») restent lisibles
@@ -188,7 +170,11 @@ const ERROR_BY_STATUS: Record<number, string> = {
   401: "session",
   403: "forbidden",
   503: "unavailable",
+  504: "timeout",
 };
+
+/** Messages d'état du fil propres à une carte refusée (B7), avec leur texte traduit. */
+const CARD_ERRORS = ["expired", "used", "forbidden", "gone", "planLimit", "failed", "network"];
 
 export function AssistantBubble({ storageKey }: { storageKey: string }) {
   const t = useCountryTranslations("app.aiBubble");
@@ -207,6 +193,9 @@ export function AssistantBubble({ storageKey }: { storageKey: string }) {
   const threadRef = useRef<HTMLDivElement>(null);
   const panelId = useId();
   const titleId = useId();
+  const noteId = useId();
+  /** Le panneau a été ouvert : à sa fermeture, le focus revient à la bulle. */
+  const wasOpen = useRef(false);
 
   useEffect(() => setData(load(storageKey)), [storageKey]);
 
@@ -220,14 +209,17 @@ export function AssistantBubble({ storageKey }: { storageKey: string }) {
     [storageKey],
   );
 
-  const close = useCallback(() => {
-    setOpen(false);
-    requestAnimationFrame(() => bubbleRef.current?.focus());
-  }, []);
+  const close = useCallback(() => setOpen(false), []);
 
+  // B8 : focus dans le champ dès l'ouverture (sans délai), rendu à la bulle à la fermeture ; Échap
+  // ferme où que soit le focus.
   useEffect(() => {
-    if (!open) return;
-    requestAnimationFrame(() => inputRef.current?.focus());
+    if (!open) {
+      if (wasOpen.current) bubbleRef.current?.focus();
+      return;
+    }
+    wasOpen.current = true;
+    inputRef.current?.focus();
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") close();
     };
@@ -278,7 +270,9 @@ export function AssistantBubble({ storageKey }: { storageKey: string }) {
             ? body.scope === "org"
               ? "quotaOrg"
               : "quotaUser"
-            : (ERROR_BY_STATUS[res.status] ?? "unavailable");
+            : body.error === "history"
+              ? "history"
+              : (ERROR_BY_STATUS[res.status] ?? "unavailable");
         update((prev) => ({
           ...prev,
           items: [...prev.items, { id: uid(), kind: "notice", code }],
@@ -300,7 +294,7 @@ export function AssistantBubble({ storageKey }: { storageKey: string }) {
           });
         if (a.type === "navigate") {
           target = a.path;
-          added.push({ id: uid(), kind: "navigated", path: a.path });
+          added.push({ id: uid(), kind: "navigated", path: a.path, label: a.label });
         }
       }
       update((prev) => ({
@@ -375,7 +369,8 @@ export function AssistantBubble({ storageKey }: { storageKey: string }) {
         `[Confirming ${item.summary.action} failed: ${body.error ?? res.status}.]`,
       );
     } catch {
-      setCard(item.id, { state: "pending" });
+      // Réseau coupé : rien n'est sûr, la carte reste à confirmer avec un message (B7).
+      setCard(item.id, { state: "network" });
     }
   }
 
@@ -456,6 +451,9 @@ export function AssistantBubble({ storageKey }: { storageKey: string }) {
     return key;
   };
   const title = (action: string) => (tc.has(`titles.${action}`) ? tc(`titles.${action}`) : action);
+  /** Nom de l'écran ouvert par la bulle (B5), jamais son chemin. */
+  const screenName = (it: Extract<Item, { kind: "navigated" }>) =>
+    pageLabel(it.path, (key) => ta(key)) ?? it.label ?? ta("nav.dashboard");
   /** Ligne « Enregistré : … » d'un lot : chaque groupe et son nombre. */
   const batchLabel = (s: Summary) =>
     (s.groups ?? []).map((g) => `${title(g.action)} (${g.count})`).join(", ");
@@ -509,7 +507,7 @@ export function AssistantBubble({ storageKey }: { storageKey: string }) {
           aria-expanded={false}
           aria-controls={panelId}
           onClick={() => setOpen(true)}
-          className="fixed right-4 bottom-4 z-40 flex h-14 w-14 items-center justify-center border-2 border-white bg-accent text-white outline-offset-2 hover:bg-accent-dark focus-visible:outline-2 focus-visible:outline-accent sm:right-6 sm:bottom-6"
+          className="fixed right-4 bottom-[calc(1rem+env(safe-area-inset-bottom))] z-40 flex h-14 w-14 items-center justify-center border-2 border-white bg-accent text-white outline-offset-2 hover:bg-accent-dark focus-visible:outline-2 focus-visible:outline-accent print:hidden sm:right-6 sm:bottom-[calc(1.5rem+env(safe-area-inset-bottom))]"
           style={{ borderRadius: "50%" }}
         >
           <Sparkles aria-hidden="true" className="h-6 w-6" strokeWidth={2} />
@@ -522,7 +520,8 @@ export function AssistantBubble({ storageKey }: { storageKey: string }) {
           aria-modal="false"
           aria-labelledby={titleId}
           data-testid="assistant-panel"
-          className="fixed inset-0 z-[60] flex flex-col border-line-strong bg-panel text-ink sm:inset-auto sm:right-6 sm:bottom-6 sm:z-40 sm:h-[600px] sm:max-h-[calc(100dvh-3rem)] sm:w-[400px] sm:max-w-[calc(100vw-3rem)] sm:border"
+          // B9 : plein écran jusqu'à 640 px compris, jamais imprimé.
+          className="fixed inset-0 z-[60] flex flex-col border-line-strong bg-panel text-ink print:hidden min-[641px]:inset-auto min-[641px]:right-6 min-[641px]:bottom-6 min-[641px]:z-40 min-[641px]:h-[600px] min-[641px]:max-h-[calc(100dvh-3rem)] min-[641px]:w-[400px] min-[641px]:max-w-[calc(100vw-3rem)] min-[641px]:border"
         >
           <header className="flex items-center gap-2 border-b border-line-strong bg-accent px-4 py-3 text-white">
             <Sparkles aria-hidden="true" className="h-5 w-5 shrink-0" />
@@ -597,19 +596,36 @@ export function AssistantBubble({ storageKey }: { storageKey: string }) {
                     data-testid="assistant-reply"
                   >
                     <span className="sr-only">{t("assistant")}: </span>
-                    <p className="whitespace-pre-wrap break-words">{withBold(it.text, locale)}</p>
+                    <p className="whitespace-pre-wrap break-words">{replyNodes(it.text, locale)}</p>
                   </div>
                 );
               if (it.kind === "notice")
                 return (
-                  <p
+                  <div
                     key={it.id}
                     role="alert"
                     data-testid="assistant-notice"
+                    data-code={it.code}
                     className="border border-hot-bg bg-hot-bg px-3 py-2 text-hot-fg"
                   >
-                    {t.has(`errors.${it.code}`) ? t(`errors.${it.code}`) : t("errors.unavailable")}
-                  </p>
+                    <p>
+                      {t.has(`errors.${it.code}`)
+                        ? t(`errors.${it.code}`)
+                        : t("errors.unavailable")}
+                    </p>
+                    {/* B3 : un fil refusé ne peut pas continuer ; le bouton est dans le message. */}
+                    {it.code === "history" && (
+                      <button
+                        type="button"
+                        onClick={reset}
+                        disabled={busy}
+                        data-testid="assistant-reset-inline"
+                        className="mt-2 border border-hot-fg px-2 py-1 text-[12px] font-semibold hover:bg-white disabled:opacity-60"
+                      >
+                        {t("newConversation")}
+                      </button>
+                    )}
+                  </div>
                 );
               if (it.kind === "navigated")
                 return (
@@ -618,7 +634,7 @@ export function AssistantBubble({ storageKey }: { storageKey: string }) {
                     className="text-[12px] text-ink-muted"
                     data-testid="assistant-navigated"
                   >
-                    {t("opened")}
+                    {t("opened", { label: screenName(it) })}
                   </p>
                 );
               const s = it.summary;
@@ -648,8 +664,8 @@ export function AssistantBubble({ storageKey }: { storageKey: string }) {
                                 <span className="font-normal text-ink-muted line-through">
                                   {shownValue(f, f.before)}
                                 </span>{" "}
-                                <span aria-hidden="true">→</span>
-                                <span className="sr-only">{tc("becomes")}</span>{" "}
+                                <span aria-hidden="true">→</span>{" "}
+                                <span className="sr-only">{tc("becomes")} </span>
                               </>
                             )}
                             {shownValue(f, f.value)}
@@ -715,7 +731,9 @@ export function AssistantBubble({ storageKey }: { storageKey: string }) {
                     </ul>
                   )}
                   <div className="border-t border-line px-3 py-2">
-                    {(it.state === "pending" || it.state === "saving") && (
+                    {(it.state === "pending" ||
+                      it.state === "saving" ||
+                      it.state === "network") && (
                       <div className="flex gap-2">
                         <button
                           type="button"
@@ -755,20 +773,19 @@ export function AssistantBubble({ storageKey }: { storageKey: string }) {
                     {it.state === "cancelled" && (
                       <p className="text-[13px] text-ink-muted">{tc("cancelled")}</p>
                     )}
-                    {it.state === "expired" && (
-                      <p className="text-[13px] text-hot-fg">{tc("expired")}</p>
-                    )}
-                    {it.state === "forbidden" && (
-                      <p className="text-[13px] text-hot-fg">{tc("forbidden")}</p>
-                    )}
-                    {it.state === "planLimit" && (
-                      <p className="text-[13px] text-hot-fg">{tc("planLimit")}</p>
-                    )}
-                    {it.state === "failed" && (
-                      <p className="text-[13px] text-hot-fg">{tc("failed")}</p>
+                    {CARD_ERRORS.includes(it.state) && (
+                      <p
+                        role="alert"
+                        data-testid="assistant-card-error"
+                        className={`text-[13px] text-hot-fg${it.state === "network" ? " mt-2" : ""}`}
+                      >
+                        {tc(it.state)}
+                      </p>
                     )}
                     {it.state === "session" && (
-                      <p className="text-[13px] text-hot-fg">{t("errors.session")}</p>
+                      <p role="alert" className="text-[13px] text-hot-fg">
+                        {t("errors.session")}
+                      </p>
                     )}
                   </div>
                 </div>
@@ -786,7 +803,7 @@ export function AssistantBubble({ storageKey }: { storageKey: string }) {
           </div>
 
           <form
-            className="flex items-end gap-2 border-t border-line-strong bg-panel p-3"
+            className="flex flex-wrap items-end gap-2 border-t border-line-strong bg-panel p-3"
             onSubmit={(e) => {
               e.preventDefault();
               send(draft);
@@ -811,7 +828,9 @@ export function AssistantBubble({ storageKey }: { storageKey: string }) {
               rows={2}
               maxLength={4000}
               placeholder={t("placeholder")}
-              className="max-h-40 min-h-[44px] flex-1 resize-none border border-line-strong bg-white px-3 py-2 text-[14px] text-ink outline-none focus:border-accent disabled:bg-muted"
+              aria-describedby={noteId}
+              // B9 : 16 px au téléphone, sinon iOS agrandit la page à la saisie.
+              className="max-h-40 min-h-[44px] flex-1 resize-none border border-line-strong bg-white px-3 py-2 text-[16px] text-ink outline-none focus:border-accent disabled:bg-muted min-[641px]:text-[14px]"
             />
             <button
               type="submit"
@@ -821,6 +840,14 @@ export function AssistantBubble({ storageKey }: { storageKey: string }) {
             >
               {t("send")}
             </button>
+            {/* B11 : mention de prudence sous le champ. */}
+            <p
+              id={noteId}
+              data-testid="assistant-disclaimer"
+              className="w-full text-[12px] leading-[1.4] text-ink-muted"
+            >
+              {t("disclaimer")}
+            </p>
           </form>
         </section>
       )}

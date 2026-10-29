@@ -2596,6 +2596,7 @@
       "close": "Assistent schliessen",
       "newConversation": "Neues Gespräch",
       "placeholder": "Fragen Sie, was Sie möchten…",
+      "disclaimer": "Der Assistent kann sich irren: Prüfen Sie vor dem Bestätigen.",
       "inputLabel": "Ihre Anfrage an den KI-Assistenten",
       "send": "Senden",
       "working": "Der Assistent arbeitet…",
@@ -2609,7 +2610,7 @@
       },
       "you": "Sie",
       "assistant": "KI-Assistent",
-      "opened": "Seite in der Anwendung geöffnet.",
+      "opened": "Seite geöffnet: {label}",
       "errors": {
         "unavailable": "Der Assistent antwortet gerade nicht. Versuchen Sie es gleich noch einmal.",
         "network": "Die Verbindung ist unterbrochen. Prüfen Sie Ihr Netzwerk und versuchen Sie es erneut.",
@@ -2617,10 +2618,13 @@
         "quotaOrg": "Ihr Unternehmen hat heute 400 Nachrichten erreicht. Der Assistent ist morgen wieder da.",
         "session": "Ihre Sitzung ist abgelaufen. Laden Sie die Seite neu, um sich wieder anzumelden.",
         "forbidden": "Ihr Zugang zu InvoiceLead erlaubt den Assistenten nicht.",
-        "invalid": "Diese Anfrage konnte nicht gelesen werden. Beginnen Sie ein neues Gespräch.",
+        "invalid": "Diese Anfrage konnte nicht gelesen werden. Formulieren Sie sie neu und versuchen Sie es erneut.",
         "refusal": "Diese Anfrage kann ich nicht bearbeiten.",
         "truncated": "Die Antwort wurde abgeschnitten. Stellen Sie eine genauere Frage.",
-        "incomplete": "Ich konnte nicht fertig werden. Formulieren Sie die Anfrage neu oder teilen Sie sie auf."
+        "incomplete": "Ich konnte nicht fertig werden. Formulieren Sie die Anfrage neu oder teilen Sie sie auf.",
+        "timeout": "Die Anfrage hat zu lange gedauert. Stellen Sie eine kürzere Anfrage oder versuchen Sie es erneut.",
+        "history": "Dieses Gespräch kann nicht weitergehen. Beginnen Sie ein neues Gespräch.",
+        "empty": "Auf diese Anfrage habe ich keine Antwort. Formulieren Sie sie neu oder genauer."
       },
       "confirm": {
         "heading": "Zu bestätigen",
@@ -2630,7 +2634,10 @@
         "cancelled": "Abgebrochen. Nichts wurde gespeichert.",
         "done": "Gespeichert: {label}",
         "open": "Öffnen",
-        "expired": "Dieser Vorschlag ist abgelaufen oder wurde schon verwendet. Fragen Sie den Assistenten erneut.",
+        "expired": "Dieser Vorschlag ist abgelaufen. Fragen Sie den Assistenten erneut.",
+        "used": "Dieser Vorschlag wurde schon verwendet. Nichts wurde ein zweites Mal gespeichert.",
+        "gone": "Das Element gibt es nicht mehr. Nichts wurde gespeichert.",
+        "network": "Die Verbindung ist unterbrochen. Prüfen Sie Ihr Netzwerk und klicken Sie erneut auf «Bestätigen».",
         "planLimit": "Das Abo Ihres Unternehmens erlaubt das nicht, oder seine Grenze ist erreicht. Nichts wurde gespeichert.",
         "failed": "Das Speichern hat nicht geklappt. Die Daten haben sich vielleicht geändert; fragen Sie den Assistenten erneut.",
         "titles": {

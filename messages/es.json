@@ -2596,6 +2596,7 @@
       "close": "Cerrar el asistente",
       "newConversation": "Nueva conversación",
       "placeholder": "Pregunta lo que quieras…",
+      "disclaimer": "El asistente puede equivocarse: verifica antes de confirmar.",
       "inputLabel": "Tu solicitud al asistente IA",
       "send": "Enviar",
       "working": "El asistente está trabajando…",
@@ -2609,7 +2610,7 @@
       },
       "you": "Tú",
       "assistant": "Asistente IA",
-      "opened": "Página abierta en la aplicación.",
+      "opened": "Página abierta: {label}",
       "errors": {
         "unavailable": "El asistente no responde en este momento. Vuelve a intentarlo dentro de un instante.",
         "network": "Se ha perdido la conexión. Comprueba tu red y vuelve a intentarlo.",
@@ -2617,10 +2618,13 @@
         "quotaOrg": "Tu empresa ha alcanzado los 400 mensajes de hoy. El asistente vuelve mañana.",
         "session": "Tu sesión ha caducado. Recarga la página para volver a iniciar sesión.",
         "forbidden": "Tu acceso a InvoiceLead no permite usar el asistente.",
-        "invalid": "No se ha podido leer esta solicitud. Empieza una nueva conversación.",
+        "invalid": "No se ha podido leer esta solicitud. Reformúlala y vuelve a intentarlo.",
         "refusal": "No puedo atender esta solicitud.",
         "truncated": "La respuesta se ha cortado. Haz una pregunta más precisa.",
-        "incomplete": "No he podido terminar. Reformula o divide la solicitud."
+        "incomplete": "No he podido terminar. Reformula o divide la solicitud.",
+        "timeout": "La solicitud ha tardado demasiado. Prueba con una solicitud más corta o vuelve a intentarlo.",
+        "history": "Esta conversación no puede continuar. Empieza una nueva conversación.",
+        "empty": "No tengo respuesta para esta solicitud. Reformúlala o precísala."
       },
       "confirm": {
         "heading": "Pendiente de confirmar",
@@ -2630,7 +2634,10 @@
         "cancelled": "Cancelado. No se ha guardado nada.",
         "done": "Guardado: {label}",
         "open": "Abrir",
-        "expired": "Esta propuesta ha caducado o ya se ha usado. Vuelve a pedírsela al asistente.",
+        "expired": "Esta propuesta ha caducado. Vuelve a pedírsela al asistente.",
+        "used": "Esta propuesta ya se ha usado. No se ha guardado nada una segunda vez.",
+        "gone": "El elemento que se iba a modificar ya no existe. No se ha guardado nada.",
+        "network": "Se ha perdido la conexión. Comprueba tu red y vuelve a hacer clic en «Confirmar».",
         "planLimit": "El plan de tu empresa no lo incluye, o se ha alcanzado su límite. No se ha guardado nada.",
         "failed": "No se ha podido guardar. Puede que los datos hayan cambiado; vuelve a pedírselo al asistente.",
         "titles": {

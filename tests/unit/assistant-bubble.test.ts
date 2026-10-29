@@ -135,7 +135,8 @@ const post = (path: string, body: unknown, token?: string) => {
   ctx.jar = new Map(token ? [[SESSION_COOKIE, token]] : []);
   return new Request(`https://invoicelead.io${path}`, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    // La bulle poste depuis sa propre page (même origine exigée).
+    headers: { "content-type": "application/json", origin: "https://invoicelead.io" },
     body: JSON.stringify(body),
   });
 };
@@ -249,7 +250,7 @@ describe("bulle Assistant IA : quota", () => {
           { role: "assistant", content: "Ok" },
         ],
         reply: "Ok",
-        actions: [{ type: "navigate", path: "/app/invoices" }],
+        actions: [{ type: "navigate", path: "/app/invoices", label: "Factures" }],
         notice: null,
         usage: {
           inputTokens: 120,

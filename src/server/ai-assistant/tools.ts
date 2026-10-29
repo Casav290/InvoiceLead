@@ -3,6 +3,7 @@ import { and, desc, eq, gte, lte } from "drizzle-orm";
 import { z } from "zod";
 import { routing } from "@/i18n/routing";
 import { accountName } from "@/lib/account-name";
+import { ASSISTANT_PAGES, type OpenablePage, openablePage } from "@/lib/assistant-pages";
 import { listAccounts, listFiscalYears } from "../accounting";
 import { bookFacts } from "../assistant";
 import { listBills } from "../bills";
@@ -30,6 +31,7 @@ import {
 } from "./operations";
 import { vatPeriods } from "./ops-books";
 import type { AssistantContext, ConfirmSummary } from "./ops-core";
+import { pageLabel } from "./page-label";
 import { signAction } from "./token";
 
 /**
@@ -43,7 +45,7 @@ export const MAX_ROWS = 50;
 export const MAX_PROPOSALS = 3;
 
 export type AssistantAction =
-  | { type: "navigate"; path: string }
+  | { type: "navigate"; path: string; label: string }
   | { type: "confirm"; token: string; summary: ConfirmSummary };
 
 export type ToolState = {
@@ -59,59 +61,10 @@ const isoDate = z
   .describe("YYYY-MM-DD");
 
 /**
- * Pages que l'assistant peut ouvrir (sans la langue). `:id` = un identifiant (UUID) rendu par un outil.
- * Les écrans d'abonnement, d'équipe ou de clés s'ouvrent aussi : la personne y agit elle-même.
+ * Pages que l'assistant peut ouvrir (sans la langue), et leur libellé : src/lib/assistant-pages.ts.
+ * `:id` = un identifiant (UUID) rendu par un outil.
  */
-export const OPENABLE_PAGES = [
-  "/app",
-  "/app/invoices",
-  "/app/invoices/new",
-  "/app/invoices/:id",
-  "/app/invoices/reminders",
-  "/app/invoices/recurring",
-  "/app/quotes",
-  "/app/quotes/new",
-  "/app/quotes/:id",
-  "/app/credit-notes",
-  "/app/credit-notes/:id",
-  "/app/contacts",
-  "/app/contacts/new",
-  "/app/contacts/:id",
-  "/app/products",
-  "/app/products/new",
-  "/app/products/:id",
-  "/app/expenses",
-  "/app/time",
-  "/app/time/projects",
-  "/app/time/projects/:id",
-  "/app/accounting",
-  "/app/accounting/bank",
-  "/app/accounting/bills",
-  "/app/accounting/bills/new",
-  "/app/accounting/bills/:id",
-  "/app/accounting/receipts",
-  "/app/accounting/review",
-  "/app/accounting/reports",
-  "/app/accounting/vat",
-  "/app/accounting/cashflow",
-  "/app/assistant",
-  "/app/feedback",
-  "/app/import/crmlead",
-  "/app/settings/company",
-  "/app/settings/team",
-  "/app/settings/plan",
-  "/app/settings/payments",
-  "/app/settings/api",
-  "/app/settings/accounts",
-  "/app/settings/fiscal-years",
-  "/app/settings/lead-apps",
-  "/app/settings/einvoicing",
-] as const;
-
-const UUID = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
-const PAGE_PATTERNS = OPENABLE_PAGES.map(
-  (p) => new RegExp(`^${p.replace(":id", UUID).replace(/\//g, "\\/")}$`, "i"),
-);
+export const OPENABLE_PAGES = Object.keys(ASSISTANT_PAGES) as OpenablePage[];
 
 /** Préfixe de langue d'un chemin (« /fr/… »), pour toutes les langues de l'application. */
 const LOCALE_PREFIX = new RegExp(`^/(${routing.locales.join("|")})(?=/)`);
@@ -120,7 +73,7 @@ const LOCALE_PREFIX = new RegExp(`^/(${routing.locales.join("|")})(?=/)`);
 export function safePagePath(path: unknown): string | null {
   if (typeof path !== "string") return null;
   const clean = path.trim().replace(LOCALE_PREFIX, "").replace(/\/+$/, "") || "/app";
-  return PAGE_PATTERNS.some((re) => re.test(clean)) ? clean : null;
+  return openablePage(clean) ? clean : null;
 }
 
 /** Ce que le modèle lit d'une proposition : la carte en bref (les libellés restent ceux des données). */
@@ -301,6 +254,7 @@ export function buildTools(ctx: AssistantContext, state: ToolState, secret: stri
         );
         return json({
           total: rows.length,
+          truncated: rows.length > MAX_ROWS,
           contacts: rows.slice(0, MAX_ROWS).map((c) => ({
             id: c.id,
             name: c.name,
@@ -379,6 +333,7 @@ export function buildTools(ctx: AssistantContext, state: ToolState, secret: stri
           });
         return json({
           total: rows.length,
+          truncated: rows.length > MAX_ROWS,
           documents: rows.slice(0, MAX_ROWS).map((r) => ({
             id: r.id,
             number: r.number,
@@ -497,6 +452,7 @@ export function buildTools(ctx: AssistantContext, state: ToolState, secret: stri
           byCurrency.set(r.currency, (byCurrency.get(r.currency) ?? 0) + r.amountCents);
         return json({
           total: rows.length,
+          truncated: rows.length > MAX_ROWS,
           sums: [...byCurrency].map(([currency, cents]) => ({ currency, amount: units(cents) })),
           payments: rows.slice(0, MAX_ROWS).map((r) => ({
             paidOn: r.paidOn,
@@ -520,6 +476,7 @@ export function buildTools(ctx: AssistantContext, state: ToolState, secret: stri
         const rows = await dueReminders(ctx.database, org, ctx.today);
         return json({
           total: rows.length,
+          truncated: rows.length > MAX_ROWS,
           reminders: rows.slice(0, MAX_ROWS).map((r) => ({
             invoiceId: r.invoiceId,
             number: r.number,
@@ -549,6 +506,7 @@ export function buildTools(ctx: AssistantContext, state: ToolState, secret: stri
         const rows = await listProducts(ctx.database, org, query ?? "");
         return json({
           total: rows.length,
+          truncated: rows.length > MAX_ROWS,
           products: rows.slice(0, MAX_ROWS).map((p) => ({
             id: p.id,
             name: p.name,
@@ -570,6 +528,7 @@ export function buildTools(ctx: AssistantContext, state: ToolState, secret: stri
         const rows = await listProjects(ctx.database, org, { archived: archived === true });
         return json({
           total: rows.length,
+          truncated: rows.length > MAX_ROWS,
           projects: rows.slice(0, MAX_ROWS).map((p) => ({
             id: p.project.id,
             name: p.project.name,
@@ -598,6 +557,7 @@ export function buildTools(ctx: AssistantContext, state: ToolState, secret: stri
         });
         return json({
           total: rows.length,
+          truncated: rows.length > MAX_ROWS,
           entries: rows.slice(0, MAX_ROWS).map((r) => ({
             id: r.entry.id,
             project: r.project,
@@ -632,6 +592,7 @@ export function buildTools(ctx: AssistantContext, state: ToolState, secret: stri
           );
         return json({
           total: rows.length,
+          truncated: rows.length > MAX_ROWS,
           bills: rows.slice(0, MAX_ROWS).map((b) => ({
             id: b.id,
             supplier: b.supplierName,
@@ -662,6 +623,7 @@ export function buildTools(ctx: AssistantContext, state: ToolState, secret: stri
         );
         return json({
           total: rows.length,
+          truncated: rows.length > MAX_ROWS,
           receipts: rows.slice(0, MAX_ROWS).map((r) => ({
             id: r.id,
             file: r.filename,
@@ -684,6 +646,7 @@ export function buildTools(ctx: AssistantContext, state: ToolState, secret: stri
         const rows = await listRecurring(ctx.database, org);
         return json({
           total: rows.length,
+          truncated: rows.length > MAX_ROWS,
           recurring: rows.slice(0, MAX_ROWS).map((r) => ({
             id: r.recurring.id,
             invoiceNumber: r.number,
@@ -719,6 +682,7 @@ export function buildTools(ctx: AssistantContext, state: ToolState, secret: stri
           );
         return json({
           total: rows.length,
+          truncated: rows.length > MAX_ROWS,
           accounts: rows.slice(0, MAX_ROWS).map((a) => ({
             id: a.id,
             number: a.number,
@@ -814,9 +778,11 @@ export function buildTools(ctx: AssistantContext, state: ToolState, secret: stri
         track("open_page");
         const safe = safePagePath(path);
         if (!safe) return failed("page_not_allowed");
+        // Le modèle reçoit le nom de l'écran, jamais son chemin : il l'annonce en une phrase (B5).
+        const label = await pageLabel(safe, ctx.locale, ctx.organization.country);
         state.actions = state.actions.filter((a) => a.type !== "navigate");
-        state.actions.push({ type: "navigate", path: safe });
-        return json({ status: "page_will_open", path: safe });
+        state.actions.push({ type: "navigate", path: safe, label });
+        return json({ status: "page_will_open", page: label });
       },
     }),
   ];

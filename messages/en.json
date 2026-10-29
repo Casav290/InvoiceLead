@@ -2596,6 +2596,7 @@
       "close": "Close the assistant",
       "newConversation": "New conversation",
       "placeholder": "Ask for anything…",
+      "disclaimer": "The assistant can make mistakes: check before you confirm.",
       "inputLabel": "Your request to the AI assistant",
       "send": "Send",
       "working": "The assistant is working…",
@@ -2609,7 +2610,7 @@
       },
       "you": "You",
       "assistant": "AI assistant",
-      "opened": "Page opened in the app.",
+      "opened": "Page opened: {label}",
       "errors": {
         "unavailable": "The assistant is not responding right now. Try again in a moment.",
         "network": "The connection was lost. Check your network and try again.",
@@ -2617,10 +2618,13 @@
         "quotaOrg": "Your company has reached 400 messages today. The assistant is back tomorrow.",
         "session": "Your session has expired. Reload the page to sign in again.",
         "forbidden": "Your access to InvoiceLead does not include the assistant.",
-        "invalid": "This request could not be read. Start a new conversation.",
+        "invalid": "This request could not be read. Rephrase it and try again.",
         "refusal": "I can't help with this request.",
         "truncated": "The answer was cut off. Ask a more precise question.",
-        "incomplete": "I could not finish. Rephrase the request or split it up."
+        "incomplete": "I could not finish. Rephrase the request or split it up.",
+        "timeout": "The request took too long. Try a shorter request or try again.",
+        "history": "This conversation cannot continue. Start a new conversation.",
+        "empty": "I have no answer to give to this request. Rephrase it or make it more precise."
       },
       "confirm": {
         "heading": "To confirm",
@@ -2630,7 +2634,10 @@
         "cancelled": "Cancelled. Nothing was saved.",
         "done": "Saved: {label}",
         "open": "Open",
-        "expired": "This proposal has expired or was already used. Ask the assistant again.",
+        "expired": "This proposal has expired. Ask the assistant again.",
+        "used": "This proposal was already used. Nothing was saved a second time.",
+        "gone": "The item to change no longer exists. Nothing was saved.",
+        "network": "The connection was lost. Check your network, then click “Confirm” again.",
         "planLimit": "Your company's plan does not include this, or its limit is reached. Nothing was saved.",
         "failed": "Saving did not work. The data may have changed; ask the assistant again.",
         "titles": {

@@ -6,7 +6,7 @@ import type { Db } from "../db";
 import { actionOperations, applyAction } from "./operations";
 import { type AssistantContext, rightProblem } from "./ops-core";
 import { recordUsage, reserveMessage } from "./quota";
-import { type RunResult, runAssistant } from "./run";
+import { DEADLINE_MS, type RunResult, runAssistant } from "./run";
 import { claimAction, verifyAction } from "./token";
 import { safePagePath } from "./tools";
 
@@ -25,6 +25,9 @@ export type Deps = {
   today?: string;
   /** Pour les tests : remplace l'appel au modèle. */
   run?: (input: Parameters<typeof runAssistant>[0]) => Promise<RunResult>;
+  /** Pour les tests : faux service Anthropic (fetch du client) et délai du tour plus court. */
+  fetch?: typeof fetch;
+  deadlineMs?: number;
 };
 
 /** Historique gardé : 60 messages et 200 Ko au plus, le plus ancien part d'abord. */
@@ -119,9 +122,16 @@ export async function assistantPost(
   if (auth.status === 401) return { status: 401, body: { error: "unauthorized" } };
   if (auth.status === 403) return { status: 403, body: { error: "forbidden" } };
   if (!deps.apiKey) return { status: 503, body: { error: "not_configured" } };
-  if (!isPlainObject(body)) return { status: 400, body: { error: "invalid" } };
+  if (!isPlainObject(body) || !Array.isArray(body.messages))
+    return { status: 400, body: { error: "invalid" } };
+  // La question elle-même est illisible (vide, trop longue) : la reformuler suffit.
+  const asked = body.messages.at(-1) as unknown;
+  if (!isPlainObject(asked) || asked.role !== "user" || !questionOk(asked.content))
+    return { status: 400, body: { error: "invalid" } };
+  // Le fil, lui, ne peut pas continuer (rôle inconnu, premier message, trop de messages) : la bulle
+  // propose « Nouvelle conversation » dans le message d'erreur (B3).
   const history = cleanHistory(body.messages);
-  if (!history) return { status: 400, body: { error: "invalid" } };
+  if (!history) return { status: 400, body: { error: "history" } };
   const locale = (routing.locales as readonly string[]).includes(String(body.locale))
     ? String(body.locale)
     : routing.defaultLocale;
@@ -133,15 +143,23 @@ export async function assistantPost(
   if ("limit" in reserved) return { status: 429, body: { error: "quota", scope: reserved.limit } };
 
   const run = deps.run ?? runAssistant;
+  // B1 : une nouvelle tentative au plus, et chaque appel sous le délai du tour.
+  const deadlineMs = deps.deadlineMs ?? DEADLINE_MS;
   let result: RunResult;
   try {
     result = await run({
-      client: new Anthropic({ apiKey: deps.apiKey, maxRetries: 1 }),
+      client: new Anthropic({
+        apiKey: deps.apiKey,
+        maxRetries: 1,
+        timeout: deadlineMs,
+        ...(deps.fetch ? { fetch: deps.fetch } : {}),
+      }),
       ctx: context(session, deps, locale),
       secret: deps.secret,
       locale,
       page,
       history,
+      deadlineMs,
     });
   } catch (e) {
     await recordUsage(deps.database, reserved.id, {
@@ -156,6 +174,10 @@ export async function assistantPost(
     return { status: 502, body: { error: "unavailable" } };
   }
   await recordUsage(deps.database, reserved.id, result.usage);
+  // Délai du tour dépassé (B1), fil refusé par le service (B3), service indisponible : chacun son
+  // code et son texte dans la bulle.
+  if (result.notice === "timeout") return { status: 504, body: { error: "timeout" } };
+  if (result.notice === "history") return { status: 400, body: { error: "history" } };
   if (result.notice === "unavailable") return { status: 502, body: { error: "unavailable" } };
   return {
     status: 200,

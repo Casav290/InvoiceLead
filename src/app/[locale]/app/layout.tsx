@@ -52,8 +52,16 @@ export default async function AppLayout({
           apps={leadAppItems(APP_CODE, locale)}
           upgrade={upgrade}
         />
-        {/* Bulle « Assistant IA » : place gardée sous la page pour qu'elle ne cache jamais sa fin. */}
-        <main className={bubble ? "flex-1 pb-24" : "flex-1"}>{children}</main>
+        {/* Bulle « Assistant IA » : place gardée sous la page pour qu'elle ne cache jamais sa fin
+            (B9 : 96 px = bulle 56 + bord 24 + 16, plus la zone sûre du téléphone ; rien à l'impression). */}
+        <main
+          className={
+            bubble ? "flex-1 pb-[calc(6rem+env(safe-area-inset-bottom))] print:pb-0" : "flex-1"
+          }
+        >
+          {children}
+        </main>
+        {/* B10 : le fil de l'onglet est propre à l'entreprise ET à la personne. */}
         {bubble && <AssistantBubble storageKey={`il-assistant:${organization.id}:${user.id}`} />}
       </div>
     </CountryProvider>
