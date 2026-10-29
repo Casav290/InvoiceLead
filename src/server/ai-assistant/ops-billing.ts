@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { VAT_CODES } from "@/countries/ch/vat";
 import { formatQuantity } from "@/lib/invoice-math";
@@ -14,7 +14,7 @@ import {
 } from "../contacts";
 import { detachCrmlead } from "../crmlead-sync";
 import type { Contact, Organization } from "../db/schema";
-import { recurringInvoices } from "../db/schema";
+import { recurringInvoices, webhookDeliveries } from "../db/schema";
 import {
   convertQuoteToInvoice,
   createCreditNote,
@@ -32,15 +32,17 @@ import {
 } from "../invoices";
 import { featureAccess } from "../plans";
 import { addMonths, createRecurring, INTERVALS, setRecurringActive } from "../recurring";
-import { waiveCharges } from "../reminders";
+import { dueReminders, waiveCharges } from "../reminders";
 import {
   type AssistantContext,
   type ConfirmSummary,
   changes,
+  DOCUMENT_VIEW_KEYS,
   dateField,
   defineOp,
   documentPath,
   documentSummary,
+  documentView,
   enumField,
   fail,
   filled,
@@ -167,10 +169,13 @@ function contactView(c: ContactInput | Contact): Json {
     phone: c.phone ?? "",
     contactPerson: c.contactPerson ?? "",
     address,
+    region: c.region ?? "",
     country: c.country,
     language: c.language,
     uid: c.uid ?? "",
     paymentTermDays: String(c.paymentTermDays),
+    // Note interne : relue plus tard par get_contact, elle n'est jamais écrite sans être vue.
+    notes: c.notes ?? "",
   };
 }
 
@@ -182,10 +187,12 @@ const CONTACT_VIEW_KEYS = [
   { key: "phone" },
   { key: "contactPerson" },
   { key: "address" },
+  { key: "region" },
   { key: "country" },
   { key: "language" },
   { key: "uid" },
   { key: "paymentTermDays" },
+  { key: "notes" },
 ];
 
 function contactSummary(action: string, c: Contact): ConfirmSummary {
@@ -477,13 +484,7 @@ export const updateDraftOp = defineOp({
       await detachCrmlead(ctx.database, ctx.organization.id, doc.id);
       notes.push("crmleadDetached");
     }
-    const before = {
-      customer: existing.contact.name,
-      title: doc.title ?? "",
-      issueDate: doc.issueDate,
-      dueDate: doc.dueDate ?? "",
-      language: doc.language,
-    };
+    const before = documentView(existing);
     if (edits) {
       const draft = await buildDraft(ctx, rest, existing);
       if (!draft.ok) return fail(draft.error);
@@ -507,38 +508,76 @@ export const updateDraftOp = defineOp({
       notes,
     );
     if (!outcome.ok) return outcome;
-    // Ce qui change sur l'en-tête, montré « avant → après ».
+    // Ce qui change sur l'en-tête (textes, dates, devise compris), montré « avant → après » : à la
+    // place du champ s'il est sur la carte, sinon ajouté avant le statut (un titre effacé, une date
+    // de prestation remise à la date de la pièce).
     const after = await getInvoice(ctx.database, ctx.organization.id, doc.id);
     if (after) {
-      const diff = changes(
-        before,
-        {
-          customer: after.contact.name,
-          title: after.invoice.title ?? "",
-          issueDate: after.invoice.issueDate,
-          dueDate: after.invoice.dueDate ?? "",
-          language: after.invoice.language,
-        },
-        [
-          { key: "customer" },
-          { key: "title" },
-          { key: "issueDate", format: "date" },
-          { key: "dueDate", format: "date" },
-          { key: "language" },
-        ],
-      );
+      const diff = changes(before, documentView(after), DOCUMENT_VIEW_KEYS);
       const changed = new Map(diff.map((f) => [f.key, f]));
-      outcome.summary.fields = outcome.summary.fields.map((f) => changed.get(f.key) ?? f);
+      const shown = outcome.summary.fields.map((f) => changed.get(f.key) ?? f);
+      const missing = diff.filter((f) => !outcome.summary.fields.some((x) => x.key === f.key));
+      const status = shown.findIndex((f) => f.key === "status");
+      shown.splice(status < 0 ? shown.length : status, 0, ...missing);
+      outcome.summary.fields = shown;
     }
     return outcome;
   },
 });
 
+const nextDay = (iso: string) => {
+  const d = new Date(`${iso}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + 1);
+  return d.toISOString().slice(0, 10);
+};
+
+/**
+ * Relances automatiques par e-mail (formule Pro, activées dans les réglages des relances) : la tâche
+ * quotidienne de 05:00 UTC les envoie au client avec le PDF et un lien de partage.
+ */
+const autoReminders = (org: Organization) =>
+  org.reminderAuto && featureAccess(org, "reminderAuto").allowed;
+
+/**
+ * La facture émise partirait-elle en relance par e-mail aussitôt ? Déjà échue (la relance suit dès
+ * que son délai est atteint), ou due au passage d'aujourd'hui ou de demain (rappel courtois d'un
+ * client retardataire) ; seulement si le client a une adresse e-mail, comme l'envoi automatique.
+ */
+async function reminderSoon(
+  ctx: AssistantContext,
+  invoice: { id: string; dueDate: string | null },
+  email: string | null,
+) {
+  if (!email) return false;
+  if (invoice.dueDate && invoice.dueDate < ctx.today) return true;
+  for (const day of [ctx.today, nextDay(ctx.today)]) {
+    const due = await dueReminders(ctx.database, ctx.organization.id, day);
+    if (due.some((r) => r.invoiceId === invoice.id && r.email && !r.locked)) return true;
+  }
+  return false;
+}
+
+/** Webhooks de l'entreprise mis en file par l'émission (envoyés après la validation). */
+async function webhooksQueued(ctx: AssistantContext, documentId: string) {
+  const [row] = await ctx.database
+    .select({ n: sql<number>`count(*)`.mapWith(Number) })
+    .from(webhookDeliveries)
+    .where(
+      and(
+        eq(webhookDeliveries.organizationId, ctx.organization.id),
+        eq(webhookDeliveries.event, "invoice.issued"),
+        eq(webhookDeliveries.status, "pending"),
+        sql`${webhookDeliveries.payload}->'data'->'invoice'->>'id' = ${documentId}`,
+      ),
+    );
+  return (row?.n ?? 0) > 0;
+}
+
 export const issueDocumentOp = defineOp({
   id: "issue_document",
   permission: "billing",
   description:
-    "PROPOSE to ISSUE a draft invoice, quote or credit note (documentId): it gets its final legal number and can no longer be edited (an issued invoice is corrected with a credit note). Issuing sends NOTHING to the customer; sending stays with the user on the document page. Only when the user asks to issue / finalise / validate the document.",
+    "PROPOSE to ISSUE a draft invoice, quote or credit note (documentId): it gets its final legal number and can no longer be edited (an issued invoice is corrected with a credit note). Issuing sends nothing to the customer by itself; sending stays with the user on the document page. When the company's automatic e-mail reminders are on, an invoice already overdue (or reminded at the next daily run) is refused: the user issues it on the document page. Only when the user asks to issue / finalise / validate the document.",
   schema: z.object({ documentId: z.string() }),
   refs: { documentId: "document" },
   async run(ctx, input) {
@@ -547,14 +586,16 @@ export const issueDocumentOp = defineOp({
     if (found.invoice.status !== "draft") return fail("not_a_draft");
     const issued = await issueInvoice(ctx.database, who(ctx), found.invoice.id);
     if (typeof issued === "string") return fail(issued);
-    return documentOutcome(
-      ctx,
-      "issue_document",
-      issued.id,
-      undefined,
-      [],
-      ["issueFinal", "nothingSent"],
-    );
+    const notes = ["issueFinal"];
+    if (issued.kind === "invoice" && autoReminders(ctx.organization)) {
+      // Une relance partirait par e-mail au prochain passage de la tâche quotidienne : envoyer à
+      // l'extérieur reste à la personne, qui émet depuis la page de la pièce (cahier, A7).
+      if (await reminderSoon(ctx, issued, found.contact.email))
+        return fail("auto_reminder_on_screen");
+      notes.push("autoReminders");
+    } else notes.push("nothingSent");
+    if (await webhooksQueued(ctx, issued.id)) notes.push("webhooksNotified");
+    return documentOutcome(ctx, "issue_document", issued.id, undefined, [], notes);
   },
   // Comme l'action « Émettre » : comptabilisation de ce qui peut l'être, puis webhooks de l'entreprise.
   effects: ["post", "webhooks"],

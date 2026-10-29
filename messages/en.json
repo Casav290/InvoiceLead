@@ -2766,7 +2766,17 @@
           "quoteStatusIntl": "Quote status",
           "fromQuoteIntl": "Quote",
           "vatCodeIntl": "VAT",
-          "billableIntl": "Billable"
+          "billableIntl": "Billable",
+          "serviceDate": "Date of service",
+          "currency": "Currency",
+          "introText": "Introductory text",
+          "footerText": "Closing text",
+          "region": "State or region",
+          "notes": "Internal notes",
+          "supplierAddress": "Supplier address",
+          "supplierCountry": "Supplier country",
+          "bic": "BIC",
+          "paymentReference": "Payment reference"
         },
         "values": {
           "company": "Company",
@@ -2823,12 +2833,15 @@
           "yearCloses": "The closed year accepts no more entries; the next year opens with the balance sheet carried forward.",
           "checkBankDetails": "Check the bank details: they appear on your invoices.",
           "crmleadDetachedIntl": "The CRMlead deal taken over from an earlier quote is detached.",
-          "nothingFiledIntl": "Nothing is filed with the tax authority."
+          "nothingFiledIntl": "Nothing is filed with the tax authority.",
+          "autoReminders": "Your company's automatic reminders are on: if the invoice is not paid when due, reminders will be emailed to the customer.",
+          "webhooksNotified": "Your company's webhooks will be notified that the document was issued."
         },
         "batchTitle": "{count, plural, one {# change} other {# changes}}",
         "more": "{count, plural, one {+ # more} other {+ # more}}",
         "becomes": "becomes",
-        "forbidden": "Your role does not allow this change. Nothing was saved."
+        "forbidden": "Your role does not allow this change. Nothing was saved.",
+        "stale": "The data has changed since this proposal. Nothing was saved; ask the assistant again to see the current proposal."
       }
     }
   },

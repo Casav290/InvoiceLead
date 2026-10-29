@@ -2766,7 +2766,17 @@
           "quoteStatusIntl": "Statut du devis",
           "fromQuoteIntl": "Devis",
           "vatCodeIntl": "TVA",
-          "billableIntl": "Facturable"
+          "billableIntl": "Facturable",
+          "serviceDate": "Date de la prestation",
+          "currency": "Devise",
+          "introText": "Texte d'introduction",
+          "footerText": "Texte de fin",
+          "region": "État ou région",
+          "notes": "Notes internes",
+          "supplierAddress": "Adresse du fournisseur",
+          "supplierCountry": "Pays du fournisseur",
+          "bic": "BIC",
+          "paymentReference": "Référence de paiement"
         },
         "values": {
           "company": "Entreprise",
@@ -2823,12 +2833,15 @@
           "yearCloses": "L'exercice clôturé n'accepte plus aucune écriture ; l'exercice suivant s'ouvre avec les soldes du bilan.",
           "checkBankDetails": "Vérifiez les coordonnées bancaires : elles figurent sur vos factures.",
           "crmleadDetachedIntl": "L'affaire CRMlead reprise d'un devis précédent est détachée.",
-          "nothingFiledIntl": "Rien n'est transmis à l'administration fiscale."
+          "nothingFiledIntl": "Rien n'est transmis à l'administration fiscale.",
+          "autoReminders": "Les relances automatiques de votre entreprise sont activées : si la facture n'est pas payée à l'échéance, les relances partiront par e-mail au client.",
+          "webhooksNotified": "Les webhooks de votre entreprise seront avertis de l'émission."
         },
         "batchTitle": "{count, plural, one {# changement} other {# changements}}",
         "more": "{count, plural, one {+ # autre} other {+ # autres}}",
         "becomes": "devient",
-        "forbidden": "Votre rôle ne permet pas ce changement. Rien n'a été enregistré."
+        "forbidden": "Votre rôle ne permet pas ce changement. Rien n'a été enregistré.",
+        "stale": "Les données ont changé depuis cette proposition. Rien n'a été enregistré ; redemandez à l'assistant pour voir la proposition à jour."
       }
     }
   },

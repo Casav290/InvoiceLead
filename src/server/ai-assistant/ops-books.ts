@@ -36,7 +36,7 @@ import {
   VAT_SETTLEMENTS,
 } from "../company";
 import type { Organization, SupplierBill } from "../db/schema";
-import { fiscalYears, receipts } from "../db/schema";
+import { fiscalYears, organizations, receipts } from "../db/schema";
 import { postPending } from "../ledger";
 import { featureAccess, quotaAccess } from "../plans";
 import { readReceipt } from "../receipts";
@@ -132,16 +132,31 @@ async function accountLabel(ctx: AssistantContext, id: string | null | undefined
   return `${a.number} ${accountName(a, ctx.locale)}`;
 }
 
+/**
+ * Ce que la carte montre d'une facture fournisseur : tout ce que son formulaire enregistre, dont
+ * où ira le paiement (IBAN, BIC, référence) et la devise.
+ */
 async function billFieldsOf(ctx: AssistantContext, b: SupplierBill): Promise<SummaryField[]> {
+  const address = [
+    b.supplierStreet ?? "",
+    [b.supplierPostalCode, b.supplierTown].filter(Boolean).join(" "),
+  ]
+    .filter(Boolean)
+    .join(", ");
   return filled([
     text("supplier", b.supplierName),
+    text("supplierAddress", address),
+    { key: "supplierCountry", value: b.supplierCountry ?? "" },
     text("supplierInvoice", b.number),
     dateField("issueDate", b.issueDate),
     dateField("dueDate", b.dueDate),
+    text("currency", b.currency),
     moneyField("total", b.totalCents, b.currency),
     enumField("vatCode", b.vatCode),
     text("account", await accountLabel(ctx, b.accountId)),
     text("iban", b.iban),
+    text("bic", b.bic),
+    text("paymentReference", b.paymentReference),
     text("description", b.description),
   ]);
 }
@@ -221,10 +236,20 @@ export const updateBillOp = defineOp({
     const bill = await updateBill(ctx.database, who(ctx), current.id, parsed.data);
     if (!bill) return fail("not_a_draft");
     const after = await billFieldsOf(ctx, bill);
-    const old = new Map(before.map((f) => [f.key, f.value]));
+    // Un montant est comparé avec sa devise : le même chiffre dans une autre devise change.
+    const old = new Map(before.map((f) => [f.key, f]));
+    const same = (a: SummaryField, b?: SummaryField) =>
+      !!b && a.value === b.value && (a.currency ?? "") === (b.currency ?? "");
     const changed = after
-      .filter((f) => old.get(f.key) !== f.value)
-      .map((f) => ({ ...f, before: old.get(f.key) ?? "" }));
+      .filter((f) => !same(f, old.get(f.key)))
+      .map((f) => {
+        const was = old.get(f.key);
+        return {
+          ...f,
+          before: was?.value ?? "",
+          ...(was?.currency && was.currency !== f.currency ? { beforeCurrency: was.currency } : {}),
+        };
+      });
     const removed = before
       .filter((f) => !after.some((a) => a.key === f.key))
       .map((f) => ({ ...f, value: "", before: f.value }));
@@ -767,10 +792,21 @@ function companyForm(o: Organization): Json {
   };
 }
 
-const companyView = (c: Json): Json => ({
-  ...c,
-  vatRegistered: String(c.vatRegistered === true || c.vatRegistered === "true"),
-});
+/**
+ * Ce que la carte montre de l'entreprise, lu tel qu'il est enregistré : la raison sociale vide reste
+ * vide (le formulaire la préremplit avec le nom, et c'est ce nom qui sera écrit), et la devise, que
+ * l'enregistrement aligne sur le pays.
+ */
+const companyView = (o: Organization): Json => {
+  const form = companyForm(o);
+  return {
+    ...form,
+    legalName: o.legalName ?? "",
+    vatRegistered: String(o.vatRegistered),
+    currency: o.currency,
+  };
+};
+const COMPANY_VIEW_KEYS = [...COMPANY_KEYS, "currency" as const];
 
 export const companySettingsOp = defineOp({
   id: "update_company_settings",
@@ -794,39 +830,26 @@ export const companySettingsOp = defineOp({
     const parsed = parseCompanyForm(toForm({ ...current, ...patch }, ["vatRegistered"]));
     if (!parsed.ok) return fail(`invalid ${JSON.stringify(parsed.errors)}`);
     const d = parsed.data;
-    const after: Json = {
-      country: d.country,
-      legalName: d.legalName,
-      legalForm: d.legalForm,
-      street: d.street,
-      buildingNumber: d.buildingNumber ?? "",
-      postalCode: d.postalCode,
-      town: d.town,
-      email: d.email ?? "",
-      phone: d.phone ?? "",
-      website: d.website ?? "",
-      uid: d.uid ?? "",
-      taxNumber: d.taxNumber ?? "",
-      vatRegistered: d.vatRegistered,
-      vatMethod: d.vatMethod ?? "",
-      vatSettlement: d.vatSettlement ?? "",
-      netTaxRate: d.netTaxRateBp ? String(d.netTaxRateBp / 100) : "",
-      region: d.region ?? "",
-      salesTaxRate: d.salesTaxRateBp ? String(d.salesTaxRateBp / 100) : "",
-      iban: d.iban ?? "",
-      qrIban: d.qrIban ?? "",
-      fiscalYearStartMonth: String(d.fiscalYearStartMonth),
-    };
-    const fields = changes(
-      companyView(current),
-      companyView(after),
-      COMPANY_KEYS.map((key) => ({ key, format: COMPANY_FORMATS[key] })),
-    ).map((f) => ({ ...f, key: `company.${f.key}` }));
-    if (fields.length === 0) return fail("no_change");
     const saved = await saveCompanySettings(ctx.database, who(ctx), d);
     if (saved === "forbidden") return fail("forbidden_role");
     if (saved !== "saved")
       return fail(saved === "countryLocked" ? "country_locked" : "country_drafts");
+    // Ce qui a changé, relu en base dans la transaction : tout ce que l'écran enregistre, y compris
+    // ce qu'il en déduit (devise du pays, raison sociale reprise du nom). Rien → refusé (annulé).
+    const [stored] = await ctx.database
+      .select()
+      .from(organizations)
+      .where(eq(organizations.id, ctx.organization.id));
+    if (!stored) return fail("failed");
+    const fields = changes(
+      companyView(ctx.organization),
+      companyView(stored),
+      COMPANY_VIEW_KEYS.map((key) => ({
+        key,
+        format: COMPANY_FORMATS[key as keyof typeof COMPANY_FORMATS],
+      })),
+    ).map((f) => ({ ...f, key: `company.${f.key}` }));
+    if (fields.length === 0) return fail("no_change");
     const notes = fields.some((f) => f.key === "company.iban" || f.key === "company.qrIban")
       ? ["checkBankDetails"]
       : [];

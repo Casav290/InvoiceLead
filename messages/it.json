@@ -2766,7 +2766,17 @@
           "quoteStatusIntl": "Stato dell'offerta",
           "fromQuoteIntl": "Offerta",
           "vatCodeIntl": "IVA",
-          "billableIntl": "Fatturabile"
+          "billableIntl": "Fatturabile",
+          "serviceDate": "Data della prestazione",
+          "currency": "Valuta",
+          "introText": "Testo introduttivo",
+          "footerText": "Testo finale",
+          "region": "Stato o regione",
+          "notes": "Note interne",
+          "supplierAddress": "Indirizzo del fornitore",
+          "supplierCountry": "Paese del fornitore",
+          "bic": "BIC",
+          "paymentReference": "Riferimento di pagamento"
         },
         "values": {
           "company": "Azienda",
@@ -2823,12 +2833,15 @@
           "yearCloses": "L'esercizio chiuso non accetta più registrazioni; il successivo si apre con i saldi del bilancio.",
           "checkBankDetails": "Verifica le coordinate bancarie: compaiono sulle tue fatture.",
           "crmleadDetachedIntl": "La trattativa CRMlead ripresa da un'offerta precedente viene staccata.",
-          "nothingFiledIntl": "Nulla viene trasmesso all'autorità fiscale."
+          "nothingFiledIntl": "Nulla viene trasmesso all'autorità fiscale.",
+          "autoReminders": "I solleciti automatici della tua azienda sono attivi: se la fattura non è pagata alla scadenza, i solleciti partiranno via e-mail al cliente.",
+          "webhooksNotified": "I webhook della tua azienda saranno avvisati dell'emissione."
         },
         "batchTitle": "{count, plural, one {# modifica} other {# modifiche}}",
         "more": "{count, plural, one {+ # altra} other {+ # altre}}",
         "becomes": "diventa",
-        "forbidden": "Il tuo ruolo non consente questa modifica. Non è stato salvato nulla."
+        "forbidden": "Il tuo ruolo non consente questa modifica. Non è stato salvato nulla.",
+        "stale": "I dati sono cambiati dopo questa proposta. Non è stato salvato nulla; richiedila all'assistente per vedere la proposta aggiornata."
       }
     }
   },

@@ -215,6 +215,7 @@ export async function confirmPost(
   if (!(await claimAction(deps.database, verified, who)))
     return { status: 403, body: { error: "token_used" } };
   const done = await applyAction(ctx, verified.action);
-  if (!done.ok) return { status: 422, body: { error: done.error } };
+  // La carte ne montre plus ce qui serait écrit (données changées depuis la proposition) : 409.
+  if (!done.ok) return { status: done.error === "stale" ? 409 : 422, body: { error: done.error } };
   return { status: 200, body: { ok: true, result: done.result } };
 }

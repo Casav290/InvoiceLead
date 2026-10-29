@@ -66,6 +66,8 @@ export type SummaryField = {
   before?: string;
   format?: "date" | "money" | "minutes" | "percent" | "enum" | "bool" | "month";
   currency?: string;
+  /** Montant modifié dont la devise change aussi : devise de la valeur `before`. */
+  beforeCurrency?: string;
 };
 
 export type SummaryLine = {
@@ -83,10 +85,15 @@ export type SummaryTotals = {
   totalCents: number;
 };
 
-/** Une ligne du résumé d'un lot : l'action, ce qu'elle touche, et pour une pièce son montant. */
+/**
+ * Une ligne du résumé d'un lot : l'action, ce qu'elle touche, et pour une pièce son montant. Sur la
+ * carte du lot, `fields` porte ce que l'opération écrit (les champs de sa propre carte, « avant →
+ * après » pour une modification).
+ */
 export type BatchItem = {
   action: string;
   label: string;
+  fields?: SummaryField[];
   /** Valeur d'une liste à traduire (« quote », « invoice »…), montrée avant le libellé. */
   detail?: string;
   /** Unité du montant (prix d'un article). */
@@ -153,6 +160,11 @@ export type Operation<S extends z.ZodType = z.ZodType> = {
    * confirmation une transaction validée. Non : lecture par l'IA, jamais rejouée pour rien.
    */
   transactional?: boolean;
+  /**
+   * Champs de la carte qui suivent l'heure du clic (durée du chrono arrêté) : hors de l'empreinte
+   * qui vérifie, à la confirmation, que la carte montre encore ce qui sera écrit.
+   */
+  volatile?: string[];
   /** Exécute l'opération sur `ctx.database` et rend le résumé lu dans l'état écrit. */
   run(ctx: AssistantContext, input: z.infer<S>): Promise<OpOutcome>;
   /** Proposition d'une opération non transactionnelle : contrôles seuls, rien n'est écrit. */
@@ -220,8 +232,8 @@ export const filled = (fields: (SummaryField | null | false | undefined)[]): Sum
   fields.filter((f): f is SummaryField => !!f && f.value !== "");
 
 /**
- * Modification : les seuls champs qui changent, avec leur valeur actuelle. Rien ne change → null
- * (l'opération est refusée, la carte n'aurait rien à confirmer).
+ * Modification : les seuls champs qui changent, avec leur valeur actuelle. Rien ne change → liste
+ * vide (l'opération est refusée, la carte n'aurait rien à confirmer).
  */
 export function changes(
   before: Record<string, unknown>,
@@ -244,6 +256,40 @@ export function changes(
   return out;
 }
 
+type FoundDocument = NonNullable<Awaited<ReturnType<typeof getInvoice>>>;
+
+/**
+ * En-tête d'une pièce tel que la carte le montre : tout ce que le formulaire de la pièce enregistre
+ * et que le PDF imprime (textes d'introduction et de pied de page compris), pour la carte et pour
+ * « avant → après ».
+ */
+export function documentView(found: FoundDocument): Record<string, string> {
+  const i = found.invoice;
+  return {
+    customer: found.contact.name,
+    title: i.title ?? "",
+    issueDate: i.issueDate,
+    serviceDate: i.serviceDate ?? "",
+    dueDate: i.kind === "credit_note" ? "" : (i.dueDate ?? ""),
+    language: i.language,
+    currency: i.currency,
+    introText: i.introText ?? "",
+    footerText: i.footerText ?? "",
+  };
+}
+
+export const DOCUMENT_VIEW_KEYS: { key: string; format?: SummaryField["format"] }[] = [
+  { key: "customer" },
+  { key: "title" },
+  { key: "issueDate", format: "date" },
+  { key: "serviceDate", format: "date" },
+  { key: "dueDate", format: "date" },
+  { key: "language" },
+  { key: "currency" },
+  { key: "introText" },
+  { key: "footerText" },
+];
+
 /** Résumé d'une pièce telle qu'elle est enregistrée (lignes, totaux), lu dans la transaction. */
 export async function documentSummary(
   ctx: AssistantContext,
@@ -251,10 +297,17 @@ export async function documentSummary(
   documentId: string,
   extra: SummaryField[] = [],
   notes: string[] = [],
-): Promise<{ summary: ConfirmSummary; item: BatchItem; label: string; kind: string } | null> {
+): Promise<{
+  summary: ConfirmSummary;
+  item: BatchItem;
+  label: string;
+  kind: string;
+  found: FoundDocument;
+} | null> {
   const found = await getInvoice(ctx.database, ctx.organization.id, documentId);
   if (!found) return null;
   const i = found.invoice;
+  const v = documentView(found);
   const lines: SummaryLine[] = found.lines.map((l) => ({
     description: l.description,
     quantity: formatQuantity(l.quantityMilli),
@@ -274,11 +327,15 @@ export async function documentSummary(
     fields: filled([
       enumField("documentKind", i.kind),
       text("number", i.number),
-      text("customer", found.contact.name),
-      text("title", i.title),
-      dateField("issueDate", i.issueDate),
-      dateField("dueDate", i.kind === "credit_note" ? "" : i.dueDate),
-      text("language", i.language),
+      text("customer", v.customer),
+      text("title", v.title),
+      dateField("issueDate", v.issueDate),
+      // Date de prestation : montrée quand elle n'est pas la date de la pièce (sa valeur par défaut).
+      dateField("serviceDate", v.serviceDate === v.issueDate ? "" : v.serviceDate),
+      dateField("dueDate", v.dueDate),
+      text("language", v.language),
+      text("introText", v.introText),
+      text("footerText", v.footerText),
       ...extra,
       enumField("status", status),
     ]),
@@ -300,6 +357,7 @@ export async function documentSummary(
     },
     label,
     kind: i.kind,
+    found,
   };
 }
 

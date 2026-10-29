@@ -25,6 +25,8 @@ type Field = {
   before?: string;
   format?: "date" | "money" | "minutes" | "percent" | "enum" | "bool" | "month";
   currency?: string;
+  /** Montant dont la devise change aussi : devise de la valeur `before`. */
+  beforeCurrency?: string;
 };
 
 type Line = {
@@ -40,6 +42,8 @@ type Totals = { currency: string; netCents: number; vatCents: number; totalCents
 type GroupItem = {
   action: string;
   label: string;
+  /** Ce que l'opération écrit (les champs de sa propre carte, « avant → après » pour une modification). */
+  fields?: Field[];
   detail?: string;
   /** Unité du prix (article) : « CHF 90.00 · Mois ». */
   unit?: string;
@@ -75,6 +79,8 @@ type CardState =
   | "gone"
   | "planLimit"
   | "failed"
+  /** Les données ont changé depuis la proposition : rien n'est écrit (409). */
+  | "stale"
   | "session"
   /** Réseau coupé pendant « Confirmer » : la carte reste à confirmer, avec un message. */
   | "network";
@@ -174,7 +180,16 @@ const ERROR_BY_STATUS: Record<number, string> = {
 };
 
 /** Messages d'état du fil propres à une carte refusée (B7), avec leur texte traduit. */
-const CARD_ERRORS = ["expired", "used", "forbidden", "gone", "planLimit", "failed", "network"];
+const CARD_ERRORS = [
+  "expired",
+  "used",
+  "forbidden",
+  "gone",
+  "planLimit",
+  "failed",
+  "stale",
+  "network",
+];
 
 export function AssistantBubble({ storageKey }: { storageKey: string }) {
   const t = useCountryTranslations("app.aiBubble");
@@ -437,7 +452,8 @@ export function AssistantBubble({ storageKey }: { storageKey: string }) {
         return enumValue(value, f.key);
     }
     if (f.key === "language" || f.key.endsWith(".language")) return names("language", value);
-    if (f.key === "country" || f.key.endsWith(".country")) return names("region", value);
+    // Pays en toutes lettres : du contact, de l'entreprise (« company.country »), du fournisseur.
+    if (/(^|\.)country$|Country$/.test(f.key)) return names("region", value);
     return value;
   };
   const fieldLabel = (key: string) => {
@@ -447,9 +463,48 @@ export function AssistantBubble({ storageKey }: { storageKey: string }) {
       const name = key.slice("company.".length);
       const label = COMPANY_LABELS[name]?.[country] ?? name;
       if (ta.has(`company.fields.${label}`)) return ta(`company.fields.${label}`);
+      // Ce que l'écran déduit sans le montrer en champ (la devise, qui suit le pays).
+      if (tc.has(`fields.${name}`)) return tc(`fields.${name}`);
     }
     return key;
   };
+  /**
+   * Champs d'une carte, ou d'une ligne de la carte d'un lot (`compact`) : chaque valeur écrite, et
+   * pour une modification « avant → après » (flèche masquée, « devient » lu par les lecteurs
+   * d'écran ; un montant dont la devise change garde sa devise d'avant).
+   */
+  const fieldList = (fields: Field[], compact = false) => (
+    <dl
+      className={
+        compact
+          ? "mt-1 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-[12px]"
+          : "grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 px-3 py-2 text-[13px]"
+      }
+    >
+      {fields.map((f) => (
+        <div key={f.key} className="contents">
+          <dt className="text-ink-muted">{fieldLabel(f.key)}</dt>
+          <dd
+            className="break-words font-medium"
+            data-testid={compact ? "assistant-batch-field" : "assistant-field"}
+          >
+            {f.before !== undefined && (
+              <>
+                <span className="font-normal text-ink-muted line-through">
+                  {shownValue({ ...f, currency: f.beforeCurrency ?? f.currency }, f.before)}
+                </span>{" "}
+                <span aria-hidden="true">→</span> <span className="sr-only">{tc("becomes")} </span>
+              </>
+            )}
+            {shownValue(f, f.value)}
+          </dd>
+        </div>
+      ))}
+    </dl>
+  );
+  /** Champs d'une ligne de lot, sans répéter son libellé (nom du contact, de l'article…). */
+  const itemFields = (item: GroupItem) =>
+    (item.fields ?? []).filter((f) => f.before !== undefined || f.value !== item.label);
   const title = (action: string) => (tc.has(`titles.${action}`) ? tc(`titles.${action}`) : action);
   /** Nom de l'écran ouvert par la bulle (B5), jamais son chemin. */
   const screenName = (it: Extract<Item, { kind: "navigated" }>) =>
@@ -653,27 +708,7 @@ export function AssistantBubble({ storageKey }: { storageKey: string }) {
                       {s.groups ? tc("batchTitle", { count: s.count ?? 0 }) : title(s.action)}
                     </span>
                   </div>
-                  {s.fields.length > 0 && (
-                    <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 px-3 py-2 text-[13px]">
-                      {s.fields.map((f) => (
-                        <div key={f.key} className="contents">
-                          <dt className="text-ink-muted">{fieldLabel(f.key)}</dt>
-                          <dd className="break-words font-medium" data-testid="assistant-field">
-                            {f.before !== undefined && (
-                              <>
-                                <span className="font-normal text-ink-muted line-through">
-                                  {shownValue(f, f.before)}
-                                </span>{" "}
-                                <span aria-hidden="true">→</span>{" "}
-                                <span className="sr-only">{tc("becomes")} </span>
-                              </>
-                            )}
-                            {shownValue(f, f.value)}
-                          </dd>
-                        </div>
-                      ))}
-                    </dl>
-                  )}
+                  {s.fields.length > 0 && fieldList(s.fields)}
                   {s.groups && (
                     <div className="px-3 py-2 text-[13px]" data-testid="assistant-batch">
                       {s.groups.map((g) => (
@@ -703,6 +738,7 @@ export function AssistantBubble({ storageKey }: { storageKey: string }) {
                                     {item.unit ? ` · ${enumValue(item.unit, "unit")}` : ""}
                                   </span>
                                 )}
+                                {itemFields(item).length > 0 && fieldList(itemFields(item), true)}
                                 {item.lines && item.lines.length > 0 && (
                                   <div className="mt-1 border border-line">
                                     {linesTable(item.lines, item.totals?.currency ?? "")}

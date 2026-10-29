@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { scheduleCrmleadDelivery } from "../crmlead-sync";
@@ -49,6 +50,7 @@ import {
   type OpSuccess,
   REF_FIELDS,
   rightProblem,
+  type SummaryField,
 } from "./ops-core";
 import {
   createProductOp,
@@ -119,7 +121,7 @@ export const OPERATION_IDS = OPERATIONS.map((o) => o.id);
 export const BATCH = "batch";
 /** Plafond d'un lot : un plan complet tient dans une carte. */
 export const MAX_BATCH = 150;
-/** Lignes montrées par groupe sur la carte d'un lot. */
+/** Créations simples montrées par groupe sur la carte d'un lot (le reste : « + N autres »). */
 export const GROUP_SHOWN = 5;
 
 /** Outil de la bulle pour une opération. */
@@ -153,7 +155,9 @@ export type BatchInput = z.infer<typeof batchSchema>;
 type Json = Record<string, unknown>;
 type Item = { op: Operation; input: Json; key?: string };
 type Ref = { id: string; entity: Entity };
-type Run = { ok: true; outcomes: OpSuccess[] } | { ok: false; error: string; index: number };
+type Run =
+  | { ok: true; outcomes: OpSuccess[]; digest: string }
+  | { ok: false; error: string; index: number };
 
 const ROLLBACK = new Error("assistant_rollback");
 
@@ -210,6 +214,24 @@ const issues = (e: z.ZodError) =>
     .join("; ");
 
 /**
+ * Empreinte de ce que la carte montre (résumé et ligne de lot de chaque opération), sans les champs
+ * qui suivent l'heure du clic. Signée dans le jeton à la proposition, recalculée à la confirmation
+ * sur l'état réel : si elle diffère (pièce modifiée, autre numéro, IBAN changé…), rien n'est écrit.
+ */
+export function cardDigest(items: { op: Operation }[], outcomes: OpSuccess[]): string {
+  const keep = (fields: SummaryField[] | undefined, volatile: string[]) =>
+    fields?.filter((f) => !volatile.includes(f.key));
+  const shown = outcomes.map((o, i) => {
+    const volatile = items[i]?.op.volatile ?? [];
+    return {
+      summary: { ...o.summary, fields: keep(o.summary.fields, volatile) },
+      item: { ...o.item, fields: keep(o.item.fields, volatile) },
+    };
+  });
+  return createHash("sha256").update(JSON.stringify(shown)).digest("base64url");
+}
+
+/**
  * Joue les opérations dans l'ordre, sur `ctx.database` ; s'arrête à la première qui échoue. Après une
  * opération qui change l'entreprise (réglages, relances), les suivantes lisent l'entreprise telle
  * qu'elle est maintenant dans la transaction : deux réglages d'un même lot ne s'écrasent pas.
@@ -248,23 +270,28 @@ async function runItems(start: AssistantContext, items: Item[]): Promise<Run> {
       if (organization) ctx = { ...ctx, organization };
     }
   }
-  return { ok: true, outcomes };
+  return { ok: true, outcomes, digest: cardDigest(items, outcomes) };
 }
 
 /**
  * Les opérations dans une transaction : annulée pour un essai à blanc (et pour tout échec), validée
  * sinon. Rend aussi les entreprises dont la file CRMlead attend un envoi, seulement si validée.
+ * `expected` : empreinte de la carte confirmée ; si l'état réel donne une autre carte, la
+ * transaction est annulée (« stale »).
  */
 async function transact(
   ctx: AssistantContext,
   items: Item[],
   mode: "dry" | "commit",
+  expected?: string,
 ): Promise<{ run: Run; crmlead: Set<string> }> {
   let run: Run = { ok: false, error: "failed", index: 0 };
   const { effects } = await collectEffects(async () => {
     try {
       await ctx.database.transaction(async (tx) => {
         run = await runItems({ ...ctx, database: tx as unknown as Db }, items);
+        if (run.ok && expected !== undefined && run.digest !== expected)
+          run = { ok: false, error: "stale", index: 0 };
         if (mode === "dry" || !run.ok) throw ROLLBACK;
       });
     } catch (e) {
@@ -297,23 +324,69 @@ function batchItems(input: unknown): { ok: true; items: Item[] } | { ok: false; 
   return { ok: true, items };
 }
 
-/** Carte d'un lot : groupes par action, cinq lignes par groupe, lignes des pièces s'il y en a peu. */
+/**
+ * Champs où va l'argent, et textes libres imprimés sur les pièces (introduction, fin : là où une
+ * consigne de paiement se glisserait) : une opération qui en écrit un n'est jamais repliée dans
+ * « + N autres ».
+ */
+const SENSITIVE_KEYS = new Set([
+  "iban",
+  "qrIban",
+  "bic",
+  "paymentReference",
+  "introText",
+  "footerText",
+]);
+
+/**
+ * Une opération que la carte d'un lot montre toujours en entier : une modification (« avant →
+ * après »), une opération qui a un avertissement (émission, approbation, clôture…), ou qui écrit des
+ * coordonnées de paiement ou un texte imprimé sur une pièce. Seules les créations simples sont
+ * plafonnées par groupe.
+ */
+function alwaysShown(o: OpSuccess): boolean {
+  return (
+    o.summary.fields.some(
+      (f) => f.before !== undefined || SENSITIVE_KEYS.has(f.key.replace(/^company\./, "")),
+    ) || (o.summary.notes?.length ?? 0) > 0
+  );
+}
+
+/**
+ * Carte d'un lot : groupes par action ; chaque ligne porte les champs de sa propre carte (ce qui
+ * sera écrit, « avant → après » pour une modification) ; les avertissements de toutes les opérations
+ * sous le lot, une fois chacun. Les créations simples sont plafonnées à cinq par groupe (« + N
+ * autres ») ; les modifications et les opérations sensibles ne le sont jamais. Lignes des pièces
+ * s'il y en a peu, et toujours pour une pièce modifiée.
+ */
 export function batchSummary(outcomes: OpSuccess[]): ConfirmSummary {
   const withLines = outcomes.filter((o) => o.item.lines).length <= 2;
-  const groups: { action: string; count: number; items: BatchItem[] }[] = [];
+  const groups: { action: string; count: number; items: BatchItem[]; plain: number }[] = [];
+  const notes: string[] = [];
   for (const o of outcomes) {
     let g = groups.find((x) => x.action === o.item.action);
     if (!g) {
-      g = { action: o.item.action, count: 0, items: [] };
+      g = { action: o.item.action, count: 0, items: [], plain: 0 };
       groups.push(g);
     }
     g.count += 1;
-    if (g.items.length < GROUP_SHOWN) {
-      const { lines, totals, ...rest } = o.item;
-      g.items.push(withLines ? o.item : rest);
+    for (const n of o.summary.notes ?? []) if (!notes.includes(n)) notes.push(n);
+    const important = alwaysShown(o);
+    if (!important) {
+      if (g.plain >= GROUP_SHOWN) continue;
+      g.plain += 1;
     }
+    const { lines, totals, ...rest } = o.item;
+    const item = withLines || important ? o.item : rest;
+    g.items.push({ ...item, fields: o.summary.fields });
   }
-  return { action: BATCH, fields: [], groups, count: outcomes.length };
+  return {
+    action: BATCH,
+    fields: [],
+    groups: groups.map(({ plain: _plain, ...g }) => g),
+    count: outcomes.length,
+    ...(notes.length ? { notes } : {}),
+  };
 }
 
 /** Page qui montre le résultat d'un lot : sa pièce s'il n'y en a qu'une, la liste commune, ou la dernière. */
@@ -330,7 +403,7 @@ export function batchPath(results: OpResult[]): string {
 }
 
 export type Proposal =
-  | { ok: true; summary: ConfirmSummary; action: { tool: string; input: Json } }
+  | { ok: true; summary: ConfirmSummary; action: { tool: string; input: Json; digest?: string } }
   | { ok: false; error: string };
 
 /** Proposition d'une opération : essai à blanc, rien n'est écrit. */
@@ -355,7 +428,7 @@ export async function proposeOne(
   if (!run.ok) return { ok: false, error: run.error };
   const [first] = run.outcomes;
   if (!first) return { ok: false, error: "failed" };
-  return { ok: true, summary: first.summary, action: { tool: id, input } };
+  return { ok: true, summary: first.summary, action: { tool: id, input, digest: run.digest } };
 }
 
 /** Proposition d'un lot : toutes les opérations jouées ensemble à blanc, rien n'est écrit. */
@@ -367,7 +440,11 @@ export async function proposeBatch(ctx: AssistantContext, input: Json): Promise<
     const op = parsed.items[run.index]?.op.id ?? "";
     return { ok: false, error: `operation ${run.index + 1} (${op}): ${run.error}` };
   }
-  return { ok: true, summary: batchSummary(run.outcomes), action: { tool: BATCH, input } };
+  return {
+    ok: true,
+    summary: batchSummary(run.outcomes),
+    action: { tool: BATCH, input, digest: run.digest },
+  };
 }
 
 /** Opérations d'une action signée (une, ou celles d'un lot), pour revérifier les droits. */
@@ -393,11 +470,13 @@ export type Applied = {
 
 /**
  * Applique une action confirmée (jeton vérifié) : droits revérifiés pour chaque opération, une
- * transaction validée, puis les suites de l'écran hors de la transaction.
+ * transaction validée, puis les suites de l'écran hors de la transaction. La carte est rejouée sur
+ * l'état réel : si elle ne montre plus la même chose que celle confirmée (empreinte signée dans le
+ * jeton), rien n'est écrit et la confirmation est refusée (« stale »).
  */
 export async function applyAction(
   ctx: AssistantContext,
-  action: { tool: string; input: Json },
+  action: { tool: string; input: Json; digest?: string },
 ): Promise<{ ok: true; result: Applied } | { ok: false; error: string }> {
   let items: Item[];
   if (action.tool === BATCH) {
@@ -420,13 +499,16 @@ export async function applyAction(
     // Lecture par l'IA : comme l'écran, hors transaction (rien d'autre n'est écrit avec elle).
     run = await runItems(ctx, items);
   } else {
-    ({ run, crmlead } = await transact(ctx, items, "commit"));
+    ({ run, crmlead } = await transact(ctx, items, "commit", action.digest));
   }
   if (!run.ok) {
     const op = items[run.index]?.op.id ?? "";
     return {
       ok: false,
-      error: items.length > 1 ? `operation ${run.index + 1} (${op}): ${run.error}` : run.error,
+      error:
+        items.length > 1 && run.error !== "stale"
+          ? `operation ${run.index + 1} (${op}): ${run.error}`
+          : run.error,
     };
   }
   await afterCommit(ctx, items, crmlead);

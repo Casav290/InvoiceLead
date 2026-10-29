@@ -452,6 +452,8 @@ export const stopTimerOp = defineOp({
   description:
     "PROPOSE to stop the user's running timer: the elapsed time (at least one minute) becomes a time entry.",
   schema: z.object({}),
+  // La durée est celle du moment du clic, pas celle de la proposition.
+  volatile: ["duration"],
   async run(ctx) {
     const running = await runningTimer(ctx.database, who(ctx));
     if (!running) return fail("no_running_timer");

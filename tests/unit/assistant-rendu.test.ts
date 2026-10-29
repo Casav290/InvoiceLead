@@ -82,10 +82,12 @@ describe("B7 : refus de « Confirmer », chacun son texte", () => {
     expect(failureState(422, "plan_limit")).toBe("planLimit");
     expect(failureState(401, undefined)).toBe("session");
     expect(failureState(422, "no_change")).toBe("failed");
+    // Données changées depuis la carte (pièce modifiée, IBAN changé…) : rien n'est écrit, 409.
+    expect(failureState(409, "stale")).toBe("stale");
     for (const l of LOCALES) {
       const c = MESSAGES[l].app.aiBubble.confirm as Record<string, unknown>;
-      const texts = ["expired", "used", "forbidden", "gone", "network", "failed"].map((k) =>
-        String(c[k] ?? ""),
+      const texts = ["expired", "used", "forbidden", "gone", "network", "failed", "stale"].map(
+        (k) => String(c[k] ?? ""),
       );
       expect(
         texts.every((x) => x.length > 10),

@@ -2766,7 +2766,17 @@
             "fee": "Mahngebühr ab der 2. Mahnung",
             "interest": "Verzugszins pro Jahr"
           },
-          "billableIntl": "Abrechenbar"
+          "billableIntl": "Abrechenbar",
+          "serviceDate": "Leistungsdatum",
+          "currency": "Währung",
+          "introText": "Einleitungstext",
+          "footerText": "Schlusstext",
+          "region": "Bundesstaat oder Region",
+          "notes": "Interne Notizen",
+          "supplierAddress": "Adresse des Lieferanten",
+          "supplierCountry": "Land des Lieferanten",
+          "bic": "BIC",
+          "paymentReference": "Zahlungsreferenz"
         },
         "values": {
           "company": "Unternehmen",
@@ -2823,12 +2833,15 @@
           "nothingFiled": "Es wird nichts an die Steuerverwaltung übermittelt.",
           "nothingFiledIntl": "Es wird nichts an das Finanzamt übermittelt.",
           "yearCloses": "Das abgeschlossene Geschäftsjahr nimmt keine Buchungen mehr an; das nächste beginnt mit den Bilanzsalden.",
-          "checkBankDetails": "Prüfen Sie die Bankverbindung: Sie steht auf Ihren Rechnungen."
+          "checkBankDetails": "Prüfen Sie die Bankverbindung: Sie steht auf Ihren Rechnungen.",
+          "autoReminders": "Die automatischen Mahnungen Ihres Unternehmens sind eingeschaltet: Ist die Rechnung bei Fälligkeit nicht bezahlt, gehen die Mahnungen per E-Mail an den Kunden.",
+          "webhooksNotified": "Die Webhooks Ihres Unternehmens werden über die Ausstellung benachrichtigt."
         },
         "batchTitle": "{count, plural, one {# Änderung} other {# Änderungen}}",
         "more": "{count, plural, one {+ # weitere} other {+ # weitere}}",
         "becomes": "wird zu",
-        "forbidden": "Ihre Rolle erlaubt diese Änderung nicht. Nichts wurde gespeichert."
+        "forbidden": "Ihre Rolle erlaubt diese Änderung nicht. Nichts wurde gespeichert.",
+        "stale": "Die Daten haben sich seit diesem Vorschlag geändert. Nichts wurde gespeichert; fragen Sie den Assistenten erneut, um den aktuellen Vorschlag zu sehen."
       }
     }
   },

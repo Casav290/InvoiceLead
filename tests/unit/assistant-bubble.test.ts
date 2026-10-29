@@ -419,9 +419,12 @@ describe("bulle Assistant IA : confirmation", () => {
     const p = await person("sub-ada");
     const kunde = await customer(p.organization.id, p.user.id);
     const { call, state } = tools(p);
+    // Date de la pièce donnée : la route de confirmation lit la vraie date du jour, les outils la
+    // date fixe des tests ; une carte datée autrement que ce qui serait écrit est refusée (409).
     await call("propose_create_invoice_draft", {
       contactId: kunde.id,
       title: "Oktober",
+      issueDate: "2026-10-24",
       lines: [{ description: "Beratung", quantity: "3", unit: "hour", unitPrice: "120" }],
     });
     const action = state.actions[0];

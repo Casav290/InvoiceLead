@@ -294,6 +294,128 @@ test("bulle : une modification se lit « avant → après »", async ({ page }) 
   expect(await traitNetIssues(page)).toEqual([]);
 });
 
+test("carte d'un lot : chaque ligne montre ce qu'elle écrit (« avant → après », IBAN, référence de paiement, devise d'avant), avertissements sous le lot ; données changées depuis la carte → refus 409 « stale »", async ({
+  page,
+}) => {
+  await login(page, "fr");
+  // Ce que rend batchSummary (src/server/ai-assistant/operations.ts) pour trois modifications.
+  await page.route(
+    "**/api/assistant",
+    reply("Les trois changements sont prêts.", [
+      {
+        type: "confirm",
+        token: "batch.token",
+        summary: {
+          action: "batch",
+          fields: [],
+          count: 3,
+          notes: ["checkBankDetails", "autoReminders"],
+          groups: [
+            {
+              action: "update_contact",
+              count: 1,
+              items: [
+                {
+                  action: "update_contact",
+                  label: "Client SA",
+                  fields: [
+                    { key: "contact", value: "Client SA" },
+                    { key: "email", value: "compta@client.example", before: "info@client.example" },
+                    { key: "notes", value: "Rappeler en janvier", before: "" },
+                  ],
+                },
+              ],
+            },
+            {
+              action: "update_company_settings",
+              count: 1,
+              items: [
+                {
+                  action: "update_company_settings",
+                  label: "Atelier SA",
+                  fields: [
+                    {
+                      key: "company.iban",
+                      value: "CH5604835012345678009",
+                      before: "CH9300762011623852957",
+                    },
+                    { key: "company.currency", value: "EUR", before: "CHF" },
+                  ],
+                },
+              ],
+            },
+            {
+              action: "update_supplier_bill",
+              count: 1,
+              items: [
+                {
+                  action: "update_supplier_bill",
+                  label: "Imprimerie SA",
+                  fields: [
+                    {
+                      key: "total",
+                      value: "54000",
+                      before: "54000",
+                      format: "money",
+                      currency: "EUR",
+                      beforeCurrency: "CHF",
+                    },
+                    { key: "supplierCountry", value: "DE", before: "CH" },
+                    { key: "paymentReference", value: "RF18539007547034", before: "" },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    ]),
+  );
+  const confirmations: unknown[] = [];
+  await page.route("**/api/assistant/confirm", (route) => {
+    confirmations.push(route.request().postDataJSON());
+    return route.fulfill({ status: 409, json: { error: "stale" } });
+  });
+  await page.getByTestId("assistant-bubble").click();
+  await page.getByTestId("assistant-input").fill("Mets à jour ces trois fiches");
+  await page.getByTestId("assistant-input").press("Enter");
+  const card = page.getByTestId("assistant-confirm-card");
+  await expect(card).toContainText("3 changements");
+  const fields = card.getByTestId("assistant-batch-field");
+  // Le nom répété (« Client SA ») n'est pas une ligne de plus ; chaque champ écrit l'est.
+  await expect(fields).toHaveText([
+    "info@client.example → devient compta@client.example",
+    "(vide) → devient Rappeler en janvier",
+    "CH9300762011623852957 → devient CH5604835012345678009",
+    "CHF → devient EUR",
+    "CHF 540.00 → devient EUR 540.00",
+    "Suisse → devient Allemagne",
+    "(vide) → devient RF18539007547034",
+  ]);
+  // Libellés lisibles, jamais une clé brute.
+  for (const label of [
+    "E-mail",
+    "Notes internes",
+    "IBAN",
+    "Devise",
+    "Pays du fournisseur",
+    "Référence de paiement",
+  ])
+    await expect(card.getByText(label, { exact: true })).toBeVisible();
+  await expect(card).not.toContainText(/company\.|supplierCountry|paymentReference/);
+  // Les avertissements de chaque opération sont sous le lot.
+  await expect(card).toContainText("Vérifiez les coordonnées bancaires");
+  await expect(card).toContainText("Les relances automatiques de votre entreprise sont activées");
+  expect(await traitNetIssues(page)).toEqual([]);
+  await page.getByTestId("assistant-confirm").click();
+  await expect(card).toHaveAttribute("data-state", "stale");
+  await expect(card.getByTestId("assistant-card-error")).toHaveText(
+    "Les données ont changé depuis cette proposition. Rien n'a été enregistré ; redemandez à l'assistant pour voir la proposition à jour.",
+  );
+  await expect(page.getByTestId("assistant-confirm")).toHaveCount(0);
+  expect(confirmations).toEqual([{ token: "batch.token", locale: "fr" }]);
+});
+
 test("bulle : erreur et quota affichés clairement dans le fil", async ({ page }) => {
   await login(page, "en");
   let status = 429;

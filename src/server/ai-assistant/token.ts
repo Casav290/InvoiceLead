@@ -14,7 +14,11 @@ export const CONFIRM_TTL_MS = 10 * 60_000;
 /** Un lot de 150 opérations (pièces de 100 lignes comprises) tient dans un jeton de cette taille. */
 export const MAX_TOKEN_LENGTH = 600_000;
 
-export type ProposedAction = { tool: string; input: Record<string, unknown> };
+/**
+ * `digest` : empreinte de ce que la carte montrait (operations.ts, cardDigest) ; la confirmation
+ * n'écrit que si l'état réel donne encore la même carte.
+ */
+export type ProposedAction = { tool: string; input: Record<string, unknown>; digest?: string };
 
 type Payload = { v: 1; u: string; o: string; exp: number; jti: string; a: ProposedAction };
 
@@ -72,7 +76,11 @@ export function verifyAction(
   if (payload.u !== who.userId || payload.o !== who.organizationId) return null;
   const a = payload.a;
   if (!a || typeof a.tool !== "string" || !a.input || typeof a.input !== "object") return null;
-  return { jti: payload.jti, action: { tool: a.tool, input: a.input } };
+  if (a.digest !== undefined && typeof a.digest !== "string") return null;
+  return {
+    jti: payload.jti,
+    action: { tool: a.tool, input: a.input, ...(a.digest ? { digest: a.digest } : {}) },
+  };
 }
 
 /** Marque le jeton comme utilisé ; false s'il l'était déjà (rejeu). */

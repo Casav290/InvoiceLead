@@ -30,7 +30,7 @@ import {
   toolName,
 } from "./operations";
 import { vatPeriods } from "./ops-books";
-import type { AssistantContext, ConfirmSummary } from "./ops-core";
+import type { AssistantContext, ConfirmSummary, SummaryField } from "./ops-core";
 import { pageLabel } from "./page-label";
 import { signAction } from "./token";
 
@@ -76,6 +76,24 @@ export function safePagePath(path: unknown): string | null {
   return openablePage(clean) ? clean : null;
 }
 
+/** Valeur d'un champ pour le modèle : montant en unités avec sa devise. */
+const plain = (f: SummaryField, value: string, currency = f.currency) =>
+  f.format === "money" && value !== "" ? `${units(Number(value))} ${currency ?? ""}`.trim() : value;
+
+/** Ce qu'une ligne de lot change, pour que le modèle le dise : « clé: avant → après », paiement. */
+function itemChanges(fields: SummaryField[] | undefined): string {
+  return (fields ?? [])
+    .filter(
+      (f) => f.before !== undefined || /(^|\.)(iban|qrIban|bic|paymentReference)$/.test(f.key),
+    )
+    .map((f) =>
+      f.before !== undefined
+        ? `${f.key}: ${plain(f, f.before, f.beforeCurrency ?? f.currency) || "(empty)"} → ${plain(f, f.value) || "(empty)"}`
+        : `${f.key}: ${f.value}`,
+    )
+    .join("; ");
+}
+
 /** Ce que le modèle lit d'une proposition : la carte en bref (les libellés restent ceux des données). */
 function forModel(summary: ConfirmSummary) {
   if (summary.groups)
@@ -84,30 +102,27 @@ function forModel(summary: ConfirmSummary) {
       groups: summary.groups.map((g) => ({
         action: g.action,
         count: g.count,
-        examples: g.items.map((i) =>
-          [
+        examples: g.items.map((i) => {
+          const head = [
             i.detail,
             i.label,
             i.amountCents !== undefined ? `${units(i.amountCents)} ${i.currency ?? ""}`.trim() : "",
           ]
             .filter(Boolean)
-            .join(" · "),
-        ),
+            .join(" · ");
+          const changed = itemChanges(i.fields);
+          return changed ? `${head} — ${changed}` : head;
+        }),
       })),
+      ...(summary.notes ? { notes: summary.notes } : {}),
     };
   return {
     action: summary.action,
     fields: summary.fields.map((f) => ({
       key: f.key,
-      value:
-        f.format === "money" ? `${units(Number(f.value))} ${f.currency ?? ""}`.trim() : f.value,
+      value: plain(f, f.value),
       ...(f.before !== undefined
-        ? {
-            before:
-              f.format === "money" && f.before !== ""
-                ? `${units(Number(f.before))} ${f.currency ?? ""}`.trim()
-                : f.before,
-          }
+        ? { before: plain(f, f.before, f.beforeCurrency ?? f.currency) }
         : {}),
     })),
     ...(summary.lines
@@ -156,6 +171,8 @@ function hint(error: string): string | undefined {
     return "Nothing would change: the values are already the current ones.";
   if (error.includes("platform_bill_on_screen"))
     return "This bill came through the e-invoicing platform: approving it sends its acceptance to the platform and the supplier, which you never do. Say so and open the bill's page, where the user approves it.";
+  if (error.includes("auto_reminder_on_screen"))
+    return "The company's automatic e-mail reminders are on and this invoice is already overdue (or would be reminded at the next daily run): issuing it would make InvoiceLead e-mail a reminder to the customer, which you never trigger. Say so and open the document page, where the user issues it.";
   if (error.includes("auto_send_on_screen"))
     return "This recurring invoice e-mails its invoices automatically: resuming it would send them, which you never do. Say so and open /app/invoices/recurring, where the user resumes it.";
   return undefined;

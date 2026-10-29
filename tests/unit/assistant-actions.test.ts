@@ -30,10 +30,12 @@ import {
   timeEntries,
   users,
   vatReturns,
+  webhookEndpoints,
 } from "@/server/db/schema";
-import { createInvoice, issueInvoice, parseInvoiceForm } from "@/server/invoices";
+import { createInvoice, issueInvoice, parseInvoiceForm, updateInvoice } from "@/server/invoices";
 import { createProduct } from "@/server/products";
 import { createRecurring } from "@/server/recurring";
+import { dueReminders } from "@/server/reminders";
 import { addEntry, createProject, setProjectArchived, startTimer } from "@/server/time";
 import { claims } from "../support/claims";
 import { testDb } from "../support/db";
@@ -1614,6 +1616,465 @@ describe("lecture d'un justificatif par l'IA (hors lot, hors transaction)", () =
     const [row] = await db.select().from(receipts).where(eq(receipts.id, rc.id));
     expect(row?.extraction?.supplier).toBe("Imprimerie TEST SA");
     expect(row?.status).not.toBe("new");
+  });
+});
+
+// ---------------------------------------------------------------------------------------------
+// Relecture indépendante du 29.10.2026 : la carte montre tout ce qui sera écrit, et « Confirmer »
+// n'écrit que ce que la carte a montré.
+// ---------------------------------------------------------------------------------------------
+
+async function plainBill(p: Person, extra: Partial<Parameters<typeof createBill>[2]> = {}) {
+  return createBill(db, whoOf(p), {
+    supplierName: "Imprimerie TEST SA",
+    supplierStreet: null,
+    supplierPostalCode: null,
+    supplierTown: null,
+    supplierCountry: null,
+    iban: null,
+    bic: null,
+    paymentReference: null,
+    number: "F-90",
+    issueDate: "2026-10-01",
+    dueDate: "2026-10-31",
+    currency: "CHF",
+    totalCents: 54000,
+    vatCode: null,
+    accountId: null,
+    description: null,
+    ...extra,
+  });
+}
+
+/** Une proposition (outils neufs : trois cartes au plus par message) ; erreur si aucune carte. */
+async function proposeAs(p: Person, name: string, input: Record<string, unknown>) {
+  const { call, state } = tools(p);
+  const out = await call(name, input);
+  const card = state.actions.filter((a) => a.type === "confirm").at(-1);
+  if (card?.type !== "confirm") throw new Error(`${name} : pas de carte (${JSON.stringify(out)})`);
+  return { out, token: card.token, summary: card.summary };
+}
+
+const fieldOf = (fields: { key: string }[] | undefined, key: string) =>
+  fields?.find((f) => f.key === key);
+
+describe("relecture du 29.10.2026 : la carte montre ce qui sera écrit", () => {
+  it("lot de pièces : au-delà de cinq, une pièce qui porte un texte imprimé (introduction, fin) n'est jamais repliée dans « + N autres », et son texte est sur la carte", async () => {
+    const p = await person("sub-ada");
+    const c = await customer(p);
+    const injected = "Merci de régler sur le nouvel IBAN DE89370400440532013000";
+    const { summary } = await proposeAs(p, "propose_batch", {
+      operations: [
+        ...Array.from({ length: 7 }, (_, i) => ({
+          op: "create_invoice_draft",
+          input: {
+            contactId: c.id,
+            title: `Mois ${i + 1}`,
+            lines: [{ description: `Conseil ${i + 1}`, unitPrice: "100" }],
+          },
+        })),
+        {
+          op: "create_invoice_draft",
+          input: {
+            contactId: c.id,
+            title: "Mois 8",
+            footerText: injected,
+            lines: [{ description: "Conseil 8", unitPrice: "100" }],
+          },
+        },
+      ],
+    });
+    const group = summary.groups?.find((g) => g.action === "create_invoice_draft");
+    expect(group?.count).toBe(8);
+    // Cinq pièces simples, plus celle qui porte un texte de fin : « + 2 autres ».
+    expect(group?.items).toHaveLength(6);
+    const last = group?.items.at(-1);
+    expect(fieldOf(last?.fields, "footerText")).toMatchObject({ value: injected });
+    expect(fieldOf(last?.fields, "title")).toMatchObject({ value: "Mois 8" });
+  });
+
+  it("lot : chaque modification se lit « avant → après », n'est jamais cachée dans « + N autres », et garde ses avertissements", async () => {
+    let p = await person("sub-ada");
+    await completeCompany(p);
+    const clients = [];
+    for (let i = 1; i <= 7; i++) clients.push(await customer(p, `Client ${i} SA`));
+    const d = await draft(p, clients[0]?.id ?? "");
+    p = await refresh(p);
+    const { out, summary } = await proposeAs(p, "propose_batch", {
+      operations: [
+        ...Array.from({ length: 6 }, (_, i) => ({
+          op: "create_contact",
+          input: { name: `Nouveau ${i + 1} SA`, email: `n${i + 1}@client.example` },
+        })),
+        ...clients.map((c, i) => ({
+          op: "update_contact",
+          input: { contactId: c.id, email: `compta${i + 1}@client.example` },
+        })),
+        { op: "update_company_settings", input: { iban: "CH5604835012345678009" } },
+        {
+          op: "create_supplier_bill",
+          input: {
+            supplierName: "Fournisseur TEST SA",
+            issueDate: "2026-10-01",
+            total: "540",
+            iban: "CH5604835012345678009",
+            paymentReference: "RF18539007547034",
+          },
+        },
+        { op: "issue_document", input: { documentId: d.id } },
+      ],
+    });
+    const group = (action: string) => summary.groups?.find((g) => g.action === action);
+    // Créations simples : plafonnées à cinq lignes (« + 1 autre »), chacune avec ce qu'elle écrit.
+    expect(group("create_contact")?.count).toBe(6);
+    expect(group("create_contact")?.items).toHaveLength(5);
+    expect(fieldOf(group("create_contact")?.items[0]?.fields, "email")).toMatchObject({
+      value: "n1@client.example",
+    });
+    // Modifications : toutes montrées, chacune « avant → après ».
+    const updates = group("update_contact");
+    expect(updates?.count).toBe(7);
+    expect(updates?.items).toHaveLength(7);
+    for (const [i, item] of (updates?.items ?? []).entries())
+      expect(fieldOf(item.fields, "email")).toEqual({
+        key: "email",
+        before: "",
+        value: `compta${i + 1}@client.example`,
+      });
+    expect(
+      fieldOf(group("update_company_settings")?.items[0]?.fields, "company.iban"),
+    ).toMatchObject({ before: "CH9300762011623852957", value: "CH5604835012345678009" });
+    // La facture fournisseur montre où ira le paiement.
+    const bill = group("create_supplier_bill")?.items[0];
+    expect(fieldOf(bill?.fields, "iban")).toMatchObject({ value: "CH5604835012345678009" });
+    expect(fieldOf(bill?.fields, "paymentReference")).toMatchObject({
+      value: "RF18539007547034",
+    });
+    // Avertissements de chaque opération, une fois chacun, sous le lot.
+    expect(summary.notes).toEqual(expect.arrayContaining(["checkBankDetails", "issueFinal"]));
+    expect(new Set(summary.notes).size).toBe(summary.notes?.length);
+    // Le modèle lit aussi ces changements, pour les dire.
+    expect(JSON.stringify(out.summary)).toContain("CH5604835012345678009");
+    expect(JSON.stringify(out.summary)).toContain("compta7@client.example");
+  });
+
+  it("émettre avec les relances automatiques : refusé si la facture est déjà échue (une relance partirait au prochain passage) ; sinon la carte le dit, sans « rien n'est envoyé »", async () => {
+    let p = await person("sub-ada");
+    await completeCompany(p, { reminderAuto: true });
+    const c = await customer(p);
+    await db.update(contacts).set({ email: "compta@client.example" }).where(eq(contacts.id, c.id));
+    const late = await draft(p, c.id, { issueDate: "2026-09-01" });
+    p = await refresh(p);
+    const before = await fingerprint(p.organization.id);
+    const { call, state } = tools(p);
+    const refused = await call("propose_issue_document", { documentId: late.id });
+    expect(refused.error).toBe("auto_reminder_on_screen");
+    expect(refused.hint).toMatch(/reminder/);
+    const batch = await call("propose_batch", {
+      operations: [
+        {
+          op: "create_invoice_draft",
+          key: "d1",
+          input: {
+            contactId: c.id,
+            issueDate: "2026-09-01",
+            lines: [{ description: "Septembre", unitPrice: "1000" }],
+          },
+        },
+        { op: "issue_document", input: { documentId: "@d1" } },
+      ],
+    });
+    expect(batch.error).toMatch(/^operation 2 \(issue_document\): auto_reminder_on_screen/);
+    expect(state.actions).toEqual([]);
+    expect(await fingerprint(p.organization.id)).toBe(before);
+    // Échéance à venir : rien ne part maintenant, la carte dit que les relances suivront.
+    const current = await draft(p, c.id, { issueDate: TODAY });
+    const ok = await proposeAs(p, "propose_issue_document", { documentId: current.id });
+    expect(ok.summary.notes).toEqual(expect.arrayContaining(["issueFinal", "autoReminders"]));
+    expect(ok.summary.notes).not.toContain("nothingSent");
+    expect(ok.summary.notes).not.toContain("webhooksNotified");
+    // Webhooks de l'entreprise : la carte dit qu'ils sont prévenus.
+    await db.insert(webhookEndpoints).values({
+      organizationId: p.organization.id,
+      url: "https://hooks.example/invoicelead",
+      secretEnc: "test",
+      events: ["invoice.issued"],
+    });
+    const hooked = await proposeAs(p, "propose_issue_document", { documentId: current.id });
+    expect(hooked.summary.notes).toContain("webhooksNotified");
+    // Sans relances automatiques : « rien n'est envoyé au client », la facture échue s'émet.
+    await db
+      .update(organizations)
+      .set({ reminderAuto: false })
+      .where(eq(organizations.id, p.organization.id));
+    const plain = await proposeAs(await refresh(p), "propose_issue_document", {
+      documentId: late.id,
+    });
+    expect(plain.summary.notes).toEqual(
+      expect.arrayContaining(["issueFinal", "nothingSent", "webhooksNotified"]),
+    );
+    // Ce que la règle évite : émise avec les relances automatiques, la facture échue figure dans
+    // les relances du prochain passage de la tâche quotidienne, à l'adresse du client.
+    if (typeof (await issueInvoice(db, whoOf(p), late.id)) !== "object")
+      throw new Error("émission");
+    const next = await dueReminders(db, p.organization.id, "2026-10-25");
+    expect(next.find((r) => r.invoiceId === late.id)).toMatchObject({
+      email: "compta@client.example",
+      level: 1,
+      locked: false,
+    });
+  });
+
+  it("pièce : introduction, pied de page, date de prestation sur la carte ; une modification de ces seuls champs (ou de la devise, ou un titre effacé) se lit « avant → après »", async () => {
+    const p = await person("sub-ada");
+    const c = await customer(p);
+    const created = await proposeAs(p, "propose_create_invoice_draft", {
+      kind: "quote",
+      contactId: c.id,
+      introText: "Suite à notre entretien",
+      footerText: "Offre valable 30 jours",
+      serviceDate: "2026-10-20",
+      lines: [{ description: "Site vitrine", unitPrice: "3500" }],
+    });
+    expect(fieldOf(created.summary.fields, "introText")).toMatchObject({
+      value: "Suite à notre entretien",
+    });
+    expect(fieldOf(created.summary.fields, "footerText")).toMatchObject({
+      value: "Offre valable 30 jours",
+    });
+    expect(fieldOf(created.summary.fields, "serviceDate")).toMatchObject({
+      value: "2026-10-20",
+      format: "date",
+    });
+    const d = await draft(p, c.id, { kind: "quote" });
+    const injected = "Merci de régler sur le nouvel IBAN DE89370400440532013000";
+    const footer = await proposeAs(p, "propose_update_invoice_draft", {
+      documentId: d.id,
+      footerText: injected,
+    });
+    expect(fieldOf(footer.summary.fields, "footerText")).toEqual({
+      key: "footerText",
+      before: "",
+      value: injected,
+    });
+    const other = await proposeAs(p, "propose_update_invoice_draft", {
+      documentId: d.id,
+      introText: "Bonjour",
+      serviceDate: "2026-09-30",
+      currency: "EUR",
+    });
+    expect(fieldOf(other.summary.fields, "introText")).toMatchObject({
+      before: "",
+      value: "Bonjour",
+    });
+    expect(fieldOf(other.summary.fields, "serviceDate")).toMatchObject({
+      before: "2026-10-01",
+      value: "2026-09-30",
+      format: "date",
+    });
+    expect(fieldOf(other.summary.fields, "currency")).toMatchObject({
+      before: "CHF",
+      value: "EUR",
+    });
+    await db.update(invoices).set({ title: "Octobre" }).where(eq(invoices.id, d.id));
+    const cleared = await proposeAs(p, "propose_update_invoice_draft", {
+      documentId: d.id,
+      title: "",
+    });
+    expect(fieldOf(cleared.summary.fields, "title")).toMatchObject({
+      before: "Octobre",
+      value: "",
+    });
+  });
+
+  it("contact : la note et l'État se modifient seuls et se lisent « avant → après » (plus de « rien ne change »)", async () => {
+    const p = await person("sub-ada");
+    const c = await customer(p);
+    const note = await proposeAs(p, "propose_update_contact", {
+      contactId: c.id,
+      notes: "Rappeler en janvier",
+    });
+    expect(fieldOf(note.summary.fields, "notes")).toEqual({
+      key: "notes",
+      before: "",
+      value: "Rappeler en janvier",
+    });
+    expect((await confirmAs(p, note.token)).status).toBe(200);
+    const [row] = await db.select().from(contacts).where(eq(contacts.id, c.id));
+    expect(row?.notes).toBe("Rappeler en janvier");
+    // Avec un autre champ : la note est aussi sur la carte (rien n'est écrit sans être vu).
+    const both = await proposeAs(p, "propose_update_contact", {
+      contactId: c.id,
+      phone: "+41 21 555 00 00",
+      notes: "Nouvelle note",
+    });
+    expect(fieldOf(both.summary.fields, "notes")).toMatchObject({
+      before: "Rappeler en janvier",
+      value: "Nouvelle note",
+    });
+    // Adresse aux États-Unis : l'État.
+    const us = await proposeAs(p, "propose_update_contact", {
+      contactId: c.id,
+      country: "US",
+      street: "Main Street",
+      buildingNumber: "100",
+      postalCode: "78701",
+      town: "Austin",
+      region: "TX",
+    });
+    expect(fieldOf(us.summary.fields, "region")).toMatchObject({ before: "", value: "TX" });
+    // Création : la note est montrée.
+    const created = await proposeAs(p, "propose_create_contact", {
+      name: "Nouveau Client SA",
+      notes: "Client venu du salon",
+    });
+    expect(fieldOf(created.summary.fields, "notes")).toMatchObject({
+      value: "Client venu du salon",
+    });
+  });
+
+  it("facture fournisseur : référence de paiement, BIC, adresse et devise du fournisseur se lisent « avant → après »", async () => {
+    const p = await person("sub-ada");
+    const b = await plainBill(p);
+    const cases: [Record<string, unknown>, string, string, string][] = [
+      [{ paymentReference: "RF18539007547034" }, "paymentReference", "", "RF18539007547034"],
+      [{ bic: "POFICHBEXXX" }, "bic", "", "POFICHBEXXX"],
+      [
+        { supplierStreet: "Rue du Lac 1", supplierPostalCode: "1000", supplierTown: "Lausanne" },
+        "supplierAddress",
+        "",
+        "Rue du Lac 1, 1000 Lausanne",
+      ],
+      [{ supplierCountry: "DE" }, "supplierCountry", "", "DE"],
+      [{ currency: "EUR" }, "currency", "CHF", "EUR"],
+    ];
+    for (const [input, key, before, value] of cases) {
+      const { summary } = await proposeAs(p, "propose_update_supplier_bill", {
+        billId: b.id,
+        ...input,
+      });
+      expect(fieldOf(summary.fields, key), key).toMatchObject({ before, value });
+    }
+    // Création : la référence de paiement et le BIC sont montrés avec l'IBAN.
+    const created = await proposeAs(p, "propose_create_supplier_bill", {
+      supplierName: "Fournisseur TEST SA",
+      issueDate: "2026-10-01",
+      total: "100",
+      iban: "CH5604835012345678009",
+      bic: "POFICHBEXXX",
+      paymentReference: "RF18539007547034",
+    });
+    for (const key of ["iban", "bic", "paymentReference"])
+      expect(fieldOf(created.summary.fields, key), key).toBeTruthy();
+  });
+
+  it("réglages de l'entreprise : changer de pays montre aussi la devise qui suit ; une raison sociale vide remplie depuis le nom est montrée", async () => {
+    let p = await person("sub-ada");
+    await completeCompany(p, { legalName: null });
+    p = await refresh(p);
+    const phone = await proposeAs(p, "propose_update_company_settings", {
+      phone: "+41 21 000 00 00",
+    });
+    expect(fieldOf(phone.summary.fields, "company.legalName")).toMatchObject({
+      before: "",
+      value: p.organization.name,
+    });
+    const de = await proposeAs(p, "propose_update_company_settings", {
+      country: "DE",
+      street: "Hauptstraße",
+      postalCode: "10115",
+      town: "Berlin",
+      taxNumber: "12/345/67890",
+    });
+    expect(fieldOf(de.summary.fields, "company.country")).toMatchObject({
+      before: "CH",
+      value: "DE",
+    });
+    expect(fieldOf(de.summary.fields, "company.currency")).toMatchObject({
+      before: "CHF",
+      value: "EUR",
+    });
+  });
+
+  it("« Confirmer » refusé (409) si ce que la carte montrait a changé depuis : pièce modifiée, IBAN du fournisseur changé, contact d'un lot renommé ; rien d'écrit ; le chrono suit l'heure du clic", async () => {
+    let p = await person("sub-ada");
+    await completeCompany(p);
+    await books(p);
+    const c = await customer(p);
+    const d = await draft(p, c.id);
+    p = await refresh(p);
+    const issue = await proposeAs(p, "propose_issue_document", { documentId: d.id });
+    // Pendant les dix minutes, la pièce est modifiée à l'écran : 12'000 au lieu de 1'000.
+    const changed = parseInvoiceForm(
+      form({
+        contactId: c.id,
+        language: "fr",
+        issueDate: "2026-10-01",
+        "line.description": ["Conseil"],
+        "line.quantity": ["1"],
+        "line.unit": ["flat"],
+        "line.unitPrice": ["12000"],
+        "line.vatCode": ["normal"],
+        "line.productId": [""],
+      }),
+      { vatRegistered: false },
+    );
+    if (!changed.ok) throw new Error("pièce");
+    await updateInvoice(db, whoOf(p), d.id, changed.data, "invoice");
+    let before = await fingerprint(p.organization.id);
+    expect(await confirmAs(p, issue.token)).toEqual({ status: 409, body: { error: "stale" } });
+    expect(await fingerprint(p.organization.id)).toBe(before);
+    expect(await one(db.select().from(invoices).where(eq(invoices.id, d.id)))).toMatchObject({
+      status: "draft",
+      number: null,
+    });
+    // Facture fournisseur dont l'IBAN change avant l'approbation.
+    const expense = (await listAccounts(db, p.organization.id)).find((a) => a.number === "4400");
+    const b = await plainBill(p, { accountId: expense?.id ?? null, iban: "CH9300762011623852957" });
+    const approve = await proposeAs(p, "propose_approve_supplier_bill", { billId: b.id });
+    await db
+      .update(supplierBills)
+      .set({ iban: "CH5604835012345678009" })
+      .where(eq(supplierBills.id, b.id));
+    before = await fingerprint(p.organization.id);
+    expect(await confirmAs(p, approve.token)).toEqual({ status: 409, body: { error: "stale" } });
+    expect(await fingerprint(p.organization.id)).toBe(before);
+    // Rien n'a changé depuis la nouvelle carte : la confirmation passe.
+    const again = await proposeAs(p, "propose_approve_supplier_bill", { billId: b.id });
+    expect((await confirmAs(p, again.token)).status).toBe(200);
+    // Lot : un contact renommé à l'écran entre la carte et le clic.
+    const lot = await proposeAs(p, "propose_batch", {
+      operations: [
+        { op: "update_contact", input: { contactId: c.id, email: "lot@client.example" } },
+        { op: "create_product", input: { name: "Conseil", unitPrice: "150" } },
+      ],
+    });
+    await db.update(contacts).set({ name: "Client Renommé SA" }).where(eq(contacts.id, c.id));
+    before = await fingerprint(p.organization.id);
+    expect(await confirmAs(p, lot.token)).toEqual({ status: 409, body: { error: "stale" } });
+    expect(await fingerprint(p.organization.id)).toBe(before);
+    // Chrono : la durée suit l'heure du clic, ce n'est pas un changement des données.
+    const pr = await project(p, c.id);
+    await startTimer(db, whoOf(p), pr.id, null, new Date(Date.now() - 30 * 60_000));
+    const stop = await proposeAs(p, "propose_stop_timer", {});
+    await db
+      .update(timeEntries)
+      .set({ startedAt: new Date(Date.now() - 45 * 60_000) })
+      .where(
+        and(
+          eq(timeEntries.organizationId, p.organization.id),
+          sql`${timeEntries.startedAt} is not null`,
+        ),
+      );
+    const stopped = await confirmAs(p, stop.token);
+    expect(stopped.status, JSON.stringify(stopped.body)).toBe(200);
+    const entry = await one(
+      db
+        .select()
+        .from(timeEntries)
+        .where(eq(timeEntries.id, (stopped.body.result as Applied).id)),
+    );
+    expect(entry.minutes).toBeGreaterThanOrEqual(44);
   });
 });
 
