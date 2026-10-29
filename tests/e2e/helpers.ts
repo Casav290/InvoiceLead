@@ -41,6 +41,16 @@ export async function login(
 
 /** Relevé « Trait net » : police, arrondis, ombres, dégradés, débordement horizontal. */
 export async function traitNetIssues(page: Page): Promise<string[]> {
+  // document.fonts.ready peut être déjà résolue quand Archivo commence à se charger (page 404 :
+  // la police est encore « loading » au contrôle). On attend la fin de tout chargement de police ;
+  // une police absente ou en erreur reste vue par le contrôle « Archivo non chargée » plus bas.
+  await page
+    .waitForFunction(
+      () => document.styleSheets.length > 0 && document.fonts.status === "loaded",
+      null,
+      { timeout: 10_000 },
+    )
+    .catch(() => {});
   await page.evaluate(() => document.fonts.ready);
   return page.evaluate(() => {
     const issues: string[] = [];
