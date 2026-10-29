@@ -181,7 +181,7 @@ Décidé par Ève le 1er octobre 2026 (sa demande : « il faut les griser pour q
 | Comptabilité (écritures automatiques, bilan, résultat, clôture) | oui | oui | oui |
 | Lecture des pièces par l'IA (tickets de notes de frais, justificatifs déposés ou relus, factures fournisseurs prises en photo ; un seul compteur) | 10 par mois | 50 par mois | 300 par mois |
 | E-factures reçues (XRechnung, ZUGFeRD, Factur-X, UBL), lues sans IA | sans limite | sans limite | sans limite |
-| Assistant (questions sur les livres) | 10 questions par mois | sans limite | sans limite |
+| Assistant IA (bulle et page Assistant ; jetons pondérés, décision d'Ève du 29.10.2026) | l'équivalent de 10 demandes par mois (200 000 jetons pondérés, `ASSISTANT_TOKENS`) | sans limite (40 messages par heure) | sans limite (40 messages par heure) |
 | Relances | 1re relance à la main, 5 par mois ; 2e et 3e, envoi automatique, frais, intérêts et relances intelligentes visibles, grisés | 3 niveaux, envoi automatique, frais, intérêts, relances intelligentes | idem |
 | Factures récurrentes | 1 active | illimitées | illimitées |
 | Import bancaire camt | 1 relevé par mois (un fichier : un compte, 31 jours de dates au plus), pilote automatique compris | illimité | illimité, plus connexion directe |

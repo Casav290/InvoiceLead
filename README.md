@@ -94,13 +94,20 @@ pages publiques) ouvre un fil où l'on demande ce qu'on veut. Code : `src/server
 - Quota : 40 messages par heure et par personne, 400 par jour et par entreprise (`assistant_usage`,
   migration 0046). Le contenu des conversations n'est pas gardé en base ; le fil vit dans le
   `sessionStorage` de l'onglet.
+- Périmètre et formule gratuite (29.10.2026) : l'assistant ne répond qu'à ce qui concerne InvoiceLead
+  (hors périmètre : une phrase polie, aucun outil). En formule gratuite, 200 000 jetons pondérés par
+  mois et par entreprise, l'équivalent de 10 demandes, communs à la bulle et à la page Assistant
+  (`ASSISTANT_TOKENS` et `assistantBudget` dans `src/server/plans.ts`) : la bulle dit ce qui reste, puis
+  refuse (429 `free_limit`) sans appeler le modèle jusqu'au 1er du mois suivant. Détails :
+  [docs/ASSISTANT-IA.md](docs/ASSISTANT-IA.md), section « Périmètre et limite gratuite ».
 - Même comportement que les bulles des autres applications Lead (alignement du 28.10.2026, B1–B14 :
   délai du tour, cache, fil refusé, réponse jamais muette, « Page ouverte : <écran> », texte simple
   rendu sans HTML, carte lisible, clavier, rien de masqué, mention « peut se tromper », quota et
   « Confirmer » sans course, même origine) : tableau point → code → test dans
   [docs/ASSISTANT-IA.md](docs/ASSISTANT-IA.md).
 - Portes du chantier : `node scripts/assistant-actions-gates.mjs G1` à `G8` (inventaire, tests, contrôles
-  complets, aperçu réel, refus, production, alignement statique, alignement sur l'aperçu).
+  complets, aperçu réel, refus, production, alignement statique, alignement sur l'aperçu) ; périmètre et
+  limite gratuite : `node scripts/ia-limites-gates.mjs G1` à `G4`.
 
 ## Langues et devise par pays
 

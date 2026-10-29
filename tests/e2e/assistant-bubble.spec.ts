@@ -966,7 +966,8 @@ test("formule gratuite : budget du mois atteint en base → message dès l'ouver
   });
   expect(confirm).toEqual({ status: 403, body: { error: "invalid_token" } });
 
-  // Formule payante, même consommation : ni compteur ni limite.
+  // Formule payante, même consommation : ni compteur ni limite (nouvelle connexion, autre entreprise).
+  await page.context().clearCookies();
   const pro = await newCompany(page, "budget-pro", "pro");
   await spendAssistant(pro, 5_000_000);
   await page.reload();
