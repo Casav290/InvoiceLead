@@ -1,32 +1,43 @@
 /**
- * « Continuer avec Google » dans l'app Android / iOS d'InvoiceLead (30.10.2026). Contrat d'ERPlead :
- * ~/projets/erplead-google-app/docs/GOOGLE-APP.md ; ce qui en revient à InvoiceLead : docs/GOOGLE-APP.md.
+ * « Continuer avec Google » dans l'app Android / iOS d'InvoiceLead (30.10.2026, révisé le même jour :
+ * liens VÉRIFIÉS, choix d'Ève). Contrat d'ERPlead : ~/projets/erplead-google-app/docs/GOOGLE-APP.md ; ce
+ * qui en revient à InvoiceLead : docs/GOOGLE-APP.md.
  *
  * Google refuse sa connexion dans une vue web (« disallowed_useragent »). Dans l'app (coque Capacitor
  * qui ouvre https://invoicelead.io), le bouton Google de l'écran du Compte Lead mène donc à la page
- * relais d'InvoiceLead (`/lead-auth/google?start&back`), qui ouvre `start` dans le navigateur du
- * téléphone (`Browser.open` : SFSafariViewController, Custom Tab). La connexion Google finie, ERPlead
- * rend la main à l'app par son lien de retour `io.invoicelead.app://lead-auth?code=…` ; le code de l'app,
- * sur toutes ses pages, ferme ce navigateur et mène la vue web au rachat d'ERPlead
- * (`/auth/google/app/redeem?code=…`), qui ouvre la session (preuve : le cookie HttpOnly de la vue web,
- * qu'InvoiceLead ne lit jamais) et reprend la connexion de l'app comme après un mot de passe.
+ * relais d'InvoiceLead (`/lead-auth/google?start&back`), qui ouvre `start` dans le navigateur sûr du
+ * téléphone : sur iOS 17.4+, le module natif `LeadAuthSession` (ASWebAuthenticationSession avec retour
+ * https, `&m=auto`) ; sur iOS 15 à 17.3 ou si la session échoue, Safari (`&m=tap` : ERPlead finit sur
+ * une page à bouton) ; sur Android, un Custom Tab (`Browser.open`, `&m=auto`). La connexion Google
+ * finie, ERPlead rend la main à l'app par SON lien https réservé par Apple et Google :
+ * `https://invoicelead.io/lead-auth/return?code=…` (Universal Link, App Link vérifié, ou adresse rendue
+ * par la session iOS). Le code de l'app, sur toutes ses pages, ferme le Custom Tab (Android) et mène la
+ * vue web au rachat d'ERPlead (`/auth/google/app/redeem?code=…`), qui ouvre la session (preuve : le
+ * cookie HttpOnly de la vue web, qu'InvoiceLead ne lit jamais) et reprend la connexion de l'app comme
+ * après un mot de passe. Plus aucun schéma propre (`io.invoicelead.app://…`) n'est accepté.
  *
- * Un lien n'est suivi que pendant une connexion Google EN COURS (relecture du 30.10.2026) : la page
- * relais de cette vue web l'attend (navigateur ouvert), ou une connexion notée par une page relais il y
- * a moins de 15 min (app relancée par son lien). Tout autre lien de l'app (page web, courriel, autre
- * app, ancien lien que la coque redonne par getLaunchUrl) ne fait rien : ni navigateur fermé, ni page
- * quittée. Sur la page relais, le lien de lancement est toujours d'avant ce départ (ERPlead vient de
- * remplacer le cookie verifier) : jamais suivi.
+ * Un lien n'est suivi que pendant une connexion Google EN COURS : la page relais de cette vue web l'attend
+ * (navigateur ouvert), ou une connexion notée par une page relais il y a moins de 15 min (app relancée par
+ * son lien). Tout autre lien (page web, courriel, code QR, autre app, ancien lien que la coque redonne par
+ * getLaunchUrl) ne fait rien : ni navigateur fermé, ni page quittée. Sur la page relais, le lien de
+ * lancement est toujours d'avant ce départ (ERPlead vient de remplacer le cookie verifier) : jamais suivi.
  *
  * Tout ici est sans dépendance (ni React, ni Next, ni DOM réel) : les composants de
  * components/native/LeadAppAuth.tsx le branchent sur `window`, les tests sur un faux pont Capacitor.
  * Hors de l'app (aucun pont Capacitor natif), rien ne s'installe et rien ne change.
  */
 
-/** Schéma du lien de retour : l'identifiant de l'app (appId Capacitor, liste fermée d'ERPlead). */
-export const APP_SCHEME = "io.invoicelead.app";
-/** Seul lien accepté : ce schéma, l'hôte `lead-auth`, et ses paramètres (`code`, ou `error`). */
-export const RETURN_PREFIX = `${APP_SCHEME}://lead-auth?`;
+/**
+ * Le site de l'app en production, ÉCRIT ICI (jamais lu du serveur ni d'une variable) : c'est le domaine
+ * associé à l'app par Apple (apple-app-site-association) et Google (assetlinks.json), liste fermée d'ERPlead.
+ */
+export const APP_ORIGIN = "https://invoicelead.io";
+/** Chemin du lien de retour (fixe, contrat d'ERPlead) ; la même adresse sert la page de repli. */
+export const RETURN_PATH = "/lead-auth/return";
+/** Le lien de retour : `https://invoicelead.io/lead-auth/return`. */
+export const RETURN_URL = `${APP_ORIGIN}${RETURN_PATH}`;
+/** Seul lien accepté : le lien de retour suivi de ses paramètres (`code` ou `error`, et `locale`). */
+export const RETURN_PREFIX = `${RETURN_URL}?`;
 /** La page relais, sans langue, telle qu'ERPlead la nomme (APP_LINKS d'ERPlead). */
 export const RELAY_PATH = "/lead-auth/google";
 /** Un code de transfert d'ERPlead : 32 octets en base64url. */
@@ -74,9 +85,10 @@ export function issuerOrigin(value: string | null | undefined): string | null {
 export type ReturnLink = { kind: "code"; code: string } | { kind: "error" };
 
 /**
- * Le lien de retour de l'app, ou null pour tout autre lien (autre schéma, autre hôte, ancien
- * `io.crmlead.app://sso`, adresse web) : ceux-là sont ignorés. Un lien de l'app sans code valable
- * (`error=expired`, code abîmé) rend `{ kind: "error" }` : retour à l'écran de connexion.
+ * Le lien de retour de l'app, ou null pour tout autre lien (schéma propre `io.invoicelead.app://…`,
+ * ancien `io.crmlead.app://sso`, autre hôte, autre chemin, autre page du site) : ceux-là sont ignorés.
+ * Un lien de retour sans code valable (`error=expired`, code abîmé) rend `{ kind: "error" }` : retour à
+ * l'écran de connexion.
  */
 export function parseReturnLink(url: unknown): ReturnLink | null {
   if (typeof url !== "string" || url.length > URL_MAX || !url.startsWith(RETURN_PREFIX))
@@ -107,8 +119,8 @@ function fromIssuer(issuer: string, value: unknown, path: string): value is stri
 
 /**
  * `start` et `back` de la page relais, s'ils viennent bien d'ERPlead : `start` est son départ vers
- * Google (`<émetteur>/auth/google/app/start?…`), `back` son écran de connexion (`<émetteur>/login?…`).
- * Sinon null : rien n'est ouvert (ni navigateur, ni adresse étrangère).
+ * Google (`<émetteur>/auth/google/app/start?…`, sans mode : c'est l'app qui l'ajoute), `back` son écran de
+ * connexion (`<émetteur>/login?…`). Sinon null : rien n'est ouvert (ni navigateur, ni adresse étrangère).
  */
 export function relayTargets(
   issuer: string | null,
@@ -116,8 +128,18 @@ export function relayTargets(
   back: unknown,
 ): { start: string; back: string } | null {
   if (!issuer || !fromIssuer(issuer, start, "/auth/google/app/start")) return null;
+  if (new URL(start).searchParams.has("m")) return null;
   if (!fromIssuer(issuer, back, "/login")) return null;
   return { start, back };
+}
+
+/**
+ * Le départ avec la façon dont l'app ouvre le navigateur (`m`, noté par ERPlead dans l'état Google) :
+ * `auto` (session iOS 17.4+, Custom Tab Android : ERPlead finit par une redirection vers le lien de
+ * retour) ou `tap` (Safari : ERPlead finit par une page à bouton, seul un lien touché ouvre l'app).
+ */
+export function withMode(start: string, mode: "auto" | "tap"): string {
+  return `${start}&m=${mode}`;
 }
 
 /** La connexion ordinaire de l'app (départ vers le Compte Lead), dans la langue donnée. */
@@ -130,9 +152,20 @@ export function loginFallback(locale?: string | null): string {
 // ------------------------------------------------------------------ pont Capacitor
 
 type Handle = unknown;
+/**
+ * Module natif iOS de l'app (`LeadAuthSession`, dépôt mobile, ios/App/App/LeadAuthSession.swift) :
+ * ASWebAuthenticationSession avec retour https (iOS 17.4+) ; l'hôte et le chemin du retour sont écrits
+ * dans le code Swift. Refus : `code` = canceled, unavailable, busy, bad_url, failed.
+ */
+export type LeadAuthSessionPlugin = {
+  isAvailable?: () => Promise<{ https?: boolean } | null | undefined>;
+  start?: (o: { url: string }) => Promise<{ url?: string } | null | undefined>;
+  openExternal?: (o: { url: string }) => Promise<{ opened?: boolean } | null | undefined>;
+};
 /** Ce que le pont natif de Capacitor met dans la page (window.Capacitor, sans paquet npm). */
 export type CapacitorBridge = {
   isNativePlatform?: () => boolean;
+  getPlatform?: () => string;
   Plugins?: {
     App?: {
       addListener?: (event: "appUrlOpen", cb: (e: { url?: string } | undefined) => void) => Handle;
@@ -143,13 +176,14 @@ export type CapacitorBridge = {
       close?: () => Promise<unknown>;
       addListener?: (event: "browserFinished", cb: () => void) => Handle;
     };
+    LeadAuthSession?: LeadAuthSessionPlugin;
   };
 };
 type StorageLike = Pick<Storage, "getItem" | "setItem" | "removeItem">;
 /** Ce que ce module lit de `window`. */
 export type AppWindow = {
   Capacitor?: CapacitorBridge;
-  location: { replace: (url: string) => void; pathname?: string };
+  location: { replace: (url: string) => void; pathname?: string; search?: string };
   localStorage?: StorageLike;
   sessionStorage?: StorageLike;
   setTimeout: (fn: () => void, ms: number) => unknown;
@@ -157,6 +191,11 @@ export type AppWindow = {
   now?: () => number;
   __invoiceleadLeadAuth?: ListenerState;
 };
+/**
+ * D'où vient un lien : `open` (appUrlOpen, ou adresse rendue par la session iOS), `launch` (lien de
+ * lancement), `page` (adresse de la page de retour ouverte par la vue web elle-même).
+ */
+type Via = "open" | "launch" | "page";
 type ListenerState = {
   ready: Promise<boolean>;
   /** Un lien a été suivi : la page part (rachat ou écran de connexion). */
@@ -167,15 +206,27 @@ type ListenerState = {
   armed: boolean;
   /** Empreinte du lien de l'app rendu par getLaunchUrl à ce chargement, s'il y en a un. */
   launchKey: string | null;
+  /** Le traitement d'un lien (§ 3b du contrat), posé dans l'app seulement ; true s'il a été suivi. */
+  follow: ((url: unknown, via: Via) => boolean) | null;
 };
 
-/** Les modules natifs de l'app (App, Browser), seulement dans l'app : le pont dit « natif ». */
+/** Les modules natifs de l'app (App, Browser, LeadAuthSession), seulement dans l'app : le pont dit « natif ». */
 export function nativePlugins(win: AppWindow): NonNullable<CapacitorBridge["Plugins"]> | null {
   try {
     const cap = win.Capacitor;
     if (!cap || typeof cap.isNativePlatform !== "function" || cap.isNativePlatform() !== true)
       return null;
     return cap.Plugins ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/** La plateforme de l'app (« ios », « android »), ou null. */
+export function platformOf(win: AppWindow): string | null {
+  try {
+    const p = win.Capacitor?.getPlatform?.();
+    return typeof p === "string" ? p : null;
   } catch {
     return null;
   }
@@ -286,15 +337,16 @@ function quietly(run: (() => unknown) | undefined): void {
 }
 
 /**
- * Écoute du lien de retour, à installer au démarrage de chaque page de l'app : `appUrlOpen` (app
- * ouverte ou en arrière-plan) et `getLaunchUrl` (app relancée par le lien). Une seule fois par page
- * (les appels suivants rendent la même promesse). Un lien de l'app n'est suivi que s'il est ATTENDU :
- * reçu par `appUrlOpen` sur la page relais qui a ouvert le navigateur, ou pendant une connexion notée
- * il y a moins de 15 min (jamais le lien de lancement de la page relais, ni celui qu'elle a noté comme
- * ancien). Alors : connexion effacée, `Browser.close()` (erreur ignorée), puis le rachat d'ERPlead avec
- * le code, ou l'écran de connexion. Un lien avec code n'est jamais suivi deux fois, toutes pages
- * confondues ; un lien inattendu ne fait rien. Rend une promesse : true si le lien de lancement a mené
- * ailleurs (la page ne doit plus rien faire), false sinon (hors de l'app, aucun lien, autre lien).
+ * Écoute du lien de retour, à installer au démarrage de chaque page de l'app : `appUrlOpen` (Universal
+ * Link ou App Link, app ouverte ou en arrière-plan) et `getLaunchUrl` (app relancée par le lien). Une
+ * seule fois par page (les appels suivants rendent la même promesse). Un lien n'est suivi que s'il est
+ * ATTENDU : reçu par `appUrlOpen` (ou rendu par la session iOS) sur la page relais qui a ouvert le
+ * navigateur, ou pendant une connexion notée il y a moins de 15 min (jamais le lien de lancement de la
+ * page relais, ni celui qu'elle a noté comme ancien). Alors : connexion effacée, `Browser.close()` sur
+ * Android (erreur ignorée), puis le rachat d'ERPlead avec le code, ou l'écran de connexion. Un lien avec
+ * code n'est jamais suivi deux fois, toutes pages confondues ; un lien inattendu ne fait rien. Rend une
+ * promesse : true si le lien de lancement a mené ailleurs (la page ne doit plus rien faire), false sinon
+ * (hors de l'app, aucun lien, autre lien).
  */
 export function listenForReturn(
   win: AppWindow,
@@ -312,6 +364,7 @@ export function listenForReturn(
     relay,
     armed: false,
     launchKey: null,
+    follow: null,
   };
   win.__invoiceleadLeadAuth = state;
   // Page relais : ERPlead vient de remplacer le cookie verifier ; une connexion notée avant ne peut
@@ -321,15 +374,16 @@ export function listenForReturn(
   const plugins = nativePlugins(win);
   const app = plugins?.App;
   if (!issuer || !plugins || !app || typeof app.addListener !== "function") return state.ready;
+  const android = platformOf(win) === "android";
 
   /** Le lien est-il le retour d'une connexion en cours ? */
-  const expected = (via: "open" | "launch", key: string): boolean => {
+  const expected = (via: Via, key: string): boolean => {
     if (via === "open" && state.armed) return true;
     if (via === "launch" && state.relay) return false;
     const pending = readPending(win);
     return !!pending && !(via === "launch" && pending.stale === key);
   };
-  const handle = (url: unknown, via: "open" | "launch"): boolean => {
+  const follow = (url: unknown, via: Via): boolean => {
     const link = parseReturnLink(url);
     if (!link) return false;
     const key = fingerprint(url as string);
@@ -338,7 +392,8 @@ export function listenForReturn(
     state.received = true;
     state.armed = false;
     clearPending(win);
-    quietly(() => plugins.Browser?.close?.());
+    // Android : le Custom Tab peut rester au-dessus de l'app. iOS : rien à fermer (session ou Safari).
+    if (android) quietly(() => plugins.Browser?.close?.());
     const back = takeBack(win, issuer);
     win.location.replace(
       link.kind === "code" ? redeemUrl(issuer, link.code) : (back ?? loginFallback(opts.locale)),
@@ -347,16 +402,17 @@ export function listenForReturn(
   };
   try {
     app.addListener("appUrlOpen", (e) => {
-      handle(e?.url, "open");
+      follow(e?.url, "open");
     });
   } catch {
     return state.ready;
   }
+  state.follow = follow;
   const launch = (async () => {
     try {
       const r = await app.getLaunchUrl?.();
       if (parseReturnLink(r?.url)) state.launchKey = fingerprint(r?.url as string);
-      return handle(r?.url, "launch");
+      return follow(r?.url, "launch");
     } catch {
       return false;
     }
@@ -370,13 +426,51 @@ export function listenForReturn(
   return state.ready;
 }
 
-export type RelayOutcome = "opened" | "outside" | "invalid";
+export type ReturnPageOutcome = "followed" | "ignored" | "outside";
 
 /**
- * La page relais : dans l'app, `back` gardé, l'écoute du retour posée, le lien de lancement lu (au
- * plus LAUNCH_TIMEOUT_MS ; jamais suivi ici), la connexion notée « en cours », puis `start` dans le
- * navigateur du téléphone ; refermé sans retour, l'écran de connexion d'ERPlead (`back`). Hors de
- * l'app : `back` tout de suite. `start` ou `back` étrangers : la connexion ordinaire de l'app.
+ * La page de retour dans l'app (`/<langue>/lead-auth/return?…`, où mène `/lead-auth/return` quand la vue
+ * web de l'app l'ouvre elle-même) : son adresse est traitée comme le lien de retour reçu (`RETURN_URL`
+ * suivi de ses paramètres), avec les mêmes règles (connexion en cours, une seule fois). Lien non suivi :
+ * l'app (`/<langue>/app`). Hors de l'app : la page de repli `/lead-auth/return` (qui efface le code de
+ * l'adresse).
+ */
+export async function followReturnPage(
+  win: AppWindow,
+  opts: { issuer: string | null | undefined; locale: string },
+): Promise<ReturnPageOutcome> {
+  const search = typeof win.location.search === "string" ? win.location.search : "";
+  if (!nativePlugins(win)) {
+    win.location.replace(`${RETURN_PATH}${search}`);
+    return "outside";
+  }
+  const handled = await listenForReturn(win, opts);
+  const state = win.__invoiceleadLeadAuth;
+  if (handled || state?.received) return "followed";
+  if (search.startsWith("?") && state?.follow?.(`${RETURN_URL}${search}`, "page"))
+    return "followed";
+  win.location.replace(`/${/^[a-z]{2}$/.test(opts.locale) ? opts.locale : "de"}/app`);
+  return "ignored";
+}
+
+export type RelayOutcome = "opened" | "outside" | "invalid";
+
+/** Le code d'un refus d'un module natif (Capacitor : `call.reject(message, code)`), ou null. */
+function refusal(e: unknown): string | null {
+  const code = (e as { code?: unknown } | null)?.code;
+  return typeof code === "string" ? code : null;
+}
+
+/**
+ * La page relais : dans l'app, `back` gardé, l'écoute du retour posée, le lien de lancement lu (au plus
+ * LAUNCH_TIMEOUT_MS ; jamais suivi ici), la connexion notée « en cours », puis `start` dans le navigateur
+ * sûr du téléphone :
+ * - iOS 17.4+ (`LeadAuthSession.isAvailable().https`) : `LeadAuthSession.start(start&m=auto)` ; l'adresse
+ *   rendue suit les règles du lien de retour ; annulée → `back` ; autre refus → Safari ;
+ * - iOS 15 à 17.3 : `LeadAuthSession.openExternal(start&m=tap)` (Safari), puis `onSafari()` pour l'écran ;
+ * - iOS sans le module : `back` ;
+ * - Android : `Browser.open(start&m=auto)` (Custom Tab) ; refermé sans retour (1,5 s de grâce) → `back`.
+ * Hors de l'app : `back` tout de suite. `start` ou `back` étrangers : la connexion ordinaire de l'app.
  */
 export function startRelay(
   win: AppWindow,
@@ -385,6 +479,8 @@ export function startRelay(
     start: unknown;
     back: unknown;
     locale?: string | null;
+    /** iOS : la connexion se finit dans Safari (« touchez « Ouvrir InvoiceLead » »). */
+    onSafari?: () => void;
   },
 ): RelayOutcome {
   const issuer = issuerOrigin(opts.issuer);
@@ -394,9 +490,16 @@ export function startRelay(
     return "invalid";
   }
   const plugins = nativePlugins(win);
+  const platform = platformOf(win);
   const browser = plugins?.Browser;
-  const open = browser?.open;
-  if (!plugins?.App || !browser || typeof open !== "function") {
+  const session = plugins?.LeadAuthSession;
+  const ios =
+    platform === "ios" &&
+    typeof session?.isAvailable === "function" &&
+    typeof session.start === "function" &&
+    typeof session.openExternal === "function";
+  const android = platform === "android" && typeof browser?.open === "function";
+  if (!plugins?.App || !(ios || android)) {
     win.location.replace(targets.back);
     return "outside";
   }
@@ -415,24 +518,69 @@ export function startRelay(
     clearPending(win);
     win.location.replace(targets.back);
   };
-  try {
-    browser.addListener?.("browserFinished", () => {
-      win.setTimeout(giveUp, FINISHED_GRACE_MS);
-    });
-  } catch {
-    // Sans cette annonce, le lien « Retour » de la page reste.
-  }
+  /** Safari (iOS 15 à 17.3, ou session refusée) : ERPlead finit par une page à bouton. */
+  const safari = () => {
+    try {
+      session
+        ?.openExternal?.({ url: withMode(targets.start, "tap") })
+        .then((r) => {
+          if (r?.opened === false) giveUp();
+          else opts.onSafari?.();
+        })
+        .catch(giveUp);
+    } catch {
+      giveUp();
+    }
+  };
+  /** iOS 17.4+ : la session rend l'adresse de retour ; annulée, l'écran de connexion ; sinon Safari. */
+  const iosSession = () => {
+    try {
+      session
+        ?.start?.({ url: withMode(targets.start, "auto") })
+        .then((r) => {
+          if (!state?.follow?.(r?.url, "open")) giveUp();
+        })
+        .catch((e: unknown) => {
+          if (refusal(e) === "canceled") giveUp();
+          else safari();
+        });
+    } catch {
+      safari();
+    }
+  };
+  const open = () => {
+    if (android) {
+      try {
+        browser?.open?.({ url: withMode(targets.start, "auto") }).catch(giveUp);
+      } catch {
+        giveUp();
+      }
+      return;
+    }
+    try {
+      session
+        ?.isAvailable?.()
+        .then((r) => (r?.https === true ? iosSession() : safari()))
+        .catch(safari);
+    } catch {
+      safari();
+    }
+  };
+  if (android)
+    try {
+      browser?.addListener?.("browserFinished", () => {
+        win.setTimeout(giveUp, FINISHED_GRACE_MS);
+      });
+    } catch {
+      // Sans cette annonce, le lien « Retour » de la page reste.
+    }
   // Le lien de lancement de ce chargement (ancien retour) est lu AVANT de noter la connexion : il
   // n'est jamais pris pour le retour de celle-ci.
   void ready.then(() => {
     if (state?.received) return;
     writePending(win, state?.launchKey ?? null);
     if (state) state.armed = true;
-    try {
-      open.call(browser, { url: targets.start }).catch(giveUp);
-    } catch {
-      giveUp();
-    }
+    open();
   });
   return "opened";
 }

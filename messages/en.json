@@ -2999,6 +2999,13 @@
   "leadAppAuth": {
     "relayTitle": "Signing in with Google…",
     "relayBody": "Google opens in your phone's browser. Once you are signed in, you come back to InvoiceLead automatically.",
-    "back": "Back"
+    "back": "Back",
+    "relaySafari": "Finish signing in in Safari, then tap “Open InvoiceLead”."
+  },
+  "leadAppReturn": {
+    "title": "Return to InvoiceLead",
+    "body": "InvoiceLead did not open by itself. Close this page and go back to the app; if you are not signed in, tap “Continue with Google” again. If this happens again: update the app (App Store or Google Play), or tap “Forgot password?”.",
+    "android": "You can also allow InvoiceLead to open its links: Settings > Apps > InvoiceLead > Open by default.",
+    "notAsked": "Didn't ask for anything in the InvoiceLead app? Just close this page."
   }
 }

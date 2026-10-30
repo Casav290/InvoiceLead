@@ -146,8 +146,8 @@ export function startLogin(opts: { prompt?: 'none' | 'login' | 'create'; locale?
   if (opts.maxAge != null) q.set('max_age', String(opts.maxAge))
   if (opts.locale) q.set('ui_locales', opts.locale)
   // Depuis l'app Android / iOS : le Compte Lead adapte son écran à la vue web. Google y étant refusé,
-  // « Continuer avec Google » passe par le navigateur du téléphone et revient par le lien de l'app
-  // (versions LeadAppAuth/1, lib/lead-app-auth.ts) ; « Se connecter avec Apple » reste (règle 4.8).
+  // « Continuer avec Google » passe par le navigateur du téléphone et revient par le lien vérifié de
+  // l'app (versions LeadAppAuth/2, lib/lead-app-auth.ts) ; « Se connecter avec Apple » reste (règle 4.8).
   if (opts.app) q.set('platform', 'app')
   return { url: `${issuer()}/oauth/authorize?${q}`, state, nonce, verifier, ...(opts.maxAge != null ? { maxAge: opts.maxAge } : {}) }
 }

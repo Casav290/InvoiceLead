@@ -2999,6 +2999,13 @@
   "leadAppAuth": {
     "relayTitle": "Inicio de sesión con Google…",
     "relayBody": "Google se abre en el navegador del teléfono. Al iniciar sesión, vuelves automáticamente a InvoiceLead.",
-    "back": "Volver"
+    "back": "Volver",
+    "relaySafari": "Termina el inicio de sesión en Safari y luego toca «Abrir InvoiceLead»."
+  },
+  "leadAppReturn": {
+    "title": "Vuelve a InvoiceLead",
+    "body": "InvoiceLead no se ha abierto sola. Cierra esta página y vuelve a la app; si no has iniciado sesión, toca de nuevo «Continuar con Google». Si vuelve a ocurrir: actualiza la app (App Store o Google Play), o toca «¿Olvidó su contraseña?».",
+    "android": "También puedes permitir que InvoiceLead abra sus enlaces: Ajustes > Aplicaciones > InvoiceLead > Abrir de forma predeterminada.",
+    "notAsked": "¿No has pedido nada en la app InvoiceLead? Simplemente cierra esta página."
   }
 }

@@ -1,17 +1,23 @@
 /**
  * Faux pont Capacitor des essais en navigateur sans tête (e2e google-app, porte G3) : ce que la coque
  * native de l'app injecte dans chaque page de sa vue web, en petit. window.Capacitor.isNativePlatform,
- * Plugins.App (addListener « appUrlOpen », getLaunchUrl) et Plugins.Browser (open, close, addListener
- * « browserFinished »). Chaque appel est remis à l'essai par la liaison window.__bridgeCall (si elle
- * existe) ; window.__fakeEmit(« App.appUrlOpen », { url }) imite l'arrivée d'un lien.
+ * getPlatform, Plugins.App (addListener « appUrlOpen », getLaunchUrl), Plugins.Browser (open, close,
+ * addListener « browserFinished ») et, sur iOS, Plugins.LeadAuthSession (module natif de l'app :
+ * isAvailable, start, openExternal). Chaque appel est remis à l'essai par la liaison window.__bridgeCall
+ * (si elle existe) ; window.__fakeEmit(« App.appUrlOpen », { url }) imite l'arrivée d'un lien ;
+ * window.__fakeSession({ url } | { error: code }) termine la session iOS en cours (adresse de retour
+ * rendue, ou refus : canceled, unavailable, busy, bad_url, failed).
  *
- * Réglage, posé avant ce script : window.__FAKE_CAPACITOR = { launchUrl } (le lien de lancement que
- * rend getLaunchUrl, sur chaque page comme iOS le fait de son dernier lien).
+ * Réglage, posé avant ce script : window.__FAKE_CAPACITOR = { launchUrl, platform, session } :
+ * - launchUrl : le lien de lancement que rend getLaunchUrl (sur chaque page, comme iOS de son dernier lien) ;
+ * - platform : « ios » (défaut) ou « android » ;
+ * - session (iOS) : « https » (défaut, iOS 17.4+), « old » (iOS 15 à 17.3 : https: false), « none » (module absent).
  */
 (() => {
   if (window.top !== window) return;
   // Lu à chaque appel : le réglage peut être posé par un autre script d'ouverture de page.
   const config = () => window.__FAKE_CAPACITOR || {};
+  const platform = () => config().platform || "ios";
   const listeners = {};
   const record = (name, arg) => {
     try {
@@ -32,27 +38,57 @@
     return list.length;
   };
   window.__fakeListeners = (key) => (listeners[key] || []).length;
-  window.Capacitor = {
-    isNativePlatform: () => true,
-    getPlatform: () => config().platform || "ios",
-    Plugins: {
-      App: {
-        addListener: add("App"),
-        getLaunchUrl: async () => {
-          const launchUrl = config().launchUrl || null;
-          record("App.getLaunchUrl", launchUrl);
-          return launchUrl ? { url: launchUrl } : undefined;
-        },
-      },
-      Browser: {
-        open: async (options) => {
-          record("Browser.open", options?.url ?? null);
-        },
-        close: async () => {
-          record("Browser.close", null);
-        },
-        addListener: add("Browser"),
+  let session = null;
+  window.__fakeSession = (result) => {
+    const s = session;
+    session = null;
+    if (!s) return false;
+    if (result?.url) s.resolve({ url: result.url });
+    else s.reject(Object.assign(new Error(result?.error || "failed"), { code: result?.error }));
+    return true;
+  };
+  window.__fakeSessionOpen = () => !!session;
+  const plugins = {
+    App: {
+      addListener: add("App"),
+      getLaunchUrl: async () => {
+        const launchUrl = config().launchUrl || null;
+        record("App.getLaunchUrl", launchUrl);
+        return launchUrl ? { url: launchUrl } : undefined;
       },
     },
+    Browser: {
+      open: async (options) => {
+        record("Browser.open", options?.url ?? null);
+      },
+      close: async () => {
+        record("Browser.close", null);
+      },
+      addListener: add("Browser"),
+    },
+  };
+  if (platform() === "ios" && config().session !== "none")
+    plugins.LeadAuthSession = {
+      isAvailable: async () => {
+        const https = (config().session || "https") === "https";
+        record("LeadAuthSession.isAvailable", https);
+        return { https };
+      },
+      start: (options) => {
+        record("LeadAuthSession.start", options?.url ?? null);
+        if (session) return Promise.reject(Object.assign(new Error("busy"), { code: "busy" }));
+        return new Promise((resolve, reject) => {
+          session = { resolve, reject };
+        });
+      },
+      openExternal: async (options) => {
+        record("LeadAuthSession.openExternal", options?.url ?? null);
+        return { opened: true };
+      },
+    };
+  window.Capacitor = {
+    isNativePlatform: () => true,
+    getPlatform: platform,
+    Plugins: plugins,
   };
 })();

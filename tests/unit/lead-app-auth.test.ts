@@ -1,10 +1,11 @@
+import { runInNewContext } from "node:vm";
 import { NextRequest, type NextResponse } from "next/server";
 import { beforeAll, describe, expect, it } from "vitest";
 import {
-  APP_SCHEME,
   type AppWindow,
   BACK_KEY,
   FINISHED_GRACE_MS,
+  followReturnPage,
   isRelayPath,
   issuerOrigin,
   LAUNCH_TIMEOUT_MS,
@@ -14,29 +15,39 @@ import {
   PENDING_TTL_MS,
   parseReturnLink,
   RELAY_PATH,
+  RETURN_PATH,
+  RETURN_URL,
   redeemUrl,
   relayTargets,
   SEEN_KEY,
   startRelay,
+  withMode,
 } from "@/lib/lead-app-auth";
 import { isAppAuthAgent, isNativeAgent } from "@/lib/native";
+import { returnPageScript } from "@/server/lead-app-return";
 import { setTestEnv } from "../support/env";
 
 /**
  * « Continuer avec Google » dans l'app Android / iOS (lib/lead-app-auth.ts, contrat d'ERPlead
- * docs/GOOGLE-APP.md) : le lien de retour `io.invoicelead.app://lead-auth?code=…` ferme le navigateur
- * du téléphone et mène la vue web au rachat d'ERPlead, une seule fois ; tout autre lien est ignoré ;
- * hors de l'app, rien ne change. Le pont Capacitor est simulé (window.Capacitor, comme l'injecte la
- * coque native : isNativePlatform, Plugins.App, Plugins.Browser).
+ * docs/GOOGLE-APP.md révisé le 30.10.2026 : liens VÉRIFIÉS) : le lien de retour
+ * `https://invoicelead.io/lead-auth/return?code=…` (Universal Link, App Link vérifié, adresse rendue par
+ * la session iOS) mène la vue web au rachat d'ERPlead, une seule fois, pendant une connexion en cours ;
+ * tout autre lien (dont l'ancien schéma propre) est ignoré ; hors de l'app, rien ne change. Le pont
+ * Capacitor est simulé (window.Capacitor, comme l'injecte la coque native : isNativePlatform,
+ * getPlatform, Plugins.App, Plugins.Browser, et sur iOS le module de l'app Plugins.LeadAuthSession).
  */
 
 const ISSUER = "https://erplead.io";
 const CODE = "Abc_DEF-123456789012345678901234567890abcde";
-const LINK = `${APP_SCHEME}://lead-auth?code=${CODE}`;
+const RETOUR = "https://invoicelead.io/lead-auth/return";
+const LINK = `${RETOUR}?code=${CODE}&locale=it`;
 const START = `${ISSUER}/auth/google/app/start?d=invoicelead.${"x".repeat(43)}`;
 const START2 = `${ISSUER}/auth/google/app/start?d=invoicelead.${"y".repeat(43)}`;
-const ERROR_LINK = `${APP_SCHEME}://lead-auth?error=expired`;
-const codeLink = (c: string) => `${APP_SCHEME}://lead-auth?code=${c}`;
+const AUTO = `${START}&m=auto`;
+const TAP = `${START}&m=tap`;
+const ERROR_LINK = `${RETOUR}?error=expired&locale=it`;
+const codeLink = (c: string) => `${RETOUR}?code=${c}&locale=it`;
+const REDEEM = `${ISSUER}/auth/google/app/redeem?code=${CODE}`;
 const NOW = Date.UTC(2026, 9, 30, 12, 0, 0);
 const BACK = `${ISSUER}/login?next=%2Foauth%2Fauthorize%3Fclient_id%3Dinvoicelead&locale=it`;
 
@@ -59,6 +70,8 @@ function memoryStorage(seed?: Map<string, string>): Storage & { map: Map<string,
   };
 }
 
+type SessionEnd = { url: string } | { error: string };
+
 /** Une page de l'app (ou d'un navigateur ordinaire si native = false), avec son faux pont. */
 function fakePage(
   opts: {
@@ -66,6 +79,10 @@ function fakePage(
     bridge?: boolean;
     app?: boolean;
     browser?: boolean;
+    /** Plateforme de l'app : « android » (défaut), « ios », ou aucune. */
+    platform?: "ios" | "android" | null;
+    /** iOS : module LeadAuthSession « https » (17.4+, défaut), « old » (15 à 17.3), « none » (absent). */
+    session?: "https" | "old" | "none";
     launch?: string | null;
     launchFails?: boolean;
     launchHangs?: boolean;
@@ -73,16 +90,23 @@ function fakePage(
     launchLater?: boolean;
     closeFails?: boolean;
     openFails?: boolean;
+    /** iOS : Safari refuse de s'ouvrir (openExternal → { opened: false }). */
+    externalRefused?: boolean;
     local?: Map<string, string>;
-    session?: Map<string, string>;
+    /** sessionStorage de la page. */
+    tab?: Map<string, string>;
     /** Chemin de la page (la page relais : /it/lead-auth/google). */
     pathname?: string;
+    search?: string;
     now?: number;
   } = {},
 ) {
   const { native = true, bridge = true, app = true, browser = true } = opts;
+  const platform = opts.platform === undefined ? "android" : opts.platform;
   const replaced: string[] = [];
   const opened: string[] = [];
+  const sessions: string[] = [];
+  const externals: string[] = [];
   let closed = 0;
   const listeners: Record<string, ((e?: { url?: string }) => void)[]> = {};
   const timers: { fn: () => void; ms: number }[] = [];
@@ -90,6 +114,7 @@ function fakePage(
   const later = new Promise<{ url?: string } | undefined>((done) => {
     resolveLaunch = (url) => done(url ? { url } : undefined);
   });
+  let endSession: ((end: SessionEnd) => void) | null = null;
   const on = (name: string) => (event: string, cb: (e?: { url?: string }) => void) => {
     const key = `${name}.${event}`;
     listeners[key] = [...(listeners[key] ?? []), cb];
@@ -99,18 +124,41 @@ function fakePage(
     location: {
       replace: (u: string) => void replaced.push(u),
       pathname: opts.pathname ?? "/it/app",
+      search: opts.search ?? "",
     },
     now: () => opts.now ?? NOW,
     localStorage: memoryStorage(opts.local),
-    sessionStorage: memoryStorage(opts.session),
+    sessionStorage: memoryStorage(opts.tab),
     setTimeout: (fn: () => void, ms: number) => {
       timers.push({ fn, ms });
       return timers.length;
     },
   };
+  const iosSession =
+    platform === "ios" && (opts.session ?? "https") !== "none"
+      ? {
+          LeadAuthSession: {
+            isAvailable: async () => ({ https: (opts.session ?? "https") === "https" }),
+            start: ({ url }: { url: string }) => {
+              sessions.push(url);
+              return new Promise<{ url?: string }>((resolve, reject) => {
+                endSession = (end) =>
+                  "url" in end
+                    ? resolve({ url: end.url })
+                    : reject(Object.assign(new Error(end.error), { code: end.error }));
+              });
+            },
+            openExternal: async ({ url }: { url: string }) => {
+              externals.push(url);
+              return { opened: !opts.externalRefused };
+            },
+          },
+        }
+      : {};
   if (bridge)
     win.Capacitor = {
       isNativePlatform: () => native,
+      ...(platform ? { getPlatform: () => platform } : {}),
       Plugins: {
         ...(app
           ? {
@@ -142,6 +190,7 @@ function fakePage(
               },
             }
           : {}),
+        ...iosSession,
       },
     };
   const emit = (key: string, e?: { url?: string }) => {
@@ -151,12 +200,15 @@ function fakePage(
     win,
     replaced,
     opened,
+    sessions,
+    externals,
     closed: () => closed,
     listeners,
     timers,
     appUrlOpen: (url: string) => emit("App.appUrlOpen", { url }),
     resolveLaunch: (url: string | null) => resolveLaunch(url),
     browserFinished: () => emit("Browser.browserFinished"),
+    finishSession: (end: SessionEnd) => endSession?.(end),
     runTimers: () => {
       for (const t of timers.splice(0)) t.fn();
     },
@@ -165,11 +217,19 @@ function fakePage(
 const flush = () => new Promise((r) => setTimeout(r, 0));
 
 /** La page relais d'une connexion Google dans l'app : écoute (gabarit), puis startRelay (page). */
-async function relayPage(opts: Parameters<typeof fakePage>[0] & { start?: string } = {}) {
+async function relayPage(
+  opts: Parameters<typeof fakePage>[0] & { start?: string; onSafari?: () => void } = {},
+) {
   const p = fakePage({ pathname: `/it${RELAY_PATH}`, ...opts });
   void listenForReturn(p.win, { issuer: ISSUER, locale: "it" });
   expect(
-    startRelay(p.win, { issuer: ISSUER, start: opts.start ?? START, back: BACK, locale: "it" }),
+    startRelay(p.win, {
+      issuer: ISSUER,
+      start: opts.start ?? START,
+      back: BACK,
+      locale: "it",
+      onSafari: opts.onSafari,
+    }),
   ).toBe("opened");
   await flush();
   return p;
@@ -180,33 +240,39 @@ function pendingSince(local: Map<string, string>, ageMs: number, stale: string |
   return local;
 }
 
-describe("lien de retour de l'app (io.invoicelead.app://lead-auth)", () => {
-  it("lien de retour : schéma exact io.invoicelead.app, hôte lead-auth, code de 43 caractères → rachat d'ERPlead", () => {
+describe("lien de retour vérifié (https://invoicelead.io/lead-auth/return)", () => {
+  it("lien de retour : adresse exacte https://invoicelead.io/lead-auth/return, code de 43 caractères → rachat d'ERPlead ; schéma propre io.invoicelead.app refusé", () => {
+    expect(RETURN_URL).toBe(RETOUR);
+    expect(RETURN_PATH).toBe("/lead-auth/return");
     expect(parseReturnLink(LINK)).toEqual({ kind: "code", code: CODE });
+    expect(parseReturnLink(`${RETOUR}?code=${CODE}`)).toEqual({ kind: "code", code: CODE });
     expect(parseReturnLink(`${LINK}#x`)).toEqual({ kind: "code", code: CODE });
-    expect(redeemUrl(ISSUER, CODE)).toBe(`https://erplead.io/auth/google/app/redeem?code=${CODE}`);
+    expect(redeemUrl(ISSUER, CODE)).toBe(REDEEM);
     expect(() => redeemUrl(ISSUER, "court")).toThrow();
-    // Lien de l'app sans code valable : retour à l'écran de connexion.
+    // Lien de retour sans code valable : retour à l'écran de connexion.
     for (const url of [
-      `${APP_SCHEME}://lead-auth?error=expired`,
-      `${APP_SCHEME}://lead-auth?code=${CODE.slice(1)}`,
-      `${APP_SCHEME}://lead-auth?code=${CODE}x`,
-      `${APP_SCHEME}://lead-auth?code=${CODE.slice(1)}%2F`,
-      `${APP_SCHEME}://lead-auth?`,
+      ERROR_LINK,
+      `${RETOUR}?code=${CODE.slice(1)}`,
+      `${RETOUR}?code=${CODE}x`,
+      `${RETOUR}?code=${CODE.slice(1)}%2F`,
+      `${RETOUR}?`,
     ])
       expect(parseReturnLink(url), url).toEqual({ kind: "error" });
-    // Tout autre lien : ignoré.
+    // Tout autre lien : ignoré, dont le schéma propre de la première version (jamais publiée).
     for (const url of [
-      `io.crmlead.app://lead-auth?code=${CODE}`,
+      `io.invoicelead.app://lead-auth?code=${CODE}`,
+      "io.invoicelead.app://lead-auth?error=expired",
       `io.crmlead.app://sso?code=${CODE}`,
-      `io.scanlead.app://lead-auth?code=${CODE}`,
-      `${APP_SCHEME}://sso?code=${CODE}`,
-      `${APP_SCHEME}://lead-auth/x?code=${CODE}`,
-      `${APP_SCHEME}://lead-auth.evil?code=${CODE}`,
-      `${APP_SCHEME}.evil://lead-auth?code=${CODE}`,
-      `IO.INVOICELEAD.APP://lead-auth?code=${CODE}`,
-      `${APP_SCHEME}://lead-auth`,
-      `https://invoicelead.io/lead-auth?code=${CODE}`,
+      `https://crmlead.io/lead-auth/return?code=${CODE}`,
+      `http://invoicelead.io/lead-auth/return?code=${CODE}`,
+      `https://www.invoicelead.io/lead-auth/return?code=${CODE}`,
+      `https://invoicelead.io.evil.example/lead-auth/return?code=${CODE}`,
+      `https://invoicelead.io/lead-auth/return/x?code=${CODE}`,
+      `https://invoicelead.io/lead-auth/returnx?code=${CODE}`,
+      `https://invoicelead.io/it/lead-auth/return?code=${CODE}`,
+      `https://invoicelead.io/lead-auth/google?code=${CODE}`,
+      `https://INVOICELEAD.IO/lead-auth/return?code=${CODE}`,
+      RETOUR,
       `x${LINK}`,
       `${LINK}${"a".repeat(5000)}`,
       "",
@@ -217,15 +283,15 @@ describe("lien de retour de l'app (io.invoicelead.app://lead-auth)", () => {
       expect(parseReturnLink(url), String(url)).toBeNull();
   });
 
-  it("appUrlOpen pendant une connexion en cours (page relais) : le lien de l'app ferme le navigateur du téléphone et mène au rachat d'ERPlead avec le code, une seule fois", async () => {
+  it("Android : appUrlOpen pendant une connexion en cours (page relais) : le lien ferme le Custom Tab et mène au rachat d'ERPlead avec le code, une seule fois", async () => {
     const local = new Map<string, string>();
     const p = await relayPage({ local });
-    expect(p.opened).toEqual([START]);
+    expect(p.opened).toEqual([AUTO]);
     expect(p.listeners["App.appUrlOpen"]).toHaveLength(1);
     expect(JSON.parse(local.get(PENDING_KEY) ?? "null")).toEqual({ t: NOW, stale: null });
     p.appUrlOpen(LINK);
     expect(p.closed()).toBe(1);
-    expect(p.replaced).toEqual([`${ISSUER}/auth/google/app/redeem?code=${CODE}`]);
+    expect(p.replaced).toEqual([REDEEM]);
     // La connexion en cours est effacée par le premier lien suivi.
     expect(local.has(PENDING_KEY)).toBe(false);
     // Le même lien une seconde fois (appUrlOpen répété) : rien de plus.
@@ -244,14 +310,14 @@ describe("lien de retour de l'app (io.invoicelead.app://lead-auth)", () => {
     const local = new Map<string, string>();
     // La page relais a noté la connexion, puis Android a fermé l'app pendant la connexion Google.
     const relay = await relayPage({ local });
-    expect(relay.opened).toEqual([START]);
+    expect(relay.opened).toEqual([AUTO]);
     const first = fakePage({ launch: LINK, local, now: NOW + 60_000 });
     expect(await listenForReturn(first.win, { issuer: ISSUER, locale: "fr" })).toBe(true);
-    expect(first.replaced).toEqual([`${ISSUER}/auth/google/app/redeem?code=${CODE}`]);
+    expect(first.replaced).toEqual([REDEEM]);
     expect(first.closed()).toBe(1);
     first.appUrlOpen(LINK);
     expect(first.replaced).toHaveLength(1);
-    // Page suivante (retour de l'autorisation dans l'app) : iOS redonne le dernier lien à getLaunchUrl.
+    // Page suivante (retour de l'autorisation dans l'app) : la coque redonne le dernier lien.
     const next = fakePage({ launch: LINK, local, now: NOW + 70_000 });
     expect(await listenForReturn(next.win, { issuer: ISSUER, locale: "fr" })).toBe(false);
     expect(next.replaced).toEqual([]);
@@ -271,14 +337,15 @@ describe("lien de retour de l'app (io.invoicelead.app://lead-auth)", () => {
     expect(JSON.parse(local.get(SEEN_KEY) ?? "[]")).toHaveLength(2);
   });
 
-  it("liens étrangers ou mal formés ignorés : autre schéma, autre hôte, ancien io.crmlead.app://sso, adresse web", async () => {
+  it("liens étrangers ou mal formés ignorés : schéma propre, autre hôte, autre chemin, http, ancien io.crmlead.app://sso", async () => {
     const p = await relayPage({ launch: `io.crmlead.app://sso?code=${CODE}` });
     for (const url of [
+      `io.invoicelead.app://lead-auth?code=${CODE}`,
       `io.crmlead.app://sso?code=${CODE}`,
-      `io.projectlead.app://lead-auth?code=${CODE}`,
-      `${APP_SCHEME}://sso?code=${CODE}`,
-      `${APP_SCHEME}://lead-auth/autre?code=${CODE}`,
-      `https://invoicelead.io/fr/app`,
+      `https://projectlead.io/lead-auth/return?code=${CODE}`,
+      `https://invoicelead.io/lead-auth/autre?code=${CODE}`,
+      `http://invoicelead.io/lead-auth/return?code=${CODE}`,
+      "https://invoicelead.io/fr/app",
       "",
     ])
       p.appUrlOpen(url);
@@ -286,10 +353,10 @@ describe("lien de retour de l'app (io.invoicelead.app://lead-auth)", () => {
     expect(p.closed()).toBe(0);
     // La connexion attend toujours son lien.
     p.appUrlOpen(LINK);
-    expect(p.replaced).toEqual([`${ISSUER}/auth/google/app/redeem?code=${CODE}`]);
+    expect(p.replaced).toEqual([REDEEM]);
   });
 
-  it("lien de l'app sans code valable (error=expired, code abîmé) : écran de connexion gardé par la page relais, sinon connexion ordinaire", async () => {
+  it("lien de retour sans code valable (error=expired, code abîmé) : écran de connexion gardé par la page relais, sinon connexion ordinaire", async () => {
     const withBack = await relayPage();
     withBack.appUrlOpen(ERROR_LINK);
     expect(withBack.closed()).toBe(1);
@@ -299,13 +366,13 @@ describe("lien de retour de l'app (io.invoicelead.app://lead-auth)", () => {
     // App relancée (connexion notée, plus de `back` : sessionStorage perdu avec l'app).
     const without = fakePage({ local: pendingSince(new Map(), 60_000) });
     await listenForReturn(without.win, { issuer: ISSUER, locale: "it" });
-    without.appUrlOpen(`${APP_SCHEME}://lead-auth?code=abime`);
+    without.appUrlOpen(`${RETOUR}?code=abime`);
     expect(without.replaced).toEqual(["/auth/lead/start?locale=it"]);
 
     // Un `back` gardé mais étranger n'est jamais suivi.
     const forged = fakePage({
       local: pendingSince(new Map(), 60_000),
-      session: new Map([[BACK_KEY, "https://evil.example/login?x"]]),
+      tab: new Map([[BACK_KEY, "https://evil.example/login?x"]]),
     });
     await listenForReturn(forged.win, { issuer: ISSUER, locale: "es" });
     forged.appUrlOpen(ERROR_LINK);
@@ -320,12 +387,12 @@ describe("lien de retour de l'app (io.invoicelead.app://lead-auth)", () => {
     first.appUrlOpen(ERROR_LINK);
     expect(first.replaced).toEqual([BACK]);
     expect(first.closed()).toBe(1);
-    // Des jours plus tard, une autre connexion expire aussi (iOS redonne l'ancien lien d'erreur à
+    // Des jours plus tard, une autre connexion expire aussi (la coque redonne l'ancien lien d'erreur à
     // getLaunchUrl : jamais suivi sur la page relais) ; le lien d'erreur, identique, ferme encore le
     // navigateur et ramène à l'écran de connexion.
     const second = await relayPage({ local, launch: ERROR_LINK, now: NOW + 3 * 86_400_000 });
     expect(second.replaced).toEqual([]);
-    expect(second.opened).toEqual([START]);
+    expect(second.opened).toEqual([AUTO]);
     second.appUrlOpen(ERROR_LINK);
     expect(second.closed()).toBe(1);
     expect(second.replaced).toEqual([BACK]);
@@ -333,16 +400,18 @@ describe("lien de retour de l'app (io.invoicelead.app://lead-auth)", () => {
     expect(JSON.parse(local.get(SEEN_KEY) ?? "[]")).toEqual([]);
   });
 
-  it("lien de l'app reçu sans connexion en cours (page web, courriel, autre app) : ignoré, ni navigateur fermé ni page quittée", async () => {
-    // La personne rédige une facture ; un lien piégé (vraie page d'erplead.io qui renvoie vers le schéma).
+  it("lien de retour reçu sans connexion en cours (page web, courriel, autre app) : ignoré, ni navigateur fermé ni page quittée", async () => {
+    // La personne rédige une facture ; un lien piégé (page web qui mène au lien de retour de l'app).
     const local = new Map<string, string>();
-    const p = fakePage({ local, pathname: "/fr/app/invoices/new" });
-    expect(await listenForReturn(p.win, { issuer: ISSUER, locale: "fr" })).toBe(false);
-    p.appUrlOpen(LINK);
-    p.appUrlOpen(ERROR_LINK);
-    p.appUrlOpen(`${APP_SCHEME}://lead-auth?code=abime`);
-    expect(p.replaced).toEqual([]);
-    expect(p.closed()).toBe(0);
+    for (const platform of ["android", "ios"] as const) {
+      const p = fakePage({ local, platform, pathname: "/fr/app/invoices/new" });
+      expect(await listenForReturn(p.win, { issuer: ISSUER, locale: "fr" })).toBe(false);
+      p.appUrlOpen(LINK);
+      p.appUrlOpen(ERROR_LINK);
+      p.appUrlOpen(`${RETOUR}?code=abime`);
+      expect(p.replaced, platform).toEqual([]);
+      expect(p.closed()).toBe(0);
+    }
     // Ni par le lien de lancement.
     const launched = fakePage({ local, launch: codeLink("L".repeat(43)) });
     expect(await listenForReturn(launched.win, { issuer: ISSUER, locale: "fr" })).toBe(false);
@@ -382,7 +451,7 @@ describe("lien de retour de l'app (io.invoicelead.app://lead-auth)", () => {
       await flush();
       expect(p.replaced, String(layoutFirst)).toEqual([]);
       expect(p.closed()).toBe(0);
-      expect(p.opened).toEqual([START2]);
+      expect(p.opened).toEqual([withMode(START2, "auto")]);
       // L'ancien lien, noté comme d'avant cette connexion.
       expect(JSON.parse(local.get(PENDING_KEY) ?? "null")).toMatchObject({ t: NOW + 120_000 });
       expect(JSON.parse(local.get(PENDING_KEY) ?? "null").stale).toBeTruthy();
@@ -402,7 +471,7 @@ describe("lien de retour de l'app (io.invoicelead.app://lead-auth)", () => {
     expect(reload.replaced).toEqual([]);
     const relaunched = fakePage({ local, launch: LINK, now: NOW + 40_000 });
     expect(await listenForReturn(relaunched.win, { issuer: ISSUER, locale: "it" })).toBe(true);
-    expect(relaunched.replaced).toEqual([`${ISSUER}/auth/google/app/redeem?code=${CODE}`]);
+    expect(relaunched.replaced).toEqual([REDEEM]);
     expect(isRelayPath(`/it${RELAY_PATH}`)).toBe(true);
     expect(isRelayPath(RELAY_PATH)).toBe(true);
     expect(isRelayPath("/it/lead-auth/google/x")).toBe(false);
@@ -420,7 +489,7 @@ describe("lien de retour de l'app (io.invoicelead.app://lead-auth)", () => {
     expect(p.timers.map((t) => t.ms)).toContain(LAUNCH_TIMEOUT_MS);
     p.runTimers();
     await flush();
-    expect(p.opened).toEqual([START]);
+    expect(p.opened).toEqual([AUTO]);
     expect(local.has(PENDING_KEY)).toBe(true);
     // Puis la coque rend l'ancien lien : ni navigateur fermé, ni rachat, la connexion attend toujours.
     p.resolveLaunch(LINK);
@@ -438,7 +507,7 @@ describe("lien de retour de l'app (io.invoicelead.app://lead-auth)", () => {
     p.appUrlOpen(LINK);
     await flush();
     expect(p.closed()).toBe(1);
-    expect(p.replaced).toEqual([`${ISSUER}/auth/google/app/redeem?code=${CODE}`]);
+    expect(p.replaced).toEqual([REDEEM]);
   });
 
   it("lien de lancement illisible ou en retard : la page continue (false), sans rien ouvrir", async () => {
@@ -450,6 +519,122 @@ describe("lien de retour de l'app (io.invoicelead.app://lead-auth)", () => {
     hangs.runTimers();
     expect(await ready).toBe(false);
     expect([...fails.replaced, ...hangs.replaced]).toEqual([]);
+  });
+});
+
+describe("iOS : module LeadAuthSession de l'app", () => {
+  it("iOS 17.4+ : la session s'ouvre sur start&m=auto, l'adresse rendue mène au rachat une seule fois, sans Browser.open ni Browser.close", async () => {
+    const local = new Map<string, string>();
+    let safari = 0;
+    const p = await relayPage({ local, platform: "ios", onSafari: () => safari++ });
+    expect(p.sessions).toEqual([AUTO]);
+    expect(p.opened).toEqual([]);
+    expect(p.externals).toEqual([]);
+    expect(JSON.parse(local.get(PENDING_KEY) ?? "null")).toEqual({ t: NOW, stale: null });
+    p.finishSession({ url: LINK });
+    await flush();
+    expect(p.replaced).toEqual([REDEEM]);
+    expect(p.closed()).toBe(0);
+    expect(local.has(PENDING_KEY)).toBe(false);
+    expect(safari).toBe(0);
+    // Le même lien redonné ensuite (appUrlOpen, lancement de la page suivante) : rien de plus.
+    p.appUrlOpen(LINK);
+    const next = fakePage({ platform: "ios", local, launch: LINK, now: NOW + 5000 });
+    expect(await listenForReturn(next.win, { issuer: ISSUER, locale: "it" })).toBe(false);
+    expect([...p.replaced, ...next.replaced]).toEqual([REDEEM]);
+    // Lien d'erreur rendu par la session (départ rejoué) : l'écran de connexion de l'app.
+    const expired = await relayPage({ platform: "ios" });
+    expired.finishSession({ url: ERROR_LINK });
+    await flush();
+    expect(expired.replaced).toEqual([BACK]);
+  });
+
+  it("iOS : session annulée → écran de connexion d'ERPlead (back), connexion effacée", async () => {
+    const local = new Map<string, string>();
+    const p = await relayPage({ local, platform: "ios" });
+    expect(local.has(PENDING_KEY)).toBe(true);
+    p.finishSession({ error: "canceled" });
+    await flush();
+    expect(p.replaced).toEqual([BACK]);
+    expect(p.externals).toEqual([]);
+    expect(local.has(PENDING_KEY)).toBe(false);
+    // Un lien arrivé ensuite n'est plus attendu.
+    p.appUrlOpen(LINK);
+    expect(p.replaced).toEqual([BACK]);
+  });
+
+  it("iOS : session refusée (association absente, occupée…) → Safari sur start&m=tap ; le lien touché dans Safari (appUrlOpen) mène au rachat", async () => {
+    for (const error of ["failed", "busy", "unavailable", "bad_url", "inconnu"]) {
+      const local = new Map<string, string>();
+      let safari = 0;
+      const p = await relayPage({ local, platform: "ios", onSafari: () => safari++ });
+      p.finishSession({ error });
+      await flush();
+      expect(p.externals, error).toEqual([TAP]);
+      expect(safari).toBe(1);
+      expect(p.replaced).toEqual([]);
+      expect(local.has(PENDING_KEY)).toBe(true);
+      // « Ouvrir InvoiceLead » touché dans Safari : Universal Link → appUrlOpen sur la page relais.
+      p.appUrlOpen(LINK);
+      expect(p.replaced).toEqual([REDEEM]);
+      expect(p.closed()).toBe(0);
+    }
+  });
+
+  it("iOS 15 à 17.3 : Safari sur start&m=tap, l'écran dit de toucher « Ouvrir InvoiceLead », puis le lien (appUrlOpen ou lancement) mène au rachat", async () => {
+    const local = new Map<string, string>();
+    let safari = 0;
+    const p = await relayPage({ local, platform: "ios", session: "old", onSafari: () => safari++ });
+    expect(p.sessions).toEqual([]);
+    expect(p.externals).toEqual([TAP]);
+    expect(safari).toBe(1);
+    p.appUrlOpen(LINK);
+    expect(p.replaced).toEqual([REDEEM]);
+    // App tuée pendant Safari : relancée par le lien touché (getLaunchUrl), la connexion notée suffit.
+    const local2 = new Map<string, string>();
+    await relayPage({ local: local2, platform: "ios", session: "old" });
+    const relaunched = fakePage({
+      platform: "ios",
+      local: local2,
+      launch: codeLink("S".repeat(43)),
+      now: NOW + 90_000,
+    });
+    expect(await listenForReturn(relaunched.win, { issuer: ISSUER, locale: "it" })).toBe(true);
+    expect(relaunched.replaced).toEqual([
+      `${ISSUER}/auth/google/app/redeem?code=${"S".repeat(43)}`,
+    ]);
+    // Safari refuse de s'ouvrir : l'écran de connexion.
+    const refused = await relayPage({ platform: "ios", session: "old", externalRefused: true });
+    expect(refused.replaced).toEqual([BACK]);
+  });
+
+  it("iOS sans le module LeadAuthSession : écran de connexion d'ERPlead, rien n'est ouvert", async () => {
+    for (const p of [
+      fakePage({ platform: "ios", session: "none" }),
+      fakePage({ platform: null }),
+      fakePage({ platform: "android", browser: false }),
+    ]) {
+      expect(startRelay(p.win, { issuer: ISSUER, start: START, back: BACK, locale: "it" })).toBe(
+        "outside",
+      );
+      await flush();
+      expect(p.replaced).toEqual([BACK]);
+      expect([...p.opened, ...p.sessions, ...p.externals]).toEqual([]);
+      expect(p.win.localStorage?.getItem(PENDING_KEY)).toBeNull();
+    }
+  });
+
+  it("iOS : adresse rendue par la session qui n'est pas le lien de retour → écran de connexion, aucun rachat", async () => {
+    for (const url of [
+      `io.invoicelead.app://lead-auth?code=${CODE}`,
+      `https://evil.example/lead-auth/return?code=${CODE}`,
+      "",
+    ]) {
+      const p = await relayPage({ platform: "ios" });
+      p.finishSession({ url });
+      await flush();
+      expect(p.replaced, url).toEqual([BACK]);
+    }
   });
 });
 
@@ -476,33 +661,36 @@ describe("hors de l'app, rien ne change", () => {
     for (const p of [
       fakePage({ bridge: false }),
       fakePage({ native: false }),
-      fakePage({ browser: false }),
+      fakePage({ native: false, platform: "ios" }),
+      fakePage({ app: false }),
     ]) {
       expect(startRelay(p.win, { issuer: ISSUER, start: START, back: BACK, locale: "it" })).toBe(
         "outside",
       );
-      expect(p.opened).toEqual([]);
+      expect([...p.opened, ...p.sessions, ...p.externals]).toEqual([]);
       expect(p.replaced).toEqual([BACK]);
       expect(p.win.sessionStorage?.getItem(BACK_KEY)).toBeNull();
     }
   });
 
-  it("agent de l'app : LeadAppAuth/1 seulement avec InvoiceLeadApp ; anciennes versions et navigateurs comme avant", () => {
+  it("agent de l'app : LeadAppAuth/2 seulement avec InvoiceLeadApp ; LeadAppAuth/1, anciennes versions et navigateurs comme avant", () => {
     const ios =
       "Mozilla/5.0 (iPhone; CPU iPhone OS 18_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148";
-    expect(isAppAuthAgent(`${ios} InvoiceLeadApp LeadAppAuth/1`)).toBe(true);
     expect(isAppAuthAgent(`${ios} InvoiceLeadApp LeadAppAuth/2`)).toBe(true);
+    expect(isAppAuthAgent(`${ios} InvoiceLeadApp LeadAppAuth/3`)).toBe(true);
+    // Première version (schéma propre, jamais publiée) : une ancienne version, comme chez ERPlead.
+    expect(isAppAuthAgent(`${ios} InvoiceLeadApp LeadAppAuth/1`)).toBe(false);
     expect(isAppAuthAgent(`${ios} InvoiceLeadApp`)).toBe(false);
     expect(isAppAuthAgent(`${ios} InvoiceLeadApp LeadAppAuth/0`)).toBe(false);
-    expect(isAppAuthAgent(`${ios} InvoiceLeadApp XLeadAppAuth/1`)).toBe(false);
-    expect(isAppAuthAgent(`${ios} LeadAppAuth/1`)).toBe(false);
+    expect(isAppAuthAgent(`${ios} InvoiceLeadApp XLeadAppAuth/2`)).toBe(false);
+    expect(isAppAuthAgent(`${ios} LeadAppAuth/2`)).toBe(false);
     expect(isAppAuthAgent(null)).toBe(false);
-    expect(isNativeAgent(`${ios} InvoiceLeadApp LeadAppAuth/1`)).toBe(true);
+    expect(isNativeAgent(`${ios} InvoiceLeadApp LeadAppAuth/2`)).toBe(true);
   });
 });
 
 describe("page relais (/lead-auth/google?start&back)", () => {
-  it("page relais dans l'app : back gardé, navigateur du téléphone ouvert sur start ; refermé sans retour → back", async () => {
+  it("Android : page relais dans l'app : back gardé, Custom Tab ouvert sur start&m=auto ; refermé sans retour → back", async () => {
     // Une connexion notée par une page relais précédente : effacée, celle-ci la remplace.
     const local = pendingSince(new Map(), 60_000, "ancien");
     const p = fakePage({ local });
@@ -510,7 +698,7 @@ describe("page relais (/lead-auth/google?start&back)", () => {
       "opened",
     );
     await flush();
-    expect(p.opened).toEqual([START]);
+    expect(p.opened).toEqual([AUTO]);
     expect(p.win.sessionStorage?.getItem(BACK_KEY)).toBe(BACK);
     expect(p.listeners["App.appUrlOpen"]).toHaveLength(1);
     expect(JSON.parse(local.get(PENDING_KEY) ?? "null")).toEqual({ t: NOW, stale: null });
@@ -531,7 +719,7 @@ describe("page relais (/lead-auth/google?start&back)", () => {
     p.browserFinished();
     p.appUrlOpen(LINK);
     p.runTimers();
-    expect(p.replaced).toEqual([`${ISSUER}/auth/google/app/redeem?code=${CODE}`]);
+    expect(p.replaced).toEqual([REDEEM]);
     expect(p.closed()).toBe(1);
   });
 
@@ -544,7 +732,7 @@ describe("page relais (/lead-auth/google?start&back)", () => {
     expect(local.has(PENDING_KEY)).toBe(false);
   });
 
-  it("page relais : start ou back étrangers → rien n'est ouvert, connexion ordinaire de l'app", () => {
+  it("page relais : start ou back étrangers, ou start avec un mode déjà posé → rien n'est ouvert, connexion ordinaire de l'app", () => {
     const bad: [unknown, unknown][] = [
       ["https://evil.example/auth/google/app/start?d=x", BACK],
       ["https://erplead.io.evil.example/auth/google/app/start?d=x", BACK],
@@ -554,6 +742,8 @@ describe("page relais (/lead-auth/google?start&back)", () => {
       ['https://erplead.io/auth/google/app/start?d=x"><script>', BACK],
       ["https://erplead.io/auth/google/app/start?d= x", BACK],
       ["javascript:alert(1)//https://erplead.io/auth/google/app/start?", BACK],
+      [`${START}&m=tap`, BACK],
+      [`${ISSUER}/auth/google/app/start?m=auto&d=x`, BACK],
       [START, "https://evil.example/login?next=x"],
       [START, "https://erplead.io/logout?x"],
       [START, "https://erplead.io/login"],
@@ -565,13 +755,17 @@ describe("page relais (/lead-auth/google?start&back)", () => {
     ];
     for (const [start, back] of bad) {
       expect(relayTargets(ISSUER, start, back), `${start} ${back}`).toBeNull();
-      const p = fakePage();
-      expect(startRelay(p.win, { issuer: ISSUER, start, back, locale: "it" })).toBe("invalid");
-      expect(p.opened).toEqual([]);
-      expect(p.replaced).toEqual(["/auth/lead/start?locale=it"]);
+      for (const platform of ["android", "ios"] as const) {
+        const p = fakePage({ platform });
+        expect(startRelay(p.win, { issuer: ISSUER, start, back, locale: "it" })).toBe("invalid");
+        expect([...p.opened, ...p.sessions, ...p.externals]).toEqual([]);
+        expect(p.replaced).toEqual(["/auth/lead/start?locale=it"]);
+      }
     }
     expect(relayTargets(ISSUER, START, BACK)).toEqual({ start: START, back: BACK });
     expect(relayTargets(null, START, BACK)).toBeNull();
+    expect(withMode(START, "auto")).toBe(AUTO);
+    expect(withMode(START, "tap")).toBe(TAP);
   });
 
   it("émetteur : LEAD_ID_ISSUER (https, sans chemin), sinon rien", () => {
@@ -591,10 +785,179 @@ describe("page relais (/lead-auth/google?start&back)", () => {
   });
 });
 
-describe("proxy : la page relais sans langue", () => {
+describe("page de retour /lead-auth/return", () => {
+  beforeAll(() => setTestEnv());
+
+  it("dans l'app : l'adresse de la page suit les règles du lien de retour (connexion en cours → rachat ; sinon l'app) ; hors de l'app → page de repli", async () => {
+    const search = `?code=${CODE}&locale=it`;
+    // Connexion en cours (notée par la page relais) : rachat, une seule fois.
+    const local = pendingSince(new Map(), 30_000);
+    const inApp = fakePage({ local, pathname: "/it/lead-auth/return", search });
+    expect(await followReturnPage(inApp.win, { issuer: ISSUER, locale: "it" })).toBe("followed");
+    expect(inApp.replaced).toEqual([REDEEM]);
+    expect(local.has(PENDING_KEY)).toBe(false);
+    // Rechargée : déjà suivi → l'app.
+    const again = fakePage({
+      local: pendingSince(local, 1000),
+      pathname: "/it/lead-auth/return",
+      search,
+    });
+    expect(await followReturnPage(again.win, { issuer: ISSUER, locale: "it" })).toBe("ignored");
+    expect(again.replaced).toEqual(["/it/app"]);
+    // Sans connexion en cours (lien piégé ouvert dans la vue web) : l'app, aucun rachat.
+    const trap = fakePage({ pathname: "/fr/lead-auth/return", search });
+    expect(await followReturnPage(trap.win, { issuer: ISSUER, locale: "fr" })).toBe("ignored");
+    expect(trap.replaced).toEqual(["/fr/app"]);
+    // Lien d'erreur pendant une connexion : l'écran de connexion de l'app.
+    const expired = fakePage({
+      local: pendingSince(new Map(), 1000),
+      pathname: "/es/lead-auth/return",
+      search: "?error=expired&locale=es",
+    });
+    expect(await followReturnPage(expired.win, { issuer: ISSUER, locale: "es" })).toBe("followed");
+    expect(expired.replaced).toEqual(["/auth/lead/start?locale=es"]);
+    // Hors de l'app : la page de repli, qui efface le code de l'adresse.
+    const outside = fakePage({ bridge: false, pathname: "/it/lead-auth/return", search });
+    expect(await followReturnPage(outside.win, { issuer: ISSUER, locale: "it" })).toBe("outside");
+    expect(outside.replaced).toEqual([`/lead-auth/return${search}`]);
+    // Dans l'app sans émetteur : l'app (jamais la page de repli, qui y ramènerait).
+    const noIssuer = fakePage({ local: pendingSince(new Map(), 1000), search });
+    expect(await followReturnPage(noIssuer.win, { issuer: null, locale: "it" })).toBe("ignored");
+    expect(noIssuer.replaced).toEqual(["/it/app"]);
+  });
+
+  it("page de repli : 200 sans redirection, no-store, no-referrer, noindex, aucun script tiers, code jamais dans la page, cinq langues, phrase Android", async () => {
+    const { GET } = await import("@/app/lead-auth/return/route");
+    const get = async (query: string, headers: Record<string, string> = {}) => {
+      const r = await GET(
+        new NextRequest(`https://invoicelead.io/lead-auth/return${query}`, { headers }),
+      );
+      return { r, html: await r.text() };
+    };
+    const iphone = { "user-agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_2 like Mac OS X)" };
+    const android = { "user-agent": "Mozilla/5.0 (Linux; Android 14; Pixel 8) Chrome/140.0" };
+    const titles = {
+      fr: "Revenez dans InvoiceLead",
+      de: "Zurück zu InvoiceLead",
+      en: "Return to InvoiceLead",
+      it: "Torna su InvoiceLead",
+      es: "Vuelve a InvoiceLead",
+    };
+    const google = {
+      fr: "« Continuer avec Google »",
+      de: "„Weiter mit Google“",
+      en: "“Continue with Google”",
+      it: "«Continua con Google»",
+      es: "«Continuar con Google»",
+    };
+    for (const [locale, title] of Object.entries(titles)) {
+      const { r, html } = await get(`?code=${CODE}&locale=${locale}`, iphone);
+      expect(r.status, locale).toBe(200);
+      expect(r.headers.get("location")).toBeNull();
+      expect(r.headers.get("content-type")).toBe("text/html; charset=utf-8");
+      expect(r.headers.get("cache-control")).toBe("no-store");
+      expect(r.headers.get("referrer-policy")).toBe("no-referrer");
+      expect(r.headers.get("x-robots-tag")).toBe("noindex");
+      expect(html).toContain(`<h1>${title}</h1>`);
+      expect(html).toContain(google[locale as keyof typeof google]);
+      expect(html).toContain("App Store");
+      expect(html).not.toContain(CODE);
+      expect(html).not.toContain("data-android");
+      // Un seul script, dans la page, sans source externe ; aucun lien, aucun bouton.
+      expect(html.match(/<script/g)).toHaveLength(1);
+      expect(html).not.toMatch(/<script[^>]*\bsrc=/);
+      expect(html).not.toMatch(/<a\b|<button|<form|<iframe|<img|<link/);
+      expect(html).toContain('<meta name="referrer" content="no-referrer">');
+    }
+    // Phrase Android : « Ouvrir par défaut ».
+    const fr = await get(`?code=${CODE}&locale=fr`, android);
+    expect(fr.html).toContain("Réglages &gt; Applications &gt; InvoiceLead &gt; Ouvrir par défaut");
+    expect(fr.html).toContain("data-android");
+    // Sans langue : celle du navigateur ; lien d'erreur : la même page.
+    const de = await get("?error=expired", { ...iphone, "accept-language": "de-CH,de;q=0.9" });
+    expect(de.html).toContain('<html lang="de-CH">');
+    expect(de.html).toContain("<h1>Zurück zu InvoiceLead</h1>");
+    // Langue inconnue ou piégée : jamais reprise telle quelle.
+    const odd = await get(`?locale=${encodeURIComponent('"><script>x</script>')}`, iphone);
+    expect(odd.html).not.toContain("<script>x");
+    expect(odd.html.match(/<script/g)).toHaveLength(1);
+  });
+
+  it("page de repli : son script efface le code de l'adresse hors de l'app, et mène l'app à /<langue>/lead-auth/return avec la même recherche", () => {
+    const run = (capacitor: unknown) => {
+      const replaced: string[] = [];
+      const states: unknown[][] = [];
+      const html = { className: "" };
+      const window = { Capacitor: capacitor };
+      runInNewContext(returnPageScript("it"), {
+        window,
+        document: { documentElement: html },
+        location: { search: `?code=${CODE}&locale=it`, replace: (u: string) => replaced.push(u) },
+        history: { replaceState: (...a: unknown[]) => states.push(a) },
+      });
+      return { replaced, states, html };
+    };
+    // Navigateur (aucun pont, ou pont non natif) : l'adresse devient /lead-auth/return, sans code.
+    for (const cap of [undefined, { isNativePlatform: () => false }, { isNativePlatform: 1 }]) {
+      const out = run(cap);
+      expect(out.replaced).toEqual([]);
+      expect(out.states).toEqual([[null, "", "/lead-auth/return"]]);
+    }
+    // Dans l'app : la page de l'app suit le lien (même recherche), l'écran de repli est masqué.
+    const app = run({ isNativePlatform: () => true });
+    expect(app.replaced).toEqual([`/it/lead-auth/return?code=${CODE}&locale=it`]);
+    expect(app.states).toEqual([]);
+    expect(app.html.className).toBe("app");
+  });
+});
+
+describe("fichiers d'association (.well-known)", () => {
+  it("apple-app-site-association et assetlinks.json : JSON exact du contrat (App ID X6K5247J6G.io.invoicelead.app, paquet io.invoicelead.app, Play App Signing et clé d'envoi), application/json", async () => {
+    const aasa = await import("@/app/.well-known/apple-app-site-association/route");
+    const links = await import("@/app/.well-known/assetlinks.json/route");
+    const a = aasa.GET();
+    expect(a.status).toBe(200);
+    expect(a.headers.get("content-type")).toBe("application/json");
+    expect(aasa.dynamic).toBe("force-static");
+    expect(await a.json()).toEqual({
+      applinks: {
+        details: [
+          {
+            appIDs: ["X6K5247J6G.io.invoicelead.app"],
+            components: [
+              {
+                "/": "/lead-auth/return",
+                comment: "Retour de « Continuer avec Google » (Compte Lead) vers l'app",
+              },
+            ],
+          },
+        ],
+      },
+      webcredentials: { apps: ["X6K5247J6G.io.invoicelead.app"] },
+    });
+    const l = links.GET();
+    expect(l.status).toBe(200);
+    expect(l.headers.get("content-type")).toBe("application/json");
+    expect(await l.json()).toEqual([
+      {
+        relation: ["delegate_permission/common.handle_all_urls"],
+        target: {
+          namespace: "android_app",
+          package_name: "io.invoicelead.app",
+          sha256_cert_fingerprints: [
+            "88:49:FC:61:6B:A1:B0:A9:8D:87:E4:0E:B3:DE:4C:CD:18:4C:AA:61:1C:93:0C:1A:95:4D:2F:CE:94:0B:7F:54",
+            "7B:E5:3E:52:B6:BB:67:F5:F2:FB:93:4B:A4:4A:58:D9:AA:BC:EE:EC:B3:B7:41:F3:BC:36:97:6B:F0:EF:80:F6",
+          ],
+        },
+      },
+    ]);
+  });
+});
+
+describe("proxy : page relais sans langue, lien de retour et fichiers d'association hors du proxy", () => {
   beforeAll(() => setTestEnv());
   const APP_UA =
-    "Mozilla/5.0 (iPhone; CPU iPhone OS 18_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 InvoiceLeadApp LeadAppAuth/1";
+    "Mozilla/5.0 (iPhone; CPU iPhone OS 18_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 InvoiceLeadApp LeadAppAuth/2";
   async function proxy(path: string, extra: Record<string, string> = {}) {
     const { default: run } = await import("@/proxy");
     return run(
@@ -618,5 +981,18 @@ describe("proxy : la page relais sans langue", () => {
     expect(new URL(plain.headers.get("location") ?? "").pathname).toBe(`/de${RELAY_PATH}`);
     const chosen = await proxy(`${RELAY_PATH}?back=nope`, { cookie: "NEXT_LOCALE=es" });
     expect(new URL(chosen.headers.get("location") ?? "").pathname).toBe(`/es${RELAY_PATH}`);
+  });
+
+  it("proxy : /lead-auth/return et /.well-known/… hors du proxy (aucune langue, aucune redirection) ; la page relais et les pages de l'app y restent", async () => {
+    const { config } = await import("@/proxy");
+    const matched = new RegExp(`^${config.matcher}$`);
+    for (const path of [
+      "/lead-auth/return",
+      "/.well-known/apple-app-site-association",
+      "/.well-known/assetlinks.json",
+    ])
+      expect(matched.test(path), path).toBe(false);
+    for (const path of ["/lead-auth/google", "/it/lead-auth/return", "/it/app", "/", "/de/login"])
+      expect(matched.test(path), path).toBe(true);
   });
 });

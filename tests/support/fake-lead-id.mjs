@@ -28,13 +28,15 @@
  *     « Annuler » au cancel_url),
  *     abonnements, portail ; GET /test/billing relit tout, POST /test/billing/subscriptions/<id> change
  *     un abonnement (statut, résiliation en fin de période)
- *   « Continuer avec Google » dans l'app (contrat d'ERPlead docs/GOOGLE-APP.md, en petit) : POST
- *     /test/app-google {on} ; authorize avec platform=app montre alors un écran de connexion (lien
- *     « Continuer avec Google » vers /auth/google/app), sauf session déjà ouverte ; /auth/google/app pose
- *     le cookie verifier « fake_gapp » et renvoie vers la page relais de l'app (start, back) ;
- *     POST /test/app-google/code {d} imite le retour de Google (code de transfert lié au départ) ;
+ *   « Continuer avec Google » dans l'app (contrat d'ERPlead docs/GOOGLE-APP.md révisé : liens vérifiés,
+ *     en petit) : POST /test/app-google {on} ; authorize avec platform=app montre alors un écran de
+ *     connexion (lien « Continuer avec Google » vers /auth/google/app), sauf session déjà ouverte ;
+ *     /auth/google/app pose le cookie verifier « fake_gapp » et renvoie vers la page relais de l'app
+ *     (start, back) ; /auth/google/app/start relève le départ et son mode (m=auto|tap) ;
+ *     POST /test/app-google/code {d} imite le retour de Google (code de transfert lié au départ, et le
+ *     lien vérifié https://invoicelead.io/lead-auth/return?code=…&locale=… que l'app recevrait) ;
  *     /auth/google/app/redeem n'ouvre la session qu'avec le cookie verifier du départ (usage unique) ;
- *     GET /test/app-google relit départs, ouvertures et rachats
+ *     GET /test/app-google relit départs, ouvertures (avec leur mode) et rachats
  */
 import {
   createHash,
@@ -86,7 +88,14 @@ const billingReports = [];
 const billing = { customers: [], checkouts: [], portals: [], subscriptions: new Map() };
 const BILLING_KEY = "Bearer sk_test_billing_e2e";
 /** « Continuer avec Google » dans l'app : départs, codes de transfert, rachats (contrat d'ERPlead). */
-const appGoogle = { on: false, departs: new Map(), codes: new Map(), starts: [], redeems: [] };
+const appGoogle = {
+  on: false,
+  departs: new Map(),
+  codes: new Map(),
+  starts: [],
+  modes: [],
+  redeems: [],
+};
 const GAPP_COOKIE = "fake_gapp";
 const sha256hex = (s) => createHash("sha256").update(s).digest("hex");
 const html = (res, status, body, headers = {}) => {
@@ -752,6 +761,7 @@ createServer(async (req, res) => {
   // Navigateur du téléphone : le départ mène à Google (jamais suivi par les essais).
   if (url.pathname === "/auth/google/app/start") {
     appGoogle.starts.push(q.get("d"));
+    appGoogle.modes.push(q.get("m"));
     res.writeHead(302, { Location: "https://accounts.google.com/o/oauth2/v2/auth?fake=1" });
     return res.end();
   }
@@ -764,7 +774,9 @@ createServer(async (req, res) => {
     const code = randomBytes(32).toString("base64url");
     appGoogle.codes.set(code, { ...dep, user: nextUser, at: Date.now() });
     nextUser = { ...defaultUser };
-    return send(res, 200, { code, link: `io.invoicelead.app://lead-auth?code=${code}` });
+    // Le lien vérifié de l'app (origine de production, écrite dans le code de l'app).
+    const link = `https://invoicelead.io/lead-auth/return?${new URLSearchParams({ code, locale: dep.locale })}`;
+    return send(res, 200, { code, link });
   }
   // Rachat dans la vue web : le code avec le cookie verifier du départ, consommés quoi qu'il arrive.
   if (url.pathname === "/auth/google/app/redeem") {
@@ -807,6 +819,7 @@ createServer(async (req, res) => {
   if (url.pathname === "/test/app-google")
     return send(res, 200, {
       starts: appGoogle.starts,
+      modes: appGoogle.modes,
       redeems: appGoogle.redeems,
       departs: [...appGoogle.departs.keys()],
     });

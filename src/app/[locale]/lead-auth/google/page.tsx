@@ -42,6 +42,7 @@ export default async function Page({
       locale={locale}
       title={t("relayTitle")}
       body={t("relayBody")}
+      safariBody={t("relaySafari")}
       backLabel={t("back")}
     />
   );

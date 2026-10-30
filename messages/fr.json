@@ -2999,6 +2999,13 @@
   "leadAppAuth": {
     "relayTitle": "Connexion avec Google…",
     "relayBody": "Google s'ouvre dans le navigateur du téléphone. La connexion faite, vous revenez automatiquement dans InvoiceLead.",
-    "back": "Retour"
+    "back": "Retour",
+    "relaySafari": "Terminez la connexion dans Safari, puis touchez « Ouvrir InvoiceLead »."
+  },
+  "leadAppReturn": {
+    "title": "Revenez dans InvoiceLead",
+    "body": "InvoiceLead ne s'est pas ouverte toute seule. Fermez cette page et revenez dans l'app ; si vous n'êtes pas connecté, touchez à nouveau « Continuer avec Google ». Si cela se répète : mettez l'app à jour (App Store ou Google Play), ou touchez « Mot de passe oublié ? ».",
+    "android": "Vous pouvez aussi autoriser InvoiceLead à ouvrir ses liens : Réglages > Applications > InvoiceLead > Ouvrir par défaut.",
+    "notAsked": "Vous n'avez rien demandé dans l'app InvoiceLead ? Fermez simplement cette page."
   }
 }

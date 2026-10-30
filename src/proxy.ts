@@ -168,5 +168,8 @@ export default function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: "/((?!api|auth|_next|_vercel|.*\\..*).*)",
+  // Hors du proxy : les API, les routes de connexion, les fichiers (dont /.well-known/…, fichiers
+  // d'association de l'app) et le lien de retour de « Continuer avec Google » (/lead-auth/return :
+  // servi tel quel, sans langue ni redirection, server/lead-app-return.ts).
+  matcher: "/((?!api|auth|_next|_vercel|lead-auth/return|.*\\..*).*)",
 };

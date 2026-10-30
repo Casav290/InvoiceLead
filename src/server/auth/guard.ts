@@ -40,7 +40,7 @@ export async function requireSession(locale: string, back?: ReturnTo): Promise<C
 
 /**
  * Où mène une page qui exige une session quand il n'y en a pas : tout droit vers le Compte Lead
- * (`/auth/lead/start`). Dans l'app, pour les versions qui reviennent de Google (LeadAppAuth/1), par
+ * (`/auth/lead/start`). Dans l'app, pour les versions qui reviennent de Google (LeadAppAuth/2), par
  * l'écran de connexion de l'app (`/<langue>/login`) : relancée par son lien de retour (fermée pendant
  * la connexion Google) avec un cookie de session périmé, la vue web n'aurait affiché aucune page
  * d'InvoiceLead avant le Compte Lead, et le lien de lancement serait perdu ; l'écran de connexion le

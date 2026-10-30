@@ -5,64 +5,80 @@ import { APP, LEAD } from "./helpers";
 
 /**
  * « Continuer avec Google » dans l'app Android / iOS (lib/lead-app-auth.ts ; contrat d'ERPlead
- * docs/GOOGLE-APP.md, imité par le faux Compte Lead) : la vue web de l'app est un navigateur à l'agent
- * de l'app (InvoiceLeadApp LeadAppAuth/1) avec un faux pont Capacitor (tests/support/fake-capacitor.js).
- * Google n'est jamais appelé : son retour est imité par le faux Compte Lead (code de transfert).
+ * docs/GOOGLE-APP.md révisé le 30.10.2026 : liens VÉRIFIÉS, imité par le faux Compte Lead) : la vue web
+ * de l'app est un navigateur à l'agent de l'app (InvoiceLeadApp LeadAppAuth/2) avec un faux pont
+ * Capacitor (tests/support/fake-capacitor.js : Android, ou iOS avec le module LeadAuthSession). Google
+ * n'est jamais appelé : son retour est imité par le faux Compte Lead (code de transfert et lien vérifié
+ * https://invoicelead.io/lead-auth/return?code=…).
  */
 
 const IPHONE =
   "Mozilla/5.0 (iPhone; CPU iPhone OS 18_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148";
-const NEW_APP = `${IPHONE} InvoiceLeadApp LeadAppAuth/1`;
+const NEW_APP = `${IPHONE} InvoiceLeadApp LeadAppAuth/2`;
+const FIRST_APP = `${IPHONE} InvoiceLeadApp LeadAppAuth/1`;
 const OLD_APP = `${IPHONE} InvoiceLeadApp`;
+const RETOUR = "https://invoicelead.io/lead-auth/return";
 const BRIDGE = readFileSync(join(process.cwd(), "tests/support/fake-capacitor.js"), "utf8");
 
 type Call = { name: string; arg: unknown; url: string };
-
 type Stored = Awaited<ReturnType<BrowserContext["storageState"]>>;
+type Platform = { platform?: "ios" | "android"; session?: "https" | "old" | "none" };
 
 /**
- * Une vue web de l'app : agent, faux pont, appels au pont relevés. `stored` : cookies et localStorage
- * d'une vue web précédente (app fermée puis relancée : le téléphone les garde).
+ * Une vue web de l'app : agent, faux pont (plateforme, module iOS), appels au pont relevés. `stored` :
+ * cookies et localStorage d'une vue web précédente (app fermée puis relancée : le téléphone les garde).
  */
-async function webview(browser: Browser, ua = NEW_APP, launchUrl?: string, stored?: Stored) {
+async function webview(
+  browser: Browser,
+  opts: { ua?: string; launchUrl?: string; stored?: Stored } & Platform = {},
+) {
   const context = await browser.newContext({
-    userAgent: ua,
+    userAgent: opts.ua ?? NEW_APP,
     viewport: { width: 390, height: 844 },
     locale: "it-CH",
-    ...(stored ? { storageState: stored } : {}),
+    ...(opts.stored ? { storageState: opts.stored } : {}),
   });
   const calls: Call[] = [];
   await context.exposeBinding("__bridgeCall", ({ page }, name: string, arg: unknown) => {
     calls.push({ name, arg, url: page.url() });
   });
-  if (launchUrl)
-    await context.addInitScript((url) => {
-      (window as unknown as { __FAKE_CAPACITOR: unknown }).__FAKE_CAPACITOR = { launchUrl: url };
-    }, launchUrl);
+  await context.addInitScript(
+    (c) => {
+      (window as unknown as { __FAKE_CAPACITOR: unknown }).__FAKE_CAPACITOR = c;
+    },
+    { launchUrl: opts.launchUrl, platform: opts.platform ?? "android", session: opts.session },
+  );
   await context.addInitScript({ content: BRIDGE });
   return { context, page: await context.newPage(), calls };
 }
 
 const named = (calls: Call[], name: string) => calls.filter((c) => c.name === name);
+/** Ce que la page relais a ouvert : Custom Tab (Android), session ou Safari (iOS). */
+const OPENERS = ["Browser.open", "LeadAuthSession.start", "LeadAuthSession.openExternal"];
+const openings = (calls: Call[]) => calls.filter((c) => OPENERS.includes(c.name));
 
 async function appGoogle(page: Page, on: boolean) {
   expect((await page.request.post(`${LEAD}/test/app-google`, { data: { on } })).ok()).toBeTruthy();
 }
 
-/** Écran de connexion de l'app → Compte Lead → « Continuer avec Google » → page relais. */
-async function toRelay(page: Page, calls: Call[]) {
+/** Écran de connexion de l'app → Compte Lead → « Continuer avec Google » → page relais → ouverture. */
+async function toRelay(page: Page, calls: Call[], opener = "Browser.open", mode = "auto") {
   await page.goto(`${APP}/it/login`);
   await page.waitForURL(`${LEAD}/oauth/authorize?**`);
   await page.locator("#google").click();
   await page.waitForURL(`${APP}/it/lead-auth/google?**`);
   await expect(page.getByRole("heading", { name: "Accesso con Google…" })).toBeVisible();
-  await expect.poll(() => named(calls, "Browser.open").length).toBe(1);
-  const start = String(named(calls, "Browser.open")[0]?.arg);
-  expect(start.startsWith(`${LEAD}/auth/google/app/start?d=invoicelead.`)).toBe(true);
-  return new URL(start).searchParams.get("d") ?? "";
+  await expect.poll(() => openings(calls).length).toBe(1);
+  const opened = openings(calls)[0];
+  expect(opened?.name).toBe(opener);
+  const start = new URL(String(opened?.arg));
+  expect(`${start.origin}${start.pathname}`).toBe(`${LEAD}/auth/google/app/start`);
+  expect(start.searchParams.get("d")?.startsWith("invoicelead.")).toBe(true);
+  expect(start.searchParams.getAll("m")).toEqual([mode]);
+  return start.searchParams.get("d") ?? "";
 }
 
-/** Retour de Google imité : le code de transfert du départ `d`, et le lien de retour de l'app. */
+/** Retour de Google imité : le code de transfert du départ `d`, et le lien vérifié de l'app. */
 async function googleReturn(page: Page, d: string): Promise<{ code: string; link: string }> {
   const r = await page.request.post(`${LEAD}/test/app-google/code`, { data: { d } });
   expect(r.ok()).toBeTruthy();
@@ -78,38 +94,59 @@ const emit = (page: Page, url: string) =>
       ),
     url,
   );
+const endSession = (page: Page, result: { url: string } | { error: string }) =>
+  page.evaluate(
+    (r) => (window as unknown as { __fakeSession: (x: unknown) => boolean }).__fakeSession(r),
+    result,
+  );
+const listening = (page: Page) =>
+  page.waitForFunction(() =>
+    (window as unknown as { __fakeListeners: (k: string) => number }).__fakeListeners(
+      "App.appUrlOpen",
+    ),
+  );
 
-const redeems = async (page: Page) =>
-  (await (await page.request.get(`${LEAD}/test/app-google`)).json()).redeems as { ok: boolean }[];
+const fake = async (page: Page) =>
+  (await (await page.request.get(`${LEAD}/test/app-google`)).json()) as {
+    redeems: { ok: boolean }[];
+    modes: (string | null)[];
+  };
+const redeems = async (page: Page) => (await fake(page)).redeems;
+
+async function nextUser(page: Page, sub: string, orgName: string) {
+  await page.request.post(`${LEAD}/test/next-user`, {
+    data: {
+      sub,
+      email: `${sub}@google-app.test`,
+      name: "Gina Google",
+      org: `org-${sub}`,
+      org_name: orgName,
+      locale: "it",
+    },
+  });
+}
 
 test.afterEach(async ({ page }) => {
   await appGoogle(page, false);
 });
 
-test("app (LeadAppAuth/1) : « Continuer avec Google » → page relais → navigateur du téléphone → lien de retour → connectée dans InvoiceLead, une seule fois", async ({
+test("app Android (LeadAppAuth/2) : « Continuer avec Google » → page relais → Custom Tab (start&m=auto) → lien vérifié https://invoicelead.io/lead-auth/return → connectée dans InvoiceLead, une seule fois", async ({
   browser,
   page: plain,
 }) => {
   await appGoogle(plain, true);
-  await plain.request.post(`${LEAD}/test/next-user`, {
-    data: {
-      sub: "sub-google-app",
-      email: "gina@google-app.test",
-      name: "Gina Google",
-      org: "org-google-app",
-      org_name: "Google App Sàrl",
-      locale: "it",
-    },
-  });
+  await nextUser(plain, "sub-google-app", "Google App Sàrl");
   const { context, page, calls } = await webview(browser);
   try {
     const before = (await redeems(page)).length;
     const d = await toRelay(page, calls);
-    // L'écoute du lien de retour est posée (page relais), le navigateur du téléphone est ouvert.
+    // L'écoute du lien de retour est posée (page relais), le Custom Tab est ouvert.
     expect(named(calls, "App.addListener").map((c) => c.arg)).toContain("appUrlOpen");
     expect(named(calls, "Browser.addListener").map((c) => c.arg)).toContain("browserFinished");
     const { link } = await googleReturn(page, d);
-    expect(link).toMatch(/^io\.invoicelead\.app:\/\/lead-auth\?code=[A-Za-z0-9_-]{43}$/);
+    expect(link).toMatch(
+      /^https:\/\/invoicelead\.io\/lead-auth\/return\?code=[\w-]{43}&locale=it$/,
+    );
     await emit(page, link);
     await page.waitForURL(`${APP}/it/app`);
     expect(named(calls, "Browser.close")).toHaveLength(1);
@@ -117,11 +154,7 @@ test("app (LeadAppAuth/1) : « Continuer avec Google » → page relais → navi
     expect(after.slice(before)).toEqual([{ ok: true, cookie: true }]);
     await expect(page.locator("body")).toContainText("Google App Sàrl");
     // Le même lien une seconde fois (appUrlOpen répété) : rien ne se passe.
-    await page.waitForFunction(() =>
-      (window as unknown as { __fakeListeners: (k: string) => number }).__fakeListeners(
-        "App.appUrlOpen",
-      ),
-    );
+    await listening(page);
     await emit(page, link);
     await page.waitForTimeout(500);
     expect(page.url()).toBe(`${APP}/it/app`);
@@ -132,7 +165,80 @@ test("app (LeadAppAuth/1) : « Continuer avec Google » → page relais → navi
   }
 });
 
-test("navigateur du téléphone refermé sans retour : l'écran de connexion du Compte Lead revient", async ({
+test("app iOS 17.4+ : la session LeadAuthSession (start&m=auto) rend le lien vérifié → connectée, sans Browser.open ni Browser.close", async ({
+  browser,
+  page: plain,
+}) => {
+  await appGoogle(plain, true);
+  await nextUser(plain, "sub-google-ios", "Session iOS Sàrl");
+  const { context, page, calls } = await webview(browser, { platform: "ios", session: "https" });
+  try {
+    const before = (await redeems(page)).length;
+    const d = await toRelay(page, calls, "LeadAuthSession.start", "auto");
+    expect(named(calls, "LeadAuthSession.isAvailable").map((c) => c.arg)).toEqual([true]);
+    const { link } = await googleReturn(page, d);
+    expect(await endSession(page, { url: link })).toBe(true);
+    await page.waitForURL(`${APP}/it/app`);
+    await expect(page.locator("body")).toContainText("Session iOS Sàrl");
+    expect((await redeems(page)).slice(before)).toEqual([{ ok: true, cookie: true }]);
+    expect(named(calls, "Browser.open")).toHaveLength(0);
+    expect(named(calls, "Browser.close")).toHaveLength(0);
+    expect(named(calls, "LeadAuthSession.openExternal")).toHaveLength(0);
+  } finally {
+    await context.close();
+  }
+});
+
+test("app iOS 15 à 17.3 : Safari (start&m=tap), « Ouvrir InvoiceLead » dit sur la page relais, puis le lien touché (appUrlOpen) → connectée", async ({
+  browser,
+  page: plain,
+}) => {
+  await appGoogle(plain, true);
+  await nextUser(plain, "sub-google-safari", "Safari Sàrl");
+  const { context, page, calls } = await webview(browser, { platform: "ios", session: "old" });
+  try {
+    const before = (await redeems(page)).length;
+    const d = await toRelay(page, calls, "LeadAuthSession.openExternal", "tap");
+    await expect(page.locator("[data-lead-auth-mode=safari]")).toHaveText(
+      "Completa l'accesso in Safari, poi tocca «Apri InvoiceLead».",
+    );
+    const { link } = await googleReturn(page, d);
+    await emit(page, link);
+    await page.waitForURL(`${APP}/it/app`);
+    await expect(page.locator("body")).toContainText("Safari Sàrl");
+    expect((await redeems(page)).slice(before)).toEqual([{ ok: true, cookie: true }]);
+    expect(named(calls, "LeadAuthSession.start")).toHaveLength(0);
+  } finally {
+    await context.close();
+  }
+});
+
+test("app iOS : session annulée → l'écran de connexion du Compte Lead revient ; session refusée → Safari", async ({
+  browser,
+  page: plain,
+}) => {
+  await appGoogle(plain, true);
+  const { context, page, calls } = await webview(browser, { platform: "ios" });
+  try {
+    await toRelay(page, calls, "LeadAuthSession.start", "auto");
+    await endSession(page, { error: "canceled" });
+    await page.waitForURL(`${LEAD}/login?**`);
+    expect(new URL(page.url()).searchParams.get("locale")).toBe("it");
+    expect(named(calls, "LeadAuthSession.openExternal")).toHaveLength(0);
+    // Deuxième essai : la session échoue (association absente) → Safari, mode tap.
+    calls.length = 0;
+    await toRelay(page, calls, "LeadAuthSession.start", "auto");
+    await endSession(page, { error: "failed" });
+    await expect.poll(() => named(calls, "LeadAuthSession.openExternal").length).toBe(1);
+    const tap = new URL(String(named(calls, "LeadAuthSession.openExternal")[0]?.arg));
+    expect(tap.searchParams.getAll("m")).toEqual(["tap"]);
+    await expect(page.locator("[data-lead-auth-mode=safari]")).toBeVisible();
+  } finally {
+    await context.close();
+  }
+});
+
+test("navigateur du téléphone refermé sans retour (Android) : l'écran de connexion du Compte Lead revient", async ({
   browser,
   page: plain,
 }) => {
@@ -166,7 +272,7 @@ test("app relancée par le lien de retour (lien de lancement) : connectée depui
   const stored = await first.context.storageState();
   await first.context.close();
   const { link } = await googleReturn(plain, d);
-  const relaunched = await webview(browser, NEW_APP, link, stored);
+  const relaunched = await webview(browser, { launchUrl: link, stored });
   try {
     const before = (await redeems(plain)).length;
     await relaunched.page.goto(`${APP}/it/app`);
@@ -191,16 +297,7 @@ test("app relancée par le lien de retour avec un cookie de session périmé : l
   page: plain,
 }) => {
   await appGoogle(plain, true);
-  await plain.request.post(`${LEAD}/test/next-user`, {
-    data: {
-      sub: "sub-google-app-stale",
-      email: "stella@google-app.test",
-      name: "Stella Google",
-      org: "org-google-app-stale",
-      org_name: "Session Périmée Sàrl",
-      locale: "it",
-    },
-  });
+  await nextUser(plain, "sub-google-app-stale", "Session Périmée Sàrl");
   const first = await webview(browser);
   const d = await toRelay(first.page, first.calls);
   // Déconnexion « de partout » passée : le cookie de session d'InvoiceLead reste, sans session.
@@ -208,7 +305,7 @@ test("app relancée par le lien de retour avec un cookie de session périmé : l
   const stored = await first.context.storageState();
   await first.context.close();
   const { link } = await googleReturn(plain, d);
-  const relaunched = await webview(browser, NEW_APP, link, stored);
+  const relaunched = await webview(browser, { launchUrl: link, stored });
   try {
     const before = (await redeems(plain)).length;
     await relaunched.page.goto(`${APP}/it/app`);
@@ -237,7 +334,7 @@ test("nouvelle connexion après une app relancée sans lecture du lien : l'ancie
   const { link: old } = await googleReturn(plain, d1);
   // L'app relancée par l'ancien lien est menée au Compte Lead sans qu'aucune page d'InvoiceLead ne le
   // lise ; la personne touche de nouveau « Continuer avec Google ».
-  const again = await webview(browser, NEW_APP, old, stored);
+  const again = await webview(browser, { launchUrl: old, stored });
   try {
     const before = (await redeems(plain)).length;
     expect(authorize.startsWith("/oauth/authorize?")).toBe(true);
@@ -271,55 +368,36 @@ test("deux demandes expirées de suite : le lien d'erreur ramène chaque fois à
     for (const round of [1, 2]) {
       calls.length = 0;
       await toRelay(page, calls);
-      await page.waitForFunction(() =>
-        (window as unknown as { __fakeListeners: (k: string) => number }).__fakeListeners(
-          "App.appUrlOpen",
-        ),
-      );
-      await emit(page, "io.invoicelead.app://lead-auth?error=expired");
+      await listening(page);
+      await emit(page, `${RETOUR}?error=expired&locale=it`);
       await page.waitForURL(`${LEAD}/login?**`);
       expect(named(calls, "Browser.close"), `essai ${round}`).toHaveLength(1);
-      // iOS : getLaunchUrl rend ensuite le dernier lien ouvert (ici le lien d'erreur).
+      // La coque rend ensuite le dernier lien ouvert (ici le lien d'erreur) à getLaunchUrl.
       if (round === 1)
-        await context.addInitScript(() => {
+        await context.addInitScript((u) => {
           (window as unknown as { __FAKE_CAPACITOR: unknown }).__FAKE_CAPACITOR = {
-            launchUrl: "io.invoicelead.app://lead-auth?error=expired",
+            launchUrl: u,
+            platform: "android",
           };
-        });
+        }, `${RETOUR}?error=expired&locale=it`);
     }
   } finally {
     await context.close();
   }
 });
 
-test("lien de l'app reçu sans connexion en cours (page de l'app ouverte) : ignoré, la page reste", async ({
+test("lien de retour reçu sans connexion en cours (page de l'app ouverte) : ignoré, la page reste", async ({
   browser,
   page: plain,
 }) => {
-  await plain.request.post(`${LEAD}/test/next-user`, {
-    data: {
-      sub: "sub-app-trap",
-      email: "tina@google-app.test",
-      name: "Tina",
-      org: "org-app-trap",
-      org_name: "Piège Sàrl",
-      locale: "it",
-    },
-  });
+  await nextUser(plain, "sub-app-trap", "Piège Sàrl");
   const { context, page, calls } = await webview(browser);
   try {
     await page.goto(`${APP}/it/login`);
     await page.waitForURL(`${APP}/it/app`);
     const before = (await redeems(plain)).length;
-    await page.waitForFunction(() =>
-      (window as unknown as { __fakeListeners: (k: string) => number }).__fakeListeners(
-        "App.appUrlOpen",
-      ),
-    );
-    for (const url of [
-      `io.invoicelead.app://lead-auth?code=${"T".repeat(43)}`,
-      "io.invoicelead.app://lead-auth?error=expired",
-    ])
+    await listening(page);
+    for (const url of [`${RETOUR}?code=${"T".repeat(43)}`, `${RETOUR}?error=expired`])
       await emit(page, url);
     await page.waitForTimeout(800);
     expect(page.url()).toBe(`${APP}/it/app`);
@@ -331,7 +409,7 @@ test("lien de l'app reçu sans connexion en cours (page de l'app ouverte) : igno
   }
 });
 
-test("liens étrangers ignorés dans l'app ; hors de l'app, la page relais ne fait que revenir à l'écran de connexion", async ({
+test("liens étrangers (dont l'ancien schéma io.invoicelead.app) ignorés dans l'app ; hors de l'app, la page relais ne fait que revenir à l'écran de connexion", async ({
   browser,
   page: plain,
 }) => {
@@ -340,10 +418,12 @@ test("liens étrangers ignorés dans l'app ; hors de l'app, la page relais ne fa
   try {
     await toRelay(page, calls);
     const relay = page.url();
+    await listening(page);
     for (const url of [
+      `io.invoicelead.app://lead-auth?code=${"A".repeat(43)}`,
       `io.crmlead.app://sso?code=${"A".repeat(43)}`,
-      `io.projectlead.app://lead-auth?code=${"A".repeat(43)}`,
-      `io.invoicelead.app://autre?code=${"A".repeat(43)}`,
+      `https://projectlead.io/lead-auth/return?code=${"A".repeat(43)}`,
+      `https://invoicelead.io/lead-auth/autre?code=${"A".repeat(43)}`,
       "https://invoicelead.io/it/app",
     ])
       await emit(page, url);
@@ -368,11 +448,11 @@ test("liens étrangers ignorés dans l'app ; hors de l'app, la page relais ne fa
   expect(new URL(plain.url()).searchParams.get("locale")).toBe("fr");
 });
 
-test("ancienne version de l'app (sans LeadAppAuth/1) et navigateur : l'écran de connexion part tout droit, comme avant", async ({
+test("ancienne version de l'app (sans LeadAppAuth/2, dont LeadAppAuth/1) et navigateur : l'écran de connexion part tout droit, comme avant", async ({
   browser,
   page: plain,
 }) => {
-  for (const ua of [OLD_APP, undefined]) {
+  for (const ua of [OLD_APP, FIRST_APP, undefined]) {
     const context = await browser.newContext(ua ? { userAgent: ua } : {});
     try {
       const r = await context.request.get(`${APP}/it/login`, { maxRedirects: 0 });
@@ -392,4 +472,104 @@ test("ancienne version de l'app (sans LeadAppAuth/1) et navigateur : l'écran de
     await fresh.close();
   }
   expect(plain).toBeTruthy();
+});
+
+test("page de repli /lead-auth/return hors de l'app : 200 sans redirection ni langue, no-referrer, no-store, code effacé de l'adresse, message dans la langue du lien", async ({
+  page,
+}) => {
+  const code = "R".repeat(43);
+  const raw = await page.request.get(`${APP}/lead-auth/return?code=${code}&locale=it`, {
+    maxRedirects: 0,
+    headers: { "user-agent": "Mozilla/5.0 (Linux; Android 14; Pixel 8) Chrome/140.0 Mobile" },
+  });
+  expect(raw.status()).toBe(200);
+  expect(raw.headers().location).toBeUndefined();
+  expect(raw.headers()["referrer-policy"]).toBe("no-referrer");
+  expect(raw.headers()["cache-control"]).toBe("no-store");
+  expect(raw.headers()["x-robots-tag"]).toBe("noindex");
+  const html = await raw.text();
+  expect(html).not.toContain(code);
+  expect(html).toContain("Impostazioni &gt; App &gt; InvoiceLead");
+  const res = await page.goto(`${APP}/lead-auth/return?code=${code}&locale=it`);
+  expect(res?.status()).toBe(200);
+  expect(res?.request().redirectedFrom()).toBeNull();
+  // Le code a quitté l'adresse et l'entrée d'historique.
+  expect(page.url()).toBe(`${APP}/lead-auth/return`);
+  await expect(page.getByRole("heading", { name: "Torna su InvoiceLead" })).toBeVisible();
+  await expect(page.locator("body")).toContainText("«Continua con Google»");
+  expect(await page.content()).not.toContain(code);
+  // Aucune requête vers un autre site (aucun script tiers, aucune mesure d'audience).
+  const others: string[] = [];
+  page.on("request", (r) => {
+    if (!r.url().startsWith(APP)) others.push(r.url());
+  });
+  await page.reload();
+  expect(others).toEqual([]);
+});
+
+test("lien de retour ouvert par la vue web de l'app (/lead-auth/return) : mené à la page de l'app, rachat pendant une connexion en cours", async ({
+  browser,
+  page: plain,
+}) => {
+  await appGoogle(plain, true);
+  await nextUser(plain, "sub-google-page", "Page Retour Sàrl");
+  const { context, page, calls } = await webview(browser);
+  try {
+    const before = (await redeems(plain)).length;
+    const d = await toRelay(page, calls);
+    const { code } = await googleReturn(plain, d);
+    // La vue web ouvre elle-même l'adresse de retour (au lieu de la recevoir par appUrlOpen).
+    await page.goto(`${APP}/lead-auth/return?code=${code}&locale=it`);
+    await page.waitForURL(`${APP}/it/app`);
+    await expect(page.locator("body")).toContainText("Page Retour Sàrl");
+    expect((await redeems(plain)).slice(before)).toEqual([{ ok: true, cookie: true }]);
+    // Sans connexion en cours (lien piégé) : ni rachat, l'app s'ouvre.
+    await page.goto(`${APP}/lead-auth/return?code=${"P".repeat(43)}&locale=it`);
+    await page.waitForURL(`${APP}/it/app`);
+    expect((await redeems(plain)).length).toBe(before + 1);
+  } finally {
+    await context.close();
+  }
+});
+
+test("fichiers d'association servis tels quels : /.well-known/apple-app-site-association et /.well-known/assetlinks.json (200, application/json, sans redirection, contenu du contrat)", async ({
+  page,
+}) => {
+  for (const ua of ["AASA-Bot/1.0.0", "Mozilla/5.0 (Linux; Android 14)", undefined]) {
+    const headers: Record<string, string> = ua ? { "user-agent": ua } : {};
+    const aasa = await page.request.get(`${APP}/.well-known/apple-app-site-association`, {
+      maxRedirects: 0,
+      headers,
+    });
+    expect(aasa.status()).toBe(200);
+    expect(aasa.headers()["content-type"]).toBe("application/json");
+    const a = await aasa.json();
+    expect(a.applinks.details).toEqual([
+      {
+        appIDs: ["X6K5247J6G.io.invoicelead.app"],
+        components: [
+          {
+            "/": "/lead-auth/return",
+            comment: "Retour de « Continuer avec Google » (Compte Lead) vers l'app",
+          },
+        ],
+      },
+    ]);
+    expect(a.webcredentials).toEqual({ apps: ["X6K5247J6G.io.invoicelead.app"] });
+    const links = await page.request.get(`${APP}/.well-known/assetlinks.json`, {
+      maxRedirects: 0,
+      headers,
+    });
+    expect(links.status()).toBe(200);
+    expect(links.headers()["content-type"]).toBe("application/json");
+    const [l] = await links.json();
+    expect(l.relation).toEqual(["delegate_permission/common.handle_all_urls"]);
+    expect(l.target.package_name).toBe("io.invoicelead.app");
+    expect(l.target.sha256_cert_fingerprints).toHaveLength(2);
+  }
+  const head = await page.request.head(`${APP}/.well-known/apple-app-site-association`, {
+    maxRedirects: 0,
+  });
+  expect(head.status()).toBe(200);
+  expect(head.headers()["content-type"]).toBe("application/json");
 });

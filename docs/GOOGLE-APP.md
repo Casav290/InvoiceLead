@@ -1,86 +1,153 @@
-# « Continuer avec Google » dans l'app Android / iOS (30.10.2026)
+# « Continuer avec Google » dans l'app Android / iOS (30.10.2026, révisé : liens vérifiés)
 
 Demande d'Ève : dans l'app, l'écran du Compte Lead ne proposait qu'Apple et le mot de passe. Une personne qui a créé son
 compte avec Google sur ordinateur n'avait pas de mot de passe et ne pouvait entrer que par « Mot de passe oublié ? ».
-Google refuse sa connexion dans une vue web (« disallowed_useragent ») : la connexion Google se fait désormais dans le
-**navigateur du téléphone**, puis l'app **revient toute seule**, connectée (RFC 8252).
+Google refuse sa connexion dans une vue web (« disallowed_useragent ») : la connexion Google se fait donc dans le
+**navigateur sûr du téléphone**, puis l'app **revient toute seule**, connectée (RFC 8252).
+
+Révision du même jour (choix d'Ève « Liens vérifiés ») : le retour ne passe plus par un schéma propre
+(`io.invoicelead.app://…`, que n'importe quelle app du téléphone peut déclarer) mais par un **lien https réservé à l'app
+par Apple et Google** : `https://invoicelead.io/lead-auth/return` (Universal Link iOS, App Link vérifié Android, ou
+adresse rendue par la session iOS).
 
 Contrat d'ERPlead (Compte Lead) : `~/projets/erplead-google-app/docs/GOOGLE-APP.md`. Cahier du chantier :
 `~/projets/.unlazy/google-app/CAHIER.md`. Ici, la part d'InvoiceLead.
 
 | | |
 |---|---|
-| Schéma du lien de retour | `io.invoicelead.app` (appId Capacitor), lien `io.invoicelead.app://lead-auth?code=<43 caractères>` ou `?error=expired` |
+| Lien de retour (`RETOUR`) | `https://invoicelead.io/lead-auth/return?code=<43 caractères>&locale=<l>` ou `?error=expired&locale=<l>` ; origine de production **écrite dans le code** (`src/lib/lead-app-auth.ts`, `RETURN_URL`), jamais lue du serveur |
 | Page relais | `https://invoicelead.io/lead-auth/google?start=…&back=…` (le proxy la sert dans la langue de `back` : `/<langue>/lead-auth/google`) |
 | Émetteur (`ERPLEAD`) | `LEAD_ID_ISSUER` (https://erplead.io) |
-| Agent de l'app | `InvoiceLeadApp LeadAppAuth/1` (dépôt mobile, `appendUserAgent`) : sans `LeadAppAuth/1`, ERPlead ne montre pas Google dans l'app mais la phrase « Mot de passe oublié » |
+| Agent de l'app | `InvoiceLeadApp LeadAppAuth/2` (dépôt mobile, `appendUserAgent`) : sans `LeadAppAuth/2` (anciennes versions et `LeadAppAuth/1`, jamais publiée), ERPlead ne montre pas Google dans l'app mais la phrase « Mot de passe oublié » |
+| Fichiers d'association | `https://invoicelead.io/.well-known/apple-app-site-association` et `/.well-known/assetlinks.json` (`src/lib/app-links.ts`) |
 
 ## Parcours
 
 1. Vue web de l'app → `/auth/lead/start` (agent de l'app : `platform=app`) → écran du Compte Lead : « Continuer avec
    Google » → ERPlead pose son cookie verifier (HttpOnly, dans la vue web) et renvoie vers la page relais.
-2. **Page relais** (`src/app/[locale]/lead-auth/google/page.tsx`, `GoogleRelay`) : `start` doit commencer par
-   `ERPLEAD/auth/google/app/start?` et `back` par `ERPLEAD/login?` (sinon rien n'est ouvert : connexion ordinaire de
-   l'app). Dans l'app : une connexion notée avant est effacée (ERPlead vient de remplacer le cookie verifier : son code
-   ne pourrait plus aboutir), `back` gardé (sessionStorage), écran « Connexion avec Google… » avec un lien « Retour »,
-   lecture du lien de lancement (au plus 1,5 s ; **jamais suivi sur cette page**, c'est un ancien lien), connexion
-   notée **en cours** (localStorage `invoicelead.leadAuth.pending` : l'heure et l'empreinte de cet ancien lien), puis
-   `Browser.open({ url: start })`. Navigateur refermé sans lien de retour (`browserFinished`, 1,5 s de grâce pour
-   Android) ou impossible à ouvrir : connexion effacée, `back`. Hors de l'app : `back` tout de suite.
-3. Navigateur du téléphone : Google, puis ERPlead → page « Revenez dans InvoiceLead » → `io.invoicelead.app://lead-auth?code=…`.
+2. **Page relais** (`src/app/[locale]/lead-auth/google/page.tsx`, `GoogleRelay`, `startRelay`) : `start` doit commencer
+   par `ERPLEAD/auth/google/app/start?` (sans `m` : c'est l'app qui l'ajoute) et `back` par `ERPLEAD/login?` (sinon rien
+   n'est ouvert : connexion ordinaire de l'app). Dans l'app : une connexion notée avant est effacée (ERPlead vient de
+   remplacer le cookie verifier), `back` gardé (sessionStorage), écran « Connexion avec Google… » avec un lien
+   « Retour », lecture du lien de lancement (au plus 1,5 s ; **jamais suivi sur cette page**), connexion notée **en
+   cours** (localStorage `invoicelead.leadAuth.pending` : l'heure et l'empreinte de cet ancien lien), puis l'ouverture
+   selon la plateforme (`Capacitor.getPlatform()`) :
+   - **iOS 17.4+** (module de l'app `LeadAuthSession`, `isAvailable().https`) : `LeadAuthSession.start({ url: start +
+     '&m=auto' })` (ASWebAuthenticationSession avec retour https vers `invoicelead.io/lead-auth/return`). L'adresse
+     rendue suit les règles du lien de retour (point 4) ; `canceled` → connexion effacée, `back` ; autre refus
+     (association absente, `busy`, `failed`…) → Safari comme ci-dessous.
+   - **iOS 15.0 à 17.3** : `LeadAuthSession.openExternal({ url: start + '&m=tap' })` (Safari). L'écran dit alors
+     « Terminez la connexion dans Safari, puis touchez « Ouvrir InvoiceLead » » (`leadAppAuth.relaySafari`, 5
+     langues). ERPlead finit dans Safari par une page à bouton : le lien touché (Universal Link) rouvre l'app.
+   - **iOS sans le module** (ne devrait pas arriver avec `LeadAppAuth/2`) : `back`.
+   - **Android** : `Browser.open({ url: start + '&m=auto' })` (Custom Tab). ERPlead finit par une redirection vers
+     l'App Link vérifié. Custom Tab refermé sans lien de retour (`browserFinished`, 1,5 s de grâce) ou impossible à
+     ouvrir : connexion effacée, `back`.
+   - Hors de l'app : `back` tout de suite.
+3. Navigateur du téléphone : Google, puis ERPlead → `https://invoicelead.io/lead-auth/return?code=…&locale=…`
+   (redirection serveur en `m=auto`, bouton « Ouvrir InvoiceLead » en `m=tap`).
 4. **Lien de retour** (`listenForReturn`, `src/lib/lead-app-auth.ts`), sur **toutes** les pages (composant
-   `LeadAppReturn` du gabarit `[locale]`) : `App.addListener('appUrlOpen')` et `App.getLaunchUrl()`. Seul le préfixe
-   `io.invoicelead.app://lead-auth?` est accepté, et **seulement pendant une connexion en cours** : lien reçu par
-   `appUrlOpen` sur la page relais qui a ouvert le navigateur, ou connexion notée il y a moins de 15 min (app relancée
-   par son lien ; jamais le lien de lancement de la page relais ni celui qu'elle a noté comme ancien). Un lien inattendu
-   (page web piégée, courriel, code QR, autre app, ancien lien redonné par `getLaunchUrl`) ne fait **rien** : ni
-   navigateur fermé, ni page quittée. Un lien **avec code** n'est suivi qu'**une fois** (empreinte FNV gardée sans
-   échéance dans localStorage `invoicelead.leadAuth.seen` : iOS redonne son dernier lien à `getLaunchUrl` sur chaque
-   page ; le code n'est jamais gardé). Le lien d'erreur `?error=expired` est toujours le même : il n'est **jamais**
-   gardé comme vu (sinon la deuxième demande expirée ne ramènerait plus à l'écran de connexion). Lien suivi : connexion
-   effacée, `Browser.close()` (erreur ignorée) ; code valable → `location.replace(ERPLEAD + '/auth/google/app/redeem?code=' + code)` ;
-   sinon `back` gardé, ou `/auth/lead/start` (connexion ordinaire).
+   `LeadAppReturn` du gabarit `[locale]`) : `App.addListener('appUrlOpen')` (Universal Link, App Link) et
+   `App.getLaunchUrl()`, plus l'adresse rendue par la session iOS. Seul le préfixe exact
+   `https://invoicelead.io/lead-auth/return?` est accepté (tout schéma propre, dont `io.invoicelead.app://lead-auth`,
+   et tout autre hôte ou chemin sont ignorés), et **seulement pendant une connexion en cours** : lien reçu sur la page
+   relais qui a ouvert le navigateur, ou connexion notée il y a moins de 15 min (app relancée par son lien ; jamais le
+   lien de lancement de la page relais ni celui qu'elle a noté comme ancien). Un lien inattendu (page web piégée,
+   courriel, code QR, autre app, ancien lien redonné par `getLaunchUrl`) ne fait **rien** : ni navigateur fermé, ni
+   page quittée. Un lien **avec code** n'est suivi qu'**une fois** (empreinte FNV gardée sans échéance dans
+   localStorage `invoicelead.leadAuth.seen` ; le code n'est jamais gardé). Le lien d'erreur `?error=expired` est
+   toujours le même : il n'est **jamais** gardé comme vu. Lien suivi : connexion effacée, `Browser.close()` sur Android
+   (erreur ignorée ; iOS n'a rien à fermer) ; code valable → `location.replace(ERPLEAD + '/auth/google/app/redeem?code='
+   + code)` ; sinon `back` gardé, ou `/auth/lead/start` (connexion ordinaire).
 5. ERPlead rachète le code avec le cookie de la vue web, ouvre sa session et reprend l'autorisation → `/auth/lead/callback`
    d'InvoiceLead, comme après un mot de passe.
 
 **App relancée par le lien** (Android a fermé l'app pendant la connexion Google) : sans session, la vue web passe par
-`/<langue>/login`, qui partait tout droit (redirection serveur) vers le Compte Lead. Pour les versions `LeadAppAuth/1`
+`/<langue>/login`, qui partait tout droit (redirection serveur) vers le Compte Lead. Pour les versions `LeadAppAuth/2`
 seulement (`inAppAuthApp`), cet écran rend une page vide (`LeadAppLoginRedirect`) qui lit d'abord le lien de lancement
 (au plus 1,5 s), puis part vers `/auth/lead/start`. Avec un cookie de session **périmé** (déconnexion « de partout »),
-le proxy laisse passer vers `/<langue>/app` et c'est la garde (`requireSession`, `src/server/auth/guard.ts`,
-`sessionLoginPath`) qui renvoyait tout droit vers `/auth/lead/start` : aucune page d'InvoiceLead ne lisait le lien, le
-code était perdu, et l'essai suivant le rachetait avec le NOUVEAU cookie (ERPlead brûlait alors ce nouveau départ).
-Dans l'app (`LeadAppAuth/1`), la garde passe donc elle aussi par `/<langue>/login?next=…` (ou `?invite=…`).
-Anciennes versions et navigateurs : inchangés (redirection serveur vers `/auth/lead/start`).
+la garde (`requireSession`, `src/server/auth/guard.ts`, `sessionLoginPath`) passe elle aussi par `/<langue>/login?next=…`
+(ou `?invite=…`) dans l'app. Anciennes versions et navigateurs : inchangés (redirection serveur vers `/auth/lead/start`).
 
-**Limite (relecture du 30.10.2026, contrat d'ERPlead § 5)** : le schéma `io.invoicelead.app` peut être déclaré par
-n'importe quelle app du téléphone. Une app hostile qui fait elle-même le départ (sa propre vue web, agent
-`LeadAppAuth/1`) et ouvre `start` dans un onglet du navigateur recevrait le code et le rachèterait avec SON cookie : la
-session ERPlead de la personne qui finit la connexion Google. La parade d'ERPlead (départ sur un autre réseau → « Ouvrir
-InvoiceLead ? ») ne joue pas (même téléphone, même réseau). Parade complète : un lien https revendiqué (App Links
-Android + `assetlinks.json`, Universal Links iOS + Associated Domains) pour les CINQ apps, ou ASWebAuthenticationSession
-sur iOS — décision et réglages Apple / Google Play à prendre, pas faits ici.
+## Page `https://invoicelead.io/lead-auth/return` (repli, contrat § 3c)
 
-L'app web n'ajoute aucun paquet npm : elle parle au pont que la coque injecte (`window.Capacitor.Plugins.App`,
-`.Browser`), seulement si `Capacitor.isNativePlatform()` est vrai. Elle ne lit ni ne garde jamais le verifier, ne parle
-à aucune API : tout passe par des navigations de la vue web.
+Elle ne s'affiche que si le lien ne s'est pas ouvert dans l'app (app pas à jour, vérification Android pas encore faite,
+fichier d'association pas encore chargé par iOS). Route `src/app/lead-auth/return/route.ts`, HTML de
+`src/server/lead-app-return.ts` :
+
+- servie **telle quelle** : 200, aucune redirection, aucun préfixe de langue (hors du `matcher` de `src/proxy.ts`) ;
+- en-têtes `Cache-Control: no-store`, `Referrer-Policy: no-referrer`, `X-Robots-Tag: noindex` (posés par la route et par
+  `next.config.ts`, après la règle générale) ;
+- HTML minimal, **aucun script tiers**, aucun lien, aucun bouton, le code jamais écrit dans la page ;
+- seul script, en tête : **hors de l'app**, `history.replaceState(null, '', '/lead-auth/return')` (le code quitte la
+  barre d'adresse et l'historique) ; **dans l'app** (pont Capacitor natif), la vue web est menée à
+  `/<langue>/lead-auth/return` avec la même recherche (`src/app/[locale]/lead-auth/return/page.tsx`,
+  `followReturnPage`), où l'adresse est traitée comme le lien de retour (`RETOUR` + recherche, mêmes règles : connexion
+  en cours, une seule fois) ; non suivie → l'app (`/<langue>/app`) ;
+- message dans la langue de `locale` (sinon celle du navigateur), 5 langues (`leadAppReturn`) : « Revenez dans
+  InvoiceLead », « InvoiceLead ne s'est pas ouverte toute seule… », pour Android « Réglages > Applications > InvoiceLead >
+  Ouvrir par défaut », « Vous n'avez rien demandé dans l'app InvoiceLead ? Fermez simplement cette page. »
+
+## Fichiers d'association (contrat § 3d)
+
+Routes `src/app/.well-known/apple-app-site-association/route.ts` et `src/app/.well-known/assetlinks.json/route.ts`
+(contenu dans `src/lib/app-links.ts`), statiques, `Content-Type: application/json`, aucune redirection (adresses avec un
+point : hors du proxy), aucun autre chemin du site revendiqué :
+
+- AASA : `applinks` → `appIDs` `X6K5247J6G.io.invoicelead.app`, `components` `{ "/": "/lead-auth/return" }` ;
+  `webcredentials` → la même app (retour https de la session iOS).
+- `assetlinks.json` : `io.invoicelead.app`, empreintes SHA-256 du certificat **Play App Signing**
+  (`88:49:FC:61:…:0B:7F:54`) et de la **clé d'envoi** (`7B:E5:3E:52:…:EF:80:F6`, celle de
+  `~/.android-signing/invoicelead-upload.jks`, vérifiée par la porte G2).
+
+À contrôler **après** la mise en production (rien n'est en production) :
+`https://app-site-association.cdn-apple.com/a/v1/invoicelead.io` et
+`https://digitalassetlinks.googleapis.com/v1/statements:list?source.web.site=https://invoicelead.io&relation=delegate_permission/common.handle_all_urls`.
+
+## Sécurité
+
+- Le code ne va qu'au lien réservé (ou à la page de repli du navigateur) ; il ne sert à rien sans le cookie verifier,
+  HttpOnly, de la vue web qui a fait le départ, qu'InvoiceLead ne lit jamais.
+- Une app hostile du téléphone ne reçoit plus le code : sur iOS, le lien ne s'ouvre que dans l'app inscrite dans l'AASA
+  et la session iOS n'accepte le retour https que pour un domaine associé à l'app (`webcredentials`) ; sur Android 12+,
+  seule l'app vérifiée par `assetlinks.json` reçoit le lien. Limite acceptée (contrat § 5) : Android 6 à 11 quand la
+  vraie app est absente ou non vérifiée.
+- Login forcé : un lien `https://invoicelead.io/lead-auth/return?code=…` fabriqué par quelqu'un d'autre est ignoré
+  hors d'une connexion en cours, et refusé au rachat pendant une connexion (autre verifier).
+- L'app web n'ajoute aucun paquet npm : elle parle au pont que la coque injecte (`window.Capacitor.Plugins.App`,
+  `.Browser`, `.LeadAuthSession`), seulement si `Capacitor.isNativePlatform()` est vrai. Elle ne parle à aucune API :
+  tout passe par des navigations de la vue web.
 
 ## Fichiers
 
 - `src/lib/lead-app-auth.ts` : la logique (sans React ni DOM réel), testée avec un faux pont.
-- `src/components/native/LeadAppAuth.tsx` : `LeadAppReturn`, `GoogleRelay`, `LeadAppLoginRedirect`.
+- `src/lib/app-links.ts`, `src/app/.well-known/…/route.ts` : fichiers d'association.
+- `src/server/lead-app-return.ts`, `src/app/lead-auth/return/route.ts`, `src/app/[locale]/lead-auth/return/page.tsx` :
+  page de retour.
+- `src/components/native/LeadAppAuth.tsx` : `LeadAppReturn`, `GoogleRelay`, `LeadAppLoginRedirect`, `LeadAppReturnPage`.
 - `src/app/[locale]/lead-auth/google/page.tsx`, `src/app/[locale]/layout.tsx`, `src/app/[locale]/login/page.tsx`,
-  `src/proxy.ts` (page relais sans langue), `src/lib/native.ts` (`isAppAuthAgent`), `src/server/native.ts`,
-  `src/server/auth/guard.ts` (`sessionLoginPath` : sans session, dans l'app, par l'écran de connexion de l'app).
-- `messages/*.json` : `leadAppAuth` (5 langues).
-- Essais : `tests/unit/lead-app-auth.test.ts`, `tests/unit/lead-app-guard.test.ts` ; `tests/e2e/google-app.spec.ts` avec `tests/support/fake-capacitor.js`
-  (faux pont) et le faux Compte Lead (`tests/support/fake-lead-id.mjs`, routes `/auth/google/app…` du contrat).
+  `src/proxy.ts` (page relais sans langue ; `/lead-auth/return` hors du proxy), `src/lib/native.ts` (`isAppAuthAgent`,
+  `LeadAppAuth/2`), `src/server/native.ts`, `src/server/auth/guard.ts`, `next.config.ts`.
+- `messages/*.json` : `leadAppAuth` (dont `relaySafari`) et `leadAppReturn` (5 langues).
+- Essais : `tests/unit/lead-app-auth.test.ts`, `tests/unit/lead-app-guard.test.ts` ; `tests/e2e/google-app.spec.ts` avec
+  `tests/support/fake-capacitor.js` (faux pont : Android, ou iOS avec `LeadAuthSession`) et le faux Compte Lead
+  (`tests/support/fake-lead-id.mjs`, routes `/auth/google/app…` du contrat, lien vérifié).
 - Portes : `scripts/google-app-gates.mjs` (G1 essais et contrôles complets, G2 dépôt mobile, APERCU, G3 aperçu).
 
 ## Dépôt mobile (`~/projets/invoicelead-mobile`, branche `google-app`)
 
-- `capacitor.config.ts` : `appendUserAgent: 'InvoiceLeadApp LeadAppAuth/1'` ; `allowNavigation` garde erplead.io et Apple.
-- iOS `Info.plist` : `CFBundleURLTypes` → `io.invoicelead.app` ; le `SceneDelegate` passe déjà les liens à Capacitor.
-- Android `AndroidManifest.xml` : `intent-filter` VIEW / DEFAULT / BROWSABLE, `scheme="io.invoicelead.app"`,
-  `host="lead-auth"`, activité principale `singleTask`.
-- `@capacitor/app` et `@capacitor/browser`, `npx cap sync`, version 1.0.2 (build / versionCode 3).
+- `capacitor.config.ts` : `appendUserAgent: 'InvoiceLeadApp LeadAppAuth/2'` ; `allowNavigation` garde erplead.io et
+  Apple, jamais Google.
+- iOS : `ios/App/App/App.entitlements` (`com.apple.developer.associated-domains` = `applinks:invoicelead.io`,
+  `webcredentials:invoicelead.io`), `CODE_SIGN_ENTITLEMENTS = App/App.entitlements` (Debug et Release de la cible App) ;
+  module `LeadAuthSession` (`ios/App/App/LeadAuthSession.swift` : `isAvailable`, `start`, `openExternal`), inscrit par
+  `LeadBridgeViewController` (racine du `SceneDelegate`) ; plus de `CFBundleURLTypes`.
+- Android `AndroidManifest.xml` : `intent-filter android:autoVerify="true"` VIEW / DEFAULT / BROWSABLE,
+  `scheme="https"`, `host="invoicelead.io"`, `path="/lead-auth/return"`, activité principale `singleTask` ; plus de
+  filtre `io.invoicelead.app`.
+- `@capacitor/app` et `@capacitor/browser`, `npx cap sync`, version 1.0.2 (versionCode 3 ; build iOS = TestFlight + 1),
+  jamais envoyée.
+- **Comptes** (à faire par Ève ou sur son accord, rien n'a été touché) : Apple Developer → accepter le Program License
+  Agreement ; Identifiers → `io.invoicelead.app` → activer **Associated Domains** ; Profiles → régénérer « InvoiceLead
+  iOS App Store » (3R2LUDCN63, certificat 4DPPUA6FG4) ; Codemagic → remplacer `invoicelead_ios_appstore`. Rien dans App
+  Store Connect, la Play Console, Google Cloud ni les variables Vercel.
