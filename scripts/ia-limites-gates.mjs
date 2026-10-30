@@ -3,7 +3,7 @@
  * Portes du chantier « ia-limites » pour InvoiceLead : l'assistant IA ne sert que le périmètre du
  * logiciel et, en formule gratuite, ne consomme pas plus de 200 000 jetons pondérés par mois et par
  * entreprise, l'équivalent de 10 demandes (cahier ~/projets/.unlazy/ia-limites/CAHIER.md, P1–P3 et
- * L1–L8 ; ledger ~/projets/.unlazy/ia-limites/gates/leaf-invoicelead.md).
+ * L1–L10 ; ledger ~/projets/.unlazy/ia-limites/gates/leaf-invoicelead.md).
  *
  *   node scripts/ia-limites-gates.mjs G1   tests du périmètre et de la limite : tableau de la doc ↔ code ↔
  *                                         tests, une seule source des constantes, consigne dans le bloc
@@ -18,6 +18,9 @@
  *                                         gratuite (compteur, budget posé, refus sans appel au modèle,
  *                                         message et lien des formules) ; entreprise TEST payante non
  *                                         limitée ; base d'aperçu remise comme avant
+ *
+ * L'aperçu de G3 et G4 est déployé par la CLI (node scripts/ia-limites-preview.mjs deploy) avec ses
+ * variables passées au déploiement ; l'aperçu de la branche Git, sans variables, ne sert pas.
  *
  * À lancer à la racine du worktree ~/projets/invoicelead-ia-limites (branche ia-limites). Chaque porte
  * n'imprime son jeton IA_LIMITES_Gn_OK qu'après toutes ses assertions. Aucun secret n'est affiché : le
@@ -56,15 +59,25 @@ const BRANCH = "ia-limites";
 const BASE = "2b1aab3";
 /** Production relue par l'API Vercel le 29.10.2026 (dpl_HUALHm8mQiqNpYpKzGRRJL1Yitw3). */
 const PROD = "682bd09a8136e6dc069171641996e01901da3b11";
+/** Le déploiement de production de ce commit (même relecture). */
+const PROD_DEPLOYMENT = "dpl_HUALHm8mQiqNpYpKzGRRJL1Yitw3";
 const TEAM = "team_mRhlABdvm1jvEPoDzuDDgpon";
 const PROJECT = "prj_BGHqP1Lyg3MWz3KoDYQ9qms5Epll";
 const STATE_FILE = join(HOME, ".invoicelead-actions-ia.json");
 const LEDGER_DIR = join(HOME, "projets", ".unlazy", "ia-limites");
 const CAPTURES = join(LEDGER_DIR, "captures", "invoicelead");
+/** Aperçu déployé par la CLI (scripts/ia-limites-preview.mjs) : son relevé, sans secret, et son alias. */
+const PREVIEW_FILE = join(CAPTURES, "preview.json");
+const PREVIEW_ALIAS = "invoicelead-ia-limites-test.vercel.app";
+/** Fichiers que l'aperçu ne sert pas : un changement de ces seuls fichiers ne demande pas de redéployer. */
+const NOT_SERVED = (f) =>
+  /^(docs\/[^/]+\.md|README\.md|tests\/.+|scripts\/ia-limites-[a-z]+\.mjs)$/.test(f);
+/** Le point de terminaison Neon d'une adresse (« ep-… », sans « -pooler »). */
+const endpoint = (host) => host.split(".")[0].replace(/-pooler$/, "");
 const TMP = join(ROOT, "tmp", "ia-limites-gates");
 const DOC = "docs/ASSISTANT-IA.md";
 const SECTION = "## Périmètre et limite gratuite (29.10.2026)";
-const POINTS = ["P1", "P2", "P3", "L1", "L2", "L3", "L4", "L5", "L6", "L7", "L8"];
+const POINTS = ["P1", "P2", "P3", "L1", "L2", "L3", "L4", "L5", "L6", "L7", "L8", "L9", "L10"];
 const LIMITS_TEST = "tests/unit/assistant-limites.test.ts";
 const LOCALES = ["fr", "de", "en", "it", "es"];
 const LOCAL_PG = (db) => `postgresql://ubuntu@localhost/${db}?host=/var/run/postgresql`;
@@ -354,7 +367,7 @@ const MUTATIONS = [
   {
     what: "refus au-delà du budget retiré de la réservation de la bulle (le modèle serait appelé)",
     file: "src/server/ai-assistant/quota.ts",
-    from: '    const full = await freeLimitReached(tx, free, now);\n    if (full) return { limit: "free" as const, budget: full };\n    const hourAgo',
+    from: "    const refused = await freeRefusal(tx, free, now);\n    if (refused) return refused;\n    const hourAgo",
     to: "    const hourAgo",
     test: "au-delà du budget : 429 « free_limit », aucun appel au modèle, aucune place de quota prise (L4)",
   },
@@ -406,6 +419,34 @@ const MUTATIONS = [
     from: "        gt(u.createdAt, new Date(now.getTime() - PENDING_MS)),\n",
     to: "",
     test: "bulle et page Assistant lancées ensemble : le même verrou, le même budget, 10 appels au plus ; un tour interrompu ne bloque pas au-delà du délai d'un tour (L4, L6)",
+  },
+  {
+    what: "refus pour un tour en cours présenté comme la fin du budget du mois (L9)",
+    file: "src/server/ai-assistant/quota.ts",
+    from: '  if (used >= budget.limit) return { limit: "free_wait" };\n',
+    to: '  if (used >= budget.limit) return { limit: "free", budget: { ...budget, exhausted: true } };\n',
+    test: "refus dû seulement à un tour en cours : 429 « free_wait » sans compteur ni fin du mois, la page Assistant dit « busy » ; le tour fini, la demande repart (L9)",
+  },
+  {
+    what: "champ fermé dès « moins d'une demande », avant que le serveur refuse (L5)",
+    file: "src/server/plans.ts",
+    from: "    exhausted: !access.allowed,\n",
+    to: "    exhausted: requestsLeft(access) === 0,\n",
+    test: "moins d'une demande restante (restant > 0, < 20 000) : « moins d'une demande », le tour passe ; le champ ne se ferme que lorsque le serveur refuse pour budget atteint (L5)",
+  },
+  {
+    what: "image ou PDF accepté dans le contenu d'un tool_result de l'historique (L10)",
+    file: "src/server/ai-assistant/handlers.ts",
+    from: '        isPlainObject(c) && c.type === "text" ? textBlock(c) : null,\n',
+    to: "        isPlainObject(c) ? c : null,\n",
+    test: "historique forgé : image, PDF ou autre bloc non-texte à tout niveau (contenu d'un tool_result, entrée d'un outil) refusé avant toute réservation ni appel au modèle ; tailles bornées (L10)",
+  },
+  {
+    what: "max_tokens abaissé à 4 000, formule gratuite comprise (un plan ou un lot complet ne tiendrait plus, L10)",
+    file: "src/server/ai-assistant/run.ts",
+    from: "      max_tokens: MAX_TOKENS,\n",
+    to: "      max_tokens: 4_000,\n",
+    test: "aucun plafond de max_tokens en formule gratuite : le même plafond qu'en Pro, assez pour un plan ou un lot complet (L10, A6)",
   },
   {
     what: "« Confirmer » refusé quand le budget est atteint",
@@ -786,52 +827,75 @@ const clean = (s) =>
     .trim();
 
 /**
- * Le déploiement d'aperçu prêt de la branche, construit depuis HEAD (arbre propre), jamais la
- * production ; et la base de la branche : une DATABASE_URL propre à la branche Git ia-limites. Rend
- * null (avec les rouges dits) si l'aperçu n'est pas utilisable.
+ * L'aperçu de la branche, déployé par la CLI (scripts/ia-limites-preview.mjs deploy, relevé dans
+ * PREVIEW_FILE) avec ses variables passées au déploiement : prêt, cible preview, jamais la production,
+ * l'alias dessus, construit depuis un commit dont le code servi est celui de HEAD (seuls les fichiers
+ * non servis, NOT_SERVED, peuvent différer). L'aperçu de la branche Git, sans variables, ne sert pas.
+ * Rend null (avec les rouges dits) si l'aperçu n'est pas utilisable.
  */
 async function preview(head) {
-  const list = await vapi(`/v6/deployments?projectId=${PROJECT}&limit=100`);
-  const d = list.deployments.find(
-    (x) =>
-      x.meta?.githubCommitRef === BRANCH &&
-      x.meta?.githubCommitSha === head &&
-      x.target !== "production" &&
-      x.meta?.gitDirty !== "1",
-  );
-  const full = d ? await vapi(`/v13/deployments/${d.uid}`) : null;
+  const info = existsSync(PREVIEW_FILE) ? JSON.parse(readFileSync(PREVIEW_FILE, "utf8")) : null;
+  const full = info ? await vapi(`/v13/deployments/${info.id}`) : null;
+  const deployed = full?.meta?.iaLimitesCommit;
+  const ancestor = !!deployed && isAncestor(deployed, head);
+  const changed = ancestor
+    ? git("diff", "--name-only", deployed, head).split("\n").filter(Boolean)
+    : [];
+  const served = changed.filter((f) => !NOT_SERVED(f));
   check(
-    `aperçu Vercel de la branche ${BRANCH}, construit depuis HEAD ${head.slice(0, 7)}, prêt, pas la production`,
-    full?.readyState === "READY" && full?.target !== "production",
-    full ? `${full.id} ${full.readyState}` : "absent",
+    `aperçu Vercel déployé par la CLI (scripts/ia-limites-preview.mjs), cible preview, prêt, pas la production, code servi = HEAD ${head.slice(0, 7)}`,
+    full?.readyState === "READY" &&
+      full?.target !== "production" &&
+      full?.id !== PROD_DEPLOYMENT &&
+      info?.commit === deployed &&
+      ancestor &&
+      served.length === 0,
+    full
+      ? `${full.id} ${full.readyState}, commit ${String(deployed).slice(0, 7)}${changed.length ? ` (HEAD : seuls ${changed.join(", ")} diffèrent, rien de servi)` : ""}${served.length ? ` ; servis différents : ${served.join(", ")} — redéployer` : ""}`
+      : `absent (${PREVIEW_FILE} : node scripts/ia-limites-preview.mjs deploy)`,
+  );
+  const alias = full ? await vapi(`/v4/aliases/${PREVIEW_ALIAS}`).catch(() => null) : null;
+  check(
+    `l'alias ${PREVIEW_ALIAS} pointe sur cet aperçu`,
+    !!full && alias?.deploymentId === full.id,
+    alias?.deploymentId ?? "absent",
   );
   const live = (await vapi(`/v9/projects/${PROJECT}`)).targets?.production;
   check(
     `la production reste ${PROD.slice(0, 7)} (aucune mise en ligne par ce chantier)`,
-    live?.meta?.githubCommitSha === PROD,
+    live?.id === PROD_DEPLOYMENT && live?.meta?.githubCommitSha === PROD,
     `${live?.id} ${live?.meta?.githubCommitSha?.slice(0, 7)}`,
   );
-  if (full?.readyState !== "READY") return null;
-  const alias = `https://invoice-lead-git-${BRANCH}-scanleads-projects.vercel.app`;
-  const base = (full.alias ?? []).includes(new URL(alias).host) ? alias : `https://${full.url}`;
-  return { base, deployment: full };
+  if (full?.readyState !== "READY" || served.length > 0 || !ancestor) return null;
+  return { base: `https://${PREVIEW_ALIAS}`, deployment: full, info };
 }
 
-/** La base de l'aperçu (variables de la branche Git), jamais la production ; null si absente. */
-async function previewBase() {
-  const envs = (await vapi(`/v10/projects/${PROJECT}/env`)).envs;
-  const branchDb = envs.some((e) => e.key === "DATABASE_URL" && e.gitBranch === BRANCH);
+/**
+ * La base de l'aperçu : celle passée au déploiement (relevé du déploiement : branche Neon et adresse,
+ * sans secret), la base d'aperçu br-purple-rice de ~/.invoicelead-actions-ia.json, jamais la
+ * production ; et aucune variable du projet posée pour la branche (variables passées au déploiement).
+ * Les sessions TEST de G3 et G4 sont créées dans cette base : si l'aperçu en servait une autre, la
+ * bulle ne les trouverait pas et leurs assertions rougiraient. null si la base n'est pas la bonne.
+ */
+async function previewBase(info) {
   const st = state();
   const prodHost = prodDbHost();
+  const envs = (await vapi(`/v10/projects/${PROJECT}/env`)).envs;
+  const branchVars = envs.filter((e) => e.gitBranch === BRANCH).map((e) => e.key);
+  const ok =
+    String(st.neon.branchId).startsWith("br-purple-rice") &&
+    info?.database?.branchId === st.neon.branchId &&
+    info?.database?.host === st.neon.host &&
+    endpoint(st.neon.host) !== endpoint(prodHost) &&
+    new URL(st.secrets.databaseUrlUnpooled).hostname === st.neon.host &&
+    new URL(st.secrets.databaseUrl).hostname === st.neon.pooledHost &&
+    new URL(st.secrets.roUrl).hostname === st.neon.host;
   check(
-    `base de l'aperçu : DATABASE_URL propre à la branche Git ${BRANCH} (base d'aperçu br-purple-rice), jamais la production`,
-    branchDb &&
-      st.neon.host !== prodHost &&
-      new URL(st.secrets.databaseUrlUnpooled).hostname === st.neon.host &&
-      new URL(st.secrets.roUrl).hostname === st.neon.host,
-    branchDb ? st.neon.branchId : "aucune variable de base pour cette branche (aperçu sans base)",
+    `base de l'aperçu : la base d'aperçu br-purple-rice passée au déploiement, jamais la production ; aucune variable du projet pour la branche ${BRANCH}`,
+    ok && branchVars.length === 0,
+    `${info?.database?.branchId ?? "?"} (${endpoint(st.neon.host)}) ; production ${endpoint(prodHost)} ; variables de branche : ${branchVars.join(", ") || "aucune"}`,
   );
-  if (!branchDb) return null;
+  if (!ok) return null;
   return { st, prodHost };
 }
 
@@ -1020,7 +1084,7 @@ async function g3() {
   const head = worktree();
   mkdirSync(CAPTURES, { recursive: true });
   const p = await preview(head);
-  const db = p && (await previewBase());
+  const db = p && (await previewBase(p.info));
   if (!p || !db) return finish("IA_LIMITES_G3_OK");
   const { base } = p;
   const { st, prodHost } = db;
@@ -1191,7 +1255,7 @@ async function g4() {
   }
 
   // La limite elle-même : base d'aperçu, entreprises TEST de ce passage.
-  const q = await previewBase();
+  const q = await previewBase(p.info);
   if (!q) return finish("IA_LIMITES_G4_OK");
   const { st, prodHost } = q;
   if (new URL(st.secrets.databaseUrlUnpooled).hostname === prodHost)

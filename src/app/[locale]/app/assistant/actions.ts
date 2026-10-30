@@ -10,7 +10,8 @@ import { assistantBudget, type BudgetView, budgetView } from "@/server/plans";
 export type AssistantState = {
   question?: string;
   result?: AssistantAnswer;
-  error?: "quota" | "off" | "empty" | "failed";
+  /** « busy » : une demande est déjà en cours (formule gratuite, L9) ; ce n'est pas la fin du mois. */
+  error?: "quota" | "off" | "empty" | "failed" | "busy";
   /** Formule gratuite : ce qui reste ce mois-ci, pour tenir le compteur à jour sans recharger. */
   budget?: BudgetView | null;
   round: number;

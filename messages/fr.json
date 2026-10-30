@@ -2426,7 +2426,8 @@
         "off": "L'assistant IA n'est pas encore configuré.",
         "empty": "Posez une question.",
         "failed": "L'assistant n'a pas pu répondre. Réessayez dans un instant.",
-        "quota": "Question non envoyée. Avec Pro, l'assistant répond sans limite."
+        "quota": "Question non envoyée. Avec Pro, l'assistant répond sans limite.",
+        "busy": "Une demande est déjà en cours : réessayez dans un instant."
       }
     },
     "expenses": {
@@ -2617,6 +2618,7 @@
         "network": "La connexion a été perdue. Vérifiez votre réseau et réessayez.",
         "quotaUser": "Vous avez envoyé 40 messages en une heure. Réessayez un peu plus tard.",
         "quotaOrg": "Votre entreprise a atteint 400 messages aujourd'hui. L'assistant revient demain.",
+        "busy": "Une demande est déjà en cours : réessayez dans un instant.",
         "session": "Votre session a expiré. Rechargez la page pour vous reconnecter.",
         "forbidden": "Votre accès à InvoiceLead ne permet pas d'utiliser l'assistant.",
         "invalid": "Cette demande n'a pas pu être lue. Reformulez-la et réessayez.",

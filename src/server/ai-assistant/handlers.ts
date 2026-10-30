@@ -75,24 +75,97 @@ function questionOk(content: unknown): boolean {
 }
 
 /**
+ * Blocs qu'un historique de la bulle peut contenir, par rôle : ce que le service rend (texte,
+ * réflexion, appel d'outil, repli de modèle) et ce que le Tool Runner y ajoute (résultat d'outil, en
+ * texte : les outils d'InvoiceLead ne rendent que du JSON). Rien d'autre (L10) : ni image, ni
+ * document, ni résultat de recherche, ni fichier, ni outil serveur, ni bloc inconnu, à aucun niveau.
+ */
+type Rebuilt = Record<string, unknown>;
+const str = (v: unknown): v is string => typeof v === "string";
+/** Un objet de données (entrée d'outil, modèle d'un repli) sans rien qui ressemble à un bloc non-texte. */
+function plainData(v: unknown, depth = 0): boolean {
+  if (depth > 20) return false;
+  if (v === null || typeof v !== "object") return true;
+  if (Array.isArray(v)) return v.every((x) => plainData(x, depth + 1));
+  const o = v as Record<string, unknown>;
+  if (str(o.type) && NON_TEXT.test(o.type)) return false;
+  if (isPlainObject(o.source) && str(o.source.type)) return false;
+  return Object.values(o).every((x) => plainData(x, depth + 1));
+}
+const NON_TEXT =
+  /^(image|document|search_result|container_upload|file|tool_reference|web_search_tool_result|web_fetch_tool_result|server_tool_use|mcp_tool_use|mcp_tool_result)$/;
+/** Texte d'un bloc reconstruit : seulement `type` et `text` (ni citations, ni cache_control). */
+const textBlock = (b: Record<string, unknown>): Rebuilt | null =>
+  str(b.text) ? { type: "text", text: b.text } : null;
+function rebuildBlock(role: "user" | "assistant", b: Record<string, unknown>): Rebuilt | null {
+  if (b.type === "text") return textBlock(b);
+  if (role === "user") {
+    if (b.type !== "tool_result" || !str(b.tool_use_id)) return null;
+    let content: unknown;
+    if (str(b.content)) content = b.content;
+    else if (b.content === undefined) content = "";
+    else if (Array.isArray(b.content)) {
+      const blocks = b.content.map((c) =>
+        isPlainObject(c) && c.type === "text" ? textBlock(c) : null,
+      );
+      if (blocks.some((c) => c === null)) return null;
+      content = blocks;
+    } else return null;
+    return {
+      type: "tool_result",
+      tool_use_id: b.tool_use_id,
+      content,
+      ...(b.is_error === true ? { is_error: true } : {}),
+    };
+  }
+  if (b.type === "tool_use")
+    return str(b.id) && str(b.name) && isPlainObject(b.input) && plainData(b.input)
+      ? { type: "tool_use", id: b.id, name: b.name, input: b.input }
+      : null;
+  if (b.type === "thinking")
+    return str(b.thinking) && str(b.signature)
+      ? { type: "thinking", thinking: b.thinking, signature: b.signature }
+      : null;
+  if (b.type === "redacted_thinking")
+    return str(b.data) ? { type: "redacted_thinking", data: b.data } : null;
+  if (b.type === "fallback")
+    return isPlainObject(b.from) && isPlainObject(b.to) && plainData(b.from) && plainData(b.to)
+      ? { type: "fallback", from: b.from, to: b.to }
+      : null;
+  return null;
+}
+
+/**
  * Historique renvoyé par le navigateur. Seuls les rôles « user » et « assistant » passent : un
- * message « system » glissé par le navigateur porterait l'autorité des consignes. Le contenu reste
- * celui que l'API a rendu (blocs de réflexion compris) ; il ne donne aucun droit : les écritures
- * exigent un jeton signé.
+ * message « system » glissé par le navigateur porterait l'autorité des consignes. Chaque bloc est
+ * reconstruit avec ses seuls champs connus (L10) ; un bloc d'une autre sorte (image, document,
+ * fichier, résultat de recherche…, y compris dans le contenu d'un tool_result ou dans l'entrée d'un
+ * outil) fait refuser tout le fil avant toute réservation ni appel au modèle : un historique forgé ne
+ * peut pas gonfler le coût d'un tour. Tailles bornées : 60 messages et 200 Ko gardés au plus. Le
+ * contenu ne donne aucun droit : les écritures exigent un jeton signé.
  */
 export function cleanHistory(raw: unknown): BetaMessageParam[] | null {
   if (!Array.isArray(raw) || raw.length === 0 || raw.length > 400) return null;
+  // Au-delà de dix fois ce qui est gardé, le fil n'est même pas lu.
+  if (JSON.stringify(raw).length > MAX_HISTORY_BYTES * 10) return null;
+  const messages: BetaMessageParam[] = [];
   for (const m of raw) {
     if (!isPlainObject(m)) return null;
     if (m.role !== "user" && m.role !== "assistant") return null;
-    if (typeof m.content !== "string" && !Array.isArray(m.content)) return null;
-    if (
-      Array.isArray(m.content) &&
-      m.content.some((b) => !isPlainObject(b) || typeof b.type !== "string")
-    )
-      return null;
+    const role = m.role;
+    if (str(m.content)) {
+      messages.push({ role, content: m.content });
+      continue;
+    }
+    if (!Array.isArray(m.content)) return null;
+    const blocks: Rebuilt[] = [];
+    for (const b of m.content) {
+      const rebuilt = isPlainObject(b) ? rebuildBlock(role, b) : null;
+      if (!rebuilt) return null;
+      blocks.push(rebuilt);
+    }
+    messages.push({ role, content: blocks } as unknown as BetaMessageParam);
   }
-  const messages = raw as BetaMessageParam[];
   const lastMessage = messages.at(-1);
   if (lastMessage?.role !== "user" || !questionOk(lastMessage.content)) return null;
   if (messages[0]?.role !== "user") return null;
@@ -140,9 +213,9 @@ export async function assistantPost(
 
   const { session } = auth;
   const who = { organizationId: session.organization.id, userId: session.user.id };
-  // Formule gratuite (L4) : budget du mois atteint (tours en cours compris, sous le verrou de
-  // l'entreprise) → aucun appel au modèle, aucune place de quota prise. La formule se décide par
-  // tierOf, comme partout dans l'application (plans.ts).
+  // Formule gratuite (L4) : budget du mois atteint par les tours finis → aucun appel au modèle,
+  // aucune place de quota prise ; les tours en cours comptent aussi (sous le verrou de l'entreprise,
+  // L9 ci-dessous). La formule se décide par tierOf, comme partout dans l'application (plans.ts).
   const day = deps.today ?? today();
   const reserved = await reserveMessage(deps.database, who, undefined, {
     org: session.organization,
@@ -150,6 +223,10 @@ export async function assistantPost(
   });
   if ("budget" in reserved)
     return { status: 429, body: { error: "free_limit", budget: budgetView(reserved.budget) } };
+  // L9 : refusé seulement parce que des tours sont encore en cours. Ce n'est pas la fin du budget
+  // du mois : rien n'est dit du mois (aucun compteur), la bulle dit « réessayez dans un instant ».
+  if ("limit" in reserved && reserved.limit === "free_wait")
+    return { status: 429, body: { error: "free_wait" } };
   if ("limit" in reserved) return { status: 429, body: { error: "quota", scope: reserved.limit } };
 
   const run = deps.run ?? runAssistant;

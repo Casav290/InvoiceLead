@@ -2426,7 +2426,8 @@
         "off": "The AI assistant is not configured yet.",
         "empty": "Ask a question.",
         "failed": "The assistant could not answer. Try again in a moment.",
-        "quota": "Question not sent. With Pro, the assistant answers without limit."
+        "quota": "Question not sent. With Pro, the assistant answers without limit.",
+        "busy": "A request is already in progress: try again in a moment."
       }
     },
     "expenses": {
@@ -2617,6 +2618,7 @@
         "network": "The connection was lost. Check your network and try again.",
         "quotaUser": "You have sent 40 messages in an hour. Try again a little later.",
         "quotaOrg": "Your company has reached 400 messages today. The assistant is back tomorrow.",
+        "busy": "A request is already in progress: try again in a moment.",
         "session": "Your session has expired. Reload the page to sign in again.",
         "forbidden": "Your access to InvoiceLead does not include the assistant.",
         "invalid": "This request could not be read. Rephrase it and try again.",

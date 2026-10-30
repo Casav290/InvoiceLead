@@ -1016,3 +1016,54 @@ test("formule gratuite : budget du mois atteint en base → message dès l'ouver
   await expect(page.getByTestId("assistant-budget")).toHaveCount(0);
   await expect(page.getByTestId("assistant-free-limit")).toHaveCount(0);
 });
+
+test("formule gratuite, serveur réel : moins d'une demande restante → « moins d'une demande », champ ouvert (L5) ; une demande déjà en cours → « réessayez dans un instant », ni fin du mois ni champ fermé, dans la bulle et sur la page Assistant (L9)", async ({
+  page,
+}) => {
+  const org = await newCompany(page, "en-cours");
+  // 185 000 jetons consommés (15 000 restent : moins d'une demande-type) et un tour encore en cours
+  // (sa ligne n'a ni jeton ni erreur) : le serveur refuse « free_wait » sans appeler le modèle.
+  await spendAssistant(org, 185_000);
+  await spendAssistant(org, 0);
+  const rows = await assistantUsageRows(org);
+  await page.reload();
+  await page.getByTestId("assistant-bubble").click();
+  const counter = page.getByTestId("assistant-budget");
+  const input = page.getByTestId("assistant-input");
+  await expect(counter).toHaveText(
+    "Formule gratuite : il vous reste moins d'une demande ce mois-ci.",
+  );
+  await expect(input).toBeEnabled();
+  await expect(input).toBeFocused();
+  await input.fill("Combien ai-je encaissé ce mois-ci ?");
+  const [res] = await Promise.all([
+    page.waitForResponse((r) => r.url().endsWith("/api/assistant")),
+    input.press("Enter"),
+  ]);
+  expect(res.status()).toBe(429);
+  expect(await res.json()).toEqual({ error: "free_wait" });
+  const notice = page.getByTestId("assistant-notice");
+  await expect(notice).toHaveText("Une demande est déjà en cours : réessayez dans un instant.");
+  await expect(notice).toHaveAttribute("data-code", "busy");
+  // Rien sur le mois : pas de message de fin, le compteur reste, le champ reste ouvert.
+  await expect(page.getByTestId("assistant-free-limit")).toHaveCount(0);
+  await expect(counter).toBeVisible();
+  await expect(input).toBeEnabled();
+  expect(await assistantUsageRows(org)).toBe(rows);
+
+  // La page Assistant : la même règle, la boîte n'est pas grisée.
+  await page.keyboard.press("Escape");
+  await page.goto("/fr/app/assistant");
+  await expect(page.getByTestId("assistant-quota")).toContainText(
+    "moins d'une demande restante ce mois-ci",
+  );
+  await page.locator("#assistant-question").fill("Combien ai-je encaissé ce mois-ci ?");
+  await page.getByTestId("assistant-ask").click();
+  await expect(page.getByRole("alert").filter({ hasText: "déjà en cours" })).toHaveText(
+    "Une demande est déjà en cours : réessayez dans un instant.",
+  );
+  await expect(page.getByTestId("assistant-lock")).toHaveCount(0);
+  await expect(page.getByTestId("assistant-ask")).toBeEnabled();
+  expect(await assistantUsageRows(org)).toBe(rows);
+  expect(await traitNetIssues(page)).toEqual([]);
+});

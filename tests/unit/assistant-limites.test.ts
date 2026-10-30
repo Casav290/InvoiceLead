@@ -2,11 +2,17 @@ import { and, count, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { assistantPost, confirmPost, type Deps } from "@/server/ai-assistant/handlers";
+import {
+  assistantPost,
+  cleanHistory,
+  confirmPost,
+  type Deps,
+  MAX_HISTORY_BYTES,
+} from "@/server/ai-assistant/handlers";
 import type { AssistantContext } from "@/server/ai-assistant/ops-core";
 import { contextPrompt, STABLE_PROMPT } from "@/server/ai-assistant/prompt";
 import { BOOKS_PAGE, ORG_PER_DAY, PENDING_MS, USER_PER_HOUR } from "@/server/ai-assistant/quota";
-import { DEADLINE_MS } from "@/server/ai-assistant/run";
+import { DEADLINE_MS, MAX_TOKENS } from "@/server/ai-assistant/run";
 import { buildTools, type ToolState } from "@/server/ai-assistant/tools";
 import { askAssistant } from "@/server/assistant";
 import { attachLeadIdentity } from "@/server/auth/attach";
@@ -356,11 +362,8 @@ describe("limite de la formule gratuite (L1–L8)", () => {
     expect(results.filter((r) => r.status === 200)).toHaveLength(10);
     const free = results.filter((r) => r.status === 429);
     expect(free).toHaveLength(N - 10);
-    for (const r of free)
-      expect(r.body).toEqual({
-        error: "free_limit",
-        budget: { left: 0, exhausted: true, resetOn: "2026-11-01", requests: 10 },
-      });
+    // Refusées seulement parce que dix tours sont en cours : « free_wait », rien sur le mois (L9).
+    for (const r of free) expect(r.body).toEqual({ error: "free_wait" });
     // Les tours finis ne comptent plus que pour leurs jetons (35 chacun) : le suivant passe.
     expect((await assistantBudget(db, p.session.organization, TODAY))?.used).toBe(10 * 35);
     expect((await ask(p)).status).toBe(200);
@@ -390,7 +393,7 @@ describe("limite de la formule gratuite (L1–L8)", () => {
     const bubble = heldService(service.fetch);
     let refused = 0;
     const count = <T>(r: T) => {
-      if (r === "quota" || (r as { status?: number }).status === 429) refused += 1;
+      if (r === "busy" || r === "quota" || (r as { status?: number }).status === 429) refused += 1;
       return r;
     };
     const books = Array.from({ length: 8 }, (_, i) =>
@@ -411,14 +414,275 @@ describe("limite de la formule gratuite (L1–L8)", () => {
       bubble.release();
       const [b, m] = await Promise.all([Promise.all(books), Promise.all(bubbles)]);
       expect(page.calls() + bubble.calls()).toBe(10);
-      expect(b.filter((r) => r === "quota").length + m.filter((r) => r.status === 429).length).toBe(
-        5,
-      );
+      // Rien n'est encore consommé : des tours en cours, pas la fin du mois (L9).
+      expect(
+        b.filter((r) => r === "busy").length +
+          m.filter((r) => r.status === 429 && r.body.error === "free_wait").length,
+      ).toBe(5);
     } finally {
       page.release();
       bubble.release();
       vi.unstubAllGlobals();
     }
+  });
+
+  it("refus dû seulement à un tour en cours : 429 « free_wait » sans compteur ni fin du mois, la page Assistant dit « busy » ; le tour fini, la demande repart (L9)", async () => {
+    const p = await person("en-cours");
+    const who = { organizationId: p.organization.id, userId: p.user.id };
+    await spend(p, 185_000);
+    // Un tour réservé et pas encore fini (sa ligne n'a encore ni jeton ni erreur).
+    const [pending] = await db
+      .insert(assistantUsage)
+      .values({ organizationId: p.organization.id, userId: p.user.id, createdAt: new Date() })
+      .returning({ id: assistantUsage.id });
+    const before = await rows(p);
+    const res = await ask(p);
+    expect(res.status).toBe(429);
+    expect(res.body).toEqual({ error: "free_wait" });
+    expect(res.requests).toHaveLength(0);
+    // Le budget du mois, lui, n'est pas atteint : le champ reste ouvert (L5).
+    expect(await assistantBudget(db, p.session.organization, TODAY)).toMatchObject({
+      used: 185_000,
+      left: 0,
+      exhausted: false,
+    });
+    setTestEnv({ ANTHROPIC_API_KEY: "sk-test-not-a-real-key", AI_API_KEY: "ai-test" });
+    const ai = vi.fn(async () => Response.json({}));
+    vi.stubGlobal("fetch", ai);
+    try {
+      expect(await askAssistant(db, who, "Combien ai-je encaissé ?", "fr", TODAY)).toBe("busy");
+      expect(ai).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+    expect(await rows(p)).toBe(before);
+    // Le tour en cours finit (5 000 jetons) : la demande suivante passe, sous le budget.
+    await db
+      .update(assistantUsage)
+      .set({ inputTokens: 5_000 })
+      .where(eq(assistantUsage.id, pending?.id ?? -1));
+    const next = await ask(p, [{ usage: { input_tokens: 10_000, output_tokens: 0 } }]);
+    expect(next.status).toBe(200);
+    expect(next.requests).toHaveLength(1);
+    // Ce tour atteint le budget (200 000) : la fin du mois, cette fois (L4).
+    expect(next.body.budget).toMatchObject({ left: 0, exhausted: true });
+    expect((await ask(p)).body).toMatchObject({ error: "free_limit" });
+  });
+
+  it("moins d'une demande restante (restant > 0, < 20 000) : « moins d'une demande », le tour passe ; le champ ne se ferme que lorsque le serveur refuse pour budget atteint (L5)", async () => {
+    const p = await person("moins-une");
+    await spend(p, 190_000);
+    const b = await assistantBudget(db, p.session.organization, TODAY);
+    expect(b).toMatchObject({ used: 190_000, left: 0, exhausted: false });
+    // La bulle affiche le texte « =0 » du compteur (« moins d'une demande ») avec le champ ouvert.
+    expect(fr.app.aiBubble.budget.left).toContain("=0 {moins d'une demande}");
+    const res = await ask(p, [{ usage: { input_tokens: 1_000, output_tokens: 0 } }]);
+    expect(res.status).toBe(200);
+    expect(res.requests).toHaveLength(1);
+    expect(res.body.budget).toEqual({
+      left: 0,
+      exhausted: false,
+      resetOn: "2026-11-01",
+      requests: 10,
+    });
+    // Consommation au budget : le serveur refuse (« free_limit », budget épuisé) ; c'est là seulement
+    // que la bulle ferme le champ.
+    await spend(p, 9_000);
+    const refused = await ask(p);
+    expect(refused).toMatchObject({
+      status: 429,
+      body: { error: "free_limit", budget: { exhausted: true } },
+    });
+    expect(refused.requests).toHaveLength(0);
+  });
+
+  it("historique forgé : image, PDF ou autre bloc non-texte à tout niveau (contenu d'un tool_result, entrée d'un outil) refusé avant toute réservation ni appel au modèle ; tailles bornées (L10)", async () => {
+    const p = await person("forge");
+    const png = { type: "base64", media_type: "image/png", data: "iVBORw0KGgo=" };
+    const pdf = { type: "url", url: "https://example.test/catalogue-500-pages.pdf" };
+    const call = { type: "tool_use", id: "toolu_1", name: "list_documents", input: {} };
+    const turn = (result: unknown[]) => [
+      { role: "user", content: "Mes factures ?" },
+      { role: "assistant", content: [call] },
+      { role: "user", content: result },
+      { role: "assistant", content: [{ type: "text", text: "Voici." }] },
+      { role: "user", content: "Et encore ?" },
+    ];
+    const forged: [string, unknown[]][] = [
+      [
+        "image dans un tool_result",
+        turn([
+          {
+            type: "tool_result",
+            tool_use_id: "toolu_1",
+            content: [
+              { type: "text", text: "[]" },
+              { type: "image", source: png },
+            ],
+          },
+        ]),
+      ],
+      [
+        "PDF dans un tool_result",
+        turn([
+          {
+            type: "tool_result",
+            tool_use_id: "toolu_1",
+            content: [{ type: "document", source: pdf }],
+          },
+        ]),
+      ],
+      [
+        "résultat de recherche dans un tool_result",
+        turn([
+          {
+            type: "tool_result",
+            tool_use_id: "toolu_1",
+            content: [{ type: "search_result", source: "x", title: "x", content: [] }],
+          },
+        ]),
+      ],
+      [
+        "image à côté d'un tool_result",
+        turn([
+          { type: "tool_result", tool_use_id: "toolu_1", content: "[]" },
+          { type: "image", source: png },
+        ]),
+      ],
+      [
+        "image dans la question",
+        [
+          {
+            role: "user",
+            content: [
+              { type: "text", text: "Décris" },
+              { type: "image", source: png },
+            ],
+          },
+        ],
+      ],
+      [
+        "PDF par fichier dans un message précédent",
+        [
+          { role: "user", content: [{ type: "document", source: { type: "file", file_id: "f" } }] },
+          { role: "assistant", content: "Lu." },
+          { role: "user", content: "Résume." },
+        ],
+      ],
+      [
+        "image dans l'entrée d'un outil",
+        turn([{ type: "tool_result", tool_use_id: "toolu_1", content: "[]" }]).map((m, i) =>
+          i === 1
+            ? {
+                role: "assistant",
+                content: [{ ...call, input: { kind: { type: "image", source: png } } }],
+              }
+            : m,
+        ),
+      ],
+      [
+        "outil serveur dans un message du modèle",
+        [
+          { role: "user", content: "Cherche" },
+          {
+            role: "assistant",
+            content: [{ type: "server_tool_use", id: "srvtoolu_1", name: "web_fetch", input: {} }],
+          },
+          { role: "user", content: "Alors ?" },
+        ],
+      ],
+      [
+        "bloc inconnu",
+        [
+          { role: "user", content: [{ type: "container_upload", file_id: "f" }] },
+          { role: "assistant", content: "Ok." },
+          { role: "user", content: "Suite." },
+        ],
+      ],
+      [
+        "fil de plus de 2 Mo",
+        [
+          { role: "user", content: "x".repeat(2_100_000) },
+          { role: "assistant", content: "Ok." },
+          { role: "user", content: "Suite." },
+        ],
+      ],
+    ];
+    const service = fakeAnthropic([{}]);
+    for (const [what, messages] of forged) {
+      expect(cleanHistory(messages), what).toBeNull();
+      const res = await assistantPost(
+        { status: 200, session: p.session },
+        { messages, locale: "fr" },
+        deps({ fetch: service.fetch }),
+      );
+      // La question elle-même illisible : « invalid » ; le fil : « history » (B3). Toujours 400.
+      expect(res.status, what).toBe(400);
+      expect(res.body.error, what).toBe(what === "image dans la question" ? "invalid" : "history");
+    }
+    expect(service.requests).toHaveLength(0);
+    expect(await rows(p)).toBe(0);
+
+    // Un vrai fil (texte, réflexion, appel et résultat d'outil, repli de modèle) passe, reconstruit
+    // avec ses seuls champs connus : ni citations ni cache_control venus du navigateur.
+    const legit = [
+      { role: "user", content: "Mes factures ?" },
+      {
+        role: "assistant",
+        content: [
+          { type: "thinking", thinking: "", signature: "sig" },
+          { type: "redacted_thinking", data: "abc" },
+          { type: "text", text: "Je regarde.", citations: null },
+          { ...call, cache_control: { type: "ephemeral" } },
+        ],
+      },
+      {
+        role: "user",
+        content: [
+          { type: "tool_result", tool_use_id: "toolu_1", content: [{ type: "text", text: "[]" }] },
+        ],
+      },
+      {
+        role: "assistant",
+        content: [
+          { type: "fallback", from: { model: "claude-opus-5-5" }, to: { model: "claude-x" } },
+          { type: "text", text: "Aucune." },
+        ],
+      },
+      { role: "user", content: "Et ce mois-ci ?" },
+    ];
+    const ok = await assistantPost(
+      { status: 200, session: p.session },
+      { messages: legit, locale: "fr" },
+      deps({ fetch: service.fetch }),
+    );
+    expect(ok.status).toBe(200);
+    const sent = JSON.stringify(service.requests[0]?.messages);
+    expect(sent).toContain('"signature":"sig"');
+    expect(sent).toContain('"type":"tool_result"');
+    expect(sent).toContain('"type":"fallback"');
+    expect(sent).not.toMatch(/"image"|"document"|citations|cache_control/);
+    // Taille bornée : un long fil est coupé au début d'un tour, sous 200 Ko.
+    const long = Array.from({ length: 50 }, (_, i) =>
+      i % 2 === 0
+        ? { role: "user", content: `q${i} ${"x".repeat(10_000)}` }
+        : { role: "assistant", content: `a${i}` },
+    );
+    const cut = cleanHistory([...long, { role: "user", content: "dernière" }]);
+    expect(JSON.stringify(cut).length).toBeLessThanOrEqual(MAX_HISTORY_BYTES);
+    expect(cut?.at(-1)).toEqual({ role: "user", content: "dernière" });
+  });
+
+  it("aucun plafond de max_tokens en formule gratuite : le même plafond qu'en Pro, assez pour un plan ou un lot complet (L10, A6)", async () => {
+    const free = await person("plafond-gratuit");
+    const paid = await person("plafond-pro", PRO);
+    await spend(free, 199_000);
+    const a = await ask(free);
+    const b = await ask(paid);
+    expect([a.status, b.status]).toEqual([200, 200]);
+    expect(a.requests[0]?.max_tokens).toBe(MAX_TOKENS);
+    expect(b.requests[0]?.max_tokens).toBe(MAX_TOKENS);
+    expect(MAX_TOKENS).toBeGreaterThanOrEqual(16_000);
   });
 
   it("formules payantes et essais jamais limités : Pro, Pro+, essai Stripe en cours, essai du Compte Lead (L3)", async () => {

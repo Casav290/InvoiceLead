@@ -334,11 +334,15 @@ export function AssistantBubble({
       }
       if (res.status === 429 && body.error === "free_limit") return;
       if (!res.ok) {
+        // L9 : refusé seulement parce qu'une demande est encore en cours (formule gratuite) : ni fin
+        // du mois ni champ fermé, « réessayez dans un instant ».
         const code =
           res.status === 429
-            ? body.scope === "org"
-              ? "quotaOrg"
-              : "quotaUser"
+            ? body.error === "free_wait"
+              ? "busy"
+              : body.scope === "org"
+                ? "quotaOrg"
+                : "quotaUser"
             : body.error === "history"
               ? "history"
               : (ERROR_BY_STATUS[res.status] ?? "unavailable");

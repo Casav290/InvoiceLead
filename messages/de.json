@@ -2426,7 +2426,8 @@
         "off": "Der KI-Assistent ist noch nicht eingerichtet.",
         "empty": "Stellen Sie eine Frage.",
         "failed": "Der Assistent konnte nicht antworten. Bitte gleich nochmals versuchen.",
-        "quota": "Frage nicht gesendet. Mit Pro antwortet der Assistent ohne Limite."
+        "quota": "Frage nicht gesendet. Mit Pro antwortet der Assistent ohne Limite.",
+        "busy": "Eine Anfrage läuft bereits. Versuchen Sie es gleich noch einmal."
       }
     },
     "expenses": {
@@ -2617,6 +2618,7 @@
         "network": "Die Verbindung ist unterbrochen. Prüfen Sie Ihr Netzwerk und versuchen Sie es erneut.",
         "quotaUser": "Sie haben 40 Nachrichten in einer Stunde gesendet. Versuchen Sie es etwas später wieder.",
         "quotaOrg": "Ihr Unternehmen hat heute 400 Nachrichten erreicht. Der Assistent ist morgen wieder da.",
+        "busy": "Eine Anfrage läuft bereits. Versuchen Sie es gleich noch einmal.",
         "session": "Ihre Sitzung ist abgelaufen. Laden Sie die Seite neu, um sich wieder anzumelden.",
         "forbidden": "Ihr Zugang zu InvoiceLead erlaubt den Assistenten nicht.",
         "invalid": "Diese Anfrage konnte nicht gelesen werden. Formulieren Sie sie neu und versuchen Sie es erneut.",

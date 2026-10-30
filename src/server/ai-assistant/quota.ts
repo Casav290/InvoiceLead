@@ -1,13 +1,7 @@
 import { and, count, eq, gt, gte, isNull, sql } from "drizzle-orm";
 import type { Db } from "../db";
 import { assistantUsage } from "../db/schema";
-import {
-  ASSISTANT_TOKENS,
-  type AssistantBudget,
-  assistantBudget,
-  type OrgPlan,
-  requestsLeft,
-} from "../plans";
+import { ASSISTANT_TOKENS, type AssistantBudget, assistantBudget, type OrgPlan } from "../plans";
 
 /** 40 messages par heure et par personne, 400 par jour (UTC) et par entreprise, toutes formules. */
 export const USER_PER_HOUR = 40;
@@ -55,23 +49,32 @@ async function pendingTurns(tx: Db, organizationId: string, now: Date) {
 }
 
 /**
- * Formule gratuite (L4), sous le verrou de l'entreprise : la consommation du mois, plus une
- * demande-type par tour encore en cours (bulle et page Assistant). Au budget, rend le budget (atteint)
- * et rien ne part au modèle ; sinon null (formule sans limite comprise, sans lecture du journal).
- * Des demandes lancées ensemble ne passent donc pas toutes sous le budget ; un tour commencé peut le
- * dépasser un peu (ses jetons ne sont connus qu'à la fin), le suivant est refusé.
+ * Refus de la formule gratuite, sous le verrou de l'entreprise :
+ * - « free » (L4) : la consommation du mois (tours finis) atteint le budget ; rien ne part au modèle
+ *   jusqu'au 1er du mois suivant ;
+ * - « free_wait » (L9) : le budget n'est pas atteint, mais les tours encore en cours (une demande-type
+ *   chacun, bulle et page Assistant) l'atteindraient. Ce n'est pas la fin du mois : le tour en cours
+ *   finit, puis la demande peut repartir (« réessayez dans un instant »).
  */
-async function freeLimitReached(
-  tx: Db,
-  free: FreeCheck | null,
-  now: Date,
-): Promise<AssistantBudget | null> {
+export type FreeRefusal = { limit: "free"; budget: AssistantBudget } | { limit: "free_wait" };
+
+/**
+ * Formule gratuite, sous le verrou de l'entreprise : la consommation du mois, plus une demande-type
+ * par tour encore en cours (bulle et page Assistant). Rend le refus (FreeRefusal) et rien ne part au
+ * modèle ; sinon null (formule sans limite comprise, sans lecture du journal). Des demandes lancées
+ * ensemble ne passent donc pas toutes sous le budget ; un tour commencé peut le dépasser un peu (ses
+ * jetons ne sont connus qu'à la fin), le suivant est refusé.
+ */
+async function freeRefusal(tx: Db, free: FreeCheck | null, now: Date): Promise<FreeRefusal | null> {
   const budget = free && (await assistantBudget(tx, free.org, free.today));
   if (!budget) return null;
+  // Tours finis au budget : la fin du mois (le message de L4, le champ fermé).
+  if (budget.exhausted) return { limit: "free", budget };
   const pending = await pendingTurns(tx, free.org.id, now);
   const used = budget.used + pending * ASSISTANT_TOKENS.perRequest;
-  if (used < budget.limit) return null;
-  return { ...budget, used, left: requestsLeft({ used, limit: budget.limit }), exhausted: true };
+  // Seulement des tours en cours : attendre qu'ils finissent, rien n'est dit du mois (L9).
+  if (used >= budget.limit) return { limit: "free_wait" };
+  return null;
 }
 
 /** Compte puis inscrit sous le verrou de l'entreprise : deux onglets en même temps ne passent pas. */
@@ -92,12 +95,10 @@ export async function reserveMessage(
   who: Who,
   now = new Date(),
   free: FreeCheck | null = null,
-): Promise<
-  { id: number } | { limit: "user" | "org" } | { limit: "free"; budget: AssistantBudget }
-> {
+): Promise<{ id: number } | { limit: "user" | "org" } | FreeRefusal> {
   return underOrgLock(database, who.organizationId, async (tx) => {
-    const full = await freeLimitReached(tx, free, now);
-    if (full) return { limit: "free" as const, budget: full };
+    const refused = await freeRefusal(tx, free, now);
+    if (refused) return refused;
     const hourAgo = new Date(now.getTime() - 3_600_000);
     const [mine] = await tx
       .select({ n: count() })
@@ -134,18 +135,18 @@ export async function reserveMessage(
 /**
  * Réserve une question de la page Assistant avant l'appel à l'IA, sous le même verrou et avec le même
  * budget que la bulle (tours en cours compris) ; ni les 40 par heure ni les 400 par jour, qui
- * n'existaient pas pour cette page. Rend l'id de la ligne (recordUsage la complète), ou le budget
- * atteint (rien n'est inscrit).
+ * n'existaient pas pour cette page. Rend l'id de la ligne (recordUsage la complète), ou le refus de la
+ * formule gratuite : budget atteint, ou tours en cours (rien n'est inscrit).
  */
 export async function reserveBooksQuestion(
   database: Db,
   who: Who,
   free: FreeCheck,
   now = new Date(),
-): Promise<{ id: number } | { limit: "free"; budget: AssistantBudget }> {
+): Promise<{ id: number } | FreeRefusal> {
   return underOrgLock(database, who.organizationId, async (tx) => {
-    const full = await freeLimitReached(tx, free, now);
-    if (full) return { limit: "free" as const, budget: full };
+    const refused = await freeRefusal(tx, free, now);
+    if (refused) return refused;
     const [row] = await tx
       .insert(assistantUsage)
       .values({

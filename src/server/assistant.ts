@@ -186,9 +186,10 @@ export type AssistantAnswer = { answer: string; links: AssistantLink[] };
  * Formule gratuite : le même budget de jetons que la bulle Assistant IA (plans.ts, assistantBudget ;
  * un seul compteur, le journal assistant_usage). La question est réservée avant l'appel à l'IA, sous
  * le verrou de l'entreprise et tours en cours compris (quota.ts, reserveBooksQuestion) : budget du
- * mois atteint, elle est refusée sans appel. Les jetons d'une réponse reçue sont inscrits, même si
- * elle est inutilisable ; une IA qui ne répond pas ne coûte rien. Pro et Pro+ sans limite (les jetons
- * sont inscrits quand même).
+ * mois atteint, elle est refusée sans appel (« quota ») ; refusée seulement parce que des tours sont
+ * encore en cours, « busy » (L9 : réessayer dans un instant, rien n'est dit du mois). Les jetons d'une
+ * réponse reçue sont inscrits, même si elle est inutilisable ; une IA qui ne répond pas ne coûte
+ * rien. Pro et Pro+ sans limite (les jetons sont inscrits quand même).
  */
 export async function askAssistant(
   database: Db,
@@ -196,13 +197,13 @@ export async function askAssistant(
   question: string,
   language: AppLocale,
   today = new Date().toISOString().slice(0, 10),
-): Promise<AssistantAnswer | "empty" | "failed" | "quota"> {
+): Promise<AssistantAnswer | "empty" | "failed" | "quota" | "busy"> {
   const q = question.trim().slice(0, 500);
   if (!q) return "empty";
   const plan = await organizationPlan(database, who.organizationId);
   if (!plan) return "quota";
   const reserved = await reserveBooksQuestion(database, who, { org: plan, today });
-  if ("limit" in reserved) return "quota";
+  if ("limit" in reserved) return reserved.limit === "free_wait" ? "busy" : "quota";
   // Une réponse sans décompte de jetons compte pour une demande-type entière ; sans réponse, la ligne
   // réservée garde zéro jeton (« failed »).
   let answered: AiUsage | null | undefined;
