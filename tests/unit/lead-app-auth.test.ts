@@ -844,7 +844,7 @@ describe("page de retour /lead-auth/return", () => {
       es: "Vuelve a InvoiceLead",
     };
     const google = {
-      fr: "« Continuer avec Google »",
+      fr: "«\u202fContinuer avec Google\u202f»",
       de: "„Weiter mit Google“",
       en: "“Continue with Google”",
       it: "«Continua con Google»",
