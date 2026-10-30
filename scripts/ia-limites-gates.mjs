@@ -1169,10 +1169,11 @@ async function g3() {
       "du périmètre (carte) : un brouillon de devis « À confirmer » pour le client TEST, 300 CHF",
       card.status === 200 &&
         (await cards.count()) === 1 &&
-        cardText.includes("À confirmer") &&
+        // Le titre de la carte est en capitales par le style (innerText rend « À CONFIRMER »).
+        cardText.toLocaleLowerCase("fr").includes("à confirmer") &&
         cardText.includes(CLIENTS[0]) &&
         /300[.,]00/.test(cardText),
-      cardText.slice(0, 200),
+      cardText.slice(0, 400),
     );
     if ((await cards.count()) === 1) await page.getByTestId("assistant-cancel").click();
     const docs = await readOnly(st.secrets.roUrl, async (c) =>
@@ -1304,12 +1305,59 @@ async function g4() {
         after.includes(`environ ${left} demande`),
       `${after} ; ${JSON.stringify(turn.body.budget)}`,
     );
-    // Consommation du mois posée au budget, dans la base d'aperçu.
-    const top = Math.ceil(200_000 - used);
+    // L5 : consommation posée à 190 000 (moins d'une demande-type restante, budget non atteint).
+    const near = Math.ceil(190_000 - used);
     await w.query(
       "insert into assistant_usage (organization_id, user_id, input_tokens, created_at) values ($1, $2, $3, now())",
-      [free.id, free.userId, top],
+      [free.id, free.userId, near],
     );
+    await page.reload();
+    await page.getByTestId("assistant-bubble").click();
+    const lessThanOne = clean(await counter.innerText().catch(() => ""));
+    const openAtZero = await page.getByTestId("assistant-input").isEnabled();
+    await page
+      .getByTestId("assistant-panel")
+      .screenshot({ path: join(CAPTURES, "g4-gratuit-moins-d-une-demande.png") });
+    check(
+      "moins d'une demande restante (190 000 jetons consommés) : « il vous reste moins d'une demande ce mois-ci », champ ouvert, aucun message de fin (L5)",
+      lessThanOne === "Formule gratuite : il vous reste moins d'une demande ce mois-ci." &&
+        openAtZero &&
+        (await page.getByTestId("assistant-free-limit").count()) === 0,
+      `${lessThanOne} ; champ ${openAtZero ? "ouvert" : "fermé"}`,
+    );
+    // L9 : un tour encore en cours (sa ligne n'a ni jeton ni erreur) ; la demande suivante est
+    // refusée « free_wait », sans appel au modèle, et rien n'est dit du mois.
+    const pending = (
+      await w.query(
+        "insert into assistant_usage (organization_id, user_id, created_at) values ($1, $2, now()) returning id",
+        [free.id, free.userId],
+      )
+    ).rows[0].id;
+    const rowsWait = (await usageRows(st.secrets.roUrl, free.id)).length;
+    const wait = await askBubble(page, "Combien de devis ai-je ouverts ?");
+    const busyNotice = clean(
+      await page
+        .getByTestId("assistant-notice")
+        .last()
+        .innerText()
+        .catch(() => ""),
+    );
+    await page
+      .getByTestId("assistant-panel")
+      .screenshot({ path: join(CAPTURES, "g4-gratuit-demande-en-cours.png") });
+    check(
+      "une demande déjà en cours : 429 « free_wait » sans budget, « Une demande est déjà en cours : réessayez dans un instant. », champ ouvert, ni message de fin ni appel au modèle (L9)",
+      wait.status === 429 &&
+        isDeepStrictEqual(wait.body, { error: "free_wait" }) &&
+        busyNotice === "Une demande est déjà en cours : réessayez dans un instant." &&
+        (await page.getByTestId("assistant-input").isEnabled()) &&
+        (await page.getByTestId("assistant-free-limit").count()) === 0 &&
+        (await counter.count()) === 1 &&
+        (await usageRows(st.secrets.roUrl, free.id)).length === rowsWait,
+      `${wait.status} ${JSON.stringify(wait.body)} ; « ${busyNotice} » ; ${wait.ms} ms`,
+    );
+    // Le tour en cours finit avec 10 000 jetons : la consommation du mois atteint le budget.
+    await w.query("update assistant_usage set input_tokens = 10000 where id = $1", [pending]);
     const rowsBefore = (await usageRows(st.secrets.roUrl, free.id)).length;
     await page.reload();
     await page.getByTestId("assistant-bubble").click();

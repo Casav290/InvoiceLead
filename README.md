@@ -98,8 +98,11 @@ pages publiques) ouvre un fil où l'on demande ce qu'on veut. Code : `src/server
   (hors périmètre : une phrase polie, aucun outil). En formule gratuite, 200 000 jetons pondérés par
   mois et par entreprise, l'équivalent de 10 demandes, communs à la bulle et à la page Assistant
   (`ASSISTANT_TOKENS` et `assistantBudget` dans `src/server/plans.ts`) : la bulle dit ce qui reste, puis
-  refuse (429 `free_limit`) sans appeler le modèle jusqu'au 1er du mois suivant. Détails :
-  [docs/ASSISTANT-IA.md](docs/ASSISTANT-IA.md), section « Périmètre et limite gratuite ».
+  refuse (429 `free_limit`) sans appeler le modèle jusqu'au 1er du mois suivant ; moins d'une demande
+  restante, le champ reste ouvert ; une demande déjà en cours n'est qu'un « réessayez dans un instant »
+  (429 `free_wait`). L'historique renvoyé par le navigateur n'accepte que du texte (ni image ni
+  document, à aucun niveau). Détails : [docs/ASSISTANT-IA.md](docs/ASSISTANT-IA.md), section
+  « Périmètre et limite gratuite ».
 - Même comportement que les bulles des autres applications Lead (alignement du 28.10.2026, B1–B14 :
   délai du tour, cache, fil refusé, réponse jamais muette, « Page ouverte : <écran> », texte simple
   rendu sans HTML, carte lisible, clavier, rien de masqué, mention « peut se tromper », quota et
@@ -107,7 +110,8 @@ pages publiques) ouvre un fil où l'on demande ce qu'on veut. Code : `src/server
   [docs/ASSISTANT-IA.md](docs/ASSISTANT-IA.md).
 - Portes du chantier : `node scripts/assistant-actions-gates.mjs G1` à `G8` (inventaire, tests, contrôles
   complets, aperçu réel, refus, production, alignement statique, alignement sur l'aperçu) ; périmètre et
-  limite gratuite : `node scripts/ia-limites-gates.mjs G1` à `G4`.
+  limite gratuite : `node scripts/ia-limites-gates.mjs G1` à `G4` (aperçu de G3 et G4 :
+  `node scripts/ia-limites-preview.mjs deploy`).
 
 ## Langues et devise par pays
 
