@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { cache } from "react";
 import { countryPack } from "@/countries";
 import { REQUESTED_PATH_HEADER } from "@/lib/cookies";
+import { isAppAuthAgent } from "@/lib/native";
 import { betaAllowed } from "../beta";
 import { db } from "../db";
 import { env } from "../env";
@@ -29,15 +30,38 @@ export async function requireSession(locale: string, back?: ReturnTo): Promise<C
   const session = await getSession();
   if (!session) {
     // Cookie de session expiré : la page demandée est redonnée au Compte Lead, on y revient ensuite.
+    const h = await headers();
     const invite = safeInvite(back?.invite);
-    const next = invite
-      ? undefined
-      : safeNext(back?.next ?? (await headers()).get(REQUESTED_PATH_HEADER));
-    redirect(
-      `/auth/lead/start?${new URLSearchParams({ locale: pickLocale(locale), ...(invite ? { invite } : next ? { next } : {}) })}`,
-    );
+    const next = invite ? undefined : safeNext(back?.next ?? h.get(REQUESTED_PATH_HEADER));
+    redirect(sessionLoginPath(locale, { invite, next }, h.get("user-agent")));
   }
   return session;
+}
+
+/**
+ * Où mène une page qui exige une session quand il n'y en a pas : tout droit vers le Compte Lead
+ * (`/auth/lead/start`). Dans l'app, pour les versions qui reviennent de Google (LeadAppAuth/1), par
+ * l'écran de connexion de l'app (`/<langue>/login`) : relancée par son lien de retour (fermée pendant
+ * la connexion Google) avec un cookie de session périmé, la vue web n'aurait affiché aucune page
+ * d'InvoiceLead avant le Compte Lead, et le lien de lancement serait perdu ; l'écran de connexion le
+ * lit d'abord (lib/lead-app-auth.ts), puis part vers `/auth/lead/start` avec la même demande.
+ */
+export function sessionLoginPath(
+  locale: string,
+  wanted: { invite?: string; next?: string },
+  userAgent: string | null | undefined,
+): string {
+  const lang = pickLocale(locale);
+  const ask: Record<string, string> = wanted.invite
+    ? { invite: wanted.invite }
+    : wanted.next
+      ? { next: wanted.next }
+      : {};
+  if (isAppAuthAgent(userAgent)) {
+    const q = new URLSearchParams(ask).toString();
+    return `/${lang}/login${q ? `?${q}` : ""}`;
+  }
+  return `/auth/lead/start?${new URLSearchParams({ locale: lang, ...ask })}`;
 }
 
 /** Raison pour laquelle la personne n'entre pas dans l'application, ou null si elle entre. */

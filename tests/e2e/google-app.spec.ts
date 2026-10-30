@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { type Browser, expect, type Page, test } from "@playwright/test";
+import { type Browser, type BrowserContext, expect, type Page, test } from "@playwright/test";
 import { APP, LEAD } from "./helpers";
 
 /**
@@ -18,12 +18,18 @@ const BRIDGE = readFileSync(join(process.cwd(), "tests/support/fake-capacitor.js
 
 type Call = { name: string; arg: unknown; url: string };
 
-/** Une vue web de l'app : agent, faux pont, appels au pont relevés. */
-async function webview(browser: Browser, ua = NEW_APP, launchUrl?: string) {
+type Stored = Awaited<ReturnType<BrowserContext["storageState"]>>;
+
+/**
+ * Une vue web de l'app : agent, faux pont, appels au pont relevés. `stored` : cookies et localStorage
+ * d'une vue web précédente (app fermée puis relancée : le téléphone les garde).
+ */
+async function webview(browser: Browser, ua = NEW_APP, launchUrl?: string, stored?: Stored) {
   const context = await browser.newContext({
     userAgent: ua,
     viewport: { width: 390, height: 844 },
     locale: "it-CH",
+    ...(stored ? { storageState: stored } : {}),
   });
   const calls: Call[] = [];
   await context.exposeBinding("__bridgeCall", ({ page }, name: string, arg: unknown) => {
@@ -156,13 +162,12 @@ test("app relancée par le lien de retour (lien de lancement) : connectée depui
   await appGoogle(plain, true);
   const first = await webview(browser);
   const d = await toRelay(first.page, first.calls);
-  // L'app est « tuée » pendant la connexion Google ; les cookies de la vue web restent (stockage).
-  const { cookies } = await first.context.storageState();
+  // L'app est « tuée » pendant la connexion Google ; cookies et localStorage de la vue web restent.
+  const stored = await first.context.storageState();
   await first.context.close();
   const { link } = await googleReturn(plain, d);
-  const relaunched = await webview(browser, NEW_APP, link);
+  const relaunched = await webview(browser, NEW_APP, link, stored);
   try {
-    await relaunched.context.addCookies(cookies);
     const before = (await redeems(plain)).length;
     await relaunched.page.goto(`${APP}/it/app`);
     await relaunched.page.waitForURL(`${APP}/it/app`);
@@ -178,6 +183,151 @@ test("app relancée par le lien de retour (lien de lancement) : connectée depui
     expect((await redeems(plain)).length).toBe(before + 1);
   } finally {
     await relaunched.context.close();
+  }
+});
+
+test("app relancée par le lien de retour avec un cookie de session périmé : la garde passe par l'écran de connexion de l'app, qui suit le lien ; connectée du premier coup", async ({
+  browser,
+  page: plain,
+}) => {
+  await appGoogle(plain, true);
+  await plain.request.post(`${LEAD}/test/next-user`, {
+    data: {
+      sub: "sub-google-app-stale",
+      email: "stella@google-app.test",
+      name: "Stella Google",
+      org: "org-google-app-stale",
+      org_name: "Session Périmée Sàrl",
+      locale: "it",
+    },
+  });
+  const first = await webview(browser);
+  const d = await toRelay(first.page, first.calls);
+  // Déconnexion « de partout » passée : le cookie de session d'InvoiceLead reste, sans session.
+  await first.context.addCookies([{ name: "il_session", value: "perime".repeat(8), url: APP }]);
+  const stored = await first.context.storageState();
+  await first.context.close();
+  const { link } = await googleReturn(plain, d);
+  const relaunched = await webview(browser, NEW_APP, link, stored);
+  try {
+    const before = (await redeems(plain)).length;
+    await relaunched.page.goto(`${APP}/it/app`);
+    await relaunched.page.waitForURL(`${APP}/it/app`);
+    await expect(relaunched.page.locator("body")).toContainText("Session Périmée Sàrl");
+    expect((await redeems(plain)).slice(before)).toEqual([{ ok: true, cookie: true }]);
+    expect(named(relaunched.calls, "Browser.close")).toHaveLength(1);
+  } finally {
+    await relaunched.context.close();
+  }
+});
+
+test("nouvelle connexion après une app relancée sans lecture du lien : l'ancien lien de lancement n'est pas suivi par la page relais, le nouveau connecte", async ({
+  browser,
+  page: plain,
+}) => {
+  await appGoogle(plain, true);
+  const first = await webview(browser);
+  const d1 = await toRelay(first.page, first.calls);
+  // L'écran du Compte Lead tel que l'app l'a ouvert (sa demande d'autorisation, son state) : `next` de
+  // `back`, dans l'adresse de la page relais.
+  const back = new URL(first.page.url()).searchParams.get("back") ?? "";
+  const authorize = new URL(back).searchParams.get("next") ?? "";
+  const stored = await first.context.storageState();
+  await first.context.close();
+  const { link: old } = await googleReturn(plain, d1);
+  // L'app relancée par l'ancien lien est menée au Compte Lead sans qu'aucune page d'InvoiceLead ne le
+  // lise ; la personne touche de nouveau « Continuer avec Google ».
+  const again = await webview(browser, NEW_APP, old, stored);
+  try {
+    const before = (await redeems(plain)).length;
+    expect(authorize.startsWith("/oauth/authorize?")).toBe(true);
+    await again.page.goto(`${LEAD}${authorize}`);
+    await again.page.locator("#google").click();
+    await again.page.waitForURL(`${APP}/it/lead-auth/google?**`);
+    await expect.poll(() => named(again.calls, "Browser.open").length).toBe(1);
+    await again.page.waitForTimeout(500);
+    // L'ancien lien (rendu par getLaunchUrl) : ni navigateur fermé, ni rachat.
+    expect(named(again.calls, "App.getLaunchUrl").map((c) => c.arg)).toContain(old);
+    expect(named(again.calls, "Browser.close")).toHaveLength(0);
+    expect((await redeems(plain)).length).toBe(before);
+    const d2 =
+      new URL(String(named(again.calls, "Browser.open")[0]?.arg)).searchParams.get("d") ?? "";
+    const { link } = await googleReturn(plain, d2);
+    await emit(again.page, link);
+    await again.page.waitForURL(`${APP}/it/app`);
+    expect((await redeems(plain)).slice(before)).toEqual([{ ok: true, cookie: true }]);
+  } finally {
+    await again.context.close();
+  }
+});
+
+test("deux demandes expirées de suite : le lien d'erreur ramène chaque fois à l'écran de connexion du Compte Lead", async ({
+  browser,
+  page: plain,
+}) => {
+  await appGoogle(plain, true);
+  const { context, page, calls } = await webview(browser);
+  try {
+    for (const round of [1, 2]) {
+      calls.length = 0;
+      await toRelay(page, calls);
+      await page.waitForFunction(() =>
+        (window as unknown as { __fakeListeners: (k: string) => number }).__fakeListeners(
+          "App.appUrlOpen",
+        ),
+      );
+      await emit(page, "io.invoicelead.app://lead-auth?error=expired");
+      await page.waitForURL(`${LEAD}/login?**`);
+      expect(named(calls, "Browser.close"), `essai ${round}`).toHaveLength(1);
+      // iOS : getLaunchUrl rend ensuite le dernier lien ouvert (ici le lien d'erreur).
+      if (round === 1)
+        await context.addInitScript(() => {
+          (window as unknown as { __FAKE_CAPACITOR: unknown }).__FAKE_CAPACITOR = {
+            launchUrl: "io.invoicelead.app://lead-auth?error=expired",
+          };
+        });
+    }
+  } finally {
+    await context.close();
+  }
+});
+
+test("lien de l'app reçu sans connexion en cours (page de l'app ouverte) : ignoré, la page reste", async ({
+  browser,
+  page: plain,
+}) => {
+  await plain.request.post(`${LEAD}/test/next-user`, {
+    data: {
+      sub: "sub-app-trap",
+      email: "tina@google-app.test",
+      name: "Tina",
+      org: "org-app-trap",
+      org_name: "Piège Sàrl",
+      locale: "it",
+    },
+  });
+  const { context, page, calls } = await webview(browser);
+  try {
+    await page.goto(`${APP}/it/login`);
+    await page.waitForURL(`${APP}/it/app`);
+    const before = (await redeems(plain)).length;
+    await page.waitForFunction(() =>
+      (window as unknown as { __fakeListeners: (k: string) => number }).__fakeListeners(
+        "App.appUrlOpen",
+      ),
+    );
+    for (const url of [
+      `io.invoicelead.app://lead-auth?code=${"T".repeat(43)}`,
+      "io.invoicelead.app://lead-auth?error=expired",
+    ])
+      await emit(page, url);
+    await page.waitForTimeout(800);
+    expect(page.url()).toBe(`${APP}/it/app`);
+    expect(named(calls, "Browser.close")).toHaveLength(0);
+    expect((await redeems(plain)).length).toBe(before);
+    await expect(page.locator("body")).toContainText("Piège Sàrl");
+  } finally {
+    await context.close();
   }
 });
 

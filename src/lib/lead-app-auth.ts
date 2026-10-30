@@ -11,6 +11,13 @@
  * (`/auth/google/app/redeem?code=…`), qui ouvre la session (preuve : le cookie HttpOnly de la vue web,
  * qu'InvoiceLead ne lit jamais) et reprend la connexion de l'app comme après un mot de passe.
  *
+ * Un lien n'est suivi que pendant une connexion Google EN COURS (relecture du 30.10.2026) : la page
+ * relais de cette vue web l'attend (navigateur ouvert), ou une connexion notée par une page relais il y
+ * a moins de 15 min (app relancée par son lien). Tout autre lien de l'app (page web, courriel, autre
+ * app, ancien lien que la coque redonne par getLaunchUrl) ne fait rien : ni navigateur fermé, ni page
+ * quittée. Sur la page relais, le lien de lancement est toujours d'avant ce départ (ERPlead vient de
+ * remplacer le cookie verifier) : jamais suivi.
+ *
  * Tout ici est sans dépendance (ni React, ni Next, ni DOM réel) : les composants de
  * components/native/LeadAppAuth.tsx le branchent sur `window`, les tests sur un faux pont Capacitor.
  * Hors de l'app (aucun pont Capacitor natif), rien ne s'installe et rien ne change.
@@ -33,9 +40,21 @@ export const FINISHED_GRACE_MS = 1500;
 export const LAUNCH_TIMEOUT_MS = 1500;
 /** L'écran de connexion d'ERPlead à rouvrir si la personne abandonne (gardé par la page relais). */
 export const BACK_KEY = "invoicelead.leadAuth.back";
-/** Empreintes des liens déjà traités (getLaunchUrl rend le même lien à chaque page). */
+/**
+ * Empreintes des liens AVEC CODE déjà vus (getLaunchUrl rend le même lien à chaque page), sans échéance.
+ * Le lien d'erreur (`?error=expired`) est toujours le même : jamais gardé, sinon la deuxième demande
+ * expirée ne ramènerait plus à l'écran de connexion.
+ */
 export const SEEN_KEY = "invoicelead.leadAuth.seen";
 const SEEN_MAX = 20;
+/**
+ * Connexion Google en cours, notée par la page relais juste avant d'ouvrir le navigateur du téléphone
+ * (localStorage : l'app relancée par son lien la retrouve) : `{ t, stale }`, l'heure et l'empreinte du
+ * lien de lancement de la page relais (ancien lien, jamais pris pour le retour de cette connexion).
+ */
+export const PENDING_KEY = "invoicelead.leadAuth.pending";
+/** Au-delà, ERPlead refuserait le code (départ et cookie verifier : 10 min) : plus rien n'est attendu. */
+export const PENDING_TTL_MS = 15 * 60 * 1000;
 const URL_MAX = 4096;
 
 /** L'émetteur du Compte Lead (LEAD_ID_ISSUER, ex. https://erplead.io), sans « / » final, ou null. */
@@ -130,13 +149,25 @@ type StorageLike = Pick<Storage, "getItem" | "setItem" | "removeItem">;
 /** Ce que ce module lit de `window`. */
 export type AppWindow = {
   Capacitor?: CapacitorBridge;
-  location: { replace: (url: string) => void };
+  location: { replace: (url: string) => void; pathname?: string };
   localStorage?: StorageLike;
   sessionStorage?: StorageLike;
   setTimeout: (fn: () => void, ms: number) => unknown;
+  /** L'horloge (essais) ; sinon Date.now. */
+  now?: () => number;
   __invoiceleadLeadAuth?: ListenerState;
 };
-type ListenerState = { ready: Promise<boolean>; received: boolean };
+type ListenerState = {
+  ready: Promise<boolean>;
+  /** Un lien a été suivi : la page part (rachat ou écran de connexion). */
+  received: boolean;
+  /** Page relais : son lien de lancement est d'avant ce départ, jamais suivi. */
+  relay: boolean;
+  /** La page relais a ouvert le navigateur du téléphone et attend le lien de retour. */
+  armed: boolean;
+  /** Empreinte du lien de l'app rendu par getLaunchUrl à ce chargement, s'il y en a un. */
+  launchKey: string | null;
+};
 
 /** Les modules natifs de l'app (App, Browser), seulement dans l'app : le pont dit « natif ». */
 export function nativePlugins(win: AppWindow): NonNullable<CapacitorBridge["Plugins"]> | null {
@@ -178,9 +209,8 @@ function seenList(win: AppWindow): string[] {
     return [];
   }
 }
-/** Marque le lien comme traité ; rend false s'il l'était déjà (cette page ou une précédente). */
-function firstTime(win: AppWindow, url: string): boolean {
-  const key = fingerprint(url);
+/** Marque un lien avec code comme vu ; rend false s'il l'était déjà (cette page ou une précédente). */
+function firstTime(win: AppWindow, key: string): boolean {
   const memory = memorySeen.get(win) ?? new Set<string>();
   memorySeen.set(win, memory);
   const stored = seenList(win);
@@ -195,6 +225,42 @@ function firstTime(win: AppWindow, url: string): boolean {
     // Stockage refusé : la mémoire de la page suffit à cette page.
   }
   return true;
+}
+
+const clock = (win: AppWindow) => (typeof win.now === "function" ? win.now() : Date.now());
+type Pending = { t: number; stale: string | null };
+/** La connexion Google en cours (moins de PENDING_TTL_MS), ou null. */
+function readPending(win: AppWindow): Pending | null {
+  try {
+    const raw = storage(win, "localStorage")?.getItem(PENDING_KEY);
+    const v: unknown = raw ? JSON.parse(raw) : null;
+    if (!v || typeof v !== "object") return null;
+    const { t, stale } = v as { t?: unknown; stale?: unknown };
+    const age = typeof t === "number" ? clock(win) - t : Number.NaN;
+    if (!(age >= 0 && age < PENDING_TTL_MS)) return null;
+    return { t: t as number, stale: typeof stale === "string" ? stale : null };
+  } catch {
+    return null;
+  }
+}
+function writePending(win: AppWindow, stale: string | null): void {
+  try {
+    storage(win, "localStorage")?.setItem(PENDING_KEY, JSON.stringify({ t: clock(win), stale }));
+  } catch {
+    // Sans stockage : seule la page relais (en mémoire) attend le lien.
+  }
+}
+function clearPending(win: AppWindow): void {
+  try {
+    storage(win, "localStorage")?.removeItem(PENDING_KEY);
+  } catch {
+    // rien à effacer
+  }
+}
+
+/** La page relais (`/<langue>/lead-auth/google`) ? */
+export function isRelayPath(pathname: unknown): boolean {
+  return typeof pathname === "string" && /^(?:\/[a-z]{2})?\/lead-auth\/google\/?$/.test(pathname);
 }
 
 /** L'écran de connexion gardé par la page relais (vérifié de nouveau à la lecture), puis oublié. */
@@ -222,28 +288,56 @@ function quietly(run: (() => unknown) | undefined): void {
 /**
  * Écoute du lien de retour, à installer au démarrage de chaque page de l'app : `appUrlOpen` (app
  * ouverte ou en arrière-plan) et `getLaunchUrl` (app relancée par le lien). Une seule fois par page
- * (les appels suivants rendent la même promesse) ; chaque lien n'est traité qu'une fois, toutes pages
- * confondues. Pour le lien de l'app : `Browser.close()` (erreur ignorée), puis le rachat d'ERPlead
- * avec le code, ou l'écran de connexion. Rend une promesse : true si le lien de lancement a mené
+ * (les appels suivants rendent la même promesse). Un lien de l'app n'est suivi que s'il est ATTENDU :
+ * reçu par `appUrlOpen` sur la page relais qui a ouvert le navigateur, ou pendant une connexion notée
+ * il y a moins de 15 min (jamais le lien de lancement de la page relais, ni celui qu'elle a noté comme
+ * ancien). Alors : connexion effacée, `Browser.close()` (erreur ignorée), puis le rachat d'ERPlead avec
+ * le code, ou l'écran de connexion. Un lien avec code n'est jamais suivi deux fois, toutes pages
+ * confondues ; un lien inattendu ne fait rien. Rend une promesse : true si le lien de lancement a mené
  * ailleurs (la page ne doit plus rien faire), false sinon (hors de l'app, aucun lien, autre lien).
  */
 export function listenForReturn(
   win: AppWindow,
-  opts: { issuer: string | null | undefined; locale?: string | null },
+  opts: { issuer: string | null | undefined; locale?: string | null; relay?: boolean },
 ): Promise<boolean> {
   const existing = win.__invoiceleadLeadAuth;
-  if (existing) return existing.ready;
-  const state: ListenerState = { ready: Promise.resolve(false), received: false };
+  if (existing) {
+    if (opts.relay) existing.relay = true;
+    return existing.ready;
+  }
+  const relay = opts.relay === true || isRelayPath(win.location.pathname);
+  const state: ListenerState = {
+    ready: Promise.resolve(false),
+    received: false,
+    relay,
+    armed: false,
+    launchKey: null,
+  };
   win.__invoiceleadLeadAuth = state;
+  // Page relais : ERPlead vient de remplacer le cookie verifier ; une connexion notée avant ne peut
+  // plus aboutir (son code serait refusé et brûlerait ce nouveau départ).
+  if (relay) clearPending(win);
   const issuer = issuerOrigin(opts.issuer);
   const plugins = nativePlugins(win);
   const app = plugins?.App;
   if (!issuer || !plugins || !app || typeof app.addListener !== "function") return state.ready;
 
-  const handle = (url: unknown): boolean => {
+  /** Le lien est-il le retour d'une connexion en cours ? */
+  const expected = (via: "open" | "launch", key: string): boolean => {
+    if (via === "open" && state.armed) return true;
+    if (via === "launch" && state.relay) return false;
+    const pending = readPending(win);
+    return !!pending && !(via === "launch" && pending.stale === key);
+  };
+  const handle = (url: unknown, via: "open" | "launch"): boolean => {
     const link = parseReturnLink(url);
-    if (!link || !firstTime(win, url as string)) return false;
+    if (!link) return false;
+    const key = fingerprint(url as string);
+    if (link.kind === "code" && !firstTime(win, key)) return false;
+    if (state.received || !expected(via, key)) return false;
     state.received = true;
+    state.armed = false;
+    clearPending(win);
     quietly(() => plugins.Browser?.close?.());
     const back = takeBack(win, issuer);
     win.location.replace(
@@ -253,7 +347,7 @@ export function listenForReturn(
   };
   try {
     app.addListener("appUrlOpen", (e) => {
-      handle(e?.url);
+      handle(e?.url, "open");
     });
   } catch {
     return state.ready;
@@ -261,7 +355,8 @@ export function listenForReturn(
   const launch = (async () => {
     try {
       const r = await app.getLaunchUrl?.();
-      return handle(r?.url);
+      if (parseReturnLink(r?.url)) state.launchKey = fingerprint(r?.url as string);
+      return handle(r?.url, "launch");
     } catch {
       return false;
     }
@@ -278,7 +373,8 @@ export function listenForReturn(
 export type RelayOutcome = "opened" | "outside" | "invalid";
 
 /**
- * La page relais : dans l'app, `back` gardé, l'écoute du retour posée, puis `start` dans le
+ * La page relais : dans l'app, `back` gardé, l'écoute du retour posée, le lien de lancement lu (au
+ * plus LAUNCH_TIMEOUT_MS ; jamais suivi ici), la connexion notée « en cours », puis `start` dans le
  * navigateur du téléphone ; refermé sans retour, l'écran de connexion d'ERPlead (`back`). Hors de
  * l'app : `back` tout de suite. `start` ou `back` étrangers : la connexion ordinaire de l'app.
  */
@@ -299,18 +395,25 @@ export function startRelay(
   }
   const plugins = nativePlugins(win);
   const browser = plugins?.Browser;
-  if (!plugins?.App || !browser || typeof browser.open !== "function") {
+  const open = browser?.open;
+  if (!plugins?.App || !browser || typeof open !== "function") {
     win.location.replace(targets.back);
     return "outside";
   }
+  // Nouvelle connexion : celle notée avant (son lien, son code) ne peut plus aboutir.
+  clearPending(win);
   try {
     storage(win, "sessionStorage")?.setItem(BACK_KEY, targets.back);
   } catch {
     // Sans stockage : un échec ramène à la connexion ordinaire de l'app.
   }
-  void listenForReturn(win, { issuer, locale: opts.locale });
+  const ready = listenForReturn(win, { issuer, locale: opts.locale, relay: true });
+  const state = win.__invoiceleadLeadAuth;
   const giveUp = () => {
-    if (!win.__invoiceleadLeadAuth?.received) win.location.replace(targets.back);
+    if (state?.received) return;
+    if (state) state.armed = false;
+    clearPending(win);
+    win.location.replace(targets.back);
   };
   try {
     browser.addListener?.("browserFinished", () => {
@@ -319,10 +422,17 @@ export function startRelay(
   } catch {
     // Sans cette annonce, le lien « Retour » de la page reste.
   }
-  try {
-    browser.open({ url: targets.start }).catch(giveUp);
-  } catch {
-    giveUp();
-  }
+  // Le lien de lancement de ce chargement (ancien retour) est lu AVANT de noter la connexion : il
+  // n'est jamais pris pour le retour de celle-ci.
+  void ready.then(() => {
+    if (state?.received) return;
+    writePending(win, state?.launchKey ?? null);
+    if (state) state.armed = true;
+    try {
+      open.call(browser, { url: targets.start }).catch(giveUp);
+    } catch {
+      giveUp();
+    }
+  });
   return "opened";
 }
