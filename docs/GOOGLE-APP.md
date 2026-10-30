@@ -55,11 +55,12 @@ Contrat d'ERPlead (Compte Lead) : `~/projets/erplead-google-app/docs/GOOGLE-APP.
      effacé ni **jamais rouvert** (le départ est à usage unique : « La demande a expiré ») ; le lien de lancement y est
      suivi s'il n'est pas l'ancien noté (iOS : `getLaunchUrl` rend le dernier lien ouvert), comme l'`appUrlOpen` retenu
      par la coque. Navigateur par défaut (`m=tap`) : même texte, le lien attendu. Android (`tab`) : `browserFinished` →
-     `back`. Session iOS (`auto`) : son résultat est perdu avec la page ; `LeadAuthSession.resume({ url: start +
-     '&m=auto' })` si le module l'a (facultatif, contrat § 1 ; **présent** dans le module d'InvoiceLead 1.0.2 :
-     ios/App/App/LeadAuthSession.swift) : adresse rendue → règles du lien de retour, `failed` → navigateur par défaut
-     (`'&m=tap'`), autre refus (`none`, `canceled`) → `back` ; module sans `resume` : connexion effacée et `back`. Une autre page relais (autre départ), ou une
-     connexion de plus de 15 min, reste une nouvelle connexion.
+     `back`. Session iOS (`auto`) : l'appel de `start` est perdu avec la page ; son issue est demandée à
+     `LeadAuthSession.resume({ url: start + '&m=auto' })` (facultatif au contrat § 1, **présent** dans le module
+     d'InvoiceLead 1.0.2 : ios/App/App/LeadAuthSession.swift) : adresse rendue → règles du lien de retour, `failed` →
+     navigateur par défaut (`'&m=tap'`), autre refus (`none`, `canceled`) → `back` ; module sans `resume` : connexion
+     effacée et `back`. Une autre page relais (autre départ), ou une connexion de plus de 15 min, reste une nouvelle
+     connexion.
    - En-têtes de la page relais : `Referrer-Policy: no-referrer` (aussi la balise `<meta name="referrer">`) et
      `Cache-Control: no-store` (`next.config.ts`, et la redirection sans langue de `src/proxy.ts`) : son adresse porte le
      départ à usage unique (`d`) et la demande d'autorisation OpenID (`back`). Aucun script tiers sur le site.
