@@ -79,7 +79,9 @@ export default function proxy(request: NextRequest) {
     const url = request.nextUrl.clone();
     url.pathname = `/${relayLocale(request)}${RELAY_PATH}`;
     const response = NextResponse.redirect(url, 307);
+    // L'adresse porte le départ à usage unique d'ERPlead et sa demande d'autorisation (contrat § 3a).
     response.headers.set("Cache-Control", "no-store");
+    response.headers.set("Referrer-Policy", "no-referrer");
     return response;
   }
   // L'app Android / iOS (lib/native.ts) n'a pas de pages de présentation : ni prix ni offre, Apple

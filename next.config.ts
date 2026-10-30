@@ -30,6 +30,17 @@ const nextConfig: NextConfig = {
         ],
       },
       {
+        // Page relais de « Continuer avec Google » dans l'app (lib/lead-app-auth.ts) : son adresse porte
+        // le départ à usage unique d'ERPlead (`d`) et sa demande d'autorisation OpenID (`back`) ; ni
+        // Referer (pas même vers ses propres scripts et polices), ni cache (contrat d'ERPlead § 3a). Après
+        // la règle générale ; la redirection sans langue (proxy) pose les mêmes en-têtes.
+        source: "/:locale/lead-auth/google",
+        headers: [
+          { key: "Referrer-Policy", value: "no-referrer" },
+          { key: "Cache-Control", value: "no-store" },
+        ],
+      },
+      {
         // Captures et images de la page d'accueil : noms stables, contenu rarement changé.
         source: "/landing/:path*",
         headers: [

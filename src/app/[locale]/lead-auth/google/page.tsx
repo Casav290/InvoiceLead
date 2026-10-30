@@ -17,7 +17,13 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { locale } = await params;
   const t = await getTranslations({ locale, namespace: "leadAppAuth" });
-  return { title: t("relayTitle"), robots: { index: false, follow: false } };
+  // Aucun Referer, pas même vers les scripts et polices du site : l'adresse porte le départ à usage
+  // unique d'ERPlead et sa demande d'autorisation (contrat § 3a ; aussi en en-tête, next.config.ts).
+  return {
+    title: t("relayTitle"),
+    robots: { index: false, follow: false },
+    referrer: "no-referrer",
+  };
 }
 
 const one = (v: string | string[] | undefined) => (typeof v === "string" ? v : undefined);

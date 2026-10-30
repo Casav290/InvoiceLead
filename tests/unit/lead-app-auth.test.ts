@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import { join } from "node:path";
 import { runInNewContext } from "node:vm";
 import { NextRequest, type NextResponse } from "next/server";
@@ -1078,6 +1079,33 @@ describe("proxy : page relais sans langue, lien de retour et fichiers d'associat
     expect(new URL(plain.headers.get("location") ?? "").pathname).toBe(`/de${RELAY_PATH}`);
     const chosen = await proxy(`${RELAY_PATH}?back=nope`, { cookie: "NEXT_LOCALE=es" });
     expect(new URL(chosen.headers.get("location") ?? "").pathname).toBe(`/es${RELAY_PATH}`);
+  });
+
+  it("page relais : Referrer-Policy no-referrer et Cache-Control no-store (son adresse porte le départ à usage unique et la demande OpenID), dans les cinq langues et sur la redirection sans langue ; le reste du site garde sa règle", async () => {
+    const { pathToRegexp } = createRequire(import.meta.url)(
+      "next/dist/compiled/path-to-regexp",
+    ) as { pathToRegexp: (source: string) => RegExp };
+    const { default: config } = await import("../../next.config");
+    const rules = (await config.headers?.()) ?? [];
+    /** Les en-têtes que Next pose pour une adresse : la dernière règle qui la couvre l'emporte. */
+    const effective = (path: string) => {
+      const out: Record<string, string> = {};
+      for (const rule of rules)
+        if (pathToRegexp(rule.source).test(path))
+          for (const h of rule.headers) out[h.key.toLowerCase()] = h.value;
+      return out;
+    };
+    for (const locale of ["de", "fr", "en", "it", "es"]) {
+      const h = effective(`/${locale}${RELAY_PATH}`);
+      expect(h["referrer-policy"], locale).toBe("no-referrer");
+      expect(h["cache-control"], locale).toBe("no-store");
+    }
+    expect(effective("/it/app")["referrer-policy"]).toBe("strict-origin-when-cross-origin");
+    expect(effective("/it/app")["cache-control"]).toBeUndefined();
+    const r = await proxy(`${RELAY_PATH}?${new URLSearchParams({ start: START, back: BACK })}`);
+    expect(r.status).toBe(307);
+    expect(r.headers.get("referrer-policy")).toBe("no-referrer");
+    expect(r.headers.get("cache-control")).toBe("no-store");
   });
 
   it("proxy : /lead-auth/return et /.well-known/… hors du proxy (aucune langue, aucune redirection) ; la page relais et les pages de l'app y restent", async () => {
