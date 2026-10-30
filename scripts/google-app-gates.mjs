@@ -214,7 +214,7 @@ const G1_UNIT = [
   ],
   [
     "appUrlOpen : rachat avec le code, une seule fois, Browser.close",
-    "appUrlOpen : le lien de l'app ferme le navigateur du téléphone et mène au rachat d'ERPlead avec le code, une seule fois",
+    "appUrlOpen pendant une connexion en cours (page relais) : le lien de l'app ferme le navigateur du téléphone et mène au rachat d'ERPlead avec le code, une seule fois",
   ],
   [
     "lien de lancement : une seule fois, pages suivantes comprises",
@@ -260,6 +260,27 @@ const G1_UNIT = [
     "page relais sans langue (proxy)",
     "/lead-auth/google sans langue → la page relais dans la langue de back, paramètres gardés",
   ],
+  // Relecture du 30.10.2026.
+  [
+    "lien d'erreur suivi à chaque expiration",
+    "deux demandes expirées de suite : le lien d'erreur (toujours le même) ramène chaque fois à l'écran de connexion",
+  ],
+  [
+    "lien sans connexion en cours ignoré",
+    "lien de l'app reçu sans connexion en cours (page web, courriel, autre app) : ignoré, ni navigateur fermé ni page quittée",
+  ],
+  [
+    "ancien lien de lancement jamais suivi par la page relais",
+    "page relais d'une nouvelle connexion : l'ancien lien que rend getLaunchUrl (app relancée) n'est jamais suivi ; le navigateur s'ouvre et le nouveau lien mène au rachat",
+  ],
+  [
+    "lien de lancement en retard sur la page relais",
+    "page relais : un lien de lancement rendu après le délai n'est jamais pris pour le retour de cette connexion",
+  ],
+  [
+    "garde : écran de connexion de l'app sans session",
+    "dans l'app (LeadAppAuth/1) : par l'écran de connexion de l'app, qui lit le lien de lancement ; ailleurs, tout droit vers le Compte Lead",
+  ],
 ];
 const G1_E2E = [
   "app (LeadAppAuth/1) : « Continuer avec Google » → page relais → navigateur du téléphone → lien de retour → connectée dans InvoiceLead, une seule fois",
@@ -267,16 +288,21 @@ const G1_E2E = [
   "app relancée par le lien de retour (lien de lancement) : connectée depuis l'écran de connexion de l'app, le lien n'est suivi qu'une fois",
   "liens étrangers ignorés dans l'app ; hors de l'app, la page relais ne fait que revenir à l'écran de connexion",
   "ancienne version de l'app (sans LeadAppAuth/1) et navigateur : l'écran de connexion part tout droit, comme avant",
+  "app relancée par le lien de retour avec un cookie de session périmé : la garde passe par l'écran de connexion de l'app, qui suit le lien ; connectée du premier coup",
+  "nouvelle connexion après une app relancée sans lecture du lien : l'ancien lien de lancement n'est pas suivi par la page relais, le nouveau connecte",
+  "deux demandes expirées de suite : le lien d'erreur ramène chaque fois à l'écran de connexion du Compte Lead",
+  "lien de l'app reçu sans connexion en cours (page de l'app ouverte) : ignoré, la page reste",
 ];
 const LIB = "src/lib/lead-app-auth.ts";
+const GUARD_TEST = "tests/unit/lead-app-guard.test.ts";
 /** Contre-épreuves : une faute dans une COPIE du code, l'essai nommé doit échouer. */
 const MUTATIONS = [
   {
-    name: "lien traité plusieurs fois",
+    name: "lien avec code suivi plusieurs fois",
     file: LIB,
-    from: "    if (!link || !firstTime(win, url as string)) return false;\n",
-    to: "    if (!link) return false;\n",
-    breaks: G1_UNIT[1][1],
+    from: '    if (link.kind === "code" && !firstTime(win, key)) return false;\n',
+    to: "",
+    breaks: G1_UNIT[2][1],
   },
   {
     name: "navigateur du téléphone jamais refermé",
@@ -311,16 +337,59 @@ const MUTATIONS = [
   {
     name: "navigateur refermé : retour à l'écran même après le lien",
     file: LIB,
-    from: "    if (!win.__invoiceleadLeadAuth?.received) win.location.replace(targets.back);\n",
-    to: "    win.location.replace(targets.back);\n",
+    from: "    if (state?.received) return;\n    if (state) state.armed = false;\n",
+    to: "    if (state) state.armed = false;\n",
     breaks: G1_UNIT[10][1],
   },
   {
     name: "lien de lancement non lu",
     file: LIB,
-    from: "      const r = await app.getLaunchUrl?.();\n      return handle(r?.url);\n",
+    from: '      return handle(r?.url, "launch");\n',
     to: "      return false;\n",
     breaks: G1_UNIT[2][1],
+  },
+  // Relecture du 30.10.2026.
+  {
+    name: "lien d'erreur gardé comme vu (toujours le même lien)",
+    file: LIB,
+    from: '    if (link.kind === "code" && !firstTime(win, key)) return false;\n',
+    to: "    if (!firstTime(win, key)) return false;\n",
+    breaks: G1_UNIT[13][1],
+  },
+  {
+    name: "lien suivi sans connexion en cours",
+    file: LIB,
+    from: "    if (state.received || !expected(via, key)) return false;\n",
+    to: "    if (state.received) return false;\n",
+    breaks: G1_UNIT[14][1],
+  },
+  {
+    name: "connexion en cours sans limite de temps",
+    file: LIB,
+    from: "    if (!(age >= 0 && age < PENDING_TTL_MS)) return null;\n",
+    to: "    if (!(age >= 0)) return null;\n",
+    breaks: G1_UNIT[14][1],
+  },
+  {
+    name: "lien de lancement suivi sur la page relais",
+    file: LIB,
+    from: '    if (via === "launch" && state.relay) return false;\n',
+    to: "",
+    breaks: G1_UNIT[16][1],
+  },
+  {
+    name: "ancien lien noté par la page relais suivi au rechargement",
+    file: LIB,
+    from: '    return !!pending && !(via === "launch" && pending.stale === key);\n',
+    to: "    return !!pending;\n",
+    breaks: G1_UNIT[15][1],
+  },
+  {
+    name: "garde : tout droit vers le Compte Lead dans l'app",
+    file: "src/server/auth/guard.ts",
+    from: "  if (isAppAuthAgent(userAgent)) {\n",
+    to: "  if (userAgent === undefined) {\n",
+    breaks: G1_UNIT[17][1],
   },
 ];
 
@@ -352,7 +421,7 @@ function counterProofs() {
       continue;
     writeFileSync(file, original.replace(m.from, m.to));
     try {
-      const r = vitest([UNIT], `mutation-${MUTATIONS.indexOf(m)}`, copy);
+      const r = vitest([UNIT, GUARD_TEST], `mutation-${MUTATIONS.indexOf(m)}`, copy);
       const failed = titles(r.report, "failed");
       check(
         `contre-épreuve « ${m.name} » : l'essai « ${m.breaks.slice(0, 60)}… » échoue`,
@@ -369,10 +438,10 @@ function counterProofs() {
 function gateG1() {
   assertWorktree();
   // 1. Le retour de la connexion Google, essai par essai.
-  const u = vitest([UNIT, "tests/unit/native-app.test.ts"], "g1-unit");
+  const u = vitest([UNIT, GUARD_TEST, "tests/unit/native-app.test.ts"], "g1-unit");
   const passed = titles(u.report, "passed");
   check(
-    `${UNIT} et native-app.test.ts verts (${passed.size} essais)`,
+    `${UNIT}, ${GUARD_TEST} et native-app.test.ts verts (${passed.size} essais)`,
     u.status === 0 && u.report?.numFailedTests === 0,
     failedTests(u.report).join(" | ") || u.tail,
   );
@@ -1118,6 +1187,28 @@ async function gateG3() {
   const who = benchPerson(t);
   const startedAt = new Date();
   mkdirSync(CAPTURES, { recursive: true });
+  // Journal (audit) et frein des départs (rate_limits « gapp|<ip> ») d'ERPlead : ce que la porte y écrit
+  // est relevé étape par étape (lignes repérées par leur numéro), puis effacé ou rendu à la fin.
+  const auditMax = () => sqlRead(t.ro, "select coalesce(max(id), 0) from audit");
+  const gappLimits = () =>
+    sqlRead(
+      t.ro,
+      "select coalesce(json_object_agg(key, json_build_object('count', count, 'reset_at', reset_at)), '{}'::json) from rate_limits where key like 'gapp|%'",
+    );
+  const audits = []; // { step, ids } : les lignes de journal écrites par la porte
+  /** Les lignes `action` (app, issue) écrites depuis `from` : celles de cette étape de la porte. */
+  const auditSince = (from, step, action, app, outcome) => {
+    const ids = sqlRead(
+      t.ro,
+      `select coalesce(json_agg(id order by id), '[]'::json) from audit where id > $1 and action = $2
+        and coalesce(data->>'app', '') = $3 and coalesce(data->>'outcome', '') = $4`,
+      [from, action, app ?? "", outcome ?? ""],
+    );
+    audits.push({ step, ids: ids.slice(0, 1) });
+    return ids.length;
+  };
+  const limitsBefore = gappLimits();
+  let limitsUndone = 0;
   const { chromium } = require("@playwright/test");
   const browser = await chromium.launch({ headless: true });
   const BRIDGE = readFileSync(join(ROOT, "tests/support/fake-capacitor.js"), "utf8");
@@ -1275,9 +1366,14 @@ async function gateG3() {
     );
     await shot(wv.page, "g3-1-compte-lead-bouton-google");
     // --- 2. Clic : départ (cookie verifier de la vue web), puis la page relais d'InvoiceLead.
+    const beforeStart = auditMax();
     await g.click();
     await wv.page.waitForURL(`${t.il}/it/lead-auth/google?**`, { timeout: 30_000 });
     const opened = await waitFor(() => named(wv.calls, "Browser.open")[0]);
+    check(
+      "journal d'ERPlead : le départ écrit une ligne google_app.start {app: invoicelead}, relevée pour la remise en état",
+      auditSince(beforeStart, "départ", "google_app.start", "invoicelead", null) >= 1,
+    );
     const start = String(opened?.arg ?? "");
     const relay = production.find((u) => u.startsWith(`${PROD_IL}/lead-auth/google?`)) ?? "";
     const back = new URL(relay || "https://x.invalid").searchParams.get("back") ?? "";
@@ -1414,8 +1510,13 @@ async function gateG3() {
     await sys.ctx.close();
     // --- 5. Le lien de retour arrive dans l'app (appUrlOpen) : Browser.close, rachat, session, retour OpenID.
     const before = production.length;
+    const beforeRedeem = auditMax();
     await wv.page.evaluate((u) => window.__fakeEmit("App.appUrlOpen", { url: u }), link);
     await waitFor(() => callbacks.length > 0, 40_000);
+    check(
+      "journal d'ERPlead : le rachat écrit une ligne google_app.redeem {app: invoicelead, outcome: ok}, relevée",
+      auditSince(beforeRedeem, "rachat", "google_app.redeem", "invoicelead", "ok") >= 1,
+    );
     const hops = production.slice(before);
     const redeemHops = hops.filter((u) => u.startsWith(`${PROD_ERP}/auth/google/app/redeem?`));
     check(
@@ -1473,6 +1574,30 @@ async function gateG3() {
       }
     });
     await shot(wv.page, "g3-5-connectee-mon-compte");
+    // --- 5b. Un lien de l'app sans connexion en cours (page piégée, courriel) sur une page d'InvoiceLead :
+    // rien ne se passe (ni navigateur fermé, ni page quittée, ni rachat).
+    await wv.page.goto(`${t.il}/it/legal/terms`);
+    await waitFor(() =>
+      wv.page.evaluate(() => window.__fakeListeners?.("App.appUrlOpen") > 0).catch(() => false),
+    );
+    const trapFrom = production.length;
+    const closes = named(wv.calls, "Browser.close").length;
+    for (const u of [
+      `${SCHEME}://lead-auth?code=${randomBytes(32).toString("base64url")}`,
+      `${SCHEME}://lead-auth?error=expired`,
+    ])
+      await wv.page.evaluate((x) => window.__fakeEmit("App.appUrlOpen", { url: x }), u);
+    await wv.page.waitForTimeout(1500);
+    check(
+      "lien de l'app reçu sans connexion en cours (code inconnu, error=expired) : ignoré sur la page ouverte (aucun rachat, aucune navigation, navigateur non refermé)",
+      new URL(wv.page.url()).pathname === "/it/legal/terms" &&
+        !production.slice(trapFrom).some((u) => u.includes("/auth/google/app/redeem")) &&
+        named(wv.calls, "Browser.close").length === closes,
+      {
+        url: new URL(wv.page.url()).pathname,
+        close: named(wv.calls, "Browser.close").length - closes,
+      },
+    );
     // --- 6. Le même lien, relu par la page suivante de la MÊME vue web (iOS le redonne à getLaunchUrl) : ignoré.
     await wv.ctx.addInitScript((u) => {
       window.__FAKE_CAPACITOR = { launchUrl: u };
@@ -1491,12 +1616,18 @@ async function gateG3() {
         named(wv.calls, "Browser.close").length === 1,
     );
     // Rachat rejoué par la vue web : refusé (usage unique) — contrôle d'ERPlead, vu depuis l'app.
+    const beforeReplay = auditMax();
     const replay = await wv.ctx.request.get(`${t.erp}/auth/google/app/redeem?code=${code}`, {
       maxRedirects: 0,
     });
     check(
       "le même code une seconde fois → écran de connexion, error=expired",
       replay.status() === 303 && /error=expired/.test(replay.headers().location ?? ""),
+    );
+    // Sans cookie ni vue, ERPlead ne sait plus de quelle app il s'agit : {app: null, outcome: expired}.
+    check(
+      "journal d'ERPlead : le rachat rejoué écrit une ligne google_app.redeem {app: null, outcome: expired}, relevée",
+      auditSince(beforeReplay, "rachat rejoué", "google_app.redeem", null, "expired") >= 1,
     );
     await wv.ctx.close();
     check(
@@ -1551,17 +1682,51 @@ async function gateG3() {
         "delete from sso_states where state = any($1) or data->>'vh' = any($2) or state = any($3)",
         [madeStates, madeVh, madeVh.map((v) => `gapp-view:${v}`)],
       );
-      const au = await db.query(
-        "delete from audit where at >= $1 and action like 'google_app.%' and data->>'app' = 'invoicelead'",
-        [startedAt],
-      );
+      const au = await db.query("delete from audit where id = any($1::bigint[])", [
+        audits.flatMap((a) => a.ids),
+      ]);
+      // Frein des départs : le passage de la porte (un départ, donc +1) retiré du compteur de son IP.
+      const limitsNow = (
+        await db.query(
+          "select key, count, reset_at from rate_limits where key like 'gapp|%' order by key",
+        )
+      ).rows;
+      let undone = 0;
+      for (const row of limitsNow) {
+        const was = limitsBefore[row.key];
+        // Fenêtre déjà échue avant la porte : le départ de la porte a remis le compteur à 1.
+        const lapsed = was && new Date(was.reset_at).getTime() <= startedAt.getTime();
+        const exact = was && (lapsed ? row.count === 1 : row.count === was.count + 1);
+        if (was && !lapsed && row.count <= was.count) continue;
+        if (exact) {
+          undone += (
+            await db.query(
+              "update rate_limits set count = $2, reset_at = $3 where key = $1 and count = $4",
+              [row.key, was.count, was.reset_at, row.count],
+            )
+          ).rowCount;
+        } else if (!was && row.count <= 1) {
+          undone += (
+            await db.query("delete from rate_limits where key = $1 and count <= 1", [row.key])
+          ).rowCount;
+        } else if (row.count > 1) {
+          // D'autres départs sont passés en même temps (autre porte) : seul celui de la porte est retiré.
+          undone += (
+            await db.query(
+              "update rate_limits set count = count - 1 where key = $1 and count > 1",
+              [row.key],
+            )
+          ).rowCount;
+        }
+      }
+      limitsUndone = undone;
       await db.query("update users set last_login_at = $2, locale = $3 where id = $1", [
         who.id,
         who.last_login_at,
         who.locale,
       ]);
       note(
-        `remise en état : ${s.rowCount} session(s), ${c.rowCount} code(s) OpenID, ${st.rowCount} état(s), ${au.rowCount} ligne(s) de journal effacés ; dernière connexion et langue reprises`,
+        `remise en état : ${s.rowCount} session(s), ${c.rowCount} code(s) OpenID, ${st.rowCount} état(s), ${au.rowCount} ligne(s) de journal sur ${audits.flatMap((a) => a.ids).length} écrite(s) effacées, ${undone} compteur(s) du frein des départs rendus ; dernière connexion et langue reprises`,
       );
     });
   }
@@ -1579,6 +1744,28 @@ async function gateG3() {
       after.locale === who.locale &&
       after.last_login_at === who.last_login_at,
     after,
+  );
+  const written = audits.flatMap((a) => a.ids);
+  check(
+    `journal d'ERPlead remis comme avant : les ${written.length} ligne(s) écrites par la porte (départ, rachat, rachat rejoué) effacées`,
+    written.length === 3 &&
+      audits.every((a) => a.ids.length === 1) &&
+      sqlRead(
+        t.ro,
+        "select count(*) from audit where id = any(string_to_array($1, ',')::bigint[])",
+        [written.join(",")],
+      ) === 0,
+    audits.map((a) => `${a.step}: ${a.ids.length}`),
+  );
+  const limitsAfter = gappLimits();
+  check(
+    "frein des départs d'ERPlead (rate_limits « gapp|<ip> ») rendu comme avant la porte",
+    limitsUndone >= 1 && isDeepStrictEqual(limitsAfter, limitsBefore),
+    {
+      avant: Object.keys(limitsBefore).length,
+      après: Object.keys(limitsAfter).length,
+      rendus: limitsUndone,
+    },
   );
   note(`captures : ${CAPTURES}/ (${shots.length}) ${shots.join(", ")}`);
   finish("G3");
