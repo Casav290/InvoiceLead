@@ -28,11 +28,16 @@
  *                                             iOS, Custom Tab, Safari et son bouton), code préparé dans la base
  *                                             d'APERÇU d'ERPlead → personne TEST connectée, code OpenID rendu à
  *                                             InvoiceLead avec SA demande ; base, journal et frein remis comme avant
+ *   node scripts/google-app-gates.mjs PUBLIER LECTURE SEULE, avant d'envoyer la 1.0.2 et avant l'interrupteur (docs,
+ *                                             « Ordre de mise en ligne ») : porte PROD d'ERPlead (production d'ERPlead à
+ *                                             liens vérifiés, ef52342 contenu), production de invoicelead.io (branche
+ *                                             google-app, fichiers d'association, page de repli), API Digital Asset
+ *                                             Links de Google, CDN d'Apple
  *
  * Chaque porte n'imprime son jeton GOOGLE_APP_Gx_OK qu'à la fin, si aucun contrôle n'a échoué. Aucun secret affiché.
  * Jamais la production : aucune requête du navigateur ne part vers erplead.io ni invoicelead.io (interceptées et
  * menées vers les aperçus, ou arrêtées), aucun « vercel --prod », aucune variable du projet Vercel changée, aucun
- * compte Apple / Google modifié (l'API Play n'est que lue).
+ * compte Apple / Google modifié (l'API Play n'est que lue). PUBLIER seule LIT la production (GET, API en lecture).
  */
 import { execFileSync, execSync, spawnSync } from "node:child_process";
 import { createHash, randomBytes } from "node:crypto";
@@ -784,6 +789,37 @@ function gateG1() {
     "/.well-known/assetlinks.json",
   ])
     check(`docs/GOOGLE-APP.md décrit « ${s} »`, doc.includes(s));
+  // Relecture du 30.10.2026 : ERPlead à liens vérifiés en production AVANT la 1.0.2 et avant l'interrupteur (étape 0
+  // du contrat d'ERPlead), vérifié par la porte PROD d'ERPlead, appelée par PUBLIER.
+  const order = doc.slice(
+    doc.indexOf("Ordre de mise en ligne (contrat"),
+    doc.indexOf("## Sécurité"),
+  );
+  const at = (s) => order.indexOf(s);
+  check(
+    "docs/GOOGLE-APP.md : ordre de mise en ligne 0. ERPlead à liens vérifiés (porte PROD) → 1. site → 2. PUBLIER → 3. version native 1.0.2 → 4. interrupteur",
+    at("0. **ERPlead à liens vérifiés en production d'abord**") >= 0 &&
+      order.includes("`node scripts/google-app-gates.mjs PROD` → `GOOGLE_APP_PROD_OK`") &&
+      order.includes("`io.invoicelead.app://lead-auth…`") &&
+      at("0. **ERPlead") < at("1. Ce site en production") &&
+      at("1. Ce site en production") < at("`node scripts/google-app-gates.mjs PUBLIER`") &&
+      at("`node scripts/google-app-gates.mjs PUBLIER`") <
+        at("3. Ensuite seulement la version native 1.0.2") &&
+      at("3. Ensuite seulement") < at("4. Ouverture de l'interrupteur") &&
+      at("seulement avec `PUBLIER` vert") > at("4. Ouverture de l'interrupteur") &&
+      order.includes("jamais « Redeploy » de d2d72aa"),
+    order.slice(0, 300),
+  );
+  const erpDoc = readFileSync(CONTRACT, "utf8");
+  check(
+    "contrat d'ERPlead : étape 0 « ERPlead à liens vérifiés en production d'abord », porte PROD, interrupteur jamais sur un code d'avant ef52342",
+    erpDoc.includes("0. **ERPlead à liens vérifiés en production d'abord**") &&
+      erpDoc.includes("`node scripts/google-app-gates.mjs PROD`") &&
+      erpDoc.includes("**L'interrupteur ne sait pas quel code le lit**") &&
+      /else if \(gate === 'PROD'\) await gateProd\(\)/.test(
+        readFileSync(join(ERP_REPO, "scripts/google-app-gates.mjs"), "utf8"),
+      ),
+  );
   const lib = readFileSync(join(ROOT, LIB), "utf8");
   const erp = readFileSync(join(ERP_REPO, "src/lib/appAuth.ts"), "utf8");
   check(
@@ -2747,6 +2783,159 @@ async function gateG3() {
   finish("G3");
 }
 
+// ------------------------------------------------------------------ PUBLIER (lecture seule)
+
+/** Le premier commit de la branche qui sert les fichiers d'association et la page de repli (liens vérifiés). */
+const SITE_LINKS = "61181f0";
+/** GET en lecture seule, sans suivre de redirection (les fichiers d'association n'en ont pas le droit). */
+async function readOnly(url, headers = {}) {
+  try {
+    const r = await fetch(url, {
+      redirect: "manual",
+      headers,
+      signal: AbortSignal.timeout(30_000),
+    });
+    return {
+      status: r.status,
+      type: r.headers.get("content-type"),
+      location: r.headers.get("location"),
+      cache: r.headers.get("cache-control"),
+      referrer: r.headers.get("referrer-policy"),
+      text: await r.text(),
+    };
+  } catch (e) {
+    return { status: 0, error: String(e?.message ?? e), text: "" };
+  }
+}
+const parseJson = (s) => {
+  try {
+    return JSON.parse(s);
+  } catch {
+    return null;
+  }
+};
+
+/**
+ * AVANT d'envoyer la 1.0.2 aux stores, et avant d'ouvrir l'interrupteur (docs/GOOGLE-APP.md, « Ordre de mise en
+ * ligne », étapes 0 à 2). Lecture seule : porte PROD d'ERPlead (API Vercel et dépôt git d'ERPlead), production de
+ * invoicelead.io (API Vercel, GET des fichiers d'association et de la page de repli), API Digital Asset Links de Google,
+ * CDN d'Apple. Rien déployé, rien envoyé aux stores, aucun compte ni aucune variable touchés.
+ */
+async function gatePublier() {
+  // --- 0. ERPlead à liens vérifiés en production (contrat d'ERPlead, étape 0 ; relecture du 30.10.2026).
+  const erp = run("node", ["scripts/google-app-gates.mjs", "PROD"], {
+    cwd: ERP_REPO,
+    timeout: 600_000,
+  });
+  const lines = `${erp.stdout ?? ""}`.split("\n");
+  for (const l of lines.filter((x) => /^(ok|NON) |^ {4}/.test(x)))
+    note(`ERPlead PROD | ${l.trim()}`);
+  check(
+    "ERPlead : la production sert le code à liens vérifiés (porte PROD d'ERPlead → GOOGLE_APP_PROD_OK : ef52342 contenu, code envoyé à https://invoicelead.io/lead-auth/return seulement, aucun io.invoicelead.app://, LeadAppAuth/2 minimum)",
+    erp.status === 0 && lines.includes("GOOGLE_APP_PROD_OK"),
+    lines
+      .filter((x) => x.startsWith("NON "))
+      .map((x) => x.slice(4, 140))
+      .join(" | ") || `${erp.stderr ?? ""}`.slice(-300),
+  );
+  // --- 1. La production de invoicelead.io sert la branche google-app.
+  const contract = contractAssociation();
+  const site = siteAssociation();
+  check(
+    "fichiers d'association attendus : ceux du site (src/lib/app-links.ts) = contrat d'ERPlead",
+    isDeepStrictEqual(site?.aasa, contract.aasa) &&
+      isDeepStrictEqual(site?.assetlinks, contract.assetlinks),
+  );
+  let prod = {};
+  try {
+    prod = await production();
+  } catch (e) {
+    prod = { error: String(e?.message ?? e) };
+  }
+  const known = !!prod.sha && run("git", ["cat-file", "-e", `${prod.sha}^{commit}`]).status === 0;
+  check(
+    `production d'InvoiceLead (${prod.id ?? "?"}, ${String(prod.sha ?? "?").slice(0, 7)}) : contient la branche google-app (${SITE_LINKS}, liens vérifiés)`,
+    known && run("git", ["merge-base", "--is-ancestor", SITE_LINKS, prod.sha]).status === 0,
+    prod.error ?? (known ? "commit sans les liens vérifiés" : "commit inconnu du dépôt local"),
+  );
+  for (const [path, ua, expected] of [
+    ["/.well-known/assetlinks.json", "Google-Digital-Asset-Links", contract.assetlinks],
+    ["/.well-known/apple-app-site-association", "AASA-Bot/1.0.0", contract.aasa],
+  ]) {
+    const r = await readOnly(`https://${DOMAIN}${path}`, { "user-agent": ua });
+    check(
+      `production https://${DOMAIN}${path} : 200, application/json, aucune redirection, JSON = contrat`,
+      r.status === 200 &&
+        r.type === "application/json" &&
+        !r.location &&
+        isDeepStrictEqual(parseJson(r.text), expected),
+      { status: r.status, type: r.type, location: r.location, error: r.error },
+    );
+  }
+  const back = await readOnly(`${RETOUR}?error=expired&locale=fr`, { "user-agent": SAFARI });
+  check(
+    `production ${RETOUR} : page de repli 200 sans redirection, no-store, no-referrer`,
+    back.status === 200 &&
+      !back.location &&
+      /no-store/.test(back.cache ?? "") &&
+      back.referrer === "no-referrer",
+    { status: back.status, location: back.location, cache: back.cache, referrer: back.referrer },
+  );
+  // --- 2. Google : ce que la vérification des App Links d'Android lira.
+  const RELATION = "delegate_permission/common.handle_all_urls";
+  const list = await readOnly(
+    `https://digitalassetlinks.googleapis.com/v1/statements:list?${new URLSearchParams({ "source.web.site": `https://${DOMAIN}`, relation: RELATION })}`,
+  );
+  const lj = parseJson(list.text) ?? {};
+  const seen = (lj.statements ?? [])
+    .filter((x) => x.relation === RELATION && x.target?.androidApp?.packageName === APP_ID)
+    .map((x) => x.target.androidApp.certificate?.sha256Fingerprint);
+  check(
+    `digitalassetlinks.googleapis.com statements:list : ${APP_ID} avec les deux empreintes (${contract.fps.map((f) => `${f.slice(0, 8)}…`).join(", ")}), aucune errorCode`,
+    list.status === 200 &&
+      !lj.errorCode &&
+      contract.fps.length === 2 &&
+      contract.fps.every((f) => seen.includes(f)),
+    {
+      status: list.status,
+      errorCode: lj.errorCode,
+      vues: seen.map((f) => f?.slice(0, 8)),
+      debug: String(lj.debugString ?? "").slice(0, 200),
+    },
+  );
+  for (const fp of contract.fps) {
+    const c = await readOnly(
+      `https://digitalassetlinks.googleapis.com/v1/assetlinks:check?${new URLSearchParams({
+        "source.web.site": `https://${DOMAIN}`,
+        relation: RELATION,
+        "target.android_app.package_name": APP_ID,
+        "target.android_app.certificate.sha256_fingerprint": fp,
+      })}`,
+    );
+    const cj = parseJson(c.text) ?? {};
+    check(
+      `digitalassetlinks.googleapis.com assetlinks:check : https://${DOMAIN} → ${APP_ID} (${fp.slice(0, 8)}…) lié`,
+      c.status === 200 && cj.linked === true,
+      { status: c.status, linked: cj.linked, errorCode: cj.errorCode },
+    );
+  }
+  // --- 3. Apple : ce que les appareils iOS liront (CDN d'Apple).
+  const cdn = await readOnly(`https://app-site-association.cdn-apple.com/a/v1/${DOMAIN}`);
+  check(
+    `CDN d'Apple (app-site-association.cdn-apple.com/a/v1/${DOMAIN}) : 200, AASA = contrat (applinks /lead-auth/return, webcredentials)`,
+    cdn.status === 200 && isDeepStrictEqual(parseJson(cdn.text), contract.aasa),
+    { status: cdn.status, debut: cdn.text.slice(0, 120), error: cdn.error },
+  );
+  note(
+    "lecture seule : API Vercel, dépôts git, production de invoicelead.io, API Digital Asset Links de Google, CDN d'Apple ; rien déployé, rien envoyé aux stores, aucun compte ni aucune variable touchés",
+  );
+  if (failures)
+    note(
+      "NE PAS envoyer la 1.0.2 (Play, App Store) ni ouvrir l'interrupteur : d'abord ERPlead à liens vérifiés en production (étape 0), puis ce site (branche google-app), attendre que Google et Apple lisent les fichiers, puis relancer cette porte",
+    );
+  finish("PUBLIER");
+}
+
 // ------------------------------------------------------------------ entrée
 
 const gate = process.argv[2];
@@ -2754,7 +2943,8 @@ if (gate === "G1") gateG1();
 else if (gate === "G2") gateG2();
 else if (gate === "APERCU") await deployPreview();
 else if (gate === "G3") await gateG3();
+else if (gate === "PUBLIER") await gatePublier();
 else {
-  console.log("usage : node scripts/google-app-gates.mjs G1|G2|APERCU|G3");
+  console.log("usage : node scripts/google-app-gates.mjs G1|G2|APERCU|G3|PUBLIER");
   process.exit(2);
 }
