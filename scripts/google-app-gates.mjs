@@ -2189,9 +2189,8 @@ async function gateG3() {
     check("Safari : start&m=tap → accounts.google.com, sans erreur Google", gT.ok, gT.url);
     check(
       "état Google : mode tap noté",
-      sqlRead(t.ro, "select data->'open' from sso_states where state = $1", [
-        sha256(gT.gstate),
-      ]) === "tap",
+      sqlRead(t.ro, "select data->'open' from sso_states where state = $1", [sha256(gT.gstate)]) ===
+        "tap",
     );
     const cT = await cancelled(sysT, gT.gstate, "Safari annulé");
     check(
