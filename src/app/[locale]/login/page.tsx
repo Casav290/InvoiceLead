@@ -1,12 +1,15 @@
 import type { Metadata } from "next";
 import { redirect as nextRedirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
+import { LeadAppLoginRedirect } from "@/components/native/LeadAppAuth";
 import { LeadLoginPanel } from "@/components/public/LeadLoginPanel";
 import { PublicFooter } from "@/components/public/PublicFooter";
 import { PublicHeader } from "@/components/public/PublicHeader";
 import { routing } from "@/i18n/routing";
+import { issuerOrigin } from "@/lib/lead-app-auth";
 import { invitePath, safeInvite, safeNext } from "@/server/auth/login-cookie";
 import { getSession } from "@/server/auth/session";
+import { inAppAuthApp } from "@/server/native";
 
 export async function generateMetadata({
   params,
@@ -43,9 +46,19 @@ export default async function Page({
   // Pas d'écran intermédiaire : tout droit vers la connexion commune du Compte Lead. L'écran
   // ne reste que pour dire une erreur et proposer de réessayer.
   if (!error) {
-    nextRedirect(
-      `/auth/lead/start?${new URLSearchParams({ locale, ...(invite ? { invite } : next ? { next } : {}) })}`,
-    );
+    const start = `/auth/lead/start?${new URLSearchParams({ locale, ...(invite ? { invite } : next ? { next } : {}) })}`;
+    // Dans l'app, une version qui sait revenir de Google : relancée par son lien de retour (fermée
+    // pendant la connexion Google), elle n'a encore affiché aucune page d'InvoiceLead. Le lien de
+    // lancement est lu d'abord (lib/lead-app-auth.ts), puis la connexion part comme ci-dessous.
+    if (await inAppAuthApp())
+      return (
+        <LeadAppLoginRedirect
+          issuer={issuerOrigin(process.env.LEAD_ID_ISSUER)}
+          locale={locale}
+          href={start}
+        />
+      );
+    nextRedirect(start);
   }
   // Tous les liens de l'écran ramènent à la page demandée (ou à l'invitation), pas seulement le bouton :
   // « Connexion » et « Créer un compte » de l'en-tête et du pied de page, et le choix de la langue, qui

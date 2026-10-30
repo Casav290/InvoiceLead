@@ -7,6 +7,7 @@ import {
   REQUESTED_PATH_HEADER,
   SESSION_COOKIE,
 } from "./lib/cookies";
+import { RELAY_PATH } from "./lib/lead-app-auth";
 import { entryRedirect } from "./lib/lead-entry";
 import { isNativeAgent } from "./lib/native";
 import { returnPage } from "./lib/return-page";
@@ -52,7 +53,35 @@ function nativeLocale(request: NextRequest, fromPath: string | undefined): strin
   return routing.defaultLocale;
 }
 
+/**
+ * Langue de la page relais de la connexion Google dans l'app (lib/lead-app-auth.ts) : celle de l'écran
+ * de connexion d'ERPlead d'où l'on vient (paramètre `locale` de `back`), sinon celle de l'app.
+ */
+function relayLocale(request: NextRequest): string {
+  const locales: readonly string[] = routing.locales;
+  try {
+    const back = new URL(request.nextUrl.searchParams.get("back") ?? "");
+    const asked = back.searchParams.get("locale")?.toLowerCase();
+    if (asked && locales.includes(asked)) return asked;
+  } catch {
+    // `back` absent ou illisible : la page relais le refusera.
+  }
+  return nativeLocale(request, undefined);
+}
+
 export default function proxy(request: NextRequest) {
+  // Page relais nommée sans langue par ERPlead (« /lead-auth/google?start&back ») : la même page dans
+  // la langue de l'écran de connexion, adresse et paramètres gardés.
+  if (
+    (request.method === "GET" || request.method === "HEAD") &&
+    decodedPath(request.nextUrl.pathname) === RELAY_PATH
+  ) {
+    const url = request.nextUrl.clone();
+    url.pathname = `/${relayLocale(request)}${RELAY_PATH}`;
+    const response = NextResponse.redirect(url, 307);
+    response.headers.set("Cache-Control", "no-store");
+    return response;
+  }
   // L'app Android / iOS (lib/native.ts) n'a pas de pages de présentation : ni prix ni offre, Apple
   // (règle 3.1.1) et Google Play l'exigent. Elle ouvre l'application (connexion si besoin, PROTECTED).
   if (request.method === "GET" && isNativeAgent(request.headers.get("user-agent"))) {

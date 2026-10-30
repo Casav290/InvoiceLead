@@ -2995,5 +2995,10 @@
     "pay": "Payer en ligne",
     "paid": "Merci. Le paiement est en cours de confirmation ; la facture passera à « payée » dès que Stripe l'aura confirmé.",
     "payError": "Le paiement en ligne n'a pas pu démarrer. Réessayez ou payez par virement."
+  },
+  "leadAppAuth": {
+    "relayTitle": "Connexion avec Google…",
+    "relayBody": "Google s'ouvre dans le navigateur du téléphone. La connexion faite, vous revenez automatiquement dans InvoiceLead.",
+    "back": "Retour"
   }
 }

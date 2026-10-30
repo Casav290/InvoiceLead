@@ -4,8 +4,10 @@ import type { Metadata, Viewport } from "next";
 import { notFound } from "next/navigation";
 import { hasLocale, NextIntlClientProvider } from "next-intl";
 import { getLocale, getTranslations } from "next-intl/server";
+import { LeadAppReturn } from "@/components/native/LeadAppAuth";
 import { htmlLang } from "@/i18n/locales";
 import { routing } from "@/i18n/routing";
+import { issuerOrigin } from "@/lib/lead-app-auth";
 
 /** Seules /de et /fr existent : toute autre première partie d'adresse est un 404 statique, jamais mis en cache. */
 export const dynamicParams = false;
@@ -43,6 +45,8 @@ export default async function LocaleLayout({ children }: { children: React.React
   return (
     <html lang={htmlLang(locale)}>
       <body className="min-h-screen">
+        {/* App Android / iOS : retour de la connexion Google (lib/lead-app-auth.ts) ; ailleurs, rien. */}
+        <LeadAppReturn issuer={issuerOrigin(process.env.LEAD_ID_ISSUER)} locale={locale} />
         <NextIntlClientProvider>{children}</NextIntlClientProvider>
       </body>
     </html>

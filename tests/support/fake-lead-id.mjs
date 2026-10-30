@@ -28,6 +28,13 @@
  *     « Annuler » au cancel_url),
  *     abonnements, portail ; GET /test/billing relit tout, POST /test/billing/subscriptions/<id> change
  *     un abonnement (statut, résiliation en fin de période)
+ *   « Continuer avec Google » dans l'app (contrat d'ERPlead docs/GOOGLE-APP.md, en petit) : POST
+ *     /test/app-google {on} ; authorize avec platform=app montre alors un écran de connexion (lien
+ *     « Continuer avec Google » vers /auth/google/app), sauf session déjà ouverte ; /auth/google/app pose
+ *     le cookie verifier « fake_gapp » et renvoie vers la page relais de l'app (start, back) ;
+ *     POST /test/app-google/code {d} imite le retour de Google (code de transfert lié au départ) ;
+ *     /auth/google/app/redeem n'ouvre la session qu'avec le cookie verifier du départ (usage unique) ;
+ *     GET /test/app-google relit départs, ouvertures et rachats
  */
 import {
   createHash,
@@ -78,6 +85,17 @@ const billingReports = [];
 /** Faux Stripe de l'abonnement InvoiceLead. */
 const billing = { customers: [], checkouts: [], portals: [], subscriptions: new Map() };
 const BILLING_KEY = "Bearer sk_test_billing_e2e";
+/** « Continuer avec Google » dans l'app : départs, codes de transfert, rachats (contrat d'ERPlead). */
+const appGoogle = { on: false, departs: new Map(), codes: new Map(), starts: [], redeems: [] };
+const GAPP_COOKIE = "fake_gapp";
+const sha256hex = (s) => createHash("sha256").update(s).digest("hex");
+const html = (res, status, body, headers = {}) => {
+  res.writeHead(status, { "Content-Type": "text/html; charset=utf-8", ...headers });
+  res.end(
+    `<!doctype html><html><head><meta charset="utf-8"><title>Compte Lead</title></head><body>${body}</body></html>`,
+  );
+};
+const attr = (s) => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 /** Identifiants uniques d'un lancement à l'autre : la base des tests, elle, reste. */
 const STARTED = Date.now().toString(36);
 const PLAN_ROWS = {
@@ -267,7 +285,20 @@ createServer(async (req, res) => {
     const headers = {};
     let user;
     let browser = sid;
-    if (q.get("prompt") === "none") {
+    if (appGoogle.on && q.get("platform") === "app" && q.get("prompt") !== "none") {
+      // Vue web de l'app : l'écran de connexion du Compte Lead (bouton Google de l'app), sauf
+      // session déjà ouverte dans cette vue web (après le rachat).
+      user = sid ? leadSessions.get(sid) : undefined;
+      if (!user) {
+        const locale = q.get("ui_locales") ?? "fr";
+        const google = `/auth/google/app?${new URLSearchParams({ next: `/oauth/authorize${url.search}`, locale })}`;
+        return html(
+          res,
+          200,
+          `<h1 data-fake-lead-login>Compte Lead</h1><a id="google" href="${attr(google)}">Continuer avec Google</a>`,
+        );
+      }
+    } else if (q.get("prompt") === "none") {
       // Essai silencieux : la personne de la session ouverte, sinon login_required, sans écran.
       user = sid ? leadSessions.get(sid) : undefined;
       if (!user) {
@@ -696,6 +727,89 @@ createServer(async (req, res) => {
 
   if (url.pathname === "/test/logouts") return send(res, 200, logouts);
   if (url.pathname === "/test/authorizes") return send(res, 200, authorizes);
+  // « Continuer avec Google » dans l'app (contrat d'ERPlead) : départ dans la vue web.
+  if (url.pathname === "/auth/google/app") {
+    const next = q.get("next") ?? "";
+    const locale = q.get("locale") ?? "fr";
+    const asked = new URLSearchParams(next.split("?")[1] ?? "");
+    if (!next.startsWith("/oauth/authorize?") || asked.get("client_id") !== CLIENT_ID) {
+      res.writeHead(303, {
+        Location: `/login?${new URLSearchParams({ next, error: "google", locale })}`,
+      });
+      return res.end();
+    }
+    const verifier = randomBytes(32).toString("base64url");
+    const d = `invoicelead.${randomBytes(32).toString("base64url")}`;
+    appGoogle.departs.set(d, { vh: sha256hex(verifier), next, locale });
+    const start = `${ISSUER}/auth/google/app/start?${new URLSearchParams({ d })}`;
+    const back = `${ISSUER}/login?${new URLSearchParams({ next, locale })}`;
+    res.writeHead(303, {
+      Location: `${new URL(REDIRECT_URI).origin}/lead-auth/google?${new URLSearchParams({ start, back })}`,
+      "Set-Cookie": `${GAPP_COOKIE}=${verifier}; Path=/; HttpOnly; SameSite=Lax; Max-Age=600`,
+    });
+    return res.end();
+  }
+  // Navigateur du téléphone : le départ mène à Google (jamais suivi par les essais).
+  if (url.pathname === "/auth/google/app/start") {
+    appGoogle.starts.push(q.get("d"));
+    res.writeHead(302, { Location: "https://accounts.google.com/o/oauth2/v2/auth?fake=1" });
+    return res.end();
+  }
+  // Retour de Google imité : un code de transfert (43 caractères) lié au départ, usage unique.
+  if (url.pathname === "/test/app-google/code" && req.method === "POST") {
+    const body = JSON.parse((await readBody(req)) || "{}");
+    const dep = appGoogle.departs.get(body.d);
+    appGoogle.departs.delete(body.d);
+    if (!dep) return send(res, 404, { error: "depart" });
+    const code = randomBytes(32).toString("base64url");
+    appGoogle.codes.set(code, { ...dep, user: nextUser, at: Date.now() });
+    nextUser = { ...defaultUser };
+    return send(res, 200, { code, link: `io.invoicelead.app://lead-auth?code=${code}` });
+  }
+  // Rachat dans la vue web : le code avec le cookie verifier du départ, consommés quoi qu'il arrive.
+  if (url.pathname === "/auth/google/app/redeem") {
+    const code = q.get("code") ?? "";
+    const verifier = new RegExp(`(?:^|;\\s*)${GAPP_COOKIE}=([\\w-]+)`).exec(
+      req.headers.cookie ?? "",
+    )?.[1];
+    const t = appGoogle.codes.get(code);
+    appGoogle.codes.delete(code);
+    const ok = !!t && !!verifier && sha256hex(verifier) === t.vh && Date.now() - t.at < 300_000;
+    appGoogle.redeems.push({ ok, cookie: !!verifier });
+    const clear = `${GAPP_COOKIE}=; Path=/; Max-Age=0`;
+    if (!ok) {
+      res.writeHead(303, {
+        Location: `/login?${new URLSearchParams({ ...(t ? { next: t.next } : {}), error: "expired" })}`,
+        "Set-Cookie": clear,
+      });
+      return res.end();
+    }
+    const opened = randomBytes(12).toString("hex");
+    leadSessions.set(opened, t.user);
+    res.writeHead(303, {
+      Location: t.next,
+      "Set-Cookie": [clear, `${SID_COOKIE}=${opened}; Path=/; HttpOnly; SameSite=Lax`],
+    });
+    return res.end();
+  }
+  // L'écran de connexion du Compte Lead (`back` de la page relais).
+  if (url.pathname === "/login")
+    return html(
+      res,
+      200,
+      `<h1 data-fake-lead-login>Compte Lead</h1><p>${attr(q.get("error") ?? "")}</p>`,
+    );
+  if (url.pathname === "/test/app-google" && req.method === "POST") {
+    const body = JSON.parse((await readBody(req)) || "{}");
+    appGoogle.on = !!body.on;
+    return send(res, 200, { on: appGoogle.on });
+  }
+  if (url.pathname === "/test/app-google")
+    return send(res, 200, {
+      starts: appGoogle.starts,
+      redeems: appGoogle.redeems,
+      departs: [...appGoogle.departs.keys()],
+    });
   if (url.pathname === "/health") return send(res, 200, { ok: true });
 
   send(res, 404, { error: "not_found" });

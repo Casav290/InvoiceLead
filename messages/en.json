@@ -2995,5 +2995,10 @@
     "pay": "Pay online",
     "paid": "Thank you. The payment is being confirmed; the invoice will show as paid as soon as Stripe confirms it.",
     "payError": "The online payment could not start. Try again or pay by bank transfer."
+  },
+  "leadAppAuth": {
+    "relayTitle": "Signing in with Google…",
+    "relayBody": "Google opens in your phone's browser. Once you are signed in, you come back to InvoiceLead automatically.",
+    "back": "Back"
   }
 }

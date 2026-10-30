@@ -10,3 +10,17 @@ export const NATIVE_APP_AGENT = "InvoiceLeadApp";
 export function isNativeAgent(userAgent: string | null | undefined): boolean {
   return !!userAgent && userAgent.includes(NATIVE_APP_AGENT);
 }
+
+/**
+ * Jeton d'agent des versions de l'app qui savent revenir de Google (« InvoiceLeadApp LeadAppAuth/1 »,
+ * `appendUserAgent`, lead-app-auth.ts) : le Compte Lead y montre « Continuer avec Google ». Même motif
+ * qu'ERPlead (src/lib/appAuth.ts, AGENT_RE).
+ */
+const APP_AUTH_AGENT = /(?:^|\s)LeadAppAuth\/(\d{1,3})(?=[\s;)]|$)/;
+
+/** L'app, dans une version qui reçoit le lien de retour de Google (LeadAppAuth/1 ou plus) ? */
+export function isAppAuthAgent(userAgent: string | null | undefined): boolean {
+  if (!isNativeAgent(userAgent)) return false;
+  const m = APP_AUTH_AGENT.exec(String(userAgent).slice(0, 1000));
+  return !!m && Number(m[1]) >= 1;
+}

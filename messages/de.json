@@ -2995,5 +2995,10 @@
     "pay": "Online bezahlen",
     "paid": "Danke. Die Zahlung wird bestätigt; die Rechnung gilt als bezahlt, sobald Stripe sie bestätigt hat.",
     "payError": "Die Online-Zahlung konnte nicht gestartet werden. Versuchen Sie es erneut oder zahlen Sie per Überweisung."
+  },
+  "leadAppAuth": {
+    "relayTitle": "Anmeldung mit Google…",
+    "relayBody": "Google öffnet sich im Browser des Telefons. Nach der Anmeldung kehren Sie automatisch zu InvoiceLead zurück.",
+    "back": "Zurück"
   }
 }

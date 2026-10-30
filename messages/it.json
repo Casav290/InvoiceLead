@@ -2995,5 +2995,10 @@
     "pay": "Paga online",
     "paid": "Grazie. Il pagamento è in fase di conferma; la fattura passerà a «pagata» non appena Stripe l'avrà confermato.",
     "payError": "Non è stato possibile avviare il pagamento online. Riprovare o pagare con bonifico."
+  },
+  "leadAppAuth": {
+    "relayTitle": "Accesso con Google…",
+    "relayBody": "Google si apre nel browser del telefono. Fatto l'accesso, torni automaticamente in InvoiceLead.",
+    "back": "Indietro"
   }
 }

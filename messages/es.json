@@ -2995,5 +2995,10 @@
     "pay": "Pagar en línea",
     "paid": "Gracias. El pago se está confirmando; la factura pasará a «pagada» en cuanto Stripe lo confirme.",
     "payError": "No se ha podido iniciar el pago en línea. Vuelva a intentarlo o pague por transferencia."
+  },
+  "leadAppAuth": {
+    "relayTitle": "Inicio de sesión con Google…",
+    "relayBody": "Google se abre en el navegador del teléfono. Al iniciar sesión, vuelves automáticamente a InvoiceLead.",
+    "back": "Volver"
   }
 }
