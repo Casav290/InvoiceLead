@@ -52,9 +52,17 @@ const SECRET = "unit-secret-unit-secret-unit-secret-unit";
 const TODAY = "2026-10-28";
 const MESSAGES = { de, fr, en, it: it_, es } as const;
 
-beforeAll(() => setTestEnv({ ANTHROPIC_API_KEY: "sk-test-not-a-real-key" }));
+beforeAll(() => {
+  setTestEnv({ ANTHROPIC_API_KEY: "sk-test-not-a-real-key" });
+  // Horloge fixée au milieu de TODAY (UTC) : les lignes que les tours inscrivent à l'heure courante
+  // (reserveMessage, la page Assistant) tombent dans le mois que lit assistantBudget(…, TODAY),
+  // quel que soit le jour où la suite est lancée (sinon trois tests rougissent dès novembre).
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date(`${TODAY}T12:00:00Z`));
+});
 beforeEach(() => t.reset());
 afterAll(async () => {
+  vi.useRealTimers();
   await t.close();
   await pool.end();
 });
