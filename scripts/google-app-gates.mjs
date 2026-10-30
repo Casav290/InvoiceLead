@@ -2010,9 +2010,10 @@ async function gateG3() {
     );
     // Son adresse porte le départ à usage unique et la demande OpenID : ni Referer ni cache (contrat § 3a).
     const relayQuery = new URL(relay || "https://x.invalid").search;
+    // La barre d'outils de Vercel (script de vercel.live) n'existe que sur les aperçus : écartée, comme en production.
     const relayRes = await fetch(`${t.il}/it/lead-auth/google${relayQuery}`, {
       redirect: "manual",
-      headers: { ...bypass, "user-agent": NEW_APP },
+      headers: { ...bypass, "user-agent": NEW_APP, "x-vercel-skip-toolbar": "1" },
     });
     const relayHtml = await relayRes.text();
     const relayHop = await fetch(`${t.il}/lead-auth/google${relayQuery}`, {
