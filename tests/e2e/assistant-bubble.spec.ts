@@ -926,6 +926,46 @@ test("formule gratuite : compteur « environ N demandes » mis à jour après ch
   expect(await traitNetIssues(page)).toEqual([]);
 });
 
+test("formule gratuite : sur l'écran Assistant, la bulle et la boîte de la page tiennent le même compteur, et la boîte se grise quand la bulle atteint le budget", async ({
+  page,
+}) => {
+  await newCompany(page, "meme-ecran");
+  await page.goto("/fr/app/assistant");
+  const quota = page.getByTestId("assistant-quota");
+  await expect(quota).toContainText("environ 10 demandes restantes ce mois-ci");
+  let budget = { left: 4, exhausted: false, resetOn: "2026-11-01", requests: 10 };
+  await page.route("**/api/assistant", async (route) => {
+    const body = route.request().postDataJSON() as { messages: unknown[] };
+    await route.fulfill({
+      json: {
+        messages: [...body.messages, { role: "assistant", content: "Voici." }],
+        reply: "Voici.",
+        actions: [],
+        notice: null,
+        budget,
+      },
+    });
+  });
+  await page.getByTestId("assistant-bubble").click();
+  const input = page.getByTestId("assistant-input");
+  await input.fill("Combien ai-je encaissé ce mois-ci ?");
+  await input.press("Enter");
+  await expect(page.getByTestId("assistant-budget")).toHaveText(
+    "Formule gratuite\u202f: il vous reste environ 4 demandes ce mois-ci.",
+  );
+  // La boîte de la page, sous la bulle, dit la même chose sans rechargement.
+  await expect(quota).toContainText("environ 4 demandes restantes ce mois-ci");
+  budget = { ...budget, left: 0, exhausted: true };
+  await input.fill("Et le mois passé ?");
+  await input.press("Enter");
+  await expect(page.getByTestId("assistant-free-limit")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.getByTestId("assistant-lock")).toBeVisible();
+  await expect(quota).toHaveCount(0);
+  await expect(page.getByTestId("assistant-ask")).toBeDisabled();
+  expect(await traitNetIssues(page)).toEqual([]);
+});
+
 test("formule gratuite : budget du mois atteint en base → message dès l'ouverture, champ désactivé, /api/assistant refuse sans appel au modèle ; une formule payante n'est pas limitée", async ({
   page,
 }) => {

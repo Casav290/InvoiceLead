@@ -6,7 +6,7 @@ import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { useCountry, useCountryTranslations } from "@/components/app/CountryContext";
 import { countryPack } from "@/countries";
 import { Link, usePathname, useRouter } from "@/i18n/navigation";
-import { budgetMonth } from "@/lib/assistant-budget";
+import { budgetMonth, onSharedBudget, shareBudget } from "@/lib/assistant-budget";
 import { pageLabel } from "@/lib/assistant-pages";
 import { formatDate } from "@/lib/fiscal-year";
 import { formatMoney } from "@/lib/money";
@@ -251,6 +251,8 @@ export function AssistantBubble({
   useEffect(() => {
     setBudget(initialBudget);
   }, [initialBudget]);
+  // La boîte de la page Assistant consomme le même budget : son compteur arrive ici aussitôt.
+  useEffect(() => onSharedBudget(setBudget), []);
 
   useEffect(() => setData(load(storageKey)), [storageKey]);
 
@@ -326,7 +328,10 @@ export function AssistantBubble({
       };
       // Formule gratuite : le compteur suit chaque tour (L5) ; budget atteint, la réponse dédiée
       // (« free_limit ») n'a appelé aucun modèle et le message s'affiche sous le fil (L4).
-      if (isBudget(body.budget)) setBudget(body.budget);
+      if (isBudget(body.budget)) {
+        setBudget(body.budget);
+        shareBudget(body.budget);
+      }
       if (res.status === 429 && body.error === "free_limit") return;
       if (!res.ok) {
         const code =

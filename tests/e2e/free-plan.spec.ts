@@ -337,6 +337,14 @@ test("formule gratuite : l'assistant IA à hauteur de dix demandes (jetons), pui
     await box.getByLabel("Votre question").fill(`Qui me doit de l'argent ? (${i})`);
     await page.getByTestId("assistant-ask").click();
     await expect(page.getByTestId("assistant-quota")).toContainText(`${left(10 - i)} ce mois-ci`);
+    if (i === 1) {
+      // Même écran, même budget : la bulle reprend aussitôt le compteur de la boîte (sans recharger).
+      await page.getByTestId("assistant-bubble").click();
+      await expect(page.getByTestId("assistant-budget")).toHaveText(
+        "Formule gratuite\u202f: il vous reste environ 9 demandes ce mois-ci.",
+      );
+      await page.keyboard.press("Escape");
+    }
   }
   await box.getByLabel("Votre question").fill("Qui me doit de l'argent ? (10)");
   await page.getByTestId("assistant-ask").click();
@@ -352,6 +360,14 @@ test("formule gratuite : l'assistant IA à hauteur de dix demandes (jetons), pui
   );
   await expect(page.getByTestId("assistant-quota")).toHaveCount(0);
   await expect(page.getByTestId("assistant-ask")).toBeDisabled();
+  // La bulle du même écran se ferme avec la boîte, sans rechargement : message de fin, champ
+  // désactivé (aucune question tapée pour rien).
+  await page.getByTestId("assistant-bubble").click();
+  await expect(page.getByTestId("assistant-free-limit")).toContainText(
+    "l'équivalent de 10 demandes",
+  );
+  await expect(page.getByTestId("assistant-input")).toBeDisabled();
+  await page.keyboard.press("Escape");
   expect(await traitNetIssues(page)).toEqual([]);
 
   // Demande forgée : la boîte réactivée envoie la onzième question ; le serveur la refuse.
