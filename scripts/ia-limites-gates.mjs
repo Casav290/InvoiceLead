@@ -352,10 +352,10 @@ function scopeProblems(source) {
  */
 const MUTATIONS = [
   {
-    what: "refus au-delà du budget retiré (le modèle serait appelé)",
-    file: "src/server/ai-assistant/handlers.ts",
-    from: "  if (budget?.exhausted)\n",
-    to: "  if (false && budget?.exhausted)\n",
+    what: "refus au-delà du budget retiré de la réservation de la bulle (le modèle serait appelé)",
+    file: "src/server/ai-assistant/quota.ts",
+    from: '    const full = await freeLimitReached(tx, free, now);\n    if (full) return { limit: "free" as const, budget: full };\n    const hourAgo',
+    to: "    const hourAgo",
     test: "au-delà du budget : 429 « free_limit », aucun appel au modèle, aucune place de quota prise (L4)",
   },
   {
@@ -389,9 +389,23 @@ const MUTATIONS = [
   {
     what: "page Assistant sans contrôle du budget (second chemin vers l'IA)",
     file: "src/server/assistant.ts",
-    from: "(await assistantBudget(database, plan, today))?.exhausted",
-    to: "false",
+    from: "reserveBooksQuestion(database, who, { org: plan, today })",
+    to: "reserveBooksQuestion(database, who, null as never)",
     test: "un seul compteur : la page Assistant et la bulle consomment le même budget ; rien dans plan_usage (L6)",
+  },
+  {
+    what: "tours en cours non comptés (des demandes lancées ensemble passeraient toutes)",
+    file: "src/server/ai-assistant/quota.ts",
+    from: "  const used = budget.used + pending * ASSISTANT_TOKENS.perRequest;\n",
+    to: "  const used = budget.used;\n",
+    test: "demandes lancées ensemble : chaque tour en cours compte pour une demande-type, jamais plus de 10 tours sous le budget (L4)",
+  },
+  {
+    what: "tour interrompu compté pour toujours (aucun délai)",
+    file: "src/server/ai-assistant/quota.ts",
+    from: "        gt(u.createdAt, new Date(now.getTime() - PENDING_MS)),\n",
+    to: "",
+    test: "bulle et page Assistant lancées ensemble : le même verrou, le même budget, 10 appels au plus ; un tour interrompu ne bloque pas au-delà du délai d'un tour (L4, L6)",
   },
   {
     what: "« Confirmer » refusé quand le budget est atteint",
