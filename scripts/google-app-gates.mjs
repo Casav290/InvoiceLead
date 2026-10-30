@@ -1467,24 +1467,29 @@ async function gateG3() {
       for (const el of document.querySelectorAll("body *")) {
         if (el.children.length === 0 && /test\+[\w-]+@scanlead\.io/.test(el.textContent ?? ""))
           el.textContent = (el.textContent ?? "").replace(/test\+[\w-]+@/, "test+…@");
+        // Adresse IP de la session (celle de la machine de la porte) : masquée sur la capture.
+        if (el.children.length === 0 && /\b\d{1,3}(\.\d{1,3}){3}\b/.test(el.textContent ?? ""))
+          el.textContent = (el.textContent ?? "").replace(/\b\d{1,3}(\.\d{1,3}){3}\b/g, "…");
       }
     });
     await shot(wv.page, "g3-5-connectee-mon-compte");
-    // --- 6. Le même lien, relu (iOS le redonne à getLaunchUrl) sur une page d'InvoiceLead : ignoré.
-    const again = await context(NEW_APP, "webview", link);
-    await again.ctx.addCookies(await wv.ctx.cookies());
+    // --- 6. Le même lien, relu par la page suivante de la MÊME vue web (iOS le redonne à getLaunchUrl) : ignoré.
+    await wv.ctx.addInitScript((u) => {
+      window.__FAKE_CAPACITOR = { launchUrl: u };
+    }, link);
+    const reads = named(wv.calls, "App.getLaunchUrl").length;
     const n = production.length;
-    await again.page.goto(`${t.il}/it/legal/privacy`);
-    await waitFor(() => named(again.calls, "App.getLaunchUrl").length > 0, 10_000);
-    await again.page.waitForTimeout(1500);
+    await wv.page.goto(`${t.il}/it/legal/privacy`);
+    await waitFor(() => named(wv.calls, "App.getLaunchUrl").length > reads, 10_000);
+    await wv.page.waitForTimeout(1500);
     check(
-      "le même lien relu par une autre page de l'app (getLaunchUrl) : ignoré (aucun rachat, aucune navigation)",
-      named(again.calls, "App.getLaunchUrl").length >= 1 &&
+      "le même lien relu par la page suivante de l'app (getLaunchUrl) : ignoré (aucun rachat, aucune navigation)",
+      named(wv.calls, "App.getLaunchUrl").length > reads &&
+        named(wv.calls, "App.getLaunchUrl").at(-1)?.arg === link &&
         !production.slice(n).some((u) => u.includes("/redeem")) &&
-        new URL(again.page.url()).pathname === "/it/legal/privacy" &&
-        named(again.calls, "Browser.close").length === 0,
+        new URL(wv.page.url()).pathname === "/it/legal/privacy" &&
+        named(wv.calls, "Browser.close").length === 1,
     );
-    await again.ctx.close();
     // Rachat rejoué par la vue web : refusé (usage unique) — contrôle d'ERPlead, vu depuis l'app.
     const replay = await wv.ctx.request.get(`${t.erp}/auth/google/app/redeem?code=${code}`, {
       maxRedirects: 0,
