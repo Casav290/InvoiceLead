@@ -1190,7 +1190,8 @@ console.log(JSON.stringify({cfg:cfg.map(c=>({name:c.name,ent:c.buildSettings.COD
   );
   // Le flush est bien compilé : MainActivity.onPause() appelle CookieManager.flush() dans le dex de l'APK et de l'AAB.
   const onPauseFlush = (dexdumpOut) => {
-    const i = dexdumpOut.indexOf("Lio/invoicelead/app/MainActivity;.onPause:()V");
+    // dexdump -d : « |[000130] io.invoicelead.app.MainActivity.onPause:()V », puis les instructions de la méthode.
+    const i = dexdumpOut.indexOf(`] ${APP_ID}.MainActivity.onPause:()V`);
     const block = i >= 0 ? dexdumpOut.slice(i, i + 1500) : "";
     return (
       block.includes("Lcom/getcapacitor/BridgeActivity;.onPause:()V") &&
