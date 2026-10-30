@@ -131,19 +131,39 @@ point : hors du proxy), aucun autre chemin du site revendiqué :
   (`88:49:FC:61:…:0B:7F:54`) et de la **clé d'envoi** (`7B:E5:3E:52:…:EF:80:F6`, celle de
   `~/.android-signing/invoicelead-upload.jks`, vérifiée par la porte G2).
 
-Ordre de mise en ligne (contrat d'ERPlead, « Ordre de mise en ligne ») : 1. ce site en production (sans risque :
-l'interrupteur `GOOGLE_APP_ENABLED` d'ERPlead est fermé) ; 2. **avant d'envoyer quoi que ce soit aux stores**, vérifier
-`https://digitalassetlinks.googleapis.com/v1/statements:list?source.web.site=https://invoicelead.io&relation=delegate_permission/common.handle_all_urls`
-(le paquet et les **deux** empreintes, aucune `errorCode`) et
-`https://app-site-association.cdn-apple.com/a/v1/invoicelead.io` (l'AASA du site) ; 3. ensuite seulement la version
-native 1.0.2 (Play, App Store) : sous Android 6 à 14, une version installée pendant que `assetlinks.json` répond 404
-reste non vérifiée jusqu'à la suivante ; 4. ouverture de l'interrupteur : décision d'Ève. Rien n'est en production.
+Ordre de mise en ligne (contrat d'ERPlead, « Ordre de mise en ligne », étapes 0 à 4) :
+
+0. **ERPlead à liens vérifiés en production d'abord** : la branche `google-app` d'ERPlead (ef52342 ou après),
+   interrupteur fermé, avant d'envoyer la 1.0.2 ; puis, dans `~/projets/erplead-google-app`,
+   `node scripts/google-app-gates.mjs PROD` → `GOOGLE_APP_PROD_OK` (lecture seule). Le 30.10.2026, la production
+   d'ERPlead est encore d2d72aa (dpl_EDyRPMmPuX9wfNqmFZDqJbie11Km) : interrupteur fermé, mais `returnLink` y écrit
+   `io.invoicelead.app://lead-auth…` et tout `LeadAppAuth/1` **ou plus** y a Google. L'interrupteur ouvert sur ce code
+   donnerait le bouton à la 1.0.2 (`LeadAppAuth/2`) ; la page relais de ce site accepterait le départ (même format, elle
+   ne peut pas voir la différence) ; le code partirait vers un schéma que la 1.0.2 ne déclare plus (connexion jamais
+   aboutie) et vers **toute app du téléphone qui le déclare**, qui a pu faire le départ elle-même (RFC 8252 § 8.6).
+1. Ce site en production (sans risque : l'interrupteur `GOOGLE_APP_ENABLED` d'ERPlead est fermé).
+2. **Avant d'envoyer quoi que ce soit aux stores** : `node scripts/google-app-gates.mjs PUBLIER` (lecture seule) →
+   `GOOGLE_APP_PUBLIER_OK` : la porte PROD d'ERPlead (étape 0) ; la production de invoicelead.io contient la branche
+   `google-app` et sert les fichiers d'association (= contrat) et la page de repli ;
+   `https://digitalassetlinks.googleapis.com/v1/statements:list?source.web.site=https://invoicelead.io&relation=delegate_permission/common.handle_all_urls`
+   (le paquet et les **deux** empreintes, aucune `errorCode` ; `assetlinks:check` lié pour chacune) et
+   `https://app-site-association.cdn-apple.com/a/v1/invoicelead.io` (l'AASA du site). Le 30.10.2026, elle échoue (ERPlead
+   d2d72aa, site sans ces fichiers) : c'est voulu.
+3. Ensuite seulement la version native 1.0.2 (Play, App Store) : sous Android 6 à 14, une version installée pendant que
+   `assetlinks.json` répond 404 reste non vérifiée jusqu'à la suivante.
+4. Ouverture de l'interrupteur : décision d'Ève, seulement avec `PUBLIER` vert ; la variable `GOOGLE_APP_ENABLED=1` ne
+   vaut que pour les déploiements faits après elle : la poser, puis un **nouveau** déploiement de production d'ERPlead à
+   liens vérifiés (jamais « Redeploy » de d2d72aa), puis `PUBLIER` relancée (contrat d'ERPlead, « L'interrupteur ne sait
+   pas quel code le lit »).
+
+Rien n'est en production.
 
 ## Sécurité
 
 - Le code ne va qu'au lien réservé (ou à la page de repli du navigateur) ; il ne sert à rien sans le cookie verifier,
   HttpOnly, de la vue web qui a fait le départ, qu'InvoiceLead ne lit jamais.
-- Une app hostile du téléphone ne reçoit plus le code : sur iOS, le lien ne s'ouvre que dans l'app inscrite dans l'AASA
+- Une app hostile du téléphone ne reçoit plus le code, **à condition qu'ERPlead serve en production le code à liens
+  vérifiés** (étape 0, porte PROD d'ERPlead ; sur d2d72aa, le code part vers `io.invoicelead.app`) : sur iOS, le lien ne s'ouvre que dans l'app inscrite dans l'AASA
   et la session iOS n'accepte le retour https que pour un domaine associé à l'app (`webcredentials`) ; sur Android 12+,
   seule l'app vérifiée par `assetlinks.json` reçoit le lien. Limite acceptée (contrat § 5) : Android 6 à 11 quand la
   vraie app est absente ou non vérifiée.
@@ -171,7 +191,9 @@ reste non vérifiée jusqu'à la suivante ; 4. ouverture de l'interrupteur : dé
   (`tests/support/fake-lead-id.mjs`, routes `/auth/google/app…` du contrat, lien vérifié). App relancée par son lien
   sur l'accueil avec le rachat retenu 3 s (aucun départ de l'écran de connexion, § 3b, 6) ; page relais rechargée
   pendant sa connexion (§ 3a).
-- Portes : `scripts/google-app-gates.mjs` (G1 essais et contrôles complets, G2 dépôt mobile, APERCU, G3 aperçu).
+- Portes : `scripts/google-app-gates.mjs` (G1 essais et contrôles complets, G2 dépôt mobile, APERCU, G3 aperçu,
+  PUBLIER lecture seule de la production d'ERPlead et de ce site, de Google et d'Apple avant la 1.0.2 et avant
+  l'interrupteur).
 
 ## Dépôt mobile (`~/projets/invoicelead-mobile`, branche `google-app`)
 
