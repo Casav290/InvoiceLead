@@ -56,8 +56,9 @@ Contrat d'ERPlead (Compte Lead) : `~/projets/erplead-google-app/docs/GOOGLE-APP.
      suivi s'il n'est pas l'ancien noté (iOS : `getLaunchUrl` rend le dernier lien ouvert), comme l'`appUrlOpen` retenu
      par la coque. Navigateur par défaut (`m=tap`) : même texte, le lien attendu. Android (`tab`) : `browserFinished` →
      `back`. Session iOS (`auto`) : son résultat est perdu avec la page ; `LeadAuthSession.resume({ url: start +
-     '&m=auto' })` si le module l'a (facultatif, contrat § 1 ; **absent** du module d'InvoiceLead 1.0.2 :
-     ios/App/App/LeadAuthSession.swift), sinon connexion effacée et `back`. Une autre page relais (autre départ), ou une
+     '&m=auto' })` si le module l'a (facultatif, contrat § 1 ; **présent** dans le module d'InvoiceLead 1.0.2 :
+     ios/App/App/LeadAuthSession.swift) : adresse rendue → règles du lien de retour, `failed` → navigateur par défaut
+     (`'&m=tap'`), autre refus (`none`, `canceled`) → `back` ; module sans `resume` : connexion effacée et `back`. Une autre page relais (autre départ), ou une
      connexion de plus de 15 min, reste une nouvelle connexion.
    - En-têtes de la page relais : `Referrer-Policy: no-referrer` (aussi la balise `<meta name="referrer">`) et
      `Cache-Control: no-store` (`next.config.ts`, et la redirection sans langue de `src/proxy.ts`) : son adresse porte le
@@ -129,9 +130,13 @@ point : hors du proxy), aucun autre chemin du site revendiqué :
   (`88:49:FC:61:…:0B:7F:54`) et de la **clé d'envoi** (`7B:E5:3E:52:…:EF:80:F6`, celle de
   `~/.android-signing/invoicelead-upload.jks`, vérifiée par la porte G2).
 
-À contrôler **après** la mise en production (rien n'est en production) :
-`https://app-site-association.cdn-apple.com/a/v1/invoicelead.io` et
-`https://digitalassetlinks.googleapis.com/v1/statements:list?source.web.site=https://invoicelead.io&relation=delegate_permission/common.handle_all_urls`.
+Ordre de mise en ligne (contrat d'ERPlead, « Ordre de mise en ligne ») : 1. ce site en production (sans risque :
+l'interrupteur `GOOGLE_APP_ENABLED` d'ERPlead est fermé) ; 2. **avant d'envoyer quoi que ce soit aux stores**, vérifier
+`https://digitalassetlinks.googleapis.com/v1/statements:list?source.web.site=https://invoicelead.io&relation=delegate_permission/common.handle_all_urls`
+(le paquet et les **deux** empreintes, aucune `errorCode`) et
+`https://app-site-association.cdn-apple.com/a/v1/invoicelead.io` (l'AASA du site) ; 3. ensuite seulement la version
+native 1.0.2 (Play, App Store) : sous Android 6 à 14, une version installée pendant que `assetlinks.json` répond 404
+reste non vérifiée jusqu'à la suivante ; 4. ouverture de l'interrupteur : décision d'Ève. Rien n'est en production.
 
 ## Sécurité
 
@@ -173,12 +178,15 @@ point : hors du proxy), aucun autre chemin du site revendiqué :
   Apple, jamais Google.
 - iOS : `ios/App/App/App.entitlements` (`com.apple.developer.associated-domains` = `applinks:invoicelead.io`,
   `webcredentials:invoicelead.io`), `CODE_SIGN_ENTITLEMENTS = App/App.entitlements` (Debug et Release de la cible App) ;
-  module `LeadAuthSession` (`ios/App/App/LeadAuthSession.swift` : `isAvailable`, `start`, `openExternal` ; pas de
-  `resume`, facultatif : la page relais rechargée pendant la session iOS revient à `back`), inscrit par
-  `LeadBridgeViewController` (racine du `SceneDelegate`) ; plus de `CFBundleURLTypes`.
+  module `LeadAuthSession` (`ios/App/App/LeadAuthSession.swift` : `isAvailable`, `start`, `openExternal` (navigateur
+  par défaut), et `resume` (contrat § 1, facultatif) : la page relais rechargée pendant la session iOS reçoit l'issue
+  de la session de ce même départ ; session finie → issue gardée en mémoire, rendue une fois ; sinon refus `none` ;
+  n'ouvre jamais rien), inscrit par `LeadBridgeViewController` (racine du `SceneDelegate`) ; plus de
+  `CFBundleURLTypes`.
 - Android `AndroidManifest.xml` : `intent-filter android:autoVerify="true"` VIEW / DEFAULT / BROWSABLE,
   `scheme="https"`, `host="invoicelead.io"`, `path="/lead-auth/return"`, activité principale `singleTask` ; plus de
-  filtre `io.invoicelead.app`.
+  filtre `io.invoicelead.app`. `MainActivity.onPause()` → `CookieManager.getInstance().flush()` (contrat § 1) : le
+  cookie verifier posé juste avant le Custom Tab est écrit sur le disque avant qu'Android ne puisse tuer l'app.
 - `@capacitor/app` et `@capacitor/browser`, `npx cap sync`, version 1.0.2 (versionCode 3 ; build iOS = TestFlight + 1),
   jamais envoyée.
 - **Comptes** (à faire par Ève ou sur son accord, rien n'a été touché) : Apple Developer → accepter le Program License

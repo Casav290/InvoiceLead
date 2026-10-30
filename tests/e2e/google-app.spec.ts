@@ -22,7 +22,12 @@ const BRIDGE = readFileSync(join(process.cwd(), "tests/support/fake-capacitor.js
 
 type Call = { name: string; arg: unknown; url: string };
 type Stored = Awaited<ReturnType<BrowserContext["storageState"]>>;
-type Platform = { platform?: "ios" | "android"; session?: "https" | "old" | "none" };
+type Platform = {
+  platform?: "ios" | "android";
+  session?: "https" | "old" | "none";
+  /** iOS : le module a `resume` (InvoiceLead 1.0.2 ; facultatif au contrat). */
+  resume?: boolean;
+};
 
 /**
  * Une vue web de l'app : agent, faux pont (plateforme, module iOS), appels au pont relevés. `stored` :
@@ -51,6 +56,7 @@ async function webview(
       retained: opts.retained,
       platform: opts.platform ?? "android",
       session: opts.session,
+      resume: opts.resume,
     },
   );
   await context.addInitScript({ content: BRIDGE });
@@ -283,8 +289,9 @@ test("page relais rechargée pendant sa connexion (iOS tue la vue web, Capacitor
   } finally {
     await context.close();
   }
-  // iOS 17.4+ : rechargée pendant la session ; le module de l'app (sans resume) a perdu son résultat avec
-  // la page : jamais une nouvelle session ni le navigateur sur le départ déjà servi → écran de connexion.
+  // iOS 17.4+ : rechargée pendant la session ; un module sans resume (facultatif au contrat) a perdu son
+  // résultat avec la page : jamais une nouvelle session ni le navigateur sur le départ déjà servi → écran de
+  // connexion. Le module de l'app 1.0.2 a resume : essai suivant.
   const ios = await webview(browser, { platform: "ios", session: "https" });
   try {
     await toRelay(ios.page, ios.calls, "LeadAuthSession.start", "auto");
@@ -294,6 +301,41 @@ test("page relais rechargée pendant sa connexion (iOS tue la vue web, Capacitor
     expect(openings(ios.calls)).toHaveLength(1);
   } finally {
     await ios.context.close();
+  }
+});
+
+test("page relais rechargée pendant la session iOS 17.4+ (module 1.0.2 avec resume) : aucune session rouverte, LeadAuthSession.resume rend le lien vérifié → connectée, une seule fois", async ({
+  browser,
+  page: plain,
+}) => {
+  await appGoogle(plain, true);
+  await nextUser(plain, "sub-google-ripresa", "Ripresa Sàrl");
+  const { context, page, calls } = await webview(browser, {
+    platform: "ios",
+    session: "https",
+    resume: true,
+  });
+  try {
+    const before = (await redeems(plain)).length;
+    const d = await toRelay(page, calls, "LeadAuthSession.start", "auto");
+    const start = String(openings(calls)[0]?.arg);
+    const relay = page.url();
+    // La personne est dans la session ; iOS tue le processus de la vue web, Capacitor recharge l'adresse.
+    await page.reload();
+    await expect.poll(() => named(calls, "LeadAuthSession.resume").length).toBe(1);
+    expect(named(calls, "LeadAuthSession.resume")[0]?.arg).toBe(start);
+    expect(page.url()).toBe(relay);
+    expect(openings(calls)).toHaveLength(1);
+    // La session se finit sur le lien vérifié : son issue va à l'appel de resume de la page rechargée.
+    const { link } = await googleReturn(plain, d);
+    expect(await endSession(page, { url: link })).toBe(true);
+    await page.waitForURL(`${APP}/it/app`);
+    await expect(page.locator("body")).toContainText("Ripresa Sàrl");
+    expect((await redeems(plain)).slice(before)).toEqual([{ ok: true, cookie: true }]);
+    expect(openings(calls)).toHaveLength(1);
+    expect(named(calls, "LeadAuthSession.resume")).toHaveLength(1);
+  } finally {
+    await context.close();
   }
 });
 

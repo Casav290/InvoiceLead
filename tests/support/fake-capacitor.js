@@ -3,7 +3,7 @@
  * native de l'app injecte dans chaque page de sa vue web, en petit. window.Capacitor.isNativePlatform,
  * getPlatform, Plugins.App (addListener « appUrlOpen », getLaunchUrl), Plugins.Browser (open, close,
  * addListener « browserFinished ») et, sur iOS, Plugins.LeadAuthSession (module natif de l'app :
- * isAvailable, start, openExternal). Chaque appel est remis à l'essai par la liaison window.__bridgeCall
+ * isAvailable, start, openExternal, et resume si réglé). Chaque appel est remis à l'essai par la liaison window.__bridgeCall
  * (si elle existe) ; window.__fakeEmit(« App.appUrlOpen », { url }) imite l'arrivée d'un lien ;
  * window.__fakeSession({ url } | { error: code }) termine la session iOS en cours (adresse de retour
  * rendue, ou refus : canceled, unavailable, busy, bad_url, failed).
@@ -14,7 +14,10 @@
  *   le garde, retainUntilConsumed) : livré une seule fois par vue web, à la première écoute « appUrlOpen »,
  *   AVANT la réponse de getLaunchUrl (la coque traite les appels natifs dans l'ordre) ;
  * - platform : « ios » (défaut) ou « android » ;
- * - session (iOS) : « https » (défaut, iOS 17.4+), « old » (iOS 15 à 17.3 : https: false), « none » (module absent).
+ * - session (iOS) : « https » (défaut, iOS 17.4+), « old » (iOS 15 à 17.3 : https: false), « none » (module absent) ;
+ * - resume (iOS) : true pour le module de l'app 1.0.2, qui a `resume` (contrat § 1, facultatif) : la page relais
+ *   rechargée pendant la session reçoit son issue. Le module natif survit au rechargement de la page, pas ce faux
+ *   pont : `resume` reprend donc la session « encore ouverte », que window.__fakeSession termine comme `start`.
  */
 (() => {
   if (window.top !== window) return;
@@ -107,6 +110,18 @@
         record("LeadAuthSession.openExternal", options?.url ?? null);
         return { opened: true };
       },
+      ...(config().resume
+        ? {
+            resume: (options) => {
+              record("LeadAuthSession.resume", options?.url ?? null);
+              if (session)
+                return Promise.reject(Object.assign(new Error("busy"), { code: "busy" }));
+              return new Promise((resolve, reject) => {
+                session = { resolve, reject };
+              });
+            },
+          }
+        : {}),
     };
   window.Capacitor = {
     isNativePlatform: () => true,

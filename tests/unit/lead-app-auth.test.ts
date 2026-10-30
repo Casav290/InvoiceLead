@@ -893,7 +893,7 @@ describe("page relais (/lead-auth/google?start&back)", () => {
   });
 
   it("page relais rechargée pendant la session iOS 17.4+ : jamais une nouvelle session ni le navigateur sur le départ déjà servi ; module sans resume → écran de connexion (back) ; avec resume, l'issue reprise (rachat), failed → navigateur par défaut, autre refus → back", async () => {
-    // Module d'InvoiceLead 1.0.2 : sans resume. Le résultat de la session est perdu avec la page.
+    // Module sans resume (facultatif au contrat) : le résultat de la session est perdu avec la page.
     const local = new Map<string, string>();
     const first = await relayPage({ local, platform: "ios" });
     expect(first.sessions).toEqual([AUTO]);
@@ -901,7 +901,7 @@ describe("page relais (/lead-auth/google?start&back)", () => {
     expect([...again.sessions, ...again.externals, ...again.resumed]).toEqual([]);
     expect(again.replaced).toEqual([BACK]);
     expect(local.has(PENDING_KEY)).toBe(false);
-    // Module avec resume (contrat § 1, facultatif) : l'issue de la session de ce départ.
+    // Module avec resume (contrat § 1, facultatif ; celui d'InvoiceLead 1.0.2) : l'issue de la session de ce départ.
     const cases: [SessionEnd, string[], string[]][] = [
       [{ url: LINK }, [REDEEM], []],
       [{ error: "failed" }, [], [TAP]],

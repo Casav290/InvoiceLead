@@ -165,8 +165,8 @@ export type LeadAuthSessionPlugin = {
   isAvailable?: () => Promise<{ https?: boolean } | null | undefined>;
   start?: (o: { url: string }) => Promise<{ url?: string } | null | undefined>;
   /**
-   * Facultatif (contrat § 1 ; absent du module d'InvoiceLead 1.0.2) : l'issue de la session de ce même
-   * départ, pour la page relais rechargée ; refus `none` s'il n'y a rien à reprendre. N'ouvre jamais rien.
+   * Facultatif (contrat § 1 ; présent dans le module d'InvoiceLead 1.0.2) : l'issue de la session de ce
+   * même départ, pour la page relais rechargée ; refus `none` s'il n'y a rien à reprendre. N'ouvre jamais rien.
    */
   resume?: (o: { url: string }) => Promise<{ url?: string } | null | undefined>;
   openExternal?: (o: { url: string }) => Promise<{ opened?: boolean } | null | undefined>;

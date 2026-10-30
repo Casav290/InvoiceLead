@@ -12,7 +12,8 @@
  *                                             l'essai gardien échoue) ; contrôles complets (Biome, types, Vitest,
  *                                             build, Playwright dont tests/e2e/google-app.spec.ts) ; contrat relu
  *   node scripts/google-app-gates.mjs G2      dépôt mobile ~/projets/invoicelead-mobile (branche google-app) : droits
- *                                             Associated Domains, module LeadAuthSession, intent-filter autoVerify,
+ *                                             Associated Domains, module LeadAuthSession (dont resume), intent-filter
+ *                                             autoVerify, cookies de la WebView écrits à onPause (source et dex),
  *                                             schéma propre retiré, agent LeadAppAuth/2, plugins synchronisés, version
  *                                             et build, construction Android (AAB signé par la clé d'envoi, APK de
  *                                             contrôle), empreintes du assetlinks.json (clé d'envoi, Play App Signing
@@ -356,6 +357,7 @@ const G1_E2E = [
   "app relancée par le lien de retour avec un cookie de session périmé : la garde passe par l'écran de connexion de l'app, qui suit le lien ; connectée du premier coup",
   "app relancée par son lien sur l'accueil (appUrlOpen retenu par la coque, livré avant getLaunchUrl), rachat retenu 3 s : l'écran de connexion de l'app ne part pas, connectée",
   "page relais rechargée pendant sa connexion (iOS tue la vue web, Capacitor recharge la page) : aucun départ rouvert, le lien reçu après connecte ; session iOS perdue → écran de connexion ; page relais sans Referer ni cache",
+  "page relais rechargée pendant la session iOS 17.4+ (module 1.0.2 avec resume) : aucune session rouverte, LeadAuthSession.resume rend le lien vérifié → connectée, une seule fois",
   "nouvelle connexion après une app relancée sans lecture du lien : l'ancien lien de lancement n'est pas suivi par la page relais, le nouveau connecte",
   "deux demandes expirées de suite : le lien d'erreur ramène chaque fois à l'écran de connexion du Compte Lead",
   "lien de retour reçu sans connexion en cours (page de l'app ouverte) : ignoré, la page reste",
@@ -495,6 +497,13 @@ const MUTATIONS = [
     file: LIB,
     from: '    if (mode !== "auto" || typeof session?.resume !== "function") {\n      giveUp();\n',
     to: '    if (mode !== "auto" || typeof session?.resume !== "function") {\n      safari();\n',
+    breaks: U.reloadSession,
+  },
+  {
+    name: "session iOS rechargée : issue rendue par resume jamais suivie",
+    file: LIB,
+    from: '        .resume({ url: withMode(targets.start, "auto") })\n        .then((r) => {\n          if (!state?.follow?.(r?.url, "open")) giveUp();\n',
+    to: '        .resume({ url: withMode(targets.start, "auto") })\n        .then(() => {\n          giveUp();\n',
     breaks: U.reloadSession,
   },
   {
@@ -905,7 +914,7 @@ console.log(JSON.stringify({cfg:cfg.map(c=>({name:c.name,ent:c.buildSettings.COD
         "public class LeadAuthSessionPlugin: CAPPlugin, CAPBridgedPlugin, ASWebAuthenticationPresentationContextProviding",
       ) &&
       swift.includes('public let jsName = "LeadAuthSession"'),
-    méthodes: ["isAvailable", "start", "openExternal"].every(
+    méthodes: ["isAvailable", "start", "resume", "openExternal"].every(
       (m) =>
         swift.includes(`CAPPluginMethod(name: "${m}", returnType: CAPPluginReturnPromise)`) &&
         swift.includes(`@objc func ${m}(_ call: CAPPluginCall)`),
@@ -923,15 +932,35 @@ console.log(JSON.stringify({cfg:cfg.map(c=>({name:c.name,ent:c.buildSettings.COD
       swift.includes('static let startPath = "/auth/google/app/start"') &&
       swift.includes('url.scheme == "https"') &&
       swift.includes("url.path == startPath") &&
-      (swift.match(/Self\.startURL\(call\.getString\("url"\)\)/g) ?? []).length === 2,
+      (swift.match(/Self\.startURL\(call\.getString\("url"\)\)/g) ?? []).length === 3,
     "comptes de Safari réutilisés": swift.includes(
       "session.prefersEphemeralWebBrowserSession = false",
     ),
     "une session à la fois": swift.includes("if session != nil {") && swift.includes('"busy"'),
-    refus: ["canceled", "unavailable", "busy", "bad_url", "failed"].every((c) =>
+    refus: ["canceled", "unavailable", "busy", "bad_url", "failed", "none"].every((c) =>
       swift.includes(`, "${c}"`),
     ),
     annulation: swift.includes("error.code == .canceledLogin"),
+    // resume (contrat § 1, facultatif ; seconde relecture Greetlead) : la page relais rechargée reprend l'issue de
+    // la session de CE départ, jamais une nouvelle session ni le navigateur.
+    "resume : issue de la session de ce même départ, gardée une fois, jamais rien d'ouvert":
+      (() => {
+        const body =
+          /@objc func resume\(_ call: CAPPluginCall\) \{([\s\S]*?)\n {4}\}\n/.exec(swift)?.[1] ??
+          "";
+        return (
+          body.includes('Self.startURL(call.getString("url"))') &&
+          body.includes("self.session != nil, self.sessionStart == url") &&
+          body.includes("self.waiting = call") &&
+          body.includes("if let kept = self.outcome, kept.start == url") &&
+          body.includes("self.outcome = nil") &&
+          body.includes('call.reject("Aucune connexion à reprendre", "none")') &&
+          !/\.start\(\)|ASWebAuthenticationSession\(|UIApplication|openSession/.test(body) &&
+          swift.includes("let call = waiting") &&
+          swift.includes('call?.resolve(["url": returned.absoluteString])') &&
+          (swift.match(/outcome = \(start, /g) ?? []).length === 3
+        );
+      })(),
     Safari: swift.includes("UIApplication.shared.open(url, options: [:])"),
     fenêtre: swift.includes("bridge?.viewController?.view.window"),
     inscription:
@@ -998,6 +1027,17 @@ console.log(JSON.stringify({cfg:cfg.map(c=>({name:c.name,ent:c.buildSettings.COD
     !manifest.includes(`android:scheme="${APP_ID}"`) &&
       (manifest.match(/android:host="[^"]+"/g) ?? []).every(
         (h) => h === `android:host="${DOMAIN}"`,
+      ),
+  );
+  const activityJava = mread(
+    `android/app/src/main/java/${APP_ID.replace(/\./g, "/")}/MainActivity.java`,
+  );
+  check(
+    "Android MainActivity : onPause() → CookieManager.getInstance().flush() après super.onPause() (cookie verifier écrit avant qu'Android ne tue l'app, contrat § 1)",
+    activityJava.includes("import android.webkit.CookieManager;") &&
+      activityJava.includes("public class MainActivity extends BridgeActivity {") &&
+      /public void onPause\(\) \{\s*super\.onPause\(\);\s*CookieManager\.getInstance\(\)\.flush\(\);\s*\}/.test(
+        activityJava,
       ),
   );
   // --- Configuration Capacitor.
@@ -1147,6 +1187,51 @@ console.log(JSON.stringify({cfg:cfg.map(c=>({name:c.name,ent:c.buildSettings.COD
       isDeepStrictEqual(schemesInApk, ["https"]) &&
       isDeepStrictEqual(hostsInApk, [DOMAIN]) &&
       /com\.capacitorjs\.plugins\.browser\.\w+/.test(tree),
+  );
+  // Le flush est bien compilé : MainActivity.onPause() appelle CookieManager.flush() dans le dex de l'APK et de l'AAB.
+  const onPauseFlush = (dexdumpOut) => {
+    const i = dexdumpOut.indexOf("Lio/invoicelead/app/MainActivity;.onPause:()V");
+    const block = i >= 0 ? dexdumpOut.slice(i, i + 1500) : "";
+    return (
+      block.includes("Lcom/getcapacitor/BridgeActivity;.onPause:()V") &&
+      block.includes(
+        "Landroid/webkit/CookieManager;.getInstance:()Landroid/webkit/CookieManager;",
+      ) &&
+      block.includes("Landroid/webkit/CookieManager;.flush:()V")
+    );
+  };
+  const apkDex =
+    spawnSync(`${tools}/dexdump`, ["-d", `${out}/apk/debug/app-debug.apk`], {
+      encoding: "utf8",
+      maxBuffer: 512 << 20,
+    }).stdout ?? "";
+  const aabDexDir = mkdtempSync(join(tmpdir(), "invoicelead-aab-dex-"));
+  spawnSync("unzip", [
+    "-q",
+    "-o",
+    `${out}/bundle/release/app-release.aab`,
+    "base/dex/*",
+    "-d",
+    aabDexDir,
+  ]);
+  const aabDexFiles = existsSync(join(aabDexDir, "base/dex"))
+    ? execSync(`ls ${join(aabDexDir, "base/dex")}`, { encoding: "utf8" })
+        .split("\n")
+        .filter(Boolean)
+    : [];
+  const aabDex = aabDexFiles
+    .map(
+      (f) =>
+        spawnSync(`${tools}/dexdump`, ["-d", join(aabDexDir, "base/dex", f)], {
+          encoding: "utf8",
+          maxBuffer: 512 << 20,
+        }).stdout ?? "",
+    )
+    .join("\n");
+  rmSync(aabDexDir, { recursive: true, force: true });
+  check(
+    `code compilé (dexdump) : MainActivity.onPause() appelle BridgeActivity.onPause() puis CookieManager.getInstance().flush(), dans l'APK et dans l'AAB (${aabDexFiles.length} dex)`,
+    onPauseFlush(apkDex) && onPauseFlush(aabDex),
   );
   const aab = `${out}/bundle/release/app-release.aab`;
   const verify = spawnSync("jarsigner", ["-verify", "-certs", "-verbose:summary", aab], {
@@ -1948,8 +2033,12 @@ async function gateG3() {
       await b.ctx.close();
     }
 
-    // --- 3. iOS 17.4+ : vue web de la nouvelle version (session LeadAuthSession).
-    const wv = await context(NEW_APP, "webview", { platform: "ios", session: "https" });
+    // --- 3. iOS 17.4+ : vue web de la nouvelle version (session LeadAuthSession, avec resume comme la 1.0.2).
+    const wv = await context(NEW_APP, "webview", {
+      platform: "ios",
+      session: "https",
+      resume: true,
+    });
     // 3a. Le lien de retour ouvert par la vue web elle-même, sans connexion en cours : la page de l'app l'ignore et
     // ouvre l'app, qui part (sans session) vers le Compte Lead par l'écran de connexion de l'app.
     await wv.page.goto(`${t.il}/lead-auth/return?code=${stray}&locale=it`);
@@ -2101,14 +2190,33 @@ async function gateG3() {
       c1.status === 303 && RETURN_RE.test(c1.location),
       c1,
     );
-    // La session iOS rend cette adresse : la vue web va au rachat, qui ramène l'écran de connexion avec l'erreur.
+    // Pendant la session, iOS tue le processus de la vue web : Capacitor recharge la page relais (même adresse). Elle
+    // ne rouvre rien (départ à usage unique) et demande l'issue de la session à LeadAuthSession.resume (1.0.2).
+    const relayAddress = wv.page.url();
+    const startsBefore = named(wv.calls, "LeadAuthSession.start").length;
+    const departsBefore = departs;
+    await wv.page.reload();
+    const resumed = await waitFor(() => named(wv.calls, "LeadAuthSession.resume")[0], 15_000);
+    await wv.page.waitForTimeout(500);
+    check(
+      "page relais rechargée pendant la session iOS (processus de la vue web tué) : même adresse, LeadAuthSession.resume(start&m=auto) ×1, aucune nouvelle session, ni navigateur, ni départ rouvert",
+      resumed?.arg === s1.start &&
+        named(wv.calls, "LeadAuthSession.resume").length === 1 &&
+        named(wv.calls, "LeadAuthSession.start").length === startsBefore &&
+        named(wv.calls, "LeadAuthSession.openExternal").length === 0 &&
+        departs === departsBefore &&
+        wv.page.url() === relayAddress,
+      { resume: resumed?.arg === s1.start, url: wv.page.url() === relayAddress },
+    );
+    // La session (encore ouverte) rend cette adresse à l'appel de resume : la vue web va au rachat, qui ramène
+    // l'écran de connexion avec l'erreur.
     let from = auditMax();
     let n = production.length;
     await wv.page.evaluate((u) => window.__fakeSession({ url: u }), c1.location);
     await wv.page.waitForURL(onErpLogin("google"), { timeout: 40_000 });
     const failCode = new URL(c1.location).searchParams.get("code");
     check(
-      "session iOS : l'adresse rendue (lien vérifié) mène la vue web au rachat d'ERPlead avec le code, une fois, sans Browser.close ; échec chez Google → écran de connexion de l'app, error=google",
+      "session iOS (issue reprise par resume après le rechargement) : l'adresse rendue (lien vérifié) mène la vue web au rachat d'ERPlead avec le code, une fois, sans Browser.close ; échec chez Google → écran de connexion de l'app, error=google",
       production
         .slice(n)
         .filter((u) => u.startsWith(`${PROD_ERP}/auth/google/app/redeem?`))
