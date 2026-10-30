@@ -60,8 +60,12 @@ export const SEEN_KEY = "invoicelead.leadAuth.seen";
 const SEEN_MAX = 20;
 /**
  * Connexion Google en cours, notée par la page relais juste avant d'ouvrir le navigateur du téléphone
- * (localStorage : l'app relancée par son lien la retrouve) : `{ t, stale }`, l'heure et l'empreinte du
- * lien de lancement de la page relais (ancien lien, jamais pris pour le retour de cette connexion).
+ * (localStorage : l'app relancée par son lien la retrouve) : `{ t, stale, s, m }`, l'heure, l'empreinte
+ * du lien de lancement de la page relais (ancien lien, jamais pris pour le retour de cette connexion),
+ * l'empreinte de son départ (`start`) et la façon dont le navigateur a été ouvert : `auto` (session iOS
+ * 17.4+), `tap` (navigateur par défaut d'iOS), `tab` (Custom Tab Android). Départ et façon servent à la
+ * MÊME page relais rechargée (iOS : processus de la vue web tué, Capacitor recharge son adresse) : elle
+ * garde la connexion et ne rouvre jamais le départ, à usage unique.
  */
 export const PENDING_KEY = "invoicelead.leadAuth.pending";
 /** Au-delà, ERPlead refuserait le code (départ et cookie verifier : 10 min) : plus rien n'est attendu. */
@@ -160,6 +164,11 @@ type Handle = unknown;
 export type LeadAuthSessionPlugin = {
   isAvailable?: () => Promise<{ https?: boolean } | null | undefined>;
   start?: (o: { url: string }) => Promise<{ url?: string } | null | undefined>;
+  /**
+   * Facultatif (contrat § 1 ; absent du module d'InvoiceLead 1.0.2) : l'issue de la session de ce même
+   * départ, pour la page relais rechargée ; refus `none` s'il n'y a rien à reprendre. N'ouvre jamais rien.
+   */
+  resume?: (o: { url: string }) => Promise<{ url?: string } | null | undefined>;
   openExternal?: (o: { url: string }) => Promise<{ opened?: boolean } | null | undefined>;
 };
 /** Ce que le pont natif de Capacitor met dans la page (window.Capacitor, sans paquet npm). */
@@ -202,6 +211,11 @@ type ListenerState = {
   received: boolean;
   /** Page relais : son lien de lancement est d'avant ce départ, jamais suivi. */
   relay: boolean;
+  /**
+   * La même page relais, rechargée pendant sa connexion (même départ, connexion fraîche) : son lien de
+   * lancement peut être le retour attendu (sauf l'ancien noté), et rien n'est rouvert.
+   */
+  again: boolean;
   /** La page relais a ouvert le navigateur du téléphone et attend le lien de retour. */
   armed: boolean;
   /** Empreinte du lien de l'app rendu par getLaunchUrl à ce chargement, s'il y en a un. */
@@ -279,24 +293,32 @@ function firstTime(win: AppWindow, key: string): boolean {
 }
 
 const clock = (win: AppWindow) => (typeof win.now === "function" ? win.now() : Date.now());
-type Pending = { t: number; stale: string | null };
+/** Façon d'ouvrir le navigateur sûr : session iOS (`auto`), navigateur par défaut iOS (`tap`), Custom Tab (`tab`). */
+type OpenMode = "auto" | "tap" | "tab";
+type Pending = { t: number; stale: string | null; s: string | null; m: OpenMode | null };
+const shortText = (x: unknown) => (typeof x === "string" && x.length <= 40 ? x : null);
 /** La connexion Google en cours (moins de PENDING_TTL_MS), ou null. */
 function readPending(win: AppWindow): Pending | null {
   try {
     const raw = storage(win, "localStorage")?.getItem(PENDING_KEY);
     const v: unknown = raw ? JSON.parse(raw) : null;
     if (!v || typeof v !== "object") return null;
-    const { t, stale } = v as { t?: unknown; stale?: unknown };
+    const { t, stale, s, m } = v as { t?: unknown; stale?: unknown; s?: unknown; m?: unknown };
     const age = typeof t === "number" ? clock(win) - t : Number.NaN;
     if (!(age >= 0 && age < PENDING_TTL_MS)) return null;
-    return { t: t as number, stale: typeof stale === "string" ? stale : null };
+    return {
+      t: t as number,
+      stale: shortText(stale),
+      s: shortText(s),
+      m: m === "auto" || m === "tap" || m === "tab" ? m : null,
+    };
   } catch {
     return null;
   }
 }
-function writePending(win: AppWindow, stale: string | null): void {
+function writePending(win: AppWindow, pending: Pending): void {
   try {
-    storage(win, "localStorage")?.setItem(PENDING_KEY, JSON.stringify({ t: clock(win), stale }));
+    storage(win, "localStorage")?.setItem(PENDING_KEY, JSON.stringify(pending));
   } catch {
     // Sans stockage : seule la page relais (en mémoire) attend le lien.
   }
@@ -312,6 +334,39 @@ function clearPending(win: AppWindow): void {
 /** La page relais (`/<langue>/lead-auth/google`) ? */
 export function isRelayPath(pathname: unknown): boolean {
   return typeof pathname === "string" && /^(?:\/[a-z]{2})?\/lead-auth\/google\/?$/.test(pathname);
+}
+
+/** Le départ `start` de l'adresse de la page relais (gardé dans l'adresse, aucun replaceState), ou null. */
+function addressStart(win: AppWindow): string | null {
+  try {
+    const search = typeof win.location.search === "string" ? win.location.search : "";
+    return new URLSearchParams(search).get("start");
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * La connexion en cours, si la page relais est la MÊME, rechargée pendant cette connexion (iOS :
+ * webViewWebContentProcessDidTerminate → bridge.reset() puis webView.reload(), même adresse) : connexion
+ * fraîche notée avec l'empreinte de ce même départ. ERPlead fait un départ neuf, à usage unique, à chaque
+ * « Continuer avec Google » : une autre page relais (autre départ) est toujours une nouvelle connexion.
+ */
+function reloadedConnection(win: AppWindow, start: string | null): Pending | null {
+  const pending = readPending(win);
+  return start && pending?.s === fingerprint(start) ? pending : null;
+}
+
+/**
+ * La page devient page relais (dès la pose de l'écoute, avant tout lien) : rechargée pendant sa
+ * connexion, celle-ci reste en cours ; sinon, ERPlead vient de remplacer le cookie verifier et une
+ * connexion notée avant ne peut plus aboutir (son code serait refusé et brûlerait ce nouveau départ) :
+ * effacée.
+ */
+function enterRelay(win: AppWindow, state: ListenerState): void {
+  state.relay = true;
+  state.again = reloadedConnection(win, addressStart(win)) !== null;
+  if (!state.again) clearPending(win);
 }
 
 /** L'écran de connexion gardé par la page relais (vérifié de nouveau à la lecture), puis oublié. */
@@ -345,8 +400,12 @@ function quietly(run: (() => unknown) | undefined): void {
  * page relais, ni celui qu'elle a noté comme ancien). Alors : connexion effacée, `Browser.close()` sur
  * Android (erreur ignorée), puis le rachat d'ERPlead avec le code, ou l'écran de connexion. Un lien avec
  * code n'est jamais suivi deux fois, toutes pages confondues ; un lien inattendu ne fait rien. Rend une
- * promesse : true si le lien de lancement a mené ailleurs (la page ne doit plus rien faire), false sinon
- * (hors de l'app, aucun lien, autre lien).
+ * promesse, une fois le lien de lancement lu (au plus LAUNCH_TIMEOUT_MS) : true si un lien a mené
+ * ailleurs (la page ne doit plus rien faire), false sinon (hors de l'app, aucun lien, autre lien). Ce
+ * lien peut être celui de `appUrlOpen` : l'app relancée par son lien (Android : activité neuve ; iOS : app
+ * terminée par le système), Capacitor garde l'évènement (`retainUntilConsumed`) et le livre à la
+ * première écoute, AVANT de répondre à getLaunchUrl (appels natifs traités dans l'ordre) ; le lien de
+ * lancement, le même, est alors déjà vu (ou absent).
  */
 export function listenForReturn(
   win: AppWindow,
@@ -354,22 +413,20 @@ export function listenForReturn(
 ): Promise<boolean> {
   const existing = win.__invoiceleadLeadAuth;
   if (existing) {
-    if (opts.relay) existing.relay = true;
+    if (opts.relay && !existing.relay) enterRelay(win, existing);
     return existing.ready;
   }
-  const relay = opts.relay === true || isRelayPath(win.location.pathname);
   const state: ListenerState = {
     ready: Promise.resolve(false),
     received: false,
-    relay,
+    relay: false,
+    again: false,
     armed: false,
     launchKey: null,
     follow: null,
   };
   win.__invoiceleadLeadAuth = state;
-  // Page relais : ERPlead vient de remplacer le cookie verifier ; une connexion notée avant ne peut
-  // plus aboutir (son code serait refusé et brûlerait ce nouveau départ).
-  if (relay) clearPending(win);
+  if (opts.relay === true || isRelayPath(win.location.pathname)) enterRelay(win, state);
   const issuer = issuerOrigin(opts.issuer);
   const plugins = nativePlugins(win);
   const app = plugins?.App;
@@ -379,7 +436,7 @@ export function listenForReturn(
   /** Le lien est-il le retour d'une connexion en cours ? */
   const expected = (via: Via, key: string): boolean => {
     if (via === "open" && state.armed) return true;
-    if (via === "launch" && state.relay) return false;
+    if (via === "launch" && state.relay && !state.again) return false;
     const pending = readPending(win);
     return !!pending && !(via === "launch" && pending.stale === key);
   };
@@ -422,8 +479,30 @@ export function listenForReturn(
     new Promise<boolean>((done) => {
       win.setTimeout(() => done(false), LAUNCH_TIMEOUT_MS);
     }),
-  ]);
+  ]).then((launched) => launched || state.received);
   return state.ready;
+}
+
+/**
+ * Départ automatique d'une page de l'app (l'écran de connexion de l'app vers le Compte Lead) : il attend
+ * la lecture du lien de lancement (au plus LAUNCH_TIMEOUT_MS ; hors de l'app, tout de suite), puis ne part
+ * PAS si un lien de retour a été pris (contrat § 3b, 6) : l'app relancée par son lien arrive sans session
+ * sur cet écran, et ce départ annulerait le rachat encore en route (code brûlé, écran de connexion
+ * d'ERPlead). `live` : la page est-elle encore là ? Rend true si la page est partie vers `href`.
+ */
+export async function departUnlessReturned(
+  win: AppWindow,
+  opts: {
+    issuer: string | null | undefined;
+    locale?: string | null;
+    href: string;
+    live?: () => boolean;
+  },
+): Promise<boolean> {
+  const returned = await listenForReturn(win, { issuer: opts.issuer, locale: opts.locale });
+  if (returned || (opts.live && !opts.live())) return false;
+  win.location.replace(opts.href);
+  return true;
 }
 
 export type ReturnPageOutcome = "followed" | "ignored" | "outside";
@@ -463,13 +542,20 @@ function refusal(e: unknown): string | null {
 
 /**
  * La page relais : dans l'app, `back` gardé, l'écoute du retour posée, le lien de lancement lu (au plus
- * LAUNCH_TIMEOUT_MS ; jamais suivi ici), la connexion notée « en cours », puis `start` dans le navigateur
- * sûr du téléphone :
+ * LAUNCH_TIMEOUT_MS ; jamais suivi ici), la connexion notée « en cours » (avec l'empreinte du départ et la
+ * façon d'ouvrir), puis `start` dans le navigateur sûr du téléphone :
  * - iOS 17.4+ (`LeadAuthSession.isAvailable().https`) : `LeadAuthSession.start(start&m=auto)` ; l'adresse
- *   rendue suit les règles du lien de retour ; annulée → `back` ; autre refus → Safari ;
- * - iOS 15 à 17.3 : `LeadAuthSession.openExternal(start&m=tap)` (Safari), puis `onSafari()` pour l'écran ;
+ *   rendue suit les règles du lien de retour ; annulée → `back` ; autre refus → navigateur par défaut ;
+ * - iOS 15 à 17.3 : `LeadAuthSession.openExternal(start&m=tap)` (le navigateur par défaut du téléphone :
+ *   Safari, ou celui choisi par la personne), puis `onSafari()` pour l'écran ;
  * - iOS sans le module : `back` ;
  * - Android : `Browser.open(start&m=auto)` (Custom Tab) ; refermé sans retour (1,5 s de grâce) → `back`.
+ * La MÊME page relais rechargée pendant sa connexion (contrat § 3a, page relais qui garde son adresse) :
+ * rien n'est effacé ni rouvert (le départ d'ERPlead est à usage unique) ; son lien de lancement est la
+ * réponse attendue, sauf l'ancien noté ; navigateur par défaut : son texte, et le lien attendu ; Android :
+ * la fin du Custom Tab écoutée ; session iOS : `LeadAuthSession.resume(start&m=auto)` si le module l'a
+ * (adresse rendue → règles du lien de retour ; `failed` → navigateur par défaut ; autre refus → `back`),
+ * sinon `back` (le résultat de la session est perdu avec la page).
  * Hors de l'app : `back` tout de suite. `start` ou `back` étrangers : la connexion ordinaire de l'app.
  */
 export function startRelay(
@@ -479,7 +565,10 @@ export function startRelay(
     start: unknown;
     back: unknown;
     locale?: string | null;
-    /** iOS : la connexion se finit dans Safari (« touchez « Ouvrir InvoiceLead » »). */
+    /**
+     * iOS : la connexion se finit dans le navigateur par défaut (« touchez « Ouvrir InvoiceLead » ») ;
+     * aussi à la page relais rechargée pendant cette connexion.
+     */
     onSafari?: () => void;
   },
 ): RelayOutcome {
@@ -503,23 +592,37 @@ export function startRelay(
     win.location.replace(targets.back);
     return "outside";
   }
-  // Nouvelle connexion : celle notée avant (son lien, son code) ne peut plus aboutir.
-  clearPending(win);
   try {
     storage(win, "sessionStorage")?.setItem(BACK_KEY, targets.back);
   } catch {
     // Sans stockage : un échec ramène à la connexion ordinaire de l'app.
   }
+  // L'écoute (gabarit ou ici) a décidé dès sa pose : nouvelle connexion (celle notée avant, son lien et
+  // son code, ne peut plus aboutir : effacée), ou la même page rechargée pendant sa connexion (gardée).
   const ready = listenForReturn(win, { issuer, locale: opts.locale, relay: true });
   const state = win.__invoiceleadLeadAuth;
+  const startKey = fingerprint(targets.start);
+  const again = state?.again ? reloadedConnection(win, targets.start) : null;
+  if (!again) {
+    if (state) state.again = false;
+    clearPending(win);
+  }
+  /** La façon d'ouvrir, notée avec la connexion de ce départ (pour un rechargement de la page). */
+  const noteMode = (m: OpenMode) => {
+    const pending = readPending(win);
+    if (pending?.s === startKey) writePending(win, { ...pending, m });
+  };
   const giveUp = () => {
     if (state?.received) return;
     if (state) state.armed = false;
     clearPending(win);
     win.location.replace(targets.back);
   };
-  /** Safari (iOS 15 à 17.3, ou session refusée) : ERPlead finit par une page à bouton. */
+  /**
+   * Le navigateur par défaut (iOS 15 à 17.3, ou session refusée) : ERPlead finit par une page à bouton.
+   */
   const safari = () => {
+    noteMode("tap");
     try {
       session
         ?.openExternal?.({ url: withMode(targets.start, "tap") })
@@ -566,6 +669,36 @@ export function startRelay(
       safari();
     }
   };
+  /**
+   * La même page rechargée pendant sa connexion : rien n'est rouvert (un second passage du départ
+   * montrerait « La demande a expiré »). Session iOS : son issue reprise par `resume` si le module l'a,
+   * sinon perdue avec la page → `back`.
+   */
+  const resumeAfterReload = (mode: OpenMode | null) => {
+    if (state) state.armed = true;
+    if (android) return;
+    if (mode === "tap") {
+      opts.onSafari?.();
+      return;
+    }
+    if (mode !== "auto" || typeof session?.resume !== "function") {
+      giveUp();
+      return;
+    }
+    try {
+      session
+        .resume({ url: withMode(targets.start, "auto") })
+        .then((r) => {
+          if (!state?.follow?.(r?.url, "open")) giveUp();
+        })
+        .catch((e: unknown) => {
+          if (refusal(e) === "failed") safari();
+          else giveUp();
+        });
+    } catch {
+      giveUp();
+    }
+  };
   if (android)
     try {
       browser?.addListener?.("browserFinished", () => {
@@ -575,10 +708,20 @@ export function startRelay(
       // Sans cette annonce, le lien « Retour » de la page reste.
     }
   // Le lien de lancement de ce chargement (ancien retour) est lu AVANT de noter la connexion : il
-  // n'est jamais pris pour le retour de celle-ci.
+  // n'est jamais pris pour le retour de celle-ci. Page rechargée : la connexion déjà notée reste telle
+  // quelle (son heure, son ancien lien), son lien de lancement a pu la terminer.
   void ready.then(() => {
     if (state?.received) return;
-    writePending(win, state?.launchKey ?? null);
+    if (again) {
+      resumeAfterReload(again.m);
+      return;
+    }
+    writePending(win, {
+      t: clock(win),
+      stale: state?.launchKey ?? null,
+      s: startKey,
+      m: android ? "tab" : "auto",
+    });
     if (state) state.armed = true;
     open();
   });

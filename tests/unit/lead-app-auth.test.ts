@@ -7,7 +7,9 @@ import { beforeAll, describe, expect, it } from "vitest";
 import {
   type AppWindow,
   BACK_KEY,
+  departUnlessReturned,
   FINISHED_GRACE_MS,
+  fingerprint,
   followReturnPage,
   isRelayPath,
   issuerOrigin,
@@ -86,7 +88,15 @@ function fakePage(
     platform?: "ios" | "android" | null;
     /** iOS : module LeadAuthSession « https » (17.4+, défaut), « old » (15 à 17.3), « none » (absent). */
     session?: "https" | "old" | "none";
+    /** iOS : le module a `resume` (facultatif, contrat § 1) ; son issue vient de finishSession. */
+    resume?: boolean;
     launch?: string | null;
+    /**
+     * Lien appUrlOpen RETENU par la coque (app relancée par son lien : Capacitor le garde,
+     * retainUntilConsumed) : livré une fois, à la première écoute, AVANT la réponse de getLaunchUrl
+     * (appels natifs traités dans l'ordre).
+     */
+    retained?: string;
     launchFails?: boolean;
     launchHangs?: boolean;
     /** Lien de lancement rendu plus tard (resolveLaunch). */
@@ -109,6 +119,7 @@ function fakePage(
   const replaced: string[] = [];
   const opened: string[] = [];
   const sessions: string[] = [];
+  const resumed: string[] = [];
   const externals: string[] = [];
   let closed = 0;
   const listeners: Record<string, ((e?: { url?: string }) => void)[]> = {};
@@ -118,11 +129,22 @@ function fakePage(
     resolveLaunch = (url) => done(url ? { url } : undefined);
   });
   let endSession: ((end: SessionEnd) => void) | null = null;
+  let retained = opts.retained;
   const on = (name: string) => (event: string, cb: (e?: { url?: string }) => void) => {
     const key = `${name}.${event}`;
     listeners[key] = [...(listeners[key] ?? []), cb];
+    if (key === "App.appUrlOpen" && retained) {
+      const url = retained;
+      retained = undefined;
+      void Promise.resolve().then(() => cb({ url }));
+    }
     return { remove: async () => {} };
   };
+  /** Réponse de getLaunchUrl : après l'évènement retenu, s'il y en a un (appels natifs dans l'ordre). */
+  const answer = <T>(value: T): Promise<T> =>
+    opts.retained
+      ? new Promise((done) => setTimeout(() => done(value), 0))
+      : Promise.resolve(value);
   const win: AppWindow = {
     location: {
       replace: (u: string) => void replaced.push(u),
@@ -137,6 +159,14 @@ function fakePage(
       return timers.length;
     },
   };
+  /** L'issue de la session (start ou resume), donnée par finishSession. */
+  const sessionEnd = () =>
+    new Promise<{ url?: string }>((resolve, reject) => {
+      endSession = (end) =>
+        "url" in end
+          ? resolve({ url: end.url })
+          : reject(Object.assign(new Error(end.error), { code: end.error }));
+    });
   const iosSession =
     platform === "ios" && (opts.session ?? "https") !== "none"
       ? {
@@ -144,13 +174,16 @@ function fakePage(
             isAvailable: async () => ({ https: (opts.session ?? "https") === "https" }),
             start: ({ url }: { url: string }) => {
               sessions.push(url);
-              return new Promise<{ url?: string }>((resolve, reject) => {
-                endSession = (end) =>
-                  "url" in end
-                    ? resolve({ url: end.url })
-                    : reject(Object.assign(new Error(end.error), { code: end.error }));
-              });
+              return sessionEnd();
             },
+            ...(opts.resume
+              ? {
+                  resume: ({ url }: { url: string }) => {
+                    resumed.push(url);
+                    return sessionEnd();
+                  },
+                }
+              : {}),
             openExternal: async ({ url }: { url: string }) => {
               externals.push(url);
               return { opened: !opts.externalRefused };
@@ -174,7 +207,7 @@ function fakePage(
                       ? new Promise(() => {})
                       : opts.launchFails
                         ? Promise.reject(new Error("no bridge"))
-                        : Promise.resolve(opts.launch ? { url: opts.launch } : undefined),
+                        : answer(opts.launch ? { url: opts.launch } : undefined),
               },
             }
           : {}),
@@ -204,6 +237,7 @@ function fakePage(
     replaced,
     opened,
     sessions,
+    resumed,
     externals,
     closed: () => closed,
     listeners,
@@ -231,7 +265,12 @@ const esc = (t: string) =>
 async function relayPage(
   opts: Parameters<typeof fakePage>[0] & { start?: string; onSafari?: () => void } = {},
 ) {
-  const p = fakePage({ pathname: `/it${RELAY_PATH}`, ...opts });
+  const p = fakePage({
+    pathname: `/it${RELAY_PATH}`,
+    // L'adresse de la page relais garde start et back (aucun replaceState).
+    search: `?${new URLSearchParams({ start: opts.start ?? START, back: BACK })}`,
+    ...opts,
+  });
   void listenForReturn(p.win, { issuer: ISSUER, locale: "it" });
   expect(
     startRelay(p.win, {
@@ -299,7 +338,12 @@ describe("lien de retour vérifié (https://invoicelead.io/lead-auth/return)", (
     const p = await relayPage({ local });
     expect(p.opened).toEqual([AUTO]);
     expect(p.listeners["App.appUrlOpen"]).toHaveLength(1);
-    expect(JSON.parse(local.get(PENDING_KEY) ?? "null")).toEqual({ t: NOW, stale: null });
+    expect(JSON.parse(local.get(PENDING_KEY) ?? "null")).toEqual({
+      t: NOW,
+      stale: null,
+      s: fingerprint(START),
+      m: "tab",
+    });
     p.appUrlOpen(LINK);
     expect(p.closed()).toBe(1);
     expect(p.replaced).toEqual([REDEEM]);
@@ -346,6 +390,64 @@ describe("lien de retour vérifié (https://invoicelead.io/lead-auth/return)", (
     again.appUrlOpen(other);
     expect(again.replaced).toEqual([`${ISSUER}/auth/google/app/redeem?code=${"Z".repeat(43)}`]);
     expect(JSON.parse(local.get(SEEN_KEY) ?? "[]")).toHaveLength(2);
+  });
+
+  it("app relancée par son lien sur l'écran de connexion de l'app : l'appUrlOpen retenu par la coque, livré avant getLaunchUrl, mène au rachat et l'écran ne part pas vers le Compte Lead (lien de lancement identique ou absent)", async () => {
+    // Android : l'App Link démarre une activité neuve (BridgeActivity : onNewIntent(getIntent()), évènement
+    // retenu ; getLaunchUrl rend le même lien, ou rien si l'activité est recréée). iOS : Universal Link
+    // après que le système a terminé l'app (évènement retenu, lastURL posé). La vue web charge l'accueil,
+    // sans session : /it/app → /it/login?next=… (LeadAppLoginRedirect).
+    const HREF = "/auth/lead/start?locale=it&next=%2Fit%2Fapp";
+    for (const platform of ["android", "ios"] as const)
+      for (const launch of [LINK, null]) {
+        const local = pendingSince(new Map(), 60_000);
+        const p = fakePage({
+          platform,
+          local,
+          retained: LINK,
+          launch,
+          pathname: "/it/login",
+          search: "?next=%2Fit%2Fapp",
+        });
+        // Gabarit (LeadAppReturn), puis l'écran de connexion de l'app (LeadAppLoginRedirect).
+        void listenForReturn(p.win, { issuer: ISSUER, locale: "it" });
+        const departed = await departUnlessReturned(p.win, {
+          issuer: ISSUER,
+          locale: "it",
+          href: HREF,
+        });
+        expect(departed, `${platform} ${launch}`).toBe(false);
+        // Une seule navigation : le rachat, que rien n'annule.
+        expect(p.replaced, `${platform} ${launch}`).toEqual([REDEEM]);
+        expect(p.closed()).toBe(platform === "android" ? 1 : 0);
+        expect(local.has(PENDING_KEY)).toBe(false);
+        await flush();
+        expect(p.replaced).toEqual([REDEEM]);
+      }
+    // Sans lien pris (aucune connexion en cours, ou aucun lien), l'écran part comme avant.
+    for (const opts of [{ retained: LINK }, {}]) {
+      const p = fakePage({ ...opts, pathname: "/it/login" });
+      expect(await departUnlessReturned(p.win, { issuer: ISSUER, locale: "it", href: HREF })).toBe(
+        true,
+      );
+      expect(p.replaced).toEqual([HREF]);
+    }
+    // Hors de l'app : tout de suite ; page quittée entre-temps (live) : rien.
+    const outside = fakePage({ bridge: false, pathname: "/it/login" });
+    expect(
+      await departUnlessReturned(outside.win, { issuer: ISSUER, locale: "it", href: HREF }),
+    ).toBe(true);
+    expect(outside.replaced).toEqual([HREF]);
+    const gone = fakePage({ pathname: "/it/login" });
+    expect(
+      await departUnlessReturned(gone.win, {
+        issuer: ISSUER,
+        locale: "it",
+        href: HREF,
+        live: () => false,
+      }),
+    ).toBe(false);
+    expect(gone.replaced).toEqual([]);
   });
 
   it("liens étrangers ou mal formés ignorés : schéma propre, autre hôte, autre chemin, http, ancien io.crmlead.app://sso", async () => {
@@ -541,7 +643,12 @@ describe("iOS : module LeadAuthSession de l'app", () => {
     expect(p.sessions).toEqual([AUTO]);
     expect(p.opened).toEqual([]);
     expect(p.externals).toEqual([]);
-    expect(JSON.parse(local.get(PENDING_KEY) ?? "null")).toEqual({ t: NOW, stale: null });
+    expect(JSON.parse(local.get(PENDING_KEY) ?? "null")).toEqual({
+      t: NOW,
+      stale: null,
+      s: fingerprint(START),
+      m: "auto",
+    });
     p.finishSession({ url: LINK });
     await flush();
     expect(p.replaced).toEqual([REDEEM]);
@@ -712,7 +819,12 @@ describe("page relais (/lead-auth/google?start&back)", () => {
     expect(p.opened).toEqual([AUTO]);
     expect(p.win.sessionStorage?.getItem(BACK_KEY)).toBe(BACK);
     expect(p.listeners["App.appUrlOpen"]).toHaveLength(1);
-    expect(JSON.parse(local.get(PENDING_KEY) ?? "null")).toEqual({ t: NOW, stale: null });
+    expect(JSON.parse(local.get(PENDING_KEY) ?? "null")).toEqual({
+      t: NOW,
+      stale: null,
+      s: fingerprint(START),
+      m: "tab",
+    });
     expect(p.replaced).toEqual([]);
     p.browserFinished();
     expect(p.replaced).toEqual([]);
@@ -732,6 +844,109 @@ describe("page relais (/lead-auth/google?start&back)", () => {
     p.runTimers();
     expect(p.replaced).toEqual([REDEEM]);
     expect(p.closed()).toBe(1);
+  });
+
+  it("page relais rechargée pendant sa connexion (iOS, navigateur par défaut) : ni connexion effacée ni départ rouvert, le texte reste ; le lien reçu (appUrlOpen retenu ou lien de lancement) mène au rachat, l'ancien lien noté jamais", async () => {
+    // iOS tue le processus de la vue web pendant que la personne est dans son navigateur ; Capacitor
+    // recharge la même adresse (start et back gardés). Le lien de lancement est l'ancien lien d'erreur,
+    // noté par la page relais avant d'ouvrir le navigateur.
+    const local = new Map<string, string>();
+    const first = await relayPage({ local, platform: "ios", session: "old", launch: ERROR_LINK });
+    expect(first.externals).toEqual([TAP]);
+    const noted = JSON.parse(local.get(PENDING_KEY) ?? "null");
+    expect(noted).toMatchObject({ t: NOW, s: fingerprint(START), m: "tap" });
+    expect(noted.stale).toBeTruthy();
+    let shown = 0;
+    const again = await relayPage({
+      local,
+      platform: "ios",
+      session: "old",
+      launch: ERROR_LINK,
+      now: NOW + 60_000,
+      onSafari: () => shown++,
+    });
+    expect([...again.externals, ...again.sessions, ...again.opened]).toEqual([]);
+    expect(again.replaced).toEqual([]);
+    expect(shown).toBe(1);
+    expect(JSON.parse(local.get(PENDING_KEY) ?? "null")).toEqual(noted);
+    // « Ouvrir InvoiceLead » touché dans le navigateur : le lien arrive à la page rechargée.
+    again.appUrlOpen(LINK);
+    expect(again.replaced).toEqual([REDEEM]);
+    expect(local.has(PENDING_KEY)).toBe(false);
+    // Rechargée au retour (processus tué en arrière-plan, puis lien touché) : l'évènement retenu par la
+    // coque, ou le lien de lancement (iOS : dernier lien ouvert), mène au rachat, une seule fois.
+    for (const reached of [{ retained: LINK, launch: LINK }, { launch: LINK }]) {
+      const mem = new Map<string, string>();
+      await relayPage({ local: mem, platform: "ios", session: "old" });
+      const back = await relayPage({
+        local: mem,
+        platform: "ios",
+        session: "old",
+        now: NOW + 90_000,
+        ...reached,
+      });
+      expect(back.replaced, JSON.stringify(reached)).toEqual([REDEEM]);
+      expect([...back.externals, ...back.sessions]).toEqual([]);
+      expect(JSON.parse(mem.get(SEEN_KEY) ?? "[]")).toHaveLength(1);
+      expect(mem.has(PENDING_KEY)).toBe(false);
+    }
+  });
+
+  it("page relais rechargée pendant la session iOS 17.4+ : jamais une nouvelle session ni le navigateur sur le départ déjà servi ; module sans resume → écran de connexion (back) ; avec resume, l'issue reprise (rachat), failed → navigateur par défaut, autre refus → back", async () => {
+    // Module d'InvoiceLead 1.0.2 : sans resume. Le résultat de la session est perdu avec la page.
+    const local = new Map<string, string>();
+    const first = await relayPage({ local, platform: "ios" });
+    expect(first.sessions).toEqual([AUTO]);
+    const again = await relayPage({ local, platform: "ios", now: NOW + 30_000 });
+    expect([...again.sessions, ...again.externals, ...again.resumed]).toEqual([]);
+    expect(again.replaced).toEqual([BACK]);
+    expect(local.has(PENDING_KEY)).toBe(false);
+    // Module avec resume (contrat § 1, facultatif) : l'issue de la session de ce départ.
+    const cases: [SessionEnd, string[], string[]][] = [
+      [{ url: LINK }, [REDEEM], []],
+      [{ error: "failed" }, [], [TAP]],
+      [{ error: "none" }, [BACK], []],
+      [{ error: "canceled" }, [BACK], []],
+    ];
+    for (const [end, replaced, externals] of cases) {
+      const mem = new Map<string, string>();
+      await relayPage({ local: mem, platform: "ios", resume: true });
+      const r = await relayPage({ local: mem, platform: "ios", resume: true, now: NOW + 30_000 });
+      expect(r.resumed).toEqual([AUTO]);
+      expect(r.sessions).toEqual([]);
+      r.finishSession(end);
+      await flush();
+      expect(r.replaced, JSON.stringify(end)).toEqual(replaced);
+      expect(r.externals, JSON.stringify(end)).toEqual(externals);
+    }
+  });
+
+  it("page relais rechargée (Android, Custom Tab) : rien n'est rouvert, la fin du Custom Tab ramène à back ; une autre page relais (autre départ) ou une connexion de plus de 15 min reste une nouvelle connexion", async () => {
+    const local = new Map<string, string>();
+    await relayPage({ local });
+    const again = await relayPage({ local, now: NOW + 20_000 });
+    expect(again.opened).toEqual([]);
+    expect(again.replaced).toEqual([]);
+    expect(again.listeners["Browser.browserFinished"]).toHaveLength(1);
+    again.browserFinished();
+    again.runTimers();
+    expect(again.replaced).toEqual([BACK]);
+    expect(local.has(PENDING_KEY)).toBe(false);
+    // Autre départ (nouveau « Continuer avec Google ») : la connexion d'avant est finie, le navigateur s'ouvre.
+    const mem = new Map<string, string>();
+    await relayPage({ local: mem });
+    const other = await relayPage({ local: mem, start: START2, now: NOW + 20_000 });
+    expect(other.opened).toEqual([withMode(START2, "auto")]);
+    expect(JSON.parse(mem.get(PENDING_KEY) ?? "null")).toMatchObject({
+      t: NOW + 20_000,
+      s: fingerprint(START2),
+      m: "tab",
+    });
+    // Connexion de plus de 15 min : plus en cours, le départ est de nouveau ouvert (ERPlead le refusera).
+    const old = new Map<string, string>();
+    await relayPage({ local: old });
+    const late = await relayPage({ local: old, now: NOW + PENDING_TTL_MS + 1000 });
+    expect(late.opened).toEqual([AUTO]);
   });
 
   it("page relais, navigateur par défaut d'iOS (openExternal) : le texte dit « votre navigateur », jamais « Safari », cinq langues, avec le bouton « Ouvrir InvoiceLead » de la page d'ERPlead", () => {

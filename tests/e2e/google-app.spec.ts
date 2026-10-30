@@ -30,7 +30,7 @@ type Platform = { platform?: "ios" | "android"; session?: "https" | "old" | "non
  */
 async function webview(
   browser: Browser,
-  opts: { ua?: string; launchUrl?: string; stored?: Stored } & Platform = {},
+  opts: { ua?: string; launchUrl?: string; retained?: string; stored?: Stored } & Platform = {},
 ) {
   const context = await browser.newContext({
     userAgent: opts.ua ?? NEW_APP,
@@ -46,7 +46,12 @@ async function webview(
     (c) => {
       (window as unknown as { __FAKE_CAPACITOR: unknown }).__FAKE_CAPACITOR = c;
     },
-    { launchUrl: opts.launchUrl, platform: opts.platform ?? "android", session: opts.session },
+    {
+      launchUrl: opts.launchUrl,
+      retained: opts.retained,
+      platform: opts.platform ?? "android",
+      session: opts.session,
+    },
   );
   await context.addInitScript({ content: BRIDGE });
   return { context, page: await context.newPage(), calls };
@@ -238,6 +243,60 @@ test("app iOS : session annulée → l'écran de connexion du Compte Lead revien
   }
 });
 
+test("page relais rechargée pendant sa connexion (iOS tue la vue web, Capacitor recharge la page) : aucun départ rouvert, le lien reçu après connecte ; session iOS perdue → écran de connexion ; page relais sans Referer ni cache", async ({
+  browser,
+  page: plain,
+}) => {
+  await appGoogle(plain, true);
+  await nextUser(plain, "sub-google-ricarica", "Ricarica Sàrl");
+  // iOS 15 à 17.3 (ou session refusée) : la connexion se finit dans le navigateur par défaut.
+  const { context, page, calls } = await webview(browser, { platform: "ios", session: "old" });
+  try {
+    const before = (await redeems(plain)).length;
+    const d = await toRelay(page, calls, "LeadAuthSession.openExternal", "tap");
+    const relay = page.url();
+    // La personne est dans son navigateur ; iOS tue le processus de la vue web, Capacitor recharge l'adresse.
+    await page.reload();
+    await expect(page.locator("[data-lead-auth-mode=safari]")).toHaveText(
+      "Completa l'accesso nel tuo browser, poi tocca «Apri InvoiceLead».",
+    );
+    await page.waitForTimeout(500);
+    expect(openings(calls)).toHaveLength(1);
+    expect(page.url()).toBe(relay);
+    // « Apri InvoiceLead » touché : rechargée encore (processus tué en arrière-plan), la page reçoit le lien
+    // retenu par la coque (et le même lien de lancement : iOS, dernier lien ouvert).
+    const { link } = await googleReturn(plain, d);
+    await context.addInitScript((u) => {
+      const w = window as unknown as { __FAKE_CAPACITOR: Record<string, unknown> };
+      w.__FAKE_CAPACITOR = { ...w.__FAKE_CAPACITOR, launchUrl: u, retained: u };
+    }, link);
+    await page.reload();
+    await page.waitForURL(`${APP}/it/app`);
+    await expect(page.locator("body")).toContainText("Ricarica Sàrl");
+    expect((await redeems(plain)).slice(before)).toEqual([{ ok: true, cookie: true }]);
+    expect(openings(calls)).toHaveLength(1);
+    // En-têtes et balise de la page relais : son adresse porte le départ à usage unique et la demande OpenID.
+    const head = await page.request.get(relay, { maxRedirects: 0 });
+    expect(head.headers()["referrer-policy"]).toBe("no-referrer");
+    expect(head.headers()["cache-control"]).toContain("no-store");
+    expect(await head.text()).toContain('<meta name="referrer" content="no-referrer"/>');
+  } finally {
+    await context.close();
+  }
+  // iOS 17.4+ : rechargée pendant la session ; le module de l'app (sans resume) a perdu son résultat avec
+  // la page : jamais une nouvelle session ni le navigateur sur le départ déjà servi → écran de connexion.
+  const ios = await webview(browser, { platform: "ios", session: "https" });
+  try {
+    await toRelay(ios.page, ios.calls, "LeadAuthSession.start", "auto");
+    await ios.page.reload();
+    await ios.page.waitForURL(`${LEAD}/login?**`);
+    expect(new URL(ios.page.url()).searchParams.get("locale")).toBe("it");
+    expect(openings(ios.calls)).toHaveLength(1);
+  } finally {
+    await ios.context.close();
+  }
+});
+
 test("navigateur du téléphone refermé sans retour (Android) : l'écran de connexion du Compte Lead revient", async ({
   browser,
   page: plain,
@@ -312,6 +371,50 @@ test("app relancée par le lien de retour avec un cookie de session périmé : l
     await relaunched.page.waitForURL(`${APP}/it/app`);
     await expect(relaunched.page.locator("body")).toContainText("Session Périmée Sàrl");
     expect((await redeems(plain)).slice(before)).toEqual([{ ok: true, cookie: true }]);
+    expect(named(relaunched.calls, "Browser.close")).toHaveLength(1);
+  } finally {
+    await relaunched.context.close();
+  }
+});
+
+test("app relancée par son lien sur l'accueil (appUrlOpen retenu par la coque, livré avant getLaunchUrl), rachat retenu 3 s : l'écran de connexion de l'app ne part pas, connectée", async ({
+  browser,
+  page: plain,
+}) => {
+  await appGoogle(plain, true);
+  await nextUser(plain, "sub-google-relance", "Relance Sàrl");
+  const first = await webview(browser);
+  const d = await toRelay(first.page, first.calls);
+  // Android tue l'app pendant le Custom Tab (iOS : l'app terminée pendant le navigateur) ; cookies et
+  // localStorage de la vue web restent.
+  const stored = await first.context.storageState();
+  await first.context.close();
+  const { link } = await googleReturn(plain, d);
+  // L'App Link relance l'app : activité neuve, évènement appUrlOpen retenu, même lien pour getLaunchUrl.
+  const relaunched = await webview(browser, { launchUrl: link, retained: link, stored });
+  const departures: string[] = [];
+  relaunched.context.on("request", (r) => {
+    if (r.url().startsWith(`${APP}/auth/lead/start`)) departures.push(r.url());
+  });
+  // Le rachat d'ERPlead met quelques secondes (réseau, base) : rien ne doit l'annuler entre-temps.
+  let held = 0;
+  await relaunched.context.route(`${LEAD}/auth/google/app/redeem?**`, async (route) => {
+    held++;
+    await new Promise((done) => setTimeout(done, 3000));
+    await route.continue().catch(() => {});
+  });
+  try {
+    const before = (await redeems(plain)).length;
+    // La coque charge son adresse (server.url) : l'accueil, sans session → /it/app → /it/login.
+    await relaunched.page.goto(`${APP}/`);
+    await relaunched.page.waitForURL(`${APP}/it/app`, { timeout: 15_000 }).catch(() => {});
+    // Aucun départ de l'écran de connexion de l'app pendant le rachat (il l'annulerait).
+    expect(departures).toEqual([]);
+    expect(held).toBe(1);
+    expect(relaunched.page.url()).toBe(`${APP}/it/app`);
+    await expect(relaunched.page.locator("body")).toContainText("Relance Sàrl");
+    expect((await redeems(plain)).slice(before)).toEqual([{ ok: true, cookie: true }]);
+    expect(named(relaunched.calls, "App.appUrlOpen").map((c) => c.arg)).toEqual([link]);
     expect(named(relaunched.calls, "Browser.close")).toHaveLength(1);
   } finally {
     await relaunched.context.close();

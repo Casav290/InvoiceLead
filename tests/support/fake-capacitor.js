@@ -10,6 +10,9 @@
  *
  * Réglage, posé avant ce script : window.__FAKE_CAPACITOR = { launchUrl, platform, session } :
  * - launchUrl : le lien de lancement que rend getLaunchUrl (sur chaque page, comme iOS de son dernier lien) ;
+ * - retained : un lien appUrlOpen RETENU par la coque (app relancée par son lien, ou page rechargée : Capacitor
+ *   le garde, retainUntilConsumed) : livré une seule fois par vue web, à la première écoute « appUrlOpen »,
+ *   AVANT la réponse de getLaunchUrl (la coque traite les appels natifs dans l'ordre) ;
  * - platform : « ios » (défaut) ou « android » ;
  * - session (iOS) : « https » (défaut, iOS 17.4+), « old » (iOS 15 à 17.3 : https: false), « none » (module absent).
  */
@@ -26,10 +29,27 @@
       // l'essai n'écoute pas
     }
   };
+  /** L'appUrlOpen retenu par la coque : une seule fois par vue web (marque dans sessionStorage). */
+  const RETAINED_DONE = "__fakeRetainedDone";
+  const deliverRetained = (cb) => {
+    const url = config().retained;
+    if (!url) return;
+    try {
+      if (sessionStorage.getItem(RETAINED_DONE) === url) return;
+      sessionStorage.setItem(RETAINED_DONE, url);
+    } catch {
+      // sans stockage : livré à chaque page
+    }
+    setTimeout(() => {
+      record("App.appUrlOpen", url);
+      cb({ url });
+    }, 0);
+  };
   const add = (plugin) => (event, cb) => {
     const key = `${plugin}.${event}`;
     listeners[key] = [...(listeners[key] || []), cb];
     record(`${plugin}.addListener`, event);
+    if (key === "App.appUrlOpen") deliverRetained(cb);
     return { remove: async () => {} };
   };
   window.__fakeEmit = (key, payload) => {
@@ -53,6 +73,8 @@
       addListener: add("App"),
       getLaunchUrl: async () => {
         const launchUrl = config().launchUrl || null;
+        // Réponses natives dans l'ordre des appels : l'évènement retenu (addListener) arrive avant.
+        if (config().retained) await new Promise((done) => setTimeout(done, 50));
         record("App.getLaunchUrl", launchUrl);
         return launchUrl ? { url: launchUrl } : undefined;
       },

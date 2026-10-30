@@ -1,7 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { type AppWindow, followReturnPage, listenForReturn, startRelay } from "@/lib/lead-app-auth";
+import {
+  type AppWindow,
+  departUnlessReturned,
+  followReturnPage,
+  listenForReturn,
+  startRelay,
+} from "@/lib/lead-app-auth";
 
 /**
  * Retour de la connexion Google dans l'app Android / iOS (lib/lead-app-auth.ts). Hors de l'app (aucun
@@ -83,7 +89,8 @@ export function GoogleRelay({
 /**
  * Écran de connexion dans l'app (versions LeadAppAuth/2) : avant de partir vers le Compte Lead, le
  * lien de lancement est lu. L'app relancée par son lien de retour (fermée pendant la connexion Google)
- * va au rachat d'ERPlead ; sinon, la connexion ordinaire part tout de suite.
+ * va au rachat d'ERPlead (lien de lancement, ou appUrlOpen gardé par la coque) et cet écran ne part
+ * plus ; sinon, la connexion ordinaire part tout de suite (departUnlessReturned).
  */
 export function LeadAppLoginRedirect({
   issuer,
@@ -96,8 +103,11 @@ export function LeadAppLoginRedirect({
 }) {
   useEffect(() => {
     let live = true;
-    void listenForReturn(window as unknown as AppWindow, { issuer, locale }).then((handled) => {
-      if (live && !handled) window.location.replace(href);
+    void departUnlessReturned(window as unknown as AppWindow, {
+      issuer,
+      locale,
+      href,
+      live: () => live,
     });
     return () => {
       live = false;
