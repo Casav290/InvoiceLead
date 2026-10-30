@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { runInNewContext } from "node:vm";
 import { NextRequest, type NextResponse } from "next/server";
 import { beforeAll, describe, expect, it } from "vitest";
@@ -215,6 +217,14 @@ function fakePage(
   };
 }
 const flush = () => new Promise((r) => setTimeout(r, 0));
+/** Un texte tel que la page de repli l'écrit (HTML échappé). */
+const esc = (t: string) =>
+  t
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 
 /** La page relais d'une connexion Google dans l'app : écoute (gabarit), puis startRelay (page). */
 async function relayPage(
@@ -723,6 +733,26 @@ describe("page relais (/lead-auth/google?start&back)", () => {
     expect(p.closed()).toBe(1);
   });
 
+  it("page relais, navigateur par défaut d'iOS (openExternal) : le texte dit « votre navigateur », jamais « Safari », cinq langues, avec le bouton « Ouvrir InvoiceLead » de la page d'ERPlead", () => {
+    // UIApplication.open ouvre le navigateur par défaut (Safari, ou Chrome, Firefox… choisi depuis iOS 14).
+    const expected: Record<string, [string, string]> = {
+      fr: ["votre navigateur", "«\u202fOuvrir InvoiceLead\u202f»"],
+      de: ["Ihrem Browser", "„InvoiceLead öffnen“"],
+      en: ["your browser", "“Open InvoiceLead”"],
+      it: ["nel tuo browser", "«Apri InvoiceLead»"],
+      es: ["tu navegador", "«Abrir InvoiceLead»"],
+    };
+    for (const [locale, [browser, button]] of Object.entries(expected)) {
+      const messages = JSON.parse(
+        readFileSync(join(process.cwd(), "messages", `${locale}.json`), "utf8"),
+      );
+      const text: string = messages.leadAppAuth.relaySafari;
+      expect(text, locale).not.toMatch(/safari/i);
+      expect(text, locale).toContain(browser);
+      expect(text, locale).toContain(button);
+    }
+  });
+
   it("navigateur du téléphone impossible à ouvrir : retour à l'écran de connexion d'ERPlead", async () => {
     const local = new Map<string, string>();
     const p = fakePage({ openFails: true, local });
@@ -881,6 +911,73 @@ describe("page de retour /lead-auth/return", () => {
     const odd = await get(`?locale=${encodeURIComponent('"><script>x</script>')}`, iphone);
     expect(odd.html).not.toContain("<script>x");
     expect(odd.html.match(/<script/g)).toHaveLength(1);
+  });
+
+  it("page de repli sur iPhone et iPad (iPad en mode ordinateur compris) : le remède d'iOS (appui long sur « Ouvrir InvoiceLead », puis « Ouvrir dans InvoiceLead », Safari comme navigateur par défaut), cinq langues ; ni sur Android ni sur un autre appareil", async () => {
+    const { GET } = await import("@/app/lead-auth/return/route");
+    const page = async (locale: string, ua: string) =>
+      (
+        await GET(
+          new NextRequest(`https://invoicelead.io/lead-auth/return?code=${CODE}&locale=${locale}`, {
+            headers: { "user-agent": ua },
+          }),
+        )
+      ).text();
+    const agents = {
+      iphone: "Mozilla/5.0 (iPhone; CPU iPhone OS 16_7 like Mac OS X) AppleWebKit/605.1.15",
+      ipad: "Mozilla/5.0 (iPad; CPU OS 17_2 like Mac OS X) AppleWebKit/605.1.15",
+      // iPad en mode ordinateur (par défaut depuis iPadOS 13) : l'agent d'un Mac.
+      desktopIpad:
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Safari/605.1.15",
+      chromeIos:
+        "Mozilla/5.0 (iPhone; CPU iPhone OS 17_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/120.0 Mobile/15E148 Safari/604.1",
+    };
+    const remedy: Record<string, string[]> = {
+      fr: [
+        "Sur iPhone ou iPad",
+        "appuyez longuement sur «\u202fOuvrir InvoiceLead\u202f»",
+        "«\u202fOuvrir dans InvoiceLead\u202f»",
+        "Safari comme navigateur par défaut",
+      ],
+      de: [
+        "Auf dem iPhone oder iPad",
+        "„InvoiceLead öffnen“ gedrückt",
+        "„In InvoiceLead öffnen“",
+        "Safari als Standardbrowser",
+      ],
+      en: [
+        "On iPhone or iPad",
+        "press and hold “Open InvoiceLead”",
+        "“Open in InvoiceLead”",
+        "Safari as the default browser",
+      ],
+      it: [
+        "Su iPhone o iPad",
+        "tieni premuto «Apri InvoiceLead»",
+        "«Apri in InvoiceLead»",
+        "Safari come browser predefinito",
+      ],
+      es: [
+        "En iPhone o iPad",
+        "mantén pulsado «Abrir InvoiceLead»",
+        "«Abrir en InvoiceLead»",
+        "Safari como navegador predeterminado",
+      ],
+    };
+    for (const [locale, parts] of Object.entries(remedy))
+      for (const [name, ua] of Object.entries(agents)) {
+        const html = await page(locale, ua);
+        expect(html, `${locale} ${name}`).toContain("<p data-ios>");
+        for (const part of parts) expect(html, `${locale} ${name}`).toContain(esc(part));
+        expect(html).not.toContain("data-android");
+        expect(html).not.toContain(CODE);
+      }
+    // Android : la phrase Android seule ; ordinateur Windows ou Linux : ni l'une ni l'autre.
+    const android = await page("fr", "Mozilla/5.0 (Linux; Android 14; Pixel 8) Chrome/140.0");
+    expect(android).toContain("data-android");
+    expect(android).not.toContain("data-ios");
+    const windows = await page("it", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/140.0");
+    expect(windows).not.toMatch(/data-ios|data-android/);
   });
 
   it("page de repli : son script efface le code de l'adresse hors de l'app, et mène l'app à /<langue>/lead-auth/return avec la même recherche", () => {

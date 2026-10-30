@@ -3000,12 +3000,13 @@
     "relayTitle": "Anmeldung mit Google…",
     "relayBody": "Google öffnet sich im Browser des Telefons. Nach der Anmeldung kehren Sie automatisch zu InvoiceLead zurück.",
     "back": "Zurück",
-    "relaySafari": "Schliessen Sie die Anmeldung in Safari ab und tippen Sie dann auf „InvoiceLead öffnen“."
+    "relaySafari": "Schliessen Sie die Anmeldung in Ihrem Browser ab und tippen Sie dann auf „InvoiceLead öffnen“."
   },
   "leadAppReturn": {
     "title": "Zurück zu InvoiceLead",
     "body": "InvoiceLead hat sich nicht von selbst geöffnet. Schliessen Sie diese Seite und kehren Sie zur App zurück; falls Sie nicht angemeldet sind, tippen Sie erneut auf „Weiter mit Google“. Wenn das wieder passiert: Aktualisieren Sie die App (App Store oder Google Play) oder tippen Sie auf „Passwort vergessen?“.",
     "android": "Sie können InvoiceLead auch erlauben, seine Links zu öffnen: Einstellungen > Apps > InvoiceLead > Standardmässig öffnen.",
+    "ios": "Auf dem iPhone oder iPad: Gehen Sie zur vorherigen Seite zurück, halten Sie „InvoiceLead öffnen“ gedrückt und wählen Sie dann „In InvoiceLead öffnen“. Wenn Ihr Browser nicht Safari ist, wählen Sie in den Einstellungen Safari als Standardbrowser und tippen Sie dann erneut auf „Weiter mit Google“.",
     "notAsked": "Sie haben in der App InvoiceLead nichts angefordert? Schliessen Sie diese Seite einfach."
   }
 }

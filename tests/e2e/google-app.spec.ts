@@ -200,7 +200,7 @@ test("app iOS 15 à 17.3 : Safari (start&m=tap), « Ouvrir InvoiceLead » dit su
     const before = (await redeems(page)).length;
     const d = await toRelay(page, calls, "LeadAuthSession.openExternal", "tap");
     await expect(page.locator("[data-lead-auth-mode=safari]")).toHaveText(
-      "Completa l'accesso in Safari, poi tocca «Apri InvoiceLead».",
+      "Completa l'accesso nel tuo browser, poi tocca «Apri InvoiceLead».",
     );
     const { link } = await googleReturn(page, d);
     await emit(page, link);

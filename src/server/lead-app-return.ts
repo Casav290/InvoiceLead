@@ -17,7 +17,10 @@ import { localeFromRequest } from "@/server/auth/login-cookie";
  *   le code de l'adresse et de l'historique ; dans l'app (pont Capacitor natif), la vue web est menée à
  *   `/<langue>/lead-auth/return` avec les mêmes paramètres, où l'adresse suit les règles du lien de retour
  *   (lib/lead-app-auth.ts, followReturnPage).
- * - Langue : `locale` de l'adresse, sinon celle du navigateur ; phrase Android pour un agent Android.
+ * - Langue : `locale` de l'adresse, sinon celle du navigateur ; phrase Android pour un agent Android ;
+ *   remède d'iOS pour un iPhone, un iPad (en mode ordinateur, l'agent dit `Macintosh`) ou un iPod : iOS
+ *   retient pour le domaine le choix « ouvrir dans le navigateur » (appui long sur « Ouvrir InvoiceLead »,
+ *   puis « Ouvrir dans InvoiceLead »), et seul Safari est sûr d'ouvrir un lien vérifié touché.
  */
 
 const MESSAGES = {
@@ -59,17 +62,34 @@ export function returnPageScript(locale: AppLocale): string {
   return `(function(){try{var c=window.Capacitor;if(c&&typeof c.isNativePlatform==="function"&&c.isNativePlatform()===true){document.documentElement.className="app";location.replace("/${locale}${RETURN_PATH}"+location.search);return}}catch(e){}try{history.replaceState(null,"","${RETURN_PATH}")}catch(e){}})();`;
 }
 
+/** Le téléphone d'après son agent : Android, ou iOS (iPhone, iPad, iPad en mode ordinateur, iPod). */
+export function returnPageAgent(userAgent: string | null | undefined): {
+  android: boolean;
+  ios: boolean;
+} {
+  const ua = userAgent ?? "";
+  const android = /\bAndroid\b/i.test(ua);
+  return { android, ios: !android && /\b(?:iPhone|iPad|iPod|Macintosh)\b/.test(ua) };
+}
+
 export async function returnPageHtml(opts: {
   locale: AppLocale;
   android: boolean;
+  ios?: boolean;
 }): Promise<string> {
-  const { locale, android } = opts;
+  const { locale, android, ios = false } = opts;
   const t = createTranslator({
     locale,
     messages: (await MESSAGES[locale]()).default,
     namespace: "leadAppReturn",
   });
-  const lines = [t("body"), ...(android ? [t("android")] : []), t("notAsked")];
+  /** Les paragraphes, avec leur marque (phrase Android, remède d'iOS). */
+  const lines: [string, string][] = [
+    [t("body"), ""],
+    ...(android ? [[t("android"), " data-android"] as [string, string]] : []),
+    ...(ios ? [[t("ios"), " data-ios"] as [string, string]] : []),
+    [t("notAsked"), ""],
+  ];
   return `<!doctype html>
 <html lang="${htmlLang(locale)}">
 <head>
@@ -92,7 +112,7 @@ p{font-size:15px;margin:10px 0 0;color:#3d3a37}
 <main data-lead-auth-return>
 <section>
 <h1>${esc(t("title"))}</h1>
-${lines.map((l, i) => `<p${i === 1 && android ? " data-android" : ""}>${esc(l)}</p>`).join("\n")}
+${lines.map(([l, mark]) => `<p${mark}>${esc(l)}</p>`).join("\n")}
 </section>
 </main>
 </body>

@@ -1,5 +1,10 @@
 import type { NextRequest } from "next/server";
-import { RETURN_PAGE_HEADERS, returnPageHtml, returnPageLocale } from "@/server/lead-app-return";
+import {
+  RETURN_PAGE_HEADERS,
+  returnPageAgent,
+  returnPageHtml,
+  returnPageLocale,
+} from "@/server/lead-app-return";
 
 /**
  * https://invoicelead.io/lead-auth/return : le lien de retour de « Continuer avec Google », réservé à l'app
@@ -14,8 +19,8 @@ export async function GET(request: NextRequest) {
     request.cookies.get("NEXT_LOCALE")?.value,
     request.headers.get("accept-language"),
   );
-  const android = /\bAndroid\b/i.test(request.headers.get("user-agent") ?? "");
-  return new Response(await returnPageHtml({ locale, android }), {
+  const { android, ios } = returnPageAgent(request.headers.get("user-agent"));
+  return new Response(await returnPageHtml({ locale, android, ios }), {
     status: 200,
     headers: { ...RETURN_PAGE_HEADERS, Vary: "Accept-Language, User-Agent, Cookie" },
   });
