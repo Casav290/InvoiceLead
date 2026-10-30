@@ -281,6 +281,8 @@ const U = {
     "Android : appUrlOpen pendant une connexion en cours (page relais) : le lien ferme le Custom Tab et mène au rachat d'ERPlead avec le code, une seule fois",
   launch:
     "lien de lancement (app relancée par le lien) : rachat une seule fois, même si appUrlOpen le donne aussi et sur la page suivante",
+  coldStart:
+    "app relancée par son lien sur l'écran de connexion de l'app : l'appUrlOpen retenu par la coque, livré avant getLaunchUrl, mène au rachat et l'écran ne part pas vers le Compte Lead (lien de lancement identique ou absent)",
   foreign:
     "liens étrangers ou mal formés ignorés : schéma propre, autre hôte, autre chemin, http, ancien io.crmlead.app://sso",
   noCode:
@@ -315,6 +317,16 @@ const U = {
     "Android : page relais dans l'app : back gardé, Custom Tab ouvert sur start&m=auto ; refermé sans retour → back",
   finishedThenLink:
     "navigateur refermé puis lien de retour (Android) : le rachat l'emporte, pas de retour à l'écran de connexion",
+  reloadTap:
+    "page relais rechargée pendant sa connexion (iOS, navigateur par défaut) : ni connexion effacée ni départ rouvert, le texte reste ; le lien reçu (appUrlOpen retenu ou lien de lancement) mène au rachat, l'ancien lien noté jamais",
+  reloadSession:
+    "page relais rechargée pendant la session iOS 17.4+ : jamais une nouvelle session ni le navigateur sur le départ déjà servi ; module sans resume → écran de connexion (back) ; avec resume, l'issue reprise (rachat), failed → navigateur par défaut, autre refus → back",
+  reloadAndroid:
+    "page relais rechargée (Android, Custom Tab) : rien n'est rouvert, la fin du Custom Tab ramène à back ; une autre page relais (autre départ) ou une connexion de plus de 15 min reste une nouvelle connexion",
+  defaultBrowser:
+    "page relais, navigateur par défaut d'iOS (openExternal) : le texte dit « votre navigateur », jamais « Safari », cinq langues, avec le bouton « Ouvrir InvoiceLead » de la page d'ERPlead",
+  relayHeaders:
+    "page relais : Referrer-Policy no-referrer et Cache-Control no-store (son adresse porte le départ à usage unique et la demande OpenID), dans les cinq langues et sur la redirection sans langue ; le reste du site garde sa règle",
   badTargets:
     "page relais : start ou back étrangers, ou start avec un mode déjà posé → rien n'est ouvert, connexion ordinaire de l'app",
   returnPage:
@@ -323,6 +335,8 @@ const U = {
     "page de repli : 200 sans redirection, no-store, no-referrer, noindex, aucun script tiers, code jamais dans la page, cinq langues, phrase Android",
   fallbackScript:
     "page de repli : son script efface le code de l'adresse hors de l'app, et mène l'app à /<langue>/lead-auth/return avec la même recherche",
+  fallbackIos:
+    "page de repli sur iPhone et iPad (iPad en mode ordinateur compris) : le remède d'iOS (appui long sur « Ouvrir InvoiceLead », puis « Ouvrir dans InvoiceLead », Safari comme navigateur par défaut), cinq langues ; ni sur Android ni sur un autre appareil",
   wellKnown:
     "apple-app-site-association et assetlinks.json : JSON exact du contrat (App ID X6K5247J6G.io.invoicelead.app, paquet io.invoicelead.app, Play App Signing et clé d'envoi), application/json",
   proxyRelay:
@@ -340,6 +354,8 @@ const G1_E2E = [
   "navigateur du téléphone refermé sans retour (Android) : l'écran de connexion du Compte Lead revient",
   "app relancée par le lien de retour (lien de lancement) : connectée depuis l'écran de connexion de l'app, le lien n'est suivi qu'une fois",
   "app relancée par le lien de retour avec un cookie de session périmé : la garde passe par l'écran de connexion de l'app, qui suit le lien ; connectée du premier coup",
+  "app relancée par son lien sur l'accueil (appUrlOpen retenu par la coque, livré avant getLaunchUrl), rachat retenu 3 s : l'écran de connexion de l'app ne part pas, connectée",
+  "page relais rechargée pendant sa connexion (iOS tue la vue web, Capacitor recharge la page) : aucun départ rouvert, le lien reçu après connecte ; session iOS perdue → écran de connexion ; page relais sans Referer ni cache",
   "nouvelle connexion après une app relancée sans lecture du lien : l'ancien lien de lancement n'est pas suivi par la page relais, le nouveau connecte",
   "deux demandes expirées de suite : le lien d'erreur ramène chaque fois à l'écran de connexion du Compte Lead",
   "lien de retour reçu sans connexion en cours (page de l'app ouverte) : ignoré, la page reste",
@@ -442,9 +458,72 @@ const MUTATIONS = [
   {
     name: "lien de lancement suivi sur la page relais",
     file: LIB,
-    from: '    if (via === "launch" && state.relay) return false;\n',
+    from: '    if (via === "launch" && state.relay && !state.again) return false;\n',
     to: "",
     breaks: U.lateLaunch,
+  },
+  {
+    name: "lien de lancement de la page relais rechargée jamais suivi",
+    file: LIB,
+    from: '    if (via === "launch" && state.relay && !state.again) return false;\n',
+    to: '    if (via === "launch" && state.relay) return false;\n',
+    breaks: U.reloadTap,
+  },
+  {
+    name: "écran de connexion parti pendant le rachat (lien retenu par la coque)",
+    file: LIB,
+    from: "  ]).then((launched) => launched || state.received);\n",
+    to: "  ]);\n",
+    breaks: U.coldStart,
+  },
+  {
+    name: "page relais rechargée prise pour une nouvelle connexion (connexion effacée)",
+    file: LIB,
+    from: "  state.again = reloadedConnection(win, addressStart(win)) !== null;\n",
+    to: "  state.again = false;\n",
+    breaks: U.reloadTap,
+  },
+  {
+    name: "page relais rechargée : départ déjà servi rouvert",
+    file: LIB,
+    from: "    if (again) {\n      resumeAfterReload(again.m);\n      return;\n    }\n",
+    to: "",
+    breaks: U.reloadAndroid,
+  },
+  {
+    name: "session iOS rechargée sans resume : navigateur par défaut sur le départ servi",
+    file: LIB,
+    from: '    if (mode !== "auto" || typeof session?.resume !== "function") {\n      giveUp();\n',
+    to: '    if (mode !== "auto" || typeof session?.resume !== "function") {\n      safari();\n',
+    breaks: U.reloadSession,
+  },
+  {
+    name: "connexion sans la façon d'ouvrir (navigateur par défaut pris pour la session)",
+    file: LIB,
+    from: '    noteMode("tap");\n',
+    to: "",
+    breaks: U.reloadTap,
+  },
+  {
+    name: "page relais : « Safari » au lieu du navigateur par défaut",
+    file: "messages/it.json",
+    from: "Completa l'accesso nel tuo browser,",
+    to: "Completa l'accesso in Safari,",
+    breaks: U.defaultBrowser,
+  },
+  {
+    name: "page de repli : remède d'iOS absent sur iPad en mode ordinateur",
+    file: "src/server/lead-app-return.ts",
+    from: "(?:iPhone|iPad|iPod|Macintosh)",
+    to: "(?:iPhone|iPad|iPod)",
+    breaks: U.fallbackIos,
+  },
+  {
+    name: "page relais avec Referer (règle générale)",
+    file: "next.config.ts",
+    from: '        source: "/:locale/lead-auth/google",\n',
+    to: '        source: "/:locale/lead-auth/google-x",\n',
+    breaks: U.relayHeaders,
   },
   {
     name: "ancien lien noté par la page relais suivi au rechargement",
@@ -491,8 +570,8 @@ const MUTATIONS = [
   {
     name: "adresse rendue par la session suivie sans règles",
     file: LIB,
-    from: '          if (!state?.follow?.(r?.url, "open")) giveUp();\n',
-    to: "          if (r?.url) win.location.replace(String(r.url));\n          else giveUp();\n",
+    from: '        ?.start?.({ url: withMode(targets.start, "auto") })\n        .then((r) => {\n          if (!state?.follow?.(r?.url, "open")) giveUp();\n',
+    to: '        ?.start?.({ url: withMode(targets.start, "auto") })\n        .then((r) => {\n          if (r?.url) win.location.replace(String(r.url));\n          else giveUp();\n',
     breaks: U.iosForeign,
   },
   {
@@ -551,7 +630,15 @@ function counterProofs() {
   const before = treePrint();
   const copy = join(tmp, "copie");
   mkdirSync(copy, { recursive: true });
-  for (const p of ["src", "tests", "messages", "package.json", "tsconfig.json", "vitest.config.ts"])
+  for (const p of [
+    "src",
+    "tests",
+    "messages",
+    "package.json",
+    "tsconfig.json",
+    "vitest.config.ts",
+    "next.config.ts",
+  ])
     cpSync(join(ROOT, p), join(copy, p), { recursive: true });
   symlinkSync(join(ROOT, "node_modules"), join(copy, "node_modules"));
   for (const m of MUTATIONS) {
@@ -1605,14 +1692,16 @@ async function gateG3() {
    * le navigateur (route() ne verrait pas la suivante) : chaque réponse 3xx des aperçus est lue (fetch sans suivre) et
    * rendue en page 200 qui renvoie (meta refresh), ses cookies gardés ; chaque requête vers la production est
    * interceptée : menée vers l'aperçu, ou arrêtée (retour OpenID vers InvoiceLead). `bridge` : réglage du faux pont
-   * (plateforme, module iOS), vue web seulement.
+   * (plateforme, module iOS), vue web seulement. `stored` : cookies et localStorage d'une vue web d'avant (app tuée puis
+   * relancée : le téléphone les garde).
    */
-  async function context(ua, kind, bridge = {}) {
+  async function context(ua, kind, bridge = {}, stored = undefined) {
     const ctx = await browser.newContext({
       userAgent: ua,
       viewport: kind === "desktop" ? { width: 1280, height: 900 } : { width: 390, height: 844 },
       deviceScaleFactor: kind === "desktop" ? 1 : 2,
       locale: "it-CH",
+      ...(stored ? { storageState: stored } : {}),
     });
     const calls = [];
     ctx.on("request", (r) => {
@@ -1843,12 +1932,17 @@ async function gateG3() {
       const res = await b.page.goto(`${t.il}/lead-auth/return?code=${stray}&locale=it`);
       await b.page.waitForTimeout(300);
       check(
-        `${android ? "Chrome d'Android" : "Safari"} sur la page de repli : le code a quitté l'adresse (${new URL(b.page.url()).pathname}${new URL(b.page.url()).search}), « Torna su InvoiceLead »${android ? ", phrase « Apri per impostazione predefinita »" : ""}`,
+        `${android ? "Chrome d'Android" : "Safari"} sur la page de repli : le code a quitté l'adresse (${new URL(b.page.url()).pathname}${new URL(b.page.url()).search}), « Torna su InvoiceLead »${android ? ", phrase « Apri per impostazione predefinita »" : ", remède d'iOS (tieni premuto «Apri InvoiceLead», poi «Apri in InvoiceLead» ; Safari come browser predefinito)"}`,
         res?.status() === 200 &&
           b.page.url() === `${t.il}/lead-auth/return` &&
           (await b.page.getByRole("heading", { name: "Torna su InvoiceLead" }).count()) === 1 &&
           !(await b.page.content()).includes(stray) &&
-          (await b.page.locator("[data-android]").count()) === (android ? 1 : 0),
+          (await b.page.locator("[data-android]").count()) === (android ? 1 : 0) &&
+          (await b.page.locator("[data-ios]").count()) === (android ? 0 : 1) &&
+          (android ||
+            ((await b.page.locator("[data-ios]").textContent()) ?? "").includes(
+              "tieni premuto «Apri InvoiceLead», poi scegli «Apri in InvoiceLead»",
+            )),
       );
       await shot(b.page, name);
       await b.ctx.close();
@@ -1913,6 +2007,37 @@ async function gateG3() {
       "page relais : « Accesso con Google… », lien « Indietro » vers l'écran de connexion d'ERPlead",
       (await wv.page.getByRole("heading", { name: "Accesso con Google…" }).count()) === 1 &&
         (await wv.page.locator("a[data-lead-auth-back]").getAttribute("href")) === back,
+    );
+    // Son adresse porte le départ à usage unique et la demande OpenID : ni Referer ni cache (contrat § 3a).
+    const relayQuery = new URL(relay || "https://x.invalid").search;
+    const relayRes = await fetch(`${t.il}/it/lead-auth/google${relayQuery}`, {
+      redirect: "manual",
+      headers: { ...bypass, "user-agent": NEW_APP },
+    });
+    const relayHtml = await relayRes.text();
+    const relayHop = await fetch(`${t.il}/lead-auth/google${relayQuery}`, {
+      redirect: "manual",
+      headers: { ...bypass, "user-agent": NEW_APP },
+    });
+    check(
+      "aperçu, page relais : Referrer-Policy no-referrer, Cache-Control no-store, balise referrer no-referrer, aucun script d'un autre site ; la redirection sans langue aussi (307, no-referrer, no-store)",
+      relayRes.status === 200 &&
+        relayRes.headers.get("referrer-policy") === "no-referrer" &&
+        (relayRes.headers.get("cache-control") ?? "").includes("no-store") &&
+        relayHtml.includes('<meta name="referrer" content="no-referrer"/>') &&
+        ![...relayHtml.matchAll(/<script[^>]*\bsrc="([^"]+)"/g)].some(
+          (m) => /^(https?:)?\/\//.test(m[1]) && !m[1].startsWith(t.il),
+        ) &&
+        relayHop.status === 307 &&
+        relayHop.headers.get("referrer-policy") === "no-referrer" &&
+        (relayHop.headers.get("cache-control") ?? "").includes("no-store"),
+      {
+        status: relayRes.status,
+        referrer: relayRes.headers.get("referrer-policy"),
+        cache: relayRes.headers.get("cache-control"),
+        hop: relayHop.status,
+        hopReferrer: relayHop.headers.get("referrer-policy"),
+      },
     );
     check(
       "iOS 17.4+ : LeadAuthSession.isAvailable() → https, puis LeadAuthSession.start sur le départ d'ERPlead + &m=auto, ni Browser.open ni Safari ; écoute du lien posée",
@@ -2184,6 +2309,61 @@ async function gateG3() {
     );
     await wa.ctx.close();
 
+    // --- 4b. App relancée par son lien (Android : l'app est tuée pendant le Custom Tab, l'App Link démarre une activité
+    // neuve qui charge l'accueil, sans session ; la coque retient appUrlOpen et le livre avant getLaunchUrl) : le rachat,
+    // retenu 3 s, n'est annulé par aucun départ de l'écran de connexion de l'app (contrat § 3b, 6).
+    const wk = await context(NEW_APP_ANDROID, "webview", { platform: "android" });
+    await wk.page.goto(`${t.il}/it/login`);
+    await wk.page.waitForURL(onErpLogin(), { timeout: 40_000 });
+    const sk = await startGoogle(wk, "Browser.open", "Android relancée");
+    const sysK = await context(CHROME_ANDROID, "system");
+    const gK = await toGoogle(sysK, sk.start);
+    check("Android relancée : Custom Tab → accounts.google.com, sans erreur Google", gK.ok, gK.url);
+    const cK = await cancelled(sysK, gK.gstate, "Android relancée annulé");
+    await sysK.ctx.close();
+    const storedK = await wk.ctx.storageState();
+    await wk.ctx.close();
+    const wr = await context(
+      NEW_APP_ANDROID,
+      "webview",
+      { platform: "android", launchUrl: cK.location, retained: cK.location },
+      storedK,
+    );
+    let heldK = 0;
+    await wr.ctx.route(/^https:\/\/erplead\.io\/auth\/google\/app\/redeem\?/, async (route) => {
+      heldK++;
+      await new Promise((r) => setTimeout(r, 3000));
+      await route.fallback().catch(() => {});
+    });
+    from = auditMax();
+    n = production.length;
+    const navK = ilNav.length;
+    await wr.page.goto(`${t.il}/`);
+    await wr.page.waitForURL(onErpLogin("google"), { timeout: 40_000 }).catch(() => {});
+    const pathsK = ilNav.slice(navK);
+    check(
+      "Android relancée par son lien sur l'accueil : /it/app → écran de connexion de l'app, appUrlOpen retenu → Browser.close ×1 et rachat, une fois, retenu 3 s sans aucun départ vers /auth/lead/start → écran de connexion d'ERPlead, error=google",
+      cK.status === 303 &&
+        RETURN_RE.test(cK.location) &&
+        cK.location.startsWith(RETOUR) &&
+        pathsK.includes("/it/login") &&
+        !pathsK.includes("/auth/lead/start") &&
+        heldK === 1 &&
+        named(wr.calls, "App.appUrlOpen").length === 1 &&
+        named(wr.calls, "Browser.close").length === 1 &&
+        production.slice(n).filter((u) => u.startsWith(`${PROD_ERP}/auth/google/app/redeem?`))
+          .length === 1 &&
+        onErpLogin("google")(new URL(wr.page.url())),
+      { chemins: pathsK, retenu: heldK, page: wr.page.url().split("?")[0] },
+    );
+    check(
+      "journal d'ERPlead : rachat de l'app relancée {app: invoicelead, outcome: google}, relevé",
+      auditSince(from, "rachat Android relancée", "google_app.redeem", "invoicelead", "google") >=
+        1,
+    );
+    await shot(wr.page, "g3l-9-relancee-ecran-erplead");
+    await wr.ctx.close();
+
     // --- 5. iOS 15 à 17.3 : Safari sur start&m=tap, page « Torna su InvoiceLead » d'ERPlead et son bouton.
     const wt = await context(NEW_APP, "webview", { platform: "ios", session: "old" });
     await wt.page.goto(`${t.il}/it/login`);
@@ -2199,14 +2379,32 @@ async function gateG3() {
       .waitFor({ timeout: 10_000 })
       .catch(() => {});
     check(
-      "iOS 15 à 17.3 : LeadAuthSession.openExternal (Safari) sur le départ + &m=tap, aucune session ; la page relais dit « Completa l'accesso in Safari, poi tocca «Apri InvoiceLead». »",
+      "iOS 15 à 17.3 : LeadAuthSession.openExternal (navigateur par défaut) sur le départ + &m=tap, aucune session ; la page relais dit « Completa l'accesso nel tuo browser, poi tocca «Apri InvoiceLead». » (jamais « Safari »)",
       st.start === `${plainT}&m=tap` &&
         named(wt.calls, "LeadAuthSession.start").length === 0 &&
         (await wt.page.locator("[data-lead-auth-mode=safari]").textContent()) ===
-          "Completa l'accesso in Safari, poi tocca «Apri InvoiceLead».",
+          "Completa l'accesso nel tuo browser, poi tocca «Apri InvoiceLead».",
       st.start,
     );
     await shot(wt.page, "g3l-6-page-relais-safari");
+    // 5a. Page relais rechargée pendant que la personne est dans son navigateur (iOS tue le processus de la vue web,
+    // Capacitor recharge la même adresse) : la connexion reste en cours, rien n'est rouvert (départ à usage unique).
+    const relayT = wt.page.url();
+    await wt.page.reload();
+    await wt.page
+      .locator("[data-lead-auth-mode=safari]")
+      .waitFor({ timeout: 10_000 })
+      .catch(() => {});
+    await wt.page.waitForTimeout(1500);
+    check(
+      "page relais rechargée pendant le navigateur par défaut : même adresse, aucun départ rouvert (openExternal ×1, aucune session), même texte",
+      wt.page.url() === relayT &&
+        named(wt.calls, "LeadAuthSession.openExternal").length === 1 &&
+        named(wt.calls, "LeadAuthSession.start").length === 0 &&
+        (await wt.page.locator("[data-lead-auth-mode=safari]").textContent()) ===
+          "Completa l'accesso nel tuo browser, poi tocca «Apri InvoiceLead».",
+      named(wt.calls, "LeadAuthSession.openExternal").length,
+    );
     const sysT = await context(SAFARI, "system");
     const gT = await toGoogle(sysT, st.start);
     check("Safari : start&m=tap → accounts.google.com, sans erreur Google", gT.ok, gT.url);
@@ -2260,7 +2458,7 @@ async function gateG3() {
     await wt.page.evaluate((u) => window.__fakeEmit("App.appUrlOpen", { url: u }), href);
     await wt.page.waitForURL(onErpLogin("google"), { timeout: 40_000 });
     check(
-      "iOS Safari : le lien touché (appUrlOpen) mène au rachat, une fois, sans Browser.close → écran de connexion, error=google",
+      "iOS Safari : le lien touché (appUrlOpen) mène la page relais RECHARGÉE au rachat, une fois, sans Browser.close → écran de connexion, error=google",
       named(wt.calls, "Browser.close").length === 0 &&
         production.slice(n).filter((u) => u.startsWith(`${PROD_ERP}/auth/google/app/redeem?`))
           .length === 1,
@@ -2412,11 +2610,11 @@ async function gateG3() {
     after,
   );
   const written = audits.flatMap((a) => a.ids);
-  // 4 départs, 4 codes (3 annulés + 0 : le code réussi est préparé par la porte), 5 rachats (3 échecs, 1 réussi, 1 rejoué).
+  // 5 départs, 4 codes annulés (le code réussi est préparé par la porte), 6 rachats (4 échecs, 1 réussi, 1 rejoué).
   check(
     `journal d'ERPlead remis comme avant : les ${written.length} ligne(s) écrites par la porte (départs, codes, rachats, rachat rejoué) effacées`,
-    departs === 4 &&
-      written.length === 4 + 3 + 5 &&
+    departs === 5 &&
+      written.length === 5 + 4 + 6 &&
       audits.every((a) => a.ids.length === 1) &&
       sqlRead(
         t.ro,
