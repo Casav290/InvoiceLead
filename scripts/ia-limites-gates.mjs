@@ -636,8 +636,17 @@ function oldGatesCopy() {
   }
   const path = join(TMP, "assistant-actions-gates.ia-limites.mjs");
   writeFileSync(path, out);
-  const changed = src.split("\n").filter((l, i) => l !== out.split("\n")[i]).length;
-  return { path, changed, counts };
+  const outLines = out.split("\n");
+  const changed = src.split("\n").filter((l, i) => l !== outLines[i]).length;
+  // Défaire les échanges sur la copie rend l'original au caractère près : rien d'autre n'a changé.
+  let back = out;
+  for (const [from, to] of [...swaps].reverse()) back = back.split(to).join(from);
+  return {
+    path,
+    changed,
+    counts,
+    same: back === src && outLines.length === src.split("\n").length,
+  };
 }
 
 async function g2() {
@@ -675,8 +684,8 @@ async function g2() {
   // Anciennes portes (assistant-actions G1, G2, G3, G7) : le même script, sur cette branche.
   const copy = oldGatesCopy();
   check(
-    "copie de scripts/assistant-actions-gates.mjs : seules la branche, les bases locales et les ports changent",
-    copy.changed > 0 && copy.changed <= 12,
+    "copie de scripts/assistant-actions-gates.mjs : seules la branche, les bases locales et les ports changent (les échanges défaits rendent l'original)",
+    copy.changed > 0 && copy.same,
     `${copy.changed} lignes changées (${copy.counts.join(", ")})`,
   );
   for (const g of ["G1", "G2", "G3", "G7"]) {
