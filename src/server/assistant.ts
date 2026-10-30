@@ -3,12 +3,12 @@ import type { AppLocale } from "@/i18n/locales";
 import { addDays } from "@/lib/fiscal-year";
 import { listFiscalYears } from "./accounting";
 import { type AiUsage, aiLanguageName, chatJson } from "./ai";
-import { recordBooksQuestion } from "./ai-assistant/quota";
+import { BOOKS_PAGE, recordUsage, reserveBooksQuestion } from "./ai-assistant/quota";
 import { autopilotSummary } from "./autopilot";
 import type { Db } from "./db";
 import { auditLog, contacts, invoices, organizations, supplierBills } from "./db/schema";
 import { listInvoices } from "./invoices";
-import { ASSISTANT_TOKENS, assistantBudget, organizationPlan } from "./plans";
+import { ASSISTANT_TOKENS, organizationPlan } from "./plans";
 import { accountBalances } from "./reports";
 import { listProjects } from "./time";
 
@@ -184,9 +184,11 @@ export type AssistantAnswer = { answer: string; links: AssistantLink[] };
  * la base et ne peut rien modifier ; s'il ne trouve pas la réponse, il le dit.
  *
  * Formule gratuite : le même budget de jetons que la bulle Assistant IA (plans.ts, assistantBudget ;
- * un seul compteur, le journal assistant_usage). Budget du mois atteint : refusé avant l'appel à
- * l'IA. Les jetons d'une réponse reçue sont inscrits, même si elle est inutilisable ; une IA qui ne
- * répond pas ne coûte rien. Pro et Pro+ sans limite (les jetons sont inscrits quand même).
+ * un seul compteur, le journal assistant_usage). La question est réservée avant l'appel à l'IA, sous
+ * le verrou de l'entreprise et tours en cours compris (quota.ts, reserveBooksQuestion) : budget du
+ * mois atteint, elle est refusée sans appel. Les jetons d'une réponse reçue sont inscrits, même si
+ * elle est inutilisable ; une IA qui ne répond pas ne coûte rien. Pro et Pro+ sans limite (les jetons
+ * sont inscrits quand même).
  */
 export async function askAssistant(
   database: Db,
@@ -198,24 +200,31 @@ export async function askAssistant(
   const q = question.trim().slice(0, 500);
   if (!q) return "empty";
   const plan = await organizationPlan(database, who.organizationId);
-  if (!plan || (await assistantBudget(database, plan, today))?.exhausted) return "quota";
-  // Une réponse sans décompte de jetons compte pour une demande-type entière.
+  if (!plan) return "quota";
+  const reserved = await reserveBooksQuestion(database, who, { org: plan, today });
+  if ("limit" in reserved) return "quota";
+  // Une réponse sans décompte de jetons compte pour une demande-type entière ; sans réponse, la ligne
+  // réservée garde zéro jeton (« failed »).
   let answered: AiUsage | null | undefined;
   try {
     return await answer(database, who, q, language, today, (usage) => {
       answered = usage;
     });
   } finally {
-    if (answered !== undefined)
-      await recordBooksQuestion(database, who, {
-        ...(answered ?? {
-          inputTokens: ASSISTANT_TOKENS.perRequest,
-          outputTokens: 0,
-          cacheReadTokens: 0,
-        }),
-        cacheWriteTokens: 0,
-        error: null,
-      });
+    const usage =
+      answered === undefined
+        ? { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0 }
+        : (answered ?? {
+            inputTokens: ASSISTANT_TOKENS.perRequest,
+            outputTokens: 0,
+            cacheReadTokens: 0,
+          });
+    await recordUsage(database, reserved.id, {
+      ...usage,
+      cacheWriteTokens: 0,
+      tools: [BOOKS_PAGE],
+      error: answered === undefined ? "failed" : null,
+    });
   }
 }
 

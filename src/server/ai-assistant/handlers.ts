@@ -140,13 +140,16 @@ export async function assistantPost(
 
   const { session } = auth;
   const who = { organizationId: session.organization.id, userId: session.user.id };
-  // Formule gratuite (L4) : budget du mois atteint → aucun appel au modèle, aucune place de quota
-  // prise. La formule se décide par tierOf, comme partout dans l'application (plans.ts).
+  // Formule gratuite (L4) : budget du mois atteint (tours en cours compris, sous le verrou de
+  // l'entreprise) → aucun appel au modèle, aucune place de quota prise. La formule se décide par
+  // tierOf, comme partout dans l'application (plans.ts).
   const day = deps.today ?? today();
-  const budget = await assistantBudget(deps.database, session.organization, day);
-  if (budget?.exhausted)
-    return { status: 429, body: { error: "free_limit", budget: budgetView(budget) } };
-  const reserved = await reserveMessage(deps.database, who);
+  const reserved = await reserveMessage(deps.database, who, undefined, {
+    org: session.organization,
+    today: day,
+  });
+  if ("budget" in reserved)
+    return { status: 429, body: { error: "free_limit", budget: budgetView(reserved.budget) } };
   if ("limit" in reserved) return { status: 429, body: { error: "quota", scope: reserved.limit } };
 
   const run = deps.run ?? runAssistant;
@@ -181,10 +184,9 @@ export async function assistantPost(
     return { status: 502, body: { error: "unavailable" } };
   }
   await recordUsage(deps.database, reserved.id, result.usage);
-  // Formule gratuite (L5) : le compteur de la bulle suit chaque tour, jetons de ce tour compris.
-  const left = budget
-    ? budgetView(await assistantBudget(deps.database, session.organization, day))
-    : null;
+  // Formule gratuite (L5) : le compteur de la bulle suit chaque tour, jetons de ce tour compris
+  // (rien pour une formule sans limite, sans lecture du journal).
+  const left = budgetView(await assistantBudget(deps.database, session.organization, day));
   const counter = left ? { budget: left } : {};
   // Délai du tour dépassé (B1), fil refusé par le service (B3), service indisponible : chacun son
   // code et son texte dans la bulle.

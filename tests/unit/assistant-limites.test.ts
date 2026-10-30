@@ -5,7 +5,8 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vites
 import { assistantPost, confirmPost, type Deps } from "@/server/ai-assistant/handlers";
 import type { AssistantContext } from "@/server/ai-assistant/ops-core";
 import { contextPrompt, STABLE_PROMPT } from "@/server/ai-assistant/prompt";
-import { BOOKS_PAGE, ORG_PER_DAY, USER_PER_HOUR } from "@/server/ai-assistant/quota";
+import { BOOKS_PAGE, ORG_PER_DAY, PENDING_MS, USER_PER_HOUR } from "@/server/ai-assistant/quota";
+import { DEADLINE_MS } from "@/server/ai-assistant/run";
 import { buildTools, type ToolState } from "@/server/ai-assistant/tools";
 import { askAssistant } from "@/server/assistant";
 import { attachLeadIdentity } from "@/server/auth/attach";
@@ -55,7 +56,7 @@ const MESSAGES = { de, fr, en, it: it_, es } as const;
 beforeAll(() => {
   setTestEnv({ ANTHROPIC_API_KEY: "sk-test-not-a-real-key" });
   // Horloge fixée au milieu de TODAY (UTC) : les lignes que les tours inscrivent à l'heure courante
-  // (reserveMessage, la page Assistant) tombent dans le mois que lit assistantBudget(…, TODAY),
+  // (reserveMessage, reserveBooksQuestion) tombent dans le mois que lit assistantBudget(…, TODAY),
   // quel que soit le jour où la suite est lancée (sinon trois tests rougissent dès novembre).
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(new Date(`${TODAY}T12:00:00Z`));
@@ -137,6 +138,22 @@ function fakeAnthropic(replies: Reply[]) {
     );
   };
   return { fetch: fetchImpl as typeof fetch, requests };
+}
+
+/** Un faux service qui retient chaque réponse jusqu'à `release()` : des tours vraiment en même temps. */
+function heldService(fetchImpl: typeof fetch) {
+  let release = () => {};
+  const gate = new Promise<void>((r) => {
+    release = r;
+  });
+  let calls = 0;
+  const held = (async (url: unknown, init?: RequestInit) => {
+    calls += 1;
+    const res = await fetchImpl(url as string, init);
+    await gate;
+    return res;
+  }) as typeof fetch;
+  return { fetch: held, release, calls: () => calls };
 }
 
 const deps = (extra: Partial<Deps> = {}): Deps => ({
@@ -313,6 +330,95 @@ describe("limite de la formule gratuite (L1–L8)", () => {
     const next = await ask(p);
     expect(next).toMatchObject({ status: 429, body: { error: "free_limit" } });
     expect(next.requests).toHaveLength(0);
+  });
+
+  it("demandes lancées ensemble : chaque tour en cours compte pour une demande-type, jamais plus de 10 tours sous le budget (L4)", async () => {
+    const p = await person("ensemble");
+    const service = fakeAnthropic([{}]);
+    const held = heldService(service.fetch);
+    const N = 15;
+    let refused = 0;
+    const runs = Array.from({ length: N }, (_, i) =>
+      assistantPost(
+        { status: 200, session: p.session },
+        { messages: [{ role: "user", content: `Question ${i}` }], locale: "fr" },
+        deps({ fetch: held.fetch }),
+      ).then((r) => {
+        if (r.status === 429) refused += 1;
+        return r;
+      }),
+    );
+    // Chaque demande a soit appelé le modèle (réponse retenue), soit été refusée.
+    await vi.waitFor(() => expect(held.calls() + refused).toBe(N), { timeout: 20_000 });
+    held.release();
+    const results = await Promise.all(runs);
+    expect(service.requests).toHaveLength(ASSISTANT_TOKENS.free / ASSISTANT_TOKENS.perRequest);
+    expect(results.filter((r) => r.status === 200)).toHaveLength(10);
+    const free = results.filter((r) => r.status === 429);
+    expect(free).toHaveLength(N - 10);
+    for (const r of free)
+      expect(r.body).toEqual({
+        error: "free_limit",
+        budget: { left: 0, exhausted: true, resetOn: "2026-11-01", requests: 10 },
+      });
+    // Les tours finis ne comptent plus que pour leurs jetons (35 chacun) : le suivant passe.
+    expect((await assistantBudget(db, p.session.organization, TODAY))?.used).toBe(10 * 35);
+    expect((await ask(p)).status).toBe(200);
+  });
+
+  it("bulle et page Assistant lancées ensemble : le même verrou, le même budget, 10 appels au plus ; un tour interrompu ne bloque pas au-delà du délai d'un tour (L4, L6)", async () => {
+    expect(PENDING_MS).toBeGreaterThanOrEqual(DEADLINE_MS + 10_000);
+    const p = await person("ensemble-page");
+    const who = { organizationId: p.organization.id, userId: p.user.id };
+    // Dix lignes de tours interrompus (fonction arrêtée), plus anciennes que le délai d'un tour.
+    const old = new Date(Date.now() - PENDING_MS - 1_000);
+    await db.insert(assistantUsage).values(
+      Array.from({ length: 10 }, () => ({
+        organizationId: p.organization.id,
+        userId: p.user.id,
+        createdAt: old,
+      })),
+    );
+    setTestEnv({ ANTHROPIC_API_KEY: "sk-test-not-a-real-key", AI_API_KEY: "ai-test" });
+    const page = heldService((async () =>
+      Response.json({
+        choices: [{ message: { content: JSON.stringify({ answer: "Ok.", links: [] }) } }],
+        usage: { prompt_tokens: 100, completion_tokens: 10 },
+      })) as unknown as typeof fetch);
+    vi.stubGlobal("fetch", page.fetch);
+    const service = fakeAnthropic([{}]);
+    const bubble = heldService(service.fetch);
+    let refused = 0;
+    const count = <T>(r: T) => {
+      if (r === "quota" || (r as { status?: number }).status === 429) refused += 1;
+      return r;
+    };
+    const books = Array.from({ length: 8 }, (_, i) =>
+      askAssistant(db, who, `Question ${i}`, "fr", TODAY).then(count),
+    );
+    const bubbles = Array.from({ length: 7 }, (_, i) =>
+      assistantPost(
+        { status: 200, session: p.session },
+        { messages: [{ role: "user", content: `Bulle ${i}` }], locale: "fr" },
+        deps({ fetch: bubble.fetch }),
+      ).then(count),
+    );
+    try {
+      await vi.waitFor(() => expect(page.calls() + bubble.calls() + refused).toBe(15), {
+        timeout: 20_000,
+      });
+      page.release();
+      bubble.release();
+      const [b, m] = await Promise.all([Promise.all(books), Promise.all(bubbles)]);
+      expect(page.calls() + bubble.calls()).toBe(10);
+      expect(b.filter((r) => r === "quota").length + m.filter((r) => r.status === 429).length).toBe(
+        5,
+      );
+    } finally {
+      page.release();
+      bubble.release();
+      vi.unstubAllGlobals();
+    }
   });
 
   it("formules payantes et essais jamais limités : Pro, Pro+, essai Stripe en cours, essai du Compte Lead (L3)", async () => {
