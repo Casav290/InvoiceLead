@@ -860,8 +860,31 @@ console.log(JSON.stringify({cfg:cfg.map(c=>({name:c.name,ent:c.buildSettings.COD
   };
   for (const [what, ok] of Object.entries(swiftChecks))
     check(`iOS LeadAuthSession.swift / SceneDelegate : ${what}`, ok);
+  // Syntaxe Swift : compilateur Swift pour Linux (~/outils/swift-*), sans SDK iOS (ni UIKit ni types) ; la
+  // compilation complète se fait chez Codemagic (non lancée).
+  const swiftc = execSync(
+    `ls -d ${HOME}/outils/swift-*/usr/bin/swiftc 2>/dev/null | sort -V | tail -1 || true`,
+    { encoding: "utf8" },
+  ).trim();
+  const swiftVersion = swiftc
+    ? (spawnSync(swiftc, ["--version"], { encoding: "utf8" }).stdout.split("\n")[0] ?? "")
+    : "";
+  check(
+    `compilateur Swift présent pour le contrôle de syntaxe (${swiftVersion || "absent"})`,
+    !!swiftc,
+  );
+  for (const f of ["LeadAuthSession.swift", "SceneDelegate.swift", "AppDelegate.swift"]) {
+    const r = swiftc
+      ? spawnSync(swiftc, ["-parse", join(MOBILE, "ios/App/App", f)], { encoding: "utf8" })
+      : null;
+    check(
+      `Swift (swiftc -parse) : ios/App/App/${f} sans erreur de syntaxe`,
+      r?.status === 0 && !r.stderr.trim(),
+      r?.stderr,
+    );
+  }
   note(
-    `Swift : ${spawnSync("which", ["swiftc"]).status === 0 ? "swiftc présent" : "aucun compilateur Swift ici (Linux, pas de Xcode)"} ; la compilation iOS se fait chez Codemagic (non lancée)`,
+    "Swift : syntaxe seulement (Linux, sans SDK iOS : types et API d'UIKit / AuthenticationServices non vérifiés ici) ; la compilation iOS se fait chez Codemagic (non lancée)",
   );
   // --- Android : App Link vérifié, plus de schéma propre.
   const manifest = mread("android/app/src/main/AndroidManifest.xml");
