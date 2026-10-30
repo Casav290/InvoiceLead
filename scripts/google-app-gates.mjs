@@ -1,29 +1,37 @@
 #!/usr/bin/env node
 /**
- * Portes du chantier « Continuer avec Google dans les apps mobiles », part d'InvoiceLead (30.10.2026).
- * Ledger ~/projets/.unlazy/google-app/gates/leaf-invoicelead.md, cahier ../CAHIER.md, contrat d'ERPlead
- * ~/projets/erplead-google-app/docs/GOOGLE-APP.md, ici docs/GOOGLE-APP.md. À la racine du worktree
- * (branche google-app) :
+ * Portes du chantier « Continuer avec Google dans les apps mobiles », part d'InvoiceLead (30.10.2026, révisé le
+ * même jour : liens VÉRIFIÉS, choix d'Ève). Ledger ~/projets/.unlazy/google-app/gates/leaf-invoicelead.md, cahier
+ * ../CAHIER.md, contrat d'ERPlead ~/projets/erplead-google-app/docs/GOOGLE-APP.md, ici docs/GOOGLE-APP.md. À la
+ * racine du worktree (branche google-app) :
  *
- *   node scripts/google-app-gates.mjs G1      essais du retour (tests/unit/lead-app-auth.test.ts, faux pont) et
- *                                             contre-épreuves (faute posée dans une COPIE du code : l'essai
- *                                             gardien échoue) ; contrôles complets (Biome, types, Vitest, build,
- *                                             Playwright dont tests/e2e/google-app.spec.ts)
- *   node scripts/google-app-gates.mjs G2      dépôt mobile ~/projets/invoicelead-mobile (branche google-app) :
- *                                             schéma iOS et Android, plugins synchronisés, agent LeadAppAuth/1,
- *                                             version et build augmentés, construction Android (AAB signé par la
- *                                             clé d'envoi, APK de contrôle), rien de soumis
+ *   node scripts/google-app-gates.mjs G1      essais du retour (tests/unit/lead-app-auth.test.ts, faux pont : lien
+ *                                             vérifié https://invoicelead.io/lead-auth/return, module iOS
+ *                                             LeadAuthSession, Custom Tab Android, page de repli, fichiers
+ *                                             d'association) et contre-épreuves (faute posée dans une COPIE du code :
+ *                                             l'essai gardien échoue) ; contrôles complets (Biome, types, Vitest,
+ *                                             build, Playwright dont tests/e2e/google-app.spec.ts) ; contrat relu
+ *   node scripts/google-app-gates.mjs G2      dépôt mobile ~/projets/invoicelead-mobile (branche google-app) : droits
+ *                                             Associated Domains, module LeadAuthSession, intent-filter autoVerify,
+ *                                             schéma propre retiré, agent LeadAppAuth/2, plugins synchronisés, version
+ *                                             et build, construction Android (AAB signé par la clé d'envoi, APK de
+ *                                             contrôle), empreintes du assetlinks.json (clé d'envoi, Play App Signing
+ *                                             lu par l'API Play en lecture seule), rien de soumis
  *   node scripts/google-app-gates.mjs APERCU  aperçu Vercel de HEAD (jamais la production), variables passées au
  *                                             déploiement (méthode ia-limites), alias invoicelead-google-app-test
- *   node scripts/google-app-gates.mjs G3      aperçu d'InvoiceLead + aperçu d'ERPlead, Chromium sans tête qui
- *                                             imite la vue web de l'app (agent LeadAppAuth/1, faux pont) : bouton
- *                                             Google, page relais, départ jusqu'à accounts.google.com, code préparé
- *                                             dans la base d'APERÇU d'ERPlead, lien de retour → rachat → personne TEST
- *                                             connectée, code OpenID rendu à InvoiceLead avec SA demande ; base remise
+ *   node scripts/google-app-gates.mjs G3      aperçu d'InvoiceLead + aperçu d'ERPlead (GOOGLE_APP_ENABLED=1 sur cet
+ *                                             aperçu seulement) : fichiers d'association et page de repli servis ;
+ *                                             Chromium sans tête qui imite la vue web de l'app (agent LeadAppAuth/2,
+ *                                             faux pont iOS ou Android) : bouton Google, page relais, départ jusqu'à
+ *                                             accounts.google.com, VRAI retour « annulé » de l'aperçu d'ERPlead (session
+ *                                             iOS, Custom Tab, Safari et son bouton), code préparé dans la base
+ *                                             d'APERÇU d'ERPlead → personne TEST connectée, code OpenID rendu à
+ *                                             InvoiceLead avec SA demande ; base, journal et frein remis comme avant
  *
  * Chaque porte n'imprime son jeton GOOGLE_APP_Gx_OK qu'à la fin, si aucun contrôle n'a échoué. Aucun secret affiché.
  * Jamais la production : aucune requête du navigateur ne part vers erplead.io ni invoicelead.io (interceptées et
- * menées vers les aperçus, ou arrêtées), aucun « vercel --prod », aucune variable du projet Vercel changée.
+ * menées vers les aperçus, ou arrêtées), aucun « vercel --prod », aucune variable du projet Vercel changée, aucun
+ * compte Apple / Google modifié (l'API Play n'est que lue).
  */
 import { execFileSync, execSync, spawnSync } from "node:child_process";
 import { createHash, randomBytes } from "node:crypto";
@@ -52,9 +60,14 @@ const COMMON = `${HOME}/projets/.unlazy/google-app`;
 const CAPTURES = `${COMMON}/captures/invoicelead`;
 const ERP_APERCU = `${COMMON}/captures/erplead/apercu.json`;
 const ERP_REPO = `${HOME}/projets/erplead-google-app`;
+const CONTRACT = `${ERP_REPO}/docs/GOOGLE-APP.md`;
 const MOBILE = `${HOME}/projets/invoicelead-mobile`;
 const MOBILE_BASE = "store-invoicelead";
 const PUBLICATIONS = `${HOME}/projets/publications/invoicelead/android`;
+/** Lecture seule de l'API Play (certificat Play App Signing) : compte de service et paquet googleapis existants. */
+const PLAY_KEY = `${HOME}/partage/Scanlead/scanlead-play-a42a3f2246fa.json`;
+const PLAY_TOOLS = `${HOME}/projets/publications/scanlead/tools`;
+const BUNDLETOOL = `${HOME}/outils/bundletool-all-1.18.1.jar`;
 const BRANCH = "google-app";
 /**
  * La production d'InvoiceLead que la branche contient (API Vercel, 30.10.2026) : d'abord dpl_HUALHm8mQiqNpYpKzGRRJL1Yitw3
@@ -79,12 +92,22 @@ const ORG_INDEX = 5;
 const LOCAL_PG = (db) => `postgresql://ubuntu@localhost/${db}?host=/var/run/postgresql`;
 const UNIT_DB = "invoicelead_gapp_test";
 const E2E_DB = "invoicelead_gapp_e2e";
-const SCHEME = "io.invoicelead.app";
+/** L'identifiant de l'app (appId Capacitor, bundle iOS, paquet Android). */
+const APP_ID = "io.invoicelead.app";
+/** Le lien de retour vérifié (contrat § 1) et le domaine associé. */
+const DOMAIN = "invoicelead.io";
+const RETOUR = `https://${DOMAIN}/lead-auth/return`;
 const IPHONE =
   "Mozilla/5.0 (iPhone; CPU iPhone OS 18_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148";
+const ANDROID =
+  "Mozilla/5.0 (Linux; Android 15; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/140.0.0.0 Mobile Safari/537.36";
 const SAFARI =
   "Mozilla/5.0 (iPhone; CPU iPhone OS 18_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.6 Mobile/15E148 Safari/604.1";
-const NEW_APP = `${IPHONE} InvoiceLeadApp LeadAppAuth/1`;
+const CHROME_ANDROID =
+  "Mozilla/5.0 (Linux; Android 15; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Mobile Safari/537.36";
+const NEW_APP = `${IPHONE} InvoiceLeadApp LeadAppAuth/2`;
+const NEW_APP_ANDROID = `${ANDROID} InvoiceLeadApp LeadAppAuth/2`;
+const FIRST_APP = `${IPHONE} InvoiceLeadApp LeadAppAuth/1`;
 const OLD_APP = `${IPHONE} InvoiceLeadApp`;
 
 // ------------------------------------------------------------------ sortie
@@ -205,96 +228,126 @@ const failedTests = (report) =>
       .map((a) => `${f.name.split("/").pop()} : ${a.title}`),
   );
 
+// ------------------------------------------------------------------ contrat d'ERPlead (relu, jamais recopié)
+
+/**
+ * Ce que le contrat d'ERPlead dit des fichiers d'association d'InvoiceLead (§ 1 et § 3d) : l'App ID iOS et le
+ * paquet Android de la ligne InvoiceLead, les deux empreintes de la ligne invoicelead.io, et le modèle d'AASA
+ * (exemple CRMlead, « les autres changent seulement l'appID »). Rend le JSON attendu, mot pour mot.
+ */
+function contractAssociation() {
+  const doc = readFileSync(CONTRACT, "utf8");
+  const row = doc.split("\n").find((l) => l.startsWith("| InvoiceLead | `invoicelead` |")) ?? "";
+  const cells = row.split("|").map((c) => c.trim().replace(/^`|`$/g, ""));
+  const fpRow = doc.split("\n").find((l) => l.startsWith(`| ${DOMAIN} | ${APP_ID} |`)) ?? "";
+  const fps = [...fpRow.matchAll(/`((?:[0-9A-F]{2}:){31}[0-9A-F]{2})`/g)].map((m) => m[1]);
+  const at = doc.indexOf("AASA (exemple CRMlead");
+  const block = /```json\n([\s\S]*?)```/.exec(doc.slice(at))?.[1] ?? "null";
+  const crm = JSON.parse(block);
+  const appID = cells[4] ?? "";
+  const aasa = JSON.parse(JSON.stringify(crm).split("X6K5247J6G.io.crmlead.app").join(appID));
+  const assetlinks = [
+    {
+      relation: ["delegate_permission/common.handle_all_urls"],
+      target: { namespace: "android_app", package_name: cells[5], sha256_cert_fingerprints: fps },
+    },
+  ];
+  return { appID, packageName: cells[5], returnLink: cells[3], fps, aasa, assetlinks };
+}
+
+/** Les fichiers d'association tels que le site les sert (src/lib/app-links.ts, lu par tsx). */
+function siteAssociation() {
+  const r = run("npx", [
+    "tsx",
+    "-e",
+    "import('./src/lib/app-links.ts').then((m)=>console.log(JSON.stringify({aasa:m.APPLE_APP_SITE_ASSOCIATION,assetlinks:m.ASSET_LINKS,fp:m.ANDROID_CERT_SHA256})))",
+  ]);
+  try {
+    return JSON.parse(r.stdout.trim().split("\n").pop() ?? "null");
+  } catch {
+    return null;
+  }
+}
+
 // ------------------------------------------------------------------ G1
 
 const UNIT = "tests/unit/lead-app-auth.test.ts";
 const E2E = "tests/e2e/google-app.spec.ts";
 /** Ce que G1 exige de voir passer (ledger G1), essai par essai. */
-const G1_UNIT = [
-  [
-    "schéma exact et chemin attendu",
-    "lien de retour : schéma exact io.invoicelead.app, hôte lead-auth, code de 43 caractères → rachat d'ERPlead",
-  ],
-  [
-    "appUrlOpen : rachat avec le code, une seule fois, Browser.close",
-    "appUrlOpen pendant une connexion en cours (page relais) : le lien de l'app ferme le navigateur du téléphone et mène au rachat d'ERPlead avec le code, une seule fois",
-  ],
-  [
-    "lien de lancement : une seule fois, pages suivantes comprises",
+const U = {
+  exact:
+    "lien de retour : adresse exacte https://invoicelead.io/lead-auth/return, code de 43 caractères → rachat d'ERPlead ; schéma propre io.invoicelead.app refusé",
+  android:
+    "Android : appUrlOpen pendant une connexion en cours (page relais) : le lien ferme le Custom Tab et mène au rachat d'ERPlead avec le code, une seule fois",
+  launch:
     "lien de lancement (app relancée par le lien) : rachat une seule fois, même si appUrlOpen le donne aussi et sur la page suivante",
-  ],
-  [
-    "lien étranger ou mal formé ignoré",
-    "liens étrangers ou mal formés ignorés : autre schéma, autre hôte, ancien io.crmlead.app://sso, adresse web",
-  ],
-  [
-    "lien de l'app sans code valable",
-    "lien de l'app sans code valable (error=expired, code abîmé) : écran de connexion gardé par la page relais, sinon connexion ordinaire",
-  ],
-  [
-    "Browser.close en erreur",
-    "Browser.close en erreur (Android : rien à fermer) : le rachat a lieu quand même",
-  ],
-  [
-    "rien hors de l'app (écoute)",
-    "hors de l'app (aucun pont natif) : aucune écoute, aucun lien suivi, aucune navigation",
-  ],
-  [
-    "rien hors de l'app (page relais)",
-    "page relais hors de l'app (navigateur ordinaire) : l'écran de connexion d'ERPlead, sans rien ouvrir",
-  ],
-  [
-    "agent LeadAppAuth/1",
-    "agent de l'app : LeadAppAuth/1 seulement avec InvoiceLeadApp ; anciennes versions et navigateurs comme avant",
-  ],
-  [
-    "page relais : Browser.open, back",
-    "page relais dans l'app : back gardé, navigateur du téléphone ouvert sur start ; refermé sans retour → back",
-  ],
-  [
-    "navigateur refermé puis retour (Android)",
-    "navigateur refermé puis lien de retour (Android) : le rachat l'emporte, pas de retour à l'écran de connexion",
-  ],
-  [
-    "start ou back étrangers refusés",
-    "page relais : start ou back étrangers → rien n'est ouvert, connexion ordinaire de l'app",
-  ],
-  [
-    "page relais sans langue (proxy)",
-    "/lead-auth/google sans langue → la page relais dans la langue de back, paramètres gardés",
-  ],
-  // Relecture du 30.10.2026.
-  [
-    "lien d'erreur suivi à chaque expiration",
+  foreign:
+    "liens étrangers ou mal formés ignorés : schéma propre, autre hôte, autre chemin, http, ancien io.crmlead.app://sso",
+  noCode:
+    "lien de retour sans code valable (error=expired, code abîmé) : écran de connexion gardé par la page relais, sinon connexion ordinaire",
+  expiredTwice:
     "deux demandes expirées de suite : le lien d'erreur (toujours le même) ramène chaque fois à l'écran de connexion",
-  ],
-  [
-    "lien sans connexion en cours ignoré",
-    "lien de l'app reçu sans connexion en cours (page web, courriel, autre app) : ignoré, ni navigateur fermé ni page quittée",
-  ],
-  [
-    "ancien lien de lancement jamais suivi par la page relais",
+  noPending:
+    "lien de retour reçu sans connexion en cours (page web, courriel, autre app) : ignoré, ni navigateur fermé ni page quittée",
+  staleLaunch:
     "page relais d'une nouvelle connexion : l'ancien lien que rend getLaunchUrl (app relancée) n'est jamais suivi ; le navigateur s'ouvre et le nouveau lien mène au rachat",
-  ],
-  [
-    "lien de lancement en retard sur la page relais",
+  lateLaunch:
     "page relais : un lien de lancement rendu après le délai n'est jamais pris pour le retour de cette connexion",
-  ],
-  [
-    "garde : écran de connexion de l'app sans session",
-    "dans l'app (LeadAppAuth/1) : par l'écran de connexion de l'app, qui lit le lien de lancement ; ailleurs, tout droit vers le Compte Lead",
-  ],
-];
+  closeFails: "Browser.close en erreur (Android : rien à fermer) : le rachat a lieu quand même",
+  iosSession:
+    "iOS 17.4+ : la session s'ouvre sur start&m=auto, l'adresse rendue mène au rachat une seule fois, sans Browser.open ni Browser.close",
+  iosCancel: "iOS : session annulée → écran de connexion d'ERPlead (back), connexion effacée",
+  iosRefused:
+    "iOS : session refusée (association absente, occupée…) → Safari sur start&m=tap ; le lien touché dans Safari (appUrlOpen) mène au rachat",
+  iosOld:
+    "iOS 15 à 17.3 : Safari sur start&m=tap, l'écran dit de toucher « Ouvrir InvoiceLead », puis le lien (appUrlOpen ou lancement) mène au rachat",
+  iosNoModule:
+    "iOS sans le module LeadAuthSession : écran de connexion d'ERPlead, rien n'est ouvert",
+  iosForeign:
+    "iOS : adresse rendue par la session qui n'est pas le lien de retour → écran de connexion, aucun rachat",
+  outsideListen:
+    "hors de l'app (aucun pont natif) : aucune écoute, aucun lien suivi, aucune navigation",
+  outsideRelay:
+    "page relais hors de l'app (navigateur ordinaire) : l'écran de connexion d'ERPlead, sans rien ouvrir",
+  agent:
+    "agent de l'app : LeadAppAuth/2 seulement avec InvoiceLeadApp ; LeadAppAuth/1, anciennes versions et navigateurs comme avant",
+  androidRelay:
+    "Android : page relais dans l'app : back gardé, Custom Tab ouvert sur start&m=auto ; refermé sans retour → back",
+  finishedThenLink:
+    "navigateur refermé puis lien de retour (Android) : le rachat l'emporte, pas de retour à l'écran de connexion",
+  badTargets:
+    "page relais : start ou back étrangers, ou start avec un mode déjà posé → rien n'est ouvert, connexion ordinaire de l'app",
+  returnPage:
+    "dans l'app : l'adresse de la page suit les règles du lien de retour (connexion en cours → rachat ; sinon l'app) ; hors de l'app → page de repli",
+  fallback:
+    "page de repli : 200 sans redirection, no-store, no-referrer, noindex, aucun script tiers, code jamais dans la page, cinq langues, phrase Android",
+  fallbackScript:
+    "page de repli : son script efface le code de l'adresse hors de l'app, et mène l'app à /<langue>/lead-auth/return avec la même recherche",
+  wellKnown:
+    "apple-app-site-association et assetlinks.json : JSON exact du contrat (App ID X6K5247J6G.io.invoicelead.app, paquet io.invoicelead.app, Play App Signing et clé d'envoi), application/json",
+  proxyRelay:
+    "/lead-auth/google sans langue → la page relais dans la langue de back, paramètres gardés",
+  proxyMatcher:
+    "proxy : /lead-auth/return et /.well-known/… hors du proxy (aucune langue, aucune redirection) ; la page relais et les pages de l'app y restent",
+  guard:
+    "dans l'app (LeadAppAuth/2) : par l'écran de connexion de l'app, qui lit le lien de lancement ; ailleurs (dont LeadAppAuth/1), tout droit vers le Compte Lead",
+};
 const G1_E2E = [
-  "app (LeadAppAuth/1) : « Continuer avec Google » → page relais → navigateur du téléphone → lien de retour → connectée dans InvoiceLead, une seule fois",
-  "navigateur du téléphone refermé sans retour : l'écran de connexion du Compte Lead revient",
+  "app Android (LeadAppAuth/2) : « Continuer avec Google » → page relais → Custom Tab (start&m=auto) → lien vérifié https://invoicelead.io/lead-auth/return → connectée dans InvoiceLead, une seule fois",
+  "app iOS 17.4+ : la session LeadAuthSession (start&m=auto) rend le lien vérifié → connectée, sans Browser.open ni Browser.close",
+  "app iOS 15 à 17.3 : Safari (start&m=tap), « Ouvrir InvoiceLead » dit sur la page relais, puis le lien touché (appUrlOpen) → connectée",
+  "app iOS : session annulée → l'écran de connexion du Compte Lead revient ; session refusée → Safari",
+  "navigateur du téléphone refermé sans retour (Android) : l'écran de connexion du Compte Lead revient",
   "app relancée par le lien de retour (lien de lancement) : connectée depuis l'écran de connexion de l'app, le lien n'est suivi qu'une fois",
-  "liens étrangers ignorés dans l'app ; hors de l'app, la page relais ne fait que revenir à l'écran de connexion",
-  "ancienne version de l'app (sans LeadAppAuth/1) et navigateur : l'écran de connexion part tout droit, comme avant",
   "app relancée par le lien de retour avec un cookie de session périmé : la garde passe par l'écran de connexion de l'app, qui suit le lien ; connectée du premier coup",
   "nouvelle connexion après une app relancée sans lecture du lien : l'ancien lien de lancement n'est pas suivi par la page relais, le nouveau connecte",
   "deux demandes expirées de suite : le lien d'erreur ramène chaque fois à l'écran de connexion du Compte Lead",
-  "lien de l'app reçu sans connexion en cours (page de l'app ouverte) : ignoré, la page reste",
+  "lien de retour reçu sans connexion en cours (page de l'app ouverte) : ignoré, la page reste",
+  "liens étrangers (dont l'ancien schéma io.invoicelead.app) ignorés dans l'app ; hors de l'app, la page relais ne fait que revenir à l'écran de connexion",
+  "ancienne version de l'app (sans LeadAppAuth/2, dont LeadAppAuth/1) et navigateur : l'écran de connexion part tout droit, comme avant",
+  "page de repli /lead-auth/return hors de l'app : 200 sans redirection ni langue, no-referrer, no-store, code effacé de l'adresse, message dans la langue du lien",
+  "lien de retour ouvert par la vue web de l'app (/lead-auth/return) : mené à la page de l'app, rachat pendant une connexion en cours",
+  "fichiers d'association servis tels quels : /.well-known/apple-app-site-association et /.well-known/assetlinks.json (200, application/json, sans redirection, contenu du contrat)",
 ];
 const LIB = "src/lib/lead-app-auth.ts";
 const GUARD_TEST = "tests/unit/lead-app-guard.test.ts";
@@ -305,94 +358,185 @@ const MUTATIONS = [
     file: LIB,
     from: '    if (link.kind === "code" && !firstTime(win, key)) return false;\n',
     to: "",
-    breaks: G1_UNIT[2][1],
+    breaks: U.launch,
   },
   {
-    name: "navigateur du téléphone jamais refermé",
+    name: "Custom Tab jamais refermé (Android)",
     file: LIB,
-    from: "    quietly(() => plugins.Browser?.close?.());\n",
+    from: "    if (android) quietly(() => plugins.Browser?.close?.());\n",
     to: "",
-    breaks: G1_UNIT[1][1],
+    breaks: U.android,
   },
   {
-    name: "schéma approché (tout lien io.invoicelead.app://)",
+    name: "lien approché (toute adresse de invoicelead.io)",
     file: LIB,
     // biome-ignore lint/suspicious/noTemplateCurlyInString: texte du code source à fausser, pas un gabarit
-    from: "export const RETURN_PREFIX = `${APP_SCHEME}://lead-auth?`;",
+    from: "export const RETURN_PREFIX = `${RETURN_URL}?`;",
     // biome-ignore lint/suspicious/noTemplateCurlyInString: texte du code source à fausser, pas un gabarit
-    to: "export const RETURN_PREFIX = `${APP_SCHEME}://`;",
-    breaks: G1_UNIT[3][1],
+    to: "export const RETURN_PREFIX = `${APP_ORIGIN}/`;",
+    breaks: U.exact,
+  },
+  {
+    name: "schéma propre io.invoicelead.app encore accepté",
+    file: LIB,
+    from: '  if (typeof url !== "string" || url.length > URL_MAX || !url.startsWith(RETURN_PREFIX))\n    return null;\n  const query = url.slice(RETURN_PREFIX.length).split("#")[0] ?? "";\n',
+    to: '  if (typeof url !== "string" || url.length > URL_MAX) return null;\n  const legacy = "io.invoicelead.app://lead-auth?";\n  if (!url.startsWith(RETURN_PREFIX) && !url.startsWith(legacy)) return null;\n  const query = url.slice(url.indexOf("?") + 1).split("#")[0] ?? "";\n',
+    breaks: U.exact,
   },
   {
     name: "pont non natif accepté (site web)",
     file: LIB,
     from: '    if (!cap || typeof cap.isNativePlatform !== "function" || cap.isNativePlatform() !== true)\n      return null;\n',
     to: "    if (!cap) return null;\n",
-    breaks: G1_UNIT[6][1],
+    breaks: U.outsideListen,
   },
   {
     name: "départ d'ERPlead non vérifié",
     file: LIB,
-    from: '  if (!issuer || !fromIssuer(issuer, start, "/auth/google/app/start")) return null;\n',
+    from: '  if (!issuer || !fromIssuer(issuer, start, "/auth/google/app/start")) return null;\n  if (new URL(start).searchParams.has("m")) return null;\n',
     to: '  if (!issuer || typeof start !== "string") return null;\n',
-    breaks: G1_UNIT[11][1],
+    breaks: U.badTargets,
+  },
+  {
+    name: "départ avec un mode déjà posé accepté",
+    file: LIB,
+    from: '  if (new URL(start).searchParams.has("m")) return null;\n',
+    to: "",
+    breaks: U.badTargets,
   },
   {
     name: "navigateur refermé : retour à l'écran même après le lien",
     file: LIB,
     from: "    if (state?.received) return;\n    if (state) state.armed = false;\n",
     to: "    if (state) state.armed = false;\n",
-    breaks: G1_UNIT[10][1],
+    breaks: U.finishedThenLink,
   },
   {
     name: "lien de lancement non lu",
     file: LIB,
-    from: '      return handle(r?.url, "launch");\n',
+    from: '      return follow(r?.url, "launch");\n',
     to: "      return false;\n",
-    breaks: G1_UNIT[2][1],
+    breaks: U.launch,
   },
-  // Relecture du 30.10.2026.
   {
     name: "lien d'erreur gardé comme vu (toujours le même lien)",
     file: LIB,
     from: '    if (link.kind === "code" && !firstTime(win, key)) return false;\n',
     to: "    if (!firstTime(win, key)) return false;\n",
-    breaks: G1_UNIT[13][1],
+    breaks: U.expiredTwice,
   },
   {
     name: "lien suivi sans connexion en cours",
     file: LIB,
     from: "    if (state.received || !expected(via, key)) return false;\n",
     to: "    if (state.received) return false;\n",
-    breaks: G1_UNIT[14][1],
+    breaks: U.noPending,
   },
   {
     name: "connexion en cours sans limite de temps",
     file: LIB,
     from: "    if (!(age >= 0 && age < PENDING_TTL_MS)) return null;\n",
     to: "    if (!(age >= 0)) return null;\n",
-    breaks: G1_UNIT[14][1],
+    breaks: U.noPending,
   },
   {
     name: "lien de lancement suivi sur la page relais",
     file: LIB,
     from: '    if (via === "launch" && state.relay) return false;\n',
     to: "",
-    breaks: G1_UNIT[16][1],
+    breaks: U.lateLaunch,
   },
   {
     name: "ancien lien noté par la page relais suivi au rechargement",
     file: LIB,
     from: '    return !!pending && !(via === "launch" && pending.stale === key);\n',
     to: "    return !!pending;\n",
-    breaks: G1_UNIT[15][1],
+    breaks: U.staleLaunch,
+  },
+  {
+    name: "session iOS annulée prise pour un refus (Safari au lieu de l'écran de connexion)",
+    file: LIB,
+    from: '          if (refusal(e) === "canceled") giveUp();\n          else safari();\n',
+    to: "          safari();\n",
+    breaks: U.iosCancel,
+  },
+  {
+    name: "iOS 17.4+ : Safari d'emblée, session jamais ouverte",
+    file: LIB,
+    from: "        .then((r) => (r?.https === true ? iosSession() : safari()))\n",
+    to: "        .then(() => safari())\n",
+    breaks: U.iosSession,
+  },
+  {
+    name: "iOS 15 à 17.3 : session tentée au lieu de Safari",
+    file: LIB,
+    from: "        .then((r) => (r?.https === true ? iosSession() : safari()))\n",
+    to: "        .then(() => iosSession())\n",
+    breaks: U.iosOld,
+  },
+  {
+    name: "Safari ouvert en mode auto (aucune page à bouton, l'app ne s'ouvre pas)",
+    file: LIB,
+    from: '        ?.openExternal?.({ url: withMode(targets.start, "tap") })\n',
+    to: '        ?.openExternal?.({ url: withMode(targets.start, "auto") })\n',
+    breaks: U.iosRefused,
+  },
+  {
+    name: "Custom Tab sans mode (page à bouton au lieu de l'App Link)",
+    file: LIB,
+    from: '        browser?.open?.({ url: withMode(targets.start, "auto") }).catch(giveUp);\n',
+    to: "        browser?.open?.({ url: targets.start }).catch(giveUp);\n",
+    breaks: U.androidRelay,
+  },
+  {
+    name: "adresse rendue par la session suivie sans règles",
+    file: LIB,
+    from: '          if (!state?.follow?.(r?.url, "open")) giveUp();\n',
+    to: "          if (r?.url) win.location.replace(String(r.url));\n          else giveUp();\n",
+    breaks: U.iosForeign,
+  },
+  {
+    name: "page de retour dans l'app suivie sans connexion en cours",
+    file: LIB,
+    from: '    if (via === "open" && state.armed) return true;\n',
+    to: '    if ((via === "open" && state.armed) || via === "page") return true;\n',
+    breaks: U.returnPage,
+  },
+  {
+    name: "page de repli : code laissé dans l'adresse",
+    file: "src/server/lead-app-return.ts",
+    // biome-ignore lint/suspicious/noTemplateCurlyInString: texte du code source à fausser, pas un gabarit
+    from: 'try{history.replaceState(null,"","${RETURN_PATH}")}catch(e){}',
+    to: "",
+    breaks: U.fallbackScript,
+  },
+  {
+    name: "page de repli : Referer envoyé",
+    file: "src/server/lead-app-return.ts",
+    from: '  "Referrer-Policy": "no-referrer",\n',
+    to: "",
+    breaks: U.fallback,
+  },
+  {
+    name: "fichiers d'association : tout le site revendiqué",
+    file: "src/lib/app-links.ts",
+    from: 'export const CLAIMED_PATH = "/lead-auth/return";',
+    to: 'export const CLAIMED_PATH = "/*";',
+    breaks: U.wellKnown,
+  },
+  {
+    name: "lien de retour repris par le proxy (préfixe de langue)",
+    file: "src/proxy.ts",
+    from: "_vercel|lead-auth/return|",
+    to: "_vercel|",
+    breaks: U.proxyMatcher,
   },
   {
     name: "garde : tout droit vers le Compte Lead dans l'app",
     file: "src/server/auth/guard.ts",
     from: "  if (isAppAuthAgent(userAgent)) {\n",
     to: "  if (userAgent === undefined) {\n",
-    breaks: G1_UNIT[17][1],
+    breaks: U.guard,
   },
 ];
 
@@ -448,8 +592,8 @@ function gateG1() {
     u.status === 0 && u.report?.numFailedTests === 0,
     failedTests(u.report).join(" | ") || u.tail,
   );
-  for (const [what, title] of G1_UNIT)
-    check(`G1 ${what}`, passed.has(title), `essai absent ou en échec : ${title}`);
+  for (const [what, title] of Object.entries(U))
+    check(`G1 ${what} : ${title.slice(0, 90)}`, passed.has(title), `essai absent ou en échec`);
   counterProofs();
   // 2. Contrôles complets de l'app.
   const biome = run("npx", ["biome", "ci", "."]);
@@ -469,7 +613,7 @@ function gateG1() {
       all.report?.success === true &&
       all.report?.numFailedTests === 0 &&
       all.report?.numPendingTests === 0 &&
-      total >= 581,
+      total >= 608,
     failedTests(all.report).join(" | ") || all.tail,
   );
   const build = run("npx", ["next", "build"], {
@@ -481,10 +625,17 @@ function gateG1() {
     build.status === 0,
     `${build.stdout}${build.stderr}`.slice(-500),
   );
-  check(
-    "build : la page relais /[locale]/lead-auth/google est servie à la demande",
-    /ƒ \/\[locale\]\/lead-auth\/google/.test(build.stdout ?? ""),
-  );
+  for (const [route, kind] of [
+    ["/[locale]/lead-auth/google", "ƒ"],
+    ["/[locale]/lead-auth/return", "ƒ"],
+    ["/lead-auth/return", "ƒ"],
+    ["/.well-known/apple-app-site-association", "○"],
+    ["/.well-known/assetlinks.json", "○"],
+  ])
+    check(
+      `build : ${route} ${kind === "○" ? "statique (fichier d'association)" : "servie à la demande"}`,
+      new RegExp(`${kind} ${route.replace(/[.[\]/]/g, "\\$&")}\\s`).test(build.stdout ?? ""),
+    );
   const report = join(tmp, "e2e.json");
   const e2e = run("npx", ["playwright", "test", "--reporter=json"], {
     env: {
@@ -511,7 +662,7 @@ function gateG1() {
       pw &&
       bad.length === 0 &&
       (pw.stats?.unexpected ?? 1) === 0 &&
-      specs.length >= 100,
+      specs.length >= 230,
     bad.map((s) => `${s.file} : ${s.title}`).join(" | ") || `${e2e.stdout ?? ""}`.slice(-500),
   );
   for (const title of G1_E2E)
@@ -519,29 +670,53 @@ function gateG1() {
       `e2e ${title.slice(0, 80)}…`,
       specs.some((s) => E2E.endsWith(s.file) && s.title === title && s.ok),
     );
-  // 3. La documentation suit le code.
+  // 3. La documentation suit le code, le code suit le contrat d'ERPlead.
   const doc = readFileSync(join(ROOT, "docs/GOOGLE-APP.md"), "utf8");
   for (const s of [
-    `${SCHEME}://lead-auth?code=`,
+    `${RETOUR}?code=`,
     "/lead-auth/google?start=",
     "/auth/google/app/redeem?code=",
-    "LeadAppAuth/1",
+    "LeadAppAuth/2",
+    "LeadAuthSession",
+    "'&m=auto'",
+    "'&m=tap'",
     "getLaunchUrl",
     "appUrlOpen",
     "Browser.close",
+    "history.replaceState",
+    "/.well-known/apple-app-site-association",
+    "/.well-known/assetlinks.json",
   ])
     check(`docs/GOOGLE-APP.md décrit « ${s} »`, doc.includes(s));
   const lib = readFileSync(join(ROOT, LIB), "utf8");
   const erp = readFileSync(join(ERP_REPO, "src/lib/appAuth.ts"), "utf8");
   check(
-    "schéma et page relais : ceux de la liste fermée d'ERPlead (APP_LINKS)",
-    lib.includes(`export const APP_SCHEME = "${SCHEME}";`) &&
+    "lien de retour et page relais : ceux de la liste fermée d'ERPlead (APP_LINKS, RETURN_PATH, RELAY_PATH)",
+    lib.includes(`export const APP_ORIGIN = "https://${DOMAIN}";`) &&
+      lib.includes('export const RETURN_PATH = "/lead-auth/return";') &&
       lib.includes('export const RELAY_PATH = "/lead-auth/google";') &&
-      erp.includes(
-        "invoicelead: { scheme: 'io.invoicelead.app', site: 'https://invoicelead.io' }",
-      ) &&
+      erp.includes(`invoicelead: { site: 'https://${DOMAIN}' }`) &&
+      erp.includes("export const RETURN_PATH = '/lead-auth/return'") &&
       erp.includes("export const RELAY_PATH = '/lead-auth/google'") &&
-      erp.includes("export const RETURN_HOST = 'lead-auth'"),
+      !/["']io\.invoicelead\.app:\/\//.test(lib),
+  );
+  check(
+    "agent : LeadAppAuth/2 comme première version du lien vérifié, chez ERPlead aussi",
+    readFileSync(join(ROOT, "src/lib/native.ts"), "utf8").includes(
+      "export const APP_AUTH_MIN = 2;",
+    ) && /AGENT_MIN\s*=\s*2\b/.test(erp),
+  );
+  const contract = contractAssociation();
+  const site = siteAssociation();
+  check(
+    `fichiers d'association du site = contrat d'ERPlead (§ 1, § 3d) : App ID ${contract.appID}, paquet ${contract.packageName}, ${contract.fps.length} empreintes, lien ${contract.returnLink}`,
+    contract.appID === `X6K5247J6G.${APP_ID}` &&
+      contract.packageName === APP_ID &&
+      contract.returnLink === RETOUR &&
+      contract.fps.length === 2 &&
+      isDeepStrictEqual(site?.aasa, contract.aasa) &&
+      isDeepStrictEqual(site?.assetlinks, contract.assetlinks),
+    { site, contract: { aasa: contract.aasa, assetlinks: contract.assetlinks } },
   );
   finish("G1");
 }
@@ -557,81 +732,194 @@ const semverGt = (a, b) => {
   for (let i = 0; i < 3; i++) if ((x[i] ?? 0) !== (y[i] ?? 0)) return (x[i] ?? 0) > (y[i] ?? 0);
   return false;
 };
+/** Une plist (Info.plist, droits) lue comme une plist, pas comme du texte. */
+const plist = (p) => {
+  const r = spawnSync(
+    "python3",
+    [
+      "-I",
+      "-c",
+      "import json,plistlib,sys;print(json.dumps(plistlib.load(open(sys.argv[1],'rb'))))",
+      join(MOBILE, p),
+    ],
+    { encoding: "utf8" },
+  );
+  return r.status === 0 ? JSON.parse(r.stdout) : null;
+};
+const fpOf = (text) =>
+  (/SHA-256 digest: ([0-9A-F:]+)|SHA256: ([0-9A-F:]+)/i.exec(text ?? "") ?? [])
+    .slice(1)
+    .find(Boolean)
+    ?.toUpperCase() ?? "";
 
 function gateG2() {
+  const head = mgit(["rev-parse", "--short", "HEAD"]);
   check(
-    `dépôt mobile ${MOBILE} : branche ${BRANCH}, partie de ${MOBILE_BASE}, rien en cours (fichiers suivis)`,
+    `dépôt mobile ${MOBILE} : branche ${BRANCH} (${head}), partie de ${MOBILE_BASE}, rien en cours (fichiers suivis)`,
     mgit(["branch", "--show-current"]) === BRANCH &&
       spawnSync("git", ["merge-base", "--is-ancestor", MOBILE_BASE, "HEAD"], { cwd: MOBILE })
         .status === 0 &&
       mgit(["status", "--porcelain", "--untracked-files=no"]) === "",
     mgit(["status", "--porcelain", "--untracked-files=no"]),
   );
-  // Info.plist (lu comme une plist, pas comme du texte).
-  const plist = spawnSync(
-    "python3",
-    [
-      "-I",
-      "-c",
-      "import json,plistlib,sys;print(json.dumps(plistlib.load(open(sys.argv[1],'rb'))))",
-      join(MOBILE, "ios/App/App/Info.plist"),
-    ],
-    { encoding: "utf8" },
+  // --- iOS : droits Associated Domains, plus de schéma propre.
+  const ent = plist("ios/App/App/App.entitlements");
+  const domains = ent?.["com.apple.developer.associated-domains"] ?? null;
+  check(
+    `iOS App.entitlements (plist) : com.apple.developer.associated-domains = ${JSON.stringify(domains)}`,
+    isDeepStrictEqual(domains, [`applinks:${DOMAIN}`, `webcredentials:${DOMAIN}`]) &&
+      Object.keys(ent ?? {}).length === 1,
   );
-  const info = plist.status === 0 ? JSON.parse(plist.stdout) : null;
+  const info = plist("ios/App/App/Info.plist");
   const schemes = (info?.CFBundleURLTypes ?? []).flatMap((t) => t.CFBundleURLSchemes ?? []);
   check(
-    `iOS Info.plist valable : CFBundleURLTypes → CFBundleURLSchemes = ${SCHEME}`,
-    schemes.includes(SCHEME),
-    plist.stderr || schemes,
+    `iOS Info.plist (plist) : plus aucun schéma propre (CFBundleURLTypes ${JSON.stringify(schemes)})`,
+    info && !info.CFBundleURLTypes && schemes.length === 0,
   );
-  const scene = mread("ios/App/App/SceneDelegate.swift");
+  const pbx = (() => {
+    const r = spawnSync(
+      "node",
+      [
+        "-e",
+        `const x=require(require.resolve("xcode",{paths:[process.argv[1]]}));const p=x.project(process.argv[2]);p.parseSync();const o=p.hash.project.objects;
+const cfg=Object.values(o.XCBuildConfiguration).filter(c=>typeof c==="object"&&c.buildSettings.PRODUCT_BUNDLE_IDENTIFIER);
+const src=Object.values(o.PBXSourcesBuildPhase).find(s=>typeof s==="object");
+console.log(JSON.stringify({cfg:cfg.map(c=>({name:c.name,ent:c.buildSettings.CODE_SIGN_ENTITLEMENTS,bundle:c.buildSettings.PRODUCT_BUNDLE_IDENTIFIER,target:c.buildSettings.IPHONEOS_DEPLOYMENT_TARGET,mkt:String(c.buildSettings.MARKETING_VERSION),build:Number(c.buildSettings.CURRENT_PROJECT_VERSION)})),sources:src.files.map(f=>f.comment),files:Object.values(o.PBXFileReference).filter(f=>typeof f==="object").map(f=>f.path)}))`,
+        MOBILE,
+        join(MOBILE, "ios/App/App.xcodeproj/project.pbxproj"),
+      ],
+      { encoding: "utf8" },
+    );
+    try {
+      return JSON.parse(r.stdout);
+    } catch {
+      return null;
+    }
+  })();
   check(
-    "iOS : le SceneDelegate passe les liens à Capacitor (openURLContexts et lancement → SceneDelegateProxy)",
-    scene.includes("SceneDelegateProxy.shared.scene(scene, openURLContexts: URLContexts)") &&
+    "Xcode (project.pbxproj lu par le paquet xcode) : CODE_SIGN_ENTITLEMENTS = App/App.entitlements en Debug et Release de la cible App, LeadAuthSession.swift compilé, iOS 15.0 minimum",
+    pbx?.cfg.length === 2 &&
+      pbx.cfg.every(
+        (c) =>
+          c.ent === "App/App.entitlements" && c.bundle === APP_ID && String(c.target) === "15.0",
+      ) &&
+      pbx.sources.includes("LeadAuthSession.swift in Sources") &&
+      pbx.files.includes("LeadAuthSession.swift") &&
+      pbx.files.includes("App.entitlements"),
+    pbx,
+  );
+  // --- iOS : le module LeadAuthSession (lu dans le source Swift, contrat § 1).
+  const swift = mread("ios/App/App/LeadAuthSession.swift");
+  const scene = mread("ios/App/App/SceneDelegate.swift");
+  const swiftChecks = {
+    déclaration:
+      swift.includes("@objc(LeadAuthSessionPlugin)") &&
+      swift.includes(
+        "public class LeadAuthSessionPlugin: CAPPlugin, CAPBridgedPlugin, ASWebAuthenticationPresentationContextProviding",
+      ) &&
+      swift.includes('public let jsName = "LeadAuthSession"'),
+    méthodes: ["isAvailable", "start", "openExternal"].every(
+      (m) =>
+        swift.includes(`CAPPluginMethod(name: "${m}", returnType: CAPPluginReturnPromise)`) &&
+        swift.includes(`@objc func ${m}(_ call: CAPPluginCall)`),
+    ),
+    "iOS 17.4": (swift.match(/#available\(iOS 17\.4, \*\)/g) ?? []).length >= 2,
+    "retour https écrit dans le code":
+      swift.includes(`static let returnHost = "${DOMAIN}"`) &&
+      swift.includes('static let returnPath = "/lead-auth/return"') &&
+      swift.includes(
+        "ASWebAuthenticationSession.Callback.https(host: Self.returnHost, path: Self.returnPath)",
+      ) &&
+      (swift.match(/call\.get\w+\(/g) ?? []).every((g) => g === "call.getString(") &&
+      (swift.match(/call\.getString\("(\w+)"\)/g) ?? []).every((g) => g.includes('"url"')),
+    "départ https d'ERPlead seulement":
+      swift.includes('static let startPath = "/auth/google/app/start"') &&
+      swift.includes('url.scheme == "https"') &&
+      swift.includes("url.path == startPath") &&
+      (swift.match(/Self\.startURL\(call\.getString\("url"\)\)/g) ?? []).length === 2,
+    "comptes de Safari réutilisés": swift.includes(
+      "session.prefersEphemeralWebBrowserSession = false",
+    ),
+    "une session à la fois": swift.includes("if session != nil {") && swift.includes('"busy"'),
+    refus: ["canceled", "unavailable", "busy", "bad_url", "failed"].every((c) =>
+      swift.includes(`, "${c}"`),
+    ),
+    annulation: swift.includes("error.code == .canceledLogin"),
+    Safari: swift.includes("UIApplication.shared.open(url, options: [:])"),
+    fenêtre: swift.includes("bridge?.viewController?.view.window"),
+    inscription:
+      swift.includes("class LeadBridgeViewController: CAPBridgeViewController") &&
+      swift.includes("override open func capacitorDidLoad()") &&
+      swift.includes("bridge?.registerPluginInstance(LeadAuthSessionPlugin())") &&
+      scene.includes("window?.rootViewController = LeadBridgeViewController()"),
+    "Universal Links remis à Capacitor":
+      scene.includes("SceneDelegateProxy.shared.scene(scene, continue: userActivity)") &&
       scene.includes(
         "SceneDelegateProxy.shared.scene(scene, willConnectTo: session, options: connectionOptions)",
       ),
+  };
+  for (const [what, ok] of Object.entries(swiftChecks))
+    check(`iOS LeadAuthSession.swift / SceneDelegate : ${what}`, ok);
+  note(
+    `Swift : ${spawnSync("which", ["swiftc"]).status === 0 ? "swiftc présent" : "aucun compilateur Swift ici (Linux, pas de Xcode)"} ; la compilation iOS se fait chez Codemagic (non lancée)`,
   );
-  // AndroidManifest.xml : activité principale singleTask, intent-filter VIEW/DEFAULT/BROWSABLE + schéma + hôte.
+  // --- Android : App Link vérifié, plus de schéma propre.
   const manifest = mread("android/app/src/main/AndroidManifest.xml");
   const activity = /<activity[\s\S]*?<\/activity>/.exec(manifest)?.[0] ?? "";
-  const filters = activity.match(/<intent-filter>[\s\S]*?<\/intent-filter>/g) ?? [];
-  const link = filters.find((f) => f.includes(`android:scheme="${SCHEME}"`));
+  const filters = activity.match(/<intent-filter[\s\S]*?<\/intent-filter>/g) ?? [];
+  const link = filters.find((f) => f.includes('android:autoVerify="true"'));
   check(
-    `Android : activité principale singleTask avec intent-filter VIEW + DEFAULT + BROWSABLE, scheme ${SCHEME}, host lead-auth`,
+    `Android : activité principale singleTask avec intent-filter autoVerify VIEW + DEFAULT + BROWSABLE, https ${DOMAIN} /lead-auth/return`,
     /android:name="\.MainActivity"/.test(activity) &&
       /android:launchMode="singleTask"/.test(activity) &&
+      filters.filter((f) => f.includes("autoVerify")).length === 1 &&
       !!link &&
       link.includes('android.intent.action.VIEW"') &&
       link.includes('android.intent.category.DEFAULT"') &&
       link.includes('android.intent.category.BROWSABLE"') &&
-      link.includes(`<data android:scheme="${SCHEME}" android:host="lead-auth" />`),
+      link.includes(
+        `<data android:scheme="https" android:host="${DOMAIN}" android:path="/lead-auth/return" />`,
+      ) &&
+      (link.match(/<data /g) ?? []).length === 1,
     link ?? "intent-filter absent",
   );
-  // capacitor.config.ts
+  check(
+    "Android : plus aucun schéma propre ni autre hôte http(s) dans le manifeste",
+    !manifest.includes(`android:scheme="${APP_ID}"`) &&
+      (manifest.match(/android:host="[^"]+"/g) ?? []).every(
+        (h) => h === `android:host="${DOMAIN}"`,
+      ),
+  );
+  // --- Configuration Capacitor.
   const cfg = mread("capacitor.config.ts");
   const agent = /appendUserAgent:\s*'([^']*)'/.exec(cfg)?.[1] ?? "";
   check(
-    `capacitor.config.ts : appId ${SCHEME}, appendUserAgent « ${agent} » (InvoiceLeadApp + LeadAppAuth/1), server.url https://invoicelead.io`,
-    cfg.includes(`appId: '${SCHEME}'`) &&
+    `capacitor.config.ts : appId ${APP_ID}, appendUserAgent « ${agent} » (InvoiceLeadApp + LeadAppAuth/2), server.url https://${DOMAIN}`,
+    cfg.includes(`appId: '${APP_ID}'`) &&
       /(^|\s)InvoiceLeadApp(\s|$)/.test(agent) &&
-      /(^|\s)LeadAppAuth\/1(\s|$)/.test(agent) &&
-      cfg.includes("url: 'https://invoicelead.io'"),
+      /(^|\s)LeadAppAuth\/2(\s|$)/.test(agent) &&
+      cfg.includes(`url: 'https://${DOMAIN}'`),
   );
   check(
-    "allowNavigation garde erplead.io et Apple",
-    /allowNavigation:\s*\[[^\]]*'erplead\.io'[^\]]*'appleid\.apple\.com'[^\]]*\]/.test(cfg),
+    "allowNavigation garde erplead.io et Apple, jamais Google",
+    /allowNavigation:\s*\[[^\]]*'erplead\.io'[^\]]*'appleid\.apple\.com'[^\]]*\]/.test(cfg) &&
+      !/allowNavigation:\s*\[[^\]]*google/i.test(cfg),
   );
+  // --- Le site et ERPlead parlent du même lien.
   const web = readFileSync(join(ROOT, LIB), "utf8");
+  const links = readFileSync(join(ROOT, "src/lib/app-links.ts"), "utf8");
   check(
-    "le schéma déclaré est celui qu'écoute le site (src/lib/lead-app-auth.ts) et celui de la liste d'ERPlead",
-    web.includes(`export const APP_SCHEME = "${SCHEME}";`) &&
+    "le lien déclaré par l'app est celui qu'écoute le site et celui de la liste d'ERPlead ; l'App ID et le paquet des fichiers d'association sont ceux de l'app",
+    web.includes(`export const APP_ORIGIN = "https://${DOMAIN}";`) &&
+      web.includes('export const RETURN_PATH = "/lead-auth/return";') &&
       readFileSync(join(ERP_REPO, "src/lib/appAuth.ts"), "utf8").includes(
-        `invoicelead: { scheme: '${SCHEME}'`,
-      ),
+        `invoicelead: { site: 'https://${DOMAIN}' }`,
+      ) &&
+      links.includes('export const APPLE_TEAM_ID = "X6K5247J6G";') &&
+      links.includes(`export const APP_BUNDLE_ID = "${APP_ID}";`) &&
+      links.includes('export const CLAIMED_PATH = "/lead-auth/return";'),
   );
-  // Plugins présents, installés, synchronisés.
+  // --- Plugins présents, installés, synchronisés.
   const pkg = JSON.parse(mread("package.json"));
   const ver = (name) => {
     try {
@@ -671,24 +959,23 @@ function gateG2() {
     const j = existsSync(join(MOBILE, gen)) ? JSON.parse(mread(gen)) : null;
     check(
       `configuration recopiée par cap sync (${gen}) : appendUserAgent « ${j?.appendUserAgent} »`,
-      j?.appendUserAgent === agent && j?.appId === SCHEME,
+      j?.appendUserAgent === agent && j?.appId === APP_ID,
     );
   }
-  // Versions : plus hautes que celles de la base (1.0.1, versionCode 2 publié, build iOS 2 dans TestFlight).
+  // --- Versions : plus hautes que celles de la base (1.0.1, versionCode 2 publié, build iOS 2 dans TestFlight).
   const before = {
     pkg: JSON.parse(mread("package.json", MOBILE_BASE)).version,
     name: /versionName "([^"]+)"/.exec(mread("android/app/build.gradle", MOBILE_BASE))?.[1],
     mkt: /MARKETING: ([\d.]+)/.exec(mread("codemagic.yaml", MOBILE_BASE))?.[1],
   };
   const gradle = mread("android/app/build.gradle");
-  const pbx = mread("ios/App/App.xcodeproj/project.pbxproj");
   const now = {
     pkg: pkg.version,
     name: /versionName "([^"]+)"/.exec(gradle)?.[1],
     code: Number(/\?: "(\d+)"\) as int\)/.exec(gradle)?.[1]),
     mkt: /MARKETING: ([\d.]+)/.exec(mread("codemagic.yaml"))?.[1],
-    pbxMkt: [...pbx.matchAll(/MARKETING_VERSION = ([\d.]+);/g)].map((m) => m[1]),
-    pbxBuild: [...pbx.matchAll(/CURRENT_PROJECT_VERSION = (\d+);/g)].map((m) => Number(m[1])),
+    pbxMkt: (pbx?.cfg ?? []).map((c) => c.mkt),
+    pbxBuild: (pbx?.cfg ?? []).map((c) => c.build),
   };
   check(
     `version augmentée : ${before.pkg} → ${now.pkg} (package.json, versionName ${now.name}, Codemagic ${now.mkt}, Xcode ${now.pbxMkt.join("/")})`,
@@ -705,7 +992,7 @@ function gateG2() {
     `build augmenté : versionCode ${now.code} (Android, 1.0.1 = 2), CURRENT_PROJECT_VERSION ${now.pbxBuild.join("/")} (iOS, TestFlight 1.0.1 (2))`,
     now.code >= 3 && now.pbxBuild.length === 2 && now.pbxBuild.every((b) => b >= 3),
   );
-  // Construction Android : AAB signé par la clé d'envoi d'InvoiceLead, APK de contrôle.
+  // --- Construction Android : AAB signé par la clé d'envoi d'InvoiceLead, APK de contrôle.
   const signing = readEnv(`${HOME}/.android-signing/invoicelead-upload.env`);
   const out = `${MOBILE}/android/app/build/outputs`;
   rmSync(`${out}/bundle/release/app-release.aab`, { force: true });
@@ -731,7 +1018,7 @@ function gateG2() {
     }).stdout ?? "";
   check(
     `APK construit : ${/package: [^\n]*/.exec(badging)?.[0]?.split(" platformBuild")[0]}`,
-    badging.includes(`name='${SCHEME}'`) &&
+    badging.includes(`name='${APP_ID}'`) &&
       badging.includes(`versionCode='${now.code}'`) &&
       badging.includes(`versionName='${now.pkg}'`),
   );
@@ -741,19 +1028,20 @@ function gateG2() {
       ["dump", "xmltree", "--file", "AndroidManifest.xml", `${out}/apk/debug/app-debug.apk`],
       { encoding: "utf8" },
     ).stdout ?? "";
+  const schemesInApk = [...tree.matchAll(/scheme\(0x01010027\)="([^"]+)"/g)].map((m) => m[1]);
+  const hostsInApk = [...tree.matchAll(/host\(0x01010028\)="([^"]+)"/g)].map((m) => m[1]);
   check(
-    "manifeste fusionné de l'APK : intent-filter VIEW / BROWSABLE, scheme io.invoicelead.app, host lead-auth ; activité du navigateur (@capacitor/browser)",
-    tree.includes('"android.intent.action.VIEW"') &&
-      tree.includes('"android.intent.category.BROWSABLE"') &&
-      tree.includes(`scheme(0x01010027)="${SCHEME}"`) &&
-      tree.includes('host(0x01010028)="lead-auth"') &&
+    `manifeste fusionné de l'APK : intent-filter autoVerify https ${DOMAIN} /lead-auth/return, seuls schéma ${JSON.stringify(schemesInApk)} et hôte ${JSON.stringify(hostsInApk)} ; activité du navigateur (@capacitor/browser)`,
+    tree.includes("autoVerify(0x010104ee)=true") &&
+      tree.includes('path(0x0101002a)="/lead-auth/return"') &&
+      isDeepStrictEqual(schemesInApk, ["https"]) &&
+      isDeepStrictEqual(hostsInApk, [DOMAIN]) &&
       /com\.capacitorjs\.plugins\.browser\.\w+/.test(tree),
   );
   const aab = `${out}/bundle/release/app-release.aab`;
   const verify = spawnSync("jarsigner", ["-verify", "-certs", "-verbose:summary", aab], {
     encoding: "utf8",
   });
-  const certOf = (text) => /SHA-256 digest: ([0-9A-F:]+)|SHA256: ([0-9A-F:]+)/i.exec(text ?? "");
   const ks = spawnSync(
     "keytool",
     [
@@ -771,9 +1059,10 @@ function gateG2() {
       env: { ...process.env, ANDROID_KEYSTORE_PASSWORD: signing.ANDROID_KEYSTORE_PASSWORD },
     },
   );
-  const keyFp = (certOf(ks.stdout)?.[1] ?? certOf(ks.stdout)?.[2] ?? "").toUpperCase();
-  const pr = spawnSync("keytool", ["-printcert", "-jarfile", aab], { encoding: "utf8" });
-  const aabFp = (certOf(pr.stdout)?.[1] ?? certOf(pr.stdout)?.[2] ?? "").toUpperCase();
+  const keyFp = fpOf(ks.stdout);
+  const aabFp = fpOf(
+    spawnSync("keytool", ["-printcert", "-jarfile", aab], { encoding: "utf8" }).stdout,
+  );
   check(
     `AAB signé par la clé d'envoi d'InvoiceLead (empreinte ${keyFp.slice(0, 8)}…${keyFp.slice(-5)})`,
     verify.status === 0 &&
@@ -782,13 +1071,52 @@ function gateG2() {
       aabFp === keyFp,
     { verify: verify.status, same: aabFp === keyFp },
   );
-  const inAab = execSync(
-    `unzip -p ${JSON.stringify(aab)} base/manifest/AndroidManifest.xml | strings`,
-    { encoding: "utf8" },
-  );
+  const aabManifest =
+    spawnSync("java", ["-jar", BUNDLETOOL, "dump", "manifest", "--bundle", aab], {
+      encoding: "utf8",
+      maxBuffer: 64 << 20,
+    }).stdout ?? "";
   check(
-    "AAB : le manifeste porte le schéma et l'hôte du lien de retour",
-    inAab.includes(SCHEME) && inAab.includes("lead-auth"),
+    "AAB (bundletool dump manifest) : le filtre autoVerify du lien vérifié, aucun schéma propre",
+    /<intent-filter android:autoVerify="true">/.test(aabManifest) &&
+      aabManifest.includes(
+        `<data android:host="${DOMAIN}" android:path="/lead-auth/return" android:scheme="https"/>`,
+      ) &&
+      !aabManifest.includes(`android:scheme="${APP_ID}"`),
+  );
+  // --- Empreintes du assetlinks.json du site : clé d'envoi (keystore, AAB) et Play App Signing (API Play, lecture).
+  const site = siteAssociation();
+  const contract = contractAssociation();
+  check(
+    `assetlinks.json du site : la clé d'envoi est celle du keystore et de l'AAB (${keyFp.slice(0, 8)}…), comme au contrat`,
+    site?.fp?.upload === keyFp && contract.fps[1] === keyFp,
+    { site: site?.fp?.upload?.slice(0, 8), contract: contract.fps[1]?.slice(0, 8) },
+  );
+  const play = spawnSync(
+    "node",
+    [
+      "-e",
+      `const {google}=require(require.resolve("googleapis",{paths:[process.argv[1]]}));(async()=>{const auth=new google.auth.GoogleAuth({keyFile:process.argv[2],scopes:["https://www.googleapis.com/auth/androidpublisher"]});const ap=google.androidpublisher({version:"v3",auth});const r=await ap.generatedapks.list({packageName:"${APP_ID}",versionCode:2});console.log(JSON.stringify((r.data.generatedApks||[]).map(g=>g.certificateSha256Hash)))})().catch(e=>{console.log(JSON.stringify({erreur:String(e.code||e.message).slice(0,80)}));process.exit(1)})`,
+      PLAY_TOOLS,
+      PLAY_KEY,
+    ],
+    { encoding: "utf8", timeout: 120_000 },
+  );
+  const playCerts = (() => {
+    try {
+      return JSON.parse(play.stdout.trim());
+    } catch {
+      return null;
+    }
+  })();
+  check(
+    `Play App Signing (API Play, lecture seule : generatedapks.list de ${APP_ID} versionCode 2) = l'empreinte Play du assetlinks.json du site et du contrat (${String(playCerts?.[0]).slice(0, 8)}…)`,
+    play.status === 0 &&
+      Array.isArray(playCerts) &&
+      playCerts.length >= 1 &&
+      playCerts.every((c) => c === site?.fp?.playAppSigning) &&
+      contract.fps[0] === site?.fp?.playAppSigning,
+    playCerts,
   );
   mkdirSync(PUBLICATIONS, { recursive: true });
   const target = `${PUBLICATIONS}/invoicelead-${now.pkg}-${now.code}.aab`;
@@ -797,19 +1125,22 @@ function gateG2() {
     `AAB rangé pour la publication : ${target}`,
     sha256(readFileSync(target)) === sha256(readFileSync(aab)),
   );
-  // iOS : pas de Xcode ici ; la construction se fait chez Codemagic (workflow ios-testflight), qui téléverse vers
-  // App Store Connect : elle n'est PAS lancée par cette porte.
+  // --- iOS : pas de Xcode ici ; la construction se fait chez Codemagic (workflow ios-testflight), qui téléverse
+  // vers App Store Connect : elle n'est PAS lancée par cette porte.
   const cm = mread("codemagic.yaml");
   check(
-    `iOS : codemagic.yaml prêt (bundle ${SCHEME}, MARKETING ${now.mkt}, build = dernier TestFlight + 1), sans déclenchement automatique`,
-    cm.includes(`bundle_identifier: ${SCHEME}`) &&
+    `iOS : codemagic.yaml prêt (bundle ${APP_ID}, MARKETING ${now.mkt}, build = dernier TestFlight + 1, contrôle des droits et de LeadAppAuth/2 avant la construction), sans déclenchement automatique`,
+    cm.includes(`bundle_identifier: ${APP_ID}`) &&
       now.mkt === now.pkg &&
+      cm.includes(`grep -q "applinks:${DOMAIN}"`) &&
+      cm.includes(`grep -q "webcredentials:${DOMAIN}"`) &&
+      cm.includes('"appendUserAgent": "InvoiceLeadApp LeadAppAuth/2"') &&
       !/^\s*triggering:/m.test(cm),
   );
   note(
-    `iOS : xcodebuild ${spawnSync("which", ["xcodebuild"]).status === 0 ? "présent" : "absent (Linux)"} ; construction iOS = Codemagic, non lancée (téléversement vers App Store Connect = décision d'Ève)`,
+    "iOS : construction = Codemagic, non lancée (téléversement vers App Store Connect = décision d'Ève) ; elle exige d'abord Associated Domains sur io.invoicelead.app et un profil App Store régénéré (comptes Apple : non touchés)",
   );
-  // Rien de soumis : la branche mobile n'est pas poussée (aucune construction distante possible depuis elle).
+  // --- Rien de soumis : la branche mobile n'est pas poussée (aucune construction distante possible depuis elle).
   const remote = spawnSync("git", ["ls-remote", "origin", `refs/heads/${BRANCH}`], {
     cwd: MOBILE,
     encoding: "utf8",
@@ -1136,6 +1467,13 @@ async function targets() {
     "la production d'ERPlead n'est pas cet aperçu",
     ep.targets?.production?.id && ep.targets.production.id !== erp.deployment,
   );
+  check(
+    `aperçu d'ERPlead bâti depuis le contrat révisé (${String(erp.commit).slice(0, 7)}) : même code que la tête d'erplead-google-app (${git(["rev-parse", "--short", "HEAD"], ERP_REPO)})`,
+    !!erp.commit &&
+      run("git", ["diff", "--quiet", erp.commit, "HEAD", "--", "src"], { cwd: ERP_REPO }).status ===
+        0 &&
+      /GOOGLE_APP_ENABLED=1/.test(erp.note ?? ""),
+  );
   const env = readEnv(`${HOME}/.erplead-apercu.env`);
   const ro = env.APERCU_RO_URL;
   const rw = env.APERCU_DATABASE_URL_UNPOOLED;
@@ -1188,6 +1526,7 @@ async function gateG3() {
   const t = await targets();
   if (failures) finish("G3");
   const who = benchPerson(t);
+  const contract = contractAssociation();
   const startedAt = new Date();
   mkdirSync(CAPTURES, { recursive: true });
   // Journal (audit) et frein des départs (rate_limits « gapp|<ip> ») d'ERPlead : ce que la porte y écrit
@@ -1212,11 +1551,12 @@ async function gateG3() {
   };
   const limitsBefore = gappLimits();
   let limitsUndone = 0;
+  let departs = 0;
   const { chromium } = require("@playwright/test");
   const browser = await chromium.launch({ headless: true });
   const BRIDGE = readFileSync(join(ROOT, "tests/support/fake-capacitor.js"), "utf8");
   const PROD_ERP = "https://erplead.io";
-  const PROD_IL = "https://invoicelead.io";
+  const PROD_IL = `https://${DOMAIN}`;
   const madeStates = [];
   const madeVh = [];
   const shots = [];
@@ -1224,6 +1564,7 @@ async function gateG3() {
   const leaked = []; // requêtes réseau réelles vers la production (attendu : aucune)
   const callbacks = []; // retours OpenID vers InvoiceLead (arrêtés par la porte)
   const googleInWebview = [];
+  const ilNav = []; // pages de l'aperçu d'InvoiceLead ouvertes (chemins)
   const shot = async (page, name) => {
     await page.screenshot({ path: `${CAPTURES}/${name}.png`, fullPage: true });
     shots.push(`${name}.png`);
@@ -1240,9 +1581,10 @@ async function gateG3() {
    * Un contexte de navigateur (vue web de l'app, navigateur du téléphone, ordinateur). Jamais une redirection suivie par
    * le navigateur (route() ne verrait pas la suivante) : chaque réponse 3xx des aperçus est lue (fetch sans suivre) et
    * rendue en page 200 qui renvoie (meta refresh), ses cookies gardés ; chaque requête vers la production est
-   * interceptée : menée vers l'aperçu, ou arrêtée (retour OpenID vers InvoiceLead).
+   * interceptée : menée vers l'aperçu, ou arrêtée (retour OpenID vers InvoiceLead). `bridge` : réglage du faux pont
+   * (plateforme, module iOS), vue web seulement.
    */
-  async function context(ua, kind, launchUrl) {
+  async function context(ua, kind, bridge = {}) {
     const ctx = await browser.newContext({
       userAgent: ua,
       viewport: kind === "desktop" ? { width: 1280, height: 900 } : { width: 390, height: 844 },
@@ -1265,10 +1607,9 @@ async function gateG3() {
       await ctx.exposeBinding("__bridgeCall", ({ page }, name, arg) => {
         calls.push({ name, arg, url: page.url() });
       });
-      if (launchUrl)
-        await ctx.addInitScript((u) => {
-          window.__FAKE_CAPACITOR = { launchUrl: u };
-        }, launchUrl);
+      await ctx.addInitScript((c) => {
+        window.__FAKE_CAPACITOR = c;
+      }, bridge);
       await ctx.addInitScript({ content: BRIDGE });
       await ctx.route(/^https:\/\/accounts\.google\.com\//, (route) => route.abort());
     }
@@ -1297,6 +1638,8 @@ async function gateG3() {
       `^(${t.il.replace(/[.]/g, "\\.")}|${t.erp.replace(/[.]/g, "\\.")})/`,
     );
     await ctx.route(previews, async (route) => {
+      if (route.request().isNavigationRequest() && route.request().url().startsWith(t.il))
+        ilNav.push(new URL(route.request().url()).pathname);
       let res;
       try {
         res = await route.fetch({ maxRedirects: 0 });
@@ -1341,16 +1684,174 @@ async function gateG3() {
     }
     return null;
   };
+  const onErpLogin = (error) => (u) =>
+    u.href.startsWith(`${t.erp}/login?`) &&
+    (error === undefined || u.searchParams.get("error") === error);
+  /** L'écran de connexion d'ERPlead (vue web) → « Continuer avec Google » → page relais → ouverture relevée. */
+  const startGoogle = async (wv, opener, step) => {
+    const from = auditMax();
+    const before = named(wv.calls, opener).length;
+    await wv.page.locator('a[href^="/auth/google/app?"]').click();
+    await wv.page.waitForURL(`${t.il}/it/lead-auth/google?**`, { timeout: 30_000 });
+    const opened = await waitFor(() => named(wv.calls, opener)[before]);
+    departs++;
+    check(
+      `${step} : le départ écrit une ligne google_app.start {app: invoicelead}, relevée pour la remise en état`,
+      auditSince(from, `départ ${step}`, "google_app.start", "invoicelead", null) >= 1,
+    );
+    const cookie = (await wv.ctx.cookies(t.erp)).find((c) => c.name === "__Host-erp_gapp");
+    const vh = cookie ? sha256(cookie.value) : "";
+    if (vh) madeVh.push(vh);
+    return { start: String(opened?.arg ?? ""), cookie, vh };
+  };
+  /** Le départ dans le navigateur du téléphone jusqu'à accounts.google.com ; rend la demande Google. */
+  const toGoogle = async (sys, start) => {
+    const googleReq = [];
+    const listener = (r) => {
+      if (r.url().startsWith("https://accounts.google.com/o/oauth2/v2/auth"))
+        googleReq.push(r.url());
+    };
+    sys.page.on("request", listener);
+    await sys.page.goto(toPreview(start), { waitUntil: "domcontentloaded" }).catch(() => {});
+    await waitFor(() => googleReq.length > 0 && /accounts\.google\.com/.test(sys.page.url()));
+    await sys.page.waitForLoadState("load").catch(() => {});
+    sys.page.off("request", listener);
+    const gu = googleReq[0] ? new URL(googleReq[0]) : null;
+    const gstate = gu?.searchParams.get("state") ?? "";
+    if (gstate) madeStates.push(sha256(gstate));
+    const text = await sys.page.content().catch(() => "");
+    const ok =
+      !!gu &&
+      gu.searchParams.get("redirect_uri") === "https://erplead.io/auth/google/callback" &&
+      gstate.startsWith("app.invoicelead.") &&
+      gu.searchParams.get("code_challenge_method") === "S256" &&
+      gu.searchParams.get("hl") === "it" &&
+      new URL(sys.page.url()).host === "accounts.google.com" &&
+      !/redirect_uri_mismatch|invalid_client|disallowed_useragent|Error 400|Errore 400/i.test(text);
+    return { gu, gstate, ok, url: googleReq[0] ?? sys.page.url() };
+  };
+  /** Le VRAI retour « annulé » de Google sur l'aperçu d'ERPlead (aucun appel à Google) : la redirection, lue. */
+  const cancelled = async (sys, gstate, step) => {
+    const from = auditMax();
+    const r = await sys.ctx.request.get(
+      `${t.erp}/auth/google/callback?${new URLSearchParams({ state: gstate, error: "access_denied" })}`,
+      { maxRedirects: 0 },
+    );
+    check(
+      `${step} : le retour annulé écrit une ligne google_app.code {app: invoicelead, outcome: google}, relevée`,
+      auditSince(from, `code ${step}`, "google_app.code", "invoicelead", "google") >= 1,
+    );
+    return { status: r.status(), location: r.headers().location ?? "" };
+  };
+  const RETURN_RE = new RegExp(
+    `^${RETOUR.replace(/[.]/g, "\\.").replace(/\//g, "\\/")}\\?code=[A-Za-z0-9_-]{43}&locale=it$`,
+  );
+  const bypass = { "x-vercel-protection-bypass": t.ilBypass };
   try {
-    // --- 1. Vue web de la nouvelle version : écran de connexion d'InvoiceLead → Compte Lead.
-    const wv = await context(NEW_APP, "webview");
-    await wv.page.goto(`${t.il}/it/login`);
-    await wv.page.waitForURL(`${t.erp}/login?**`, { timeout: 30_000 });
+    // --- 1. Fichiers d'association servis par l'aperçu (contrat § 3d), comme le CDN d'Apple et Android les lisent.
+    for (const [path, expected] of [
+      ["/.well-known/apple-app-site-association", contract.aasa],
+      ["/.well-known/assetlinks.json", contract.assetlinks],
+    ]) {
+      const r = await fetch(`${t.il}${path}`, {
+        redirect: "manual",
+        headers: { ...bypass, "user-agent": "AASA-Bot/1.0.0" },
+      });
+      const body = await r.text();
+      let json = null;
+      try {
+        json = JSON.parse(body);
+      } catch {}
+      check(
+        `aperçu ${path} : 200, application/json, aucune redirection, JSON = contrat d'ERPlead`,
+        r.status === 200 &&
+          r.headers.get("content-type") === "application/json" &&
+          !r.headers.get("location") &&
+          isDeepStrictEqual(json, expected),
+        { status: r.status, type: r.headers.get("content-type") },
+      );
+      // La commande du contrat (§ 8) : curl -A "AASA-Bot/1.0.0" -sI ; l'en-tête de contournement passe par l'entrée standard.
+      const curl = spawnSync(
+        "curl",
+        ["-sI", "--max-time", "30", "-A", "AASA-Bot/1.0.0", "-H", "@-", `${t.il}${path}`],
+        { input: `x-vercel-protection-bypass: ${t.ilBypass}\n`, encoding: "utf8" },
+      );
+      const status = /^HTTP\/[\d.]+ (\d+)/m.exec(curl.stdout ?? "")?.[1];
+      check(
+        `curl -A "AASA-Bot/1.0.0" -sI ${path} → ${status}, application/json, sans Location`,
+        status === "200" &&
+          /^content-type: application\/json\r?$/im.test(curl.stdout) &&
+          !/^location:/im.test(curl.stdout),
+      );
+    }
+    // --- 2. Page de repli /lead-auth/return hors de l'app (Safari et Chrome d'Android), sur l'aperçu.
+    const stray = randomBytes(32).toString("base64url");
+    const raw = await fetch(`${t.il}/lead-auth/return?code=${stray}&locale=it`, {
+      redirect: "manual",
+      headers: { ...bypass, "user-agent": SAFARI },
+    });
+    const rawHtml = await raw.text();
+    const one = (h) => (raw.headers.get(h) ?? "").split(/,\s*/).filter(Boolean);
+    check(
+      "aperçu /lead-auth/return : 200 sans redirection ni langue, no-store, no-referrer, noindex, un seul script (en ligne), ni lien ni bouton, code jamais écrit, en italien",
+      raw.status === 200 &&
+        !raw.headers.get("location") &&
+        one("cache-control").includes("no-store") &&
+        one("referrer-policy").length > 0 &&
+        one("referrer-policy").every((v) => v === "no-referrer") &&
+        one("x-robots-tag").includes("noindex") &&
+        !rawHtml.includes(stray) &&
+        (rawHtml.match(/<script/g) ?? []).length === 1 &&
+        !/<script[^>]*\bsrc=/.test(rawHtml) &&
+        !/<a\b|<button|<form|<iframe|<img|<link/.test(rawHtml) &&
+        rawHtml.includes("<h1>Torna su InvoiceLead</h1>"),
+      {
+        status: raw.status,
+        cache: raw.headers.get("cache-control"),
+        referrer: raw.headers.get("referrer-policy"),
+        robots: raw.headers.get("x-robots-tag"),
+      },
+    );
+    for (const [ua, name, android] of [
+      [SAFARI, "g3l-repli-safari-it", false],
+      [CHROME_ANDROID, "g3l-repli-android-it", true],
+    ]) {
+      const b = await context(ua, "system");
+      const res = await b.page.goto(`${t.il}/lead-auth/return?code=${stray}&locale=it`);
+      await b.page.waitForTimeout(300);
+      check(
+        `${android ? "Chrome d'Android" : "Safari"} sur la page de repli : le code a quitté l'adresse (${new URL(b.page.url()).pathname}${new URL(b.page.url()).search}), « Torna su InvoiceLead »${android ? ", phrase « Apri per impostazione predefinita »" : ""}`,
+        res?.status() === 200 &&
+          b.page.url() === `${t.il}/lead-auth/return` &&
+          (await b.page.getByRole("heading", { name: "Torna su InvoiceLead" }).count()) === 1 &&
+          !(await b.page.content()).includes(stray) &&
+          (await b.page.locator("[data-android]").count()) === (android ? 1 : 0),
+      );
+      await shot(b.page, name);
+      await b.ctx.close();
+    }
+
+    // --- 3. iOS 17.4+ : vue web de la nouvelle version (session LeadAuthSession).
+    const wv = await context(NEW_APP, "webview", { platform: "ios", session: "https" });
+    // 3a. Le lien de retour ouvert par la vue web elle-même, sans connexion en cours : la page de l'app l'ignore et
+    // ouvre l'app, qui part (sans session) vers le Compte Lead par l'écran de connexion de l'app.
+    await wv.page.goto(`${t.il}/lead-auth/return?code=${stray}&locale=it`);
+    await wv.page.waitForURL(onErpLogin(), { timeout: 40_000 });
+    const iReturn = ilNav.indexOf("/it/lead-auth/return");
+    check(
+      "vue web sur /lead-auth/return sans connexion en cours : menée à /it/lead-auth/return, lien ignoré (aucun rachat), puis l'app → écran de connexion de l'app → Compte Lead",
+      ilNav.includes("/lead-auth/return") &&
+        iReturn >= 0 &&
+        ilNav.slice(iReturn).includes("/it/app") &&
+        ilNav.slice(iReturn).includes("/it/login") &&
+        !production.some((u) => u.includes("/auth/google/app/redeem")),
+      ilNav,
+    );
     const authorizeHop = production.find((u) => u.startsWith(`${PROD_ERP}/oauth/authorize?`));
     const asked = new URL(authorizeHop ?? "https://x.invalid");
     const ilState = asked.searchParams.get("state") ?? "";
     check(
-      "l'écran de connexion de l'app (LeadAppAuth/1) lit le lien de lancement puis part vers le Compte Lead (client invoicelead, platform=app, adresse de retour déclarée)",
+      "l'écran de connexion de l'app (LeadAppAuth/2) lit le lien de lancement puis part vers le Compte Lead (client invoicelead, platform=app, adresse de retour déclarée)",
       named(wv.calls, "App.getLaunchUrl").length >= 1 &&
         asked.searchParams.get("client_id") === "invoicelead" &&
         asked.searchParams.get("platform") === "app" &&
@@ -1359,30 +1860,24 @@ async function gateG3() {
         ilState.length > 20,
       authorizeHop,
     );
-    const g = wv.page.locator('a[href^="/auth/google/app?"]');
     check(
-      "écran du Compte Lead dans la vue web : un bouton « Continuer avec Google » de l'app (/auth/google/app), Apple et le mot de passe",
-      (await g.count()) === 1 &&
+      "écran du Compte Lead dans la vue web (LeadAppAuth/2) : un bouton « Continuer avec Google » de l'app (/auth/google/app), Apple et le mot de passe, aucune phrase",
+      (await wv.page.locator('a[href^="/auth/google/app?"]').count()) === 1 &&
         (await wv.page.locator('a[href^="/auth/apple?"]').count()) === 1 &&
         (await wv.page.locator('input[name="password"]').count()) === 1 &&
         (await wv.page.locator("[data-google-app-hint]").count()) === 0,
     );
-    await shot(wv.page, "g3-1-compte-lead-bouton-google");
-    // --- 2. Clic : départ (cookie verifier de la vue web), puis la page relais d'InvoiceLead.
-    const beforeStart = auditMax();
-    await g.click();
-    await wv.page.waitForURL(`${t.il}/it/lead-auth/google?**`, { timeout: 30_000 });
-    const opened = await waitFor(() => named(wv.calls, "Browser.open")[0]);
-    check(
-      "journal d'ERPlead : le départ écrit une ligne google_app.start {app: invoicelead}, relevée pour la remise en état",
-      auditSince(beforeStart, "départ", "google_app.start", "invoicelead", null) >= 1,
-    );
-    const start = String(opened?.arg ?? "");
+    await shot(wv.page, "g3l-1-compte-lead-bouton-google");
+    // 3b. Premier départ : page relais → session iOS sur start&m=auto.
+    const s1 = await startGoogle(wv, "LeadAuthSession.start", "iOS, 1er départ");
     const relay = production.find((u) => u.startsWith(`${PROD_IL}/lead-auth/google?`)) ?? "";
     const back = new URL(relay || "https://x.invalid").searchParams.get("back") ?? "";
+    const plainStart = new URL(relay || "https://x.invalid").searchParams.get("start") ?? "";
     check(
-      "ERPlead envoie la vue web vers la page relais https://invoicelead.io/lead-auth/google (start, back), menée vers l'aperçu, dans la langue de l'écran (it)",
+      "ERPlead envoie la vue web vers la page relais https://invoicelead.io/lead-auth/google (start sans mode, back), menée vers l'aperçu, dans la langue de l'écran (it)",
       relay.startsWith(`${PROD_IL}/lead-auth/google?start=`) &&
+        plainStart.startsWith(`${PROD_ERP}/auth/google/app/start?d=invoicelead.`) &&
+        !new URL(plainStart || "https://x.invalid").searchParams.has("m") &&
         back.startsWith(`${PROD_ERP}/login?`) &&
         new URL(wv.page.url()).pathname === "/it/lead-auth/google",
       relay,
@@ -1397,81 +1892,99 @@ async function gateG3() {
         (await wv.page.locator("a[data-lead-auth-back]").getAttribute("href")) === back,
     );
     check(
-      "page relais : Browser.open sur le départ d'ERPlead tel quel (https://erplead.io/auth/google/app/start?d=invoicelead.…), écoute du retour posée",
-      start.startsWith(`${PROD_ERP}/auth/google/app/start?d=invoicelead.`) &&
-        named(wv.calls, "App.addListener").some((c) => c.arg === "appUrlOpen") &&
-        named(wv.calls, "Browser.addListener").some((c) => c.arg === "browserFinished"),
-      start,
+      "iOS 17.4+ : LeadAuthSession.isAvailable() → https, puis LeadAuthSession.start sur le départ d'ERPlead + &m=auto, ni Browser.open ni Safari ; écoute du lien posée",
+      s1.start === `${plainStart}&m=auto` &&
+        named(wv.calls, "LeadAuthSession.isAvailable").some((c) => c.arg === true) &&
+        named(wv.calls, "Browser.open").length === 0 &&
+        named(wv.calls, "LeadAuthSession.openExternal").length === 0 &&
+        named(wv.calls, "App.addListener").some((c) => c.arg === "appUrlOpen"),
+      s1.start,
     );
-    await shot(wv.page, "g3-2-page-relais-it");
-    const cookie = (await wv.ctx.cookies(t.erp)).find((c) => c.name === "__Host-erp_gapp");
+    await shot(wv.page, "g3l-2-page-relais-session-ios");
     check(
       "cookie verifier de la vue web __Host-erp_gapp : HttpOnly, Secure, Lax, 10 min (jamais lu par InvoiceLead)",
-      cookie?.httpOnly &&
-        cookie.secure &&
-        cookie.sameSite === "Lax" &&
-        Math.abs(cookie.expires - (Date.now() / 1000 + 600)) < 120,
+      s1.cookie?.httpOnly &&
+        s1.cookie.secure &&
+        s1.cookie.sameSite === "Lax" &&
+        Math.abs(s1.cookie.expires - (Date.now() / 1000 + 600)) < 120,
     );
-    const vh = cookie ? sha256(cookie.value) : "";
-    madeVh.push(vh);
-    const d = new URL(start || "https://x.invalid").searchParams.get("d") ?? "";
+    const d1 = new URL(s1.start || "https://x.invalid").searchParams.get("d") ?? "";
     const dep = sqlRead(
       t.ro,
       "select data from sso_states where state = $1 and expires_at > now()",
-      [sha256(d)],
+      [sha256(d1)],
     );
     check(
       "départ dans la base d'APERÇU d'ERPlead : app invoicelead, empreinte du verifier, demande d'InvoiceLead (son state)",
       dep?.provider === "google-app-start" &&
         dep.app === "invoicelead" &&
-        dep.vh === vh &&
+        dep.vh === s1.vh &&
         new URLSearchParams(dep.next?.split("?")[1]).get("state") === ilState,
     );
-    // --- 3. Navigateur du téléphone (sans pont) : départ → accounts.google.com.
+    // 3c. Navigateur sûr du téléphone (la session iOS, imitée par un contexte sans pont) : départ → Google.
     const sys = await context(SAFARI, "system");
-    const googleReq = [];
-    sys.page.on("request", (r) => {
-      if (r.url().startsWith("https://accounts.google.com/o/oauth2/v2/auth"))
-        googleReq.push(r.url());
-    });
-    await sys.page.goto(toPreview(start), { waitUntil: "domcontentloaded" }).catch(() => {});
-    await waitFor(() => googleReq.length > 0 && /accounts\.google\.com/.test(sys.page.url()));
-    await sys.page.waitForLoadState("load").catch(() => {});
-    const gu = googleReq[0] ? new URL(googleReq[0]) : null;
-    const gstate = gu?.searchParams.get("state") ?? "";
-    if (gstate) madeStates.push(sha256(gstate));
-    const gText = await sys.page.content().catch(() => "");
+    const g1 = await toGoogle(sys, s1.start);
     check(
-      "navigateur du téléphone : le départ mène à accounts.google.com (redirect_uri https://erplead.io/auth/google/callback, state app.invoicelead.…, PKCE S256, hl=it), sans erreur Google",
-      gu &&
-        gu.searchParams.get("redirect_uri") === "https://erplead.io/auth/google/callback" &&
-        gstate.startsWith("app.invoicelead.") &&
-        gu.searchParams.get("code_challenge_method") === "S256" &&
-        gu.searchParams.get("hl") === "it" &&
-        new URL(sys.page.url()).host === "accounts.google.com" &&
-        !/redirect_uri_mismatch|invalid_client|disallowed_useragent|Error 400|Errore 400/i.test(
-          gText,
-        ),
-      googleReq[0] ?? sys.page.url(),
+      "navigateur du téléphone : start&m=auto mène à accounts.google.com (redirect_uri https://erplead.io/auth/google/callback, state app.invoicelead.…, PKCE S256, hl=it), sans erreur Google",
+      g1.ok,
+      g1.url,
     );
-    await shot(sys.page, "g3-3-google-navigateur-du-telephone");
-    const gs = sqlRead(
+    await shot(sys.page, "g3l-3-google-navigateur-du-telephone");
+    const gs1 = sqlRead(
       t.ro,
       "select data from sso_states where state = $1 and expires_at > now()",
-      [sha256(gstate)],
+      [sha256(g1.gstate)],
     );
     check(
-      "état Google de l'app en base d'APERÇU (même empreinte, même demande), départ consommé",
-      gs?.provider === "google" &&
-        gs.app === "invoicelead" &&
-        gs.vh === vh &&
-        gs.next === dep?.next &&
-        sqlRead(t.ro, "select count(*) from sso_states where state = $1", [sha256(d)]) === 0,
+      "état Google de l'app en base d'APERÇU : même empreinte, même demande, mode auto noté ; départ consommé",
+      gs1?.provider === "google" &&
+        gs1.app === "invoicelead" &&
+        gs1.vh === s1.vh &&
+        gs1.next === dep?.next &&
+        gs1.open === "auto" &&
+        sqlRead(t.ro, "select count(*) from sso_states where state = $1", [sha256(d1)]) === 0,
+      { open: gs1?.open },
     );
-    // --- 4. Retour de Google imité : le code que le callback d'ERPlead aurait fait, pour la personne TEST.
+    // 3d. VRAI retour « annulé » de Google (aucun appel à Google) : ERPlead redirige (m=auto) vers le lien vérifié.
+    const c1 = await cancelled(sys, g1.gstate, "iOS annulé");
+    check(
+      `retour de Google annulé, m=auto : 303 EXACTEMENT vers ${RETOUR}?code=<43>&locale=it (redirection lue, jamais suivie)`,
+      c1.status === 303 && RETURN_RE.test(c1.location),
+      c1,
+    );
+    // La session iOS rend cette adresse : la vue web va au rachat, qui ramène l'écran de connexion avec l'erreur.
+    let from = auditMax();
+    let n = production.length;
+    await wv.page.evaluate((u) => window.__fakeSession({ url: u }), c1.location);
+    await wv.page.waitForURL(onErpLogin("google"), { timeout: 40_000 });
+    const failCode = new URL(c1.location).searchParams.get("code");
+    check(
+      "session iOS : l'adresse rendue (lien vérifié) mène la vue web au rachat d'ERPlead avec le code, une fois, sans Browser.close ; échec chez Google → écran de connexion de l'app, error=google",
+      production
+        .slice(n)
+        .filter((u) => u.startsWith(`${PROD_ERP}/auth/google/app/redeem?`))
+        .join() === `${PROD_ERP}/auth/google/app/redeem?code=${failCode}` &&
+        named(wv.calls, "Browser.close").length === 0 &&
+        new URL(wv.page.url()).searchParams.get("locale") === "it",
+      wv.page.url(),
+    );
+    check(
+      "journal d'ERPlead : le rachat de l'échec écrit une ligne google_app.redeem {app: invoicelead, outcome: google}, relevée",
+      auditSince(from, "rachat iOS annulé", "google_app.redeem", "invoicelead", "google") >= 1,
+    );
+    await shot(wv.page, "g3l-4-annule-ecran-de-connexion");
+    // 3e. Second départ, cette fois réussi : code préparé dans la base d'APERÇU pour la personne TEST.
+    const s2 = await startGoogle(wv, "LeadAuthSession.start", "iOS, 2e départ");
+    const g2 = await toGoogle(sys, s2.start);
+    check("2e départ : accounts.google.com, sans erreur Google", g2.ok, g2.url);
+    const gs2 = sqlRead(
+      t.ro,
+      "select data from sso_states where state = $1 and expires_at > now()",
+      [sha256(g2.gstate)],
+    );
     const code = randomBytes(32).toString("base64url");
     await previewWrite(t, who.id, async (db) => {
-      await db.query("delete from sso_states where state = $1", [sha256(gstate)]);
+      await db.query("delete from sso_states where state = $1", [sha256(g2.gstate)]);
       await db.query(
         "insert into sso_states (state, data, expires_at) values ($1, $2, now() + interval '5 minutes')",
         [
@@ -1479,55 +1992,32 @@ async function gateG3() {
           JSON.stringify({
             provider: "google-app-code",
             app: "invoicelead",
-            vh,
-            next: gs?.next,
-            locale: gs?.locale ?? "it",
+            vh: s2.vh,
+            next: gs2?.next,
+            locale: gs2?.locale ?? "it",
             result: { profile: { email: who.email, name: who.name, locale: who.locale } },
           }),
         ],
       );
     });
-    const link = `${SCHEME}://lead-auth?code=${code}`;
-    const retUrl = `${t.erp}/auth/google/app/return?${new URLSearchParams({ app: "invoicelead", code, locale: "it" })}`;
-    const retHtml = await (await sys.ctx.request.get(retUrl)).text();
-    check(
-      "page « Revenez dans InvoiceLead » d'ERPlead : lien io.invoicelead.app://lead-auth?code=… suivi tout seul et en bouton",
-      retHtml.includes(`<meta http-equiv="refresh" content="0;url=${esc(link)}">`) &&
-        retHtml.includes(`href="${esc(link)}"`),
-    );
-    const cap = await sys.ctx.newPage();
-    await cap.route(
-      retUrl,
-      async (route) => {
-        const res = await route.fetch();
-        await route.fulfill({
-          response: res,
-          body: (await res.text()).replace(/<meta http-equiv="refresh"[^>]*>/, ""),
-        });
-      },
-      { times: 1 },
-    );
-    await cap.goto(retUrl);
-    await shot(cap, "g3-4-revenez-dans-invoicelead");
-    await cap.close();
     await sys.ctx.close();
-    // --- 5. Le lien de retour arrive dans l'app (appUrlOpen) : Browser.close, rachat, session, retour OpenID.
-    const before = production.length;
-    const beforeRedeem = auditMax();
-    await wv.page.evaluate((u) => window.__fakeEmit("App.appUrlOpen", { url: u }), link);
+    const link = `${RETOUR}?code=${code}&locale=it`;
+    from = auditMax();
+    n = production.length;
+    await wv.page.evaluate((u) => window.__fakeSession({ url: u }), link);
     await waitFor(() => callbacks.length > 0, 40_000);
     check(
       "journal d'ERPlead : le rachat écrit une ligne google_app.redeem {app: invoicelead, outcome: ok}, relevée",
-      auditSince(beforeRedeem, "rachat", "google_app.redeem", "invoicelead", "ok") >= 1,
+      auditSince(from, "rachat iOS réussi", "google_app.redeem", "invoicelead", "ok") >= 1,
     );
-    const hops = production.slice(before);
-    const redeemHops = hops.filter((u) => u.startsWith(`${PROD_ERP}/auth/google/app/redeem?`));
+    const redeemHops = production
+      .slice(n)
+      .filter((u) => u.startsWith(`${PROD_ERP}/auth/google/app/redeem?`));
     check(
-      "lien de retour : Browser.close une fois, puis la vue web va au rachat d'ERPlead avec le code, une fois",
-      named(wv.calls, "Browser.close").length === 1 &&
-        redeemHops.length === 1 &&
+      "lien vérifié rendu par la session : la vue web va au rachat d'ERPlead avec le code, une fois",
+      redeemHops.length === 1 &&
         redeemHops[0] === `${PROD_ERP}/auth/google/app/redeem?code=${code}`,
-      { close: named(wv.calls, "Browser.close").length, redeem: redeemHops.length },
+      { redeem: redeemHops.length },
     );
     const cb = new URL(callbacks[0] ?? "https://x.invalid");
     check(
@@ -1553,13 +2043,13 @@ async function gateG3() {
     );
     const sid = (await wv.ctx.cookies(t.erp)).find((c) => c.name === "__Host-erp_sid");
     check(
-      "personne TEST connectée dans la vue web de l'app : session ERPlead (méthode google, agent InvoiceLeadApp LeadAppAuth/1), cookie verifier effacé",
+      "personne TEST connectée dans la vue web de l'app : session ERPlead (méthode google, agent InvoiceLeadApp LeadAppAuth/2), cookie verifier effacé",
       !!sid &&
         !(await wv.ctx.cookies(t.erp)).some((c) => c.name === "__Host-erp_gapp") &&
         sqlRead(
           t.ro,
           "select count(*) from sessions where user_id = $1 and method = 'google' and created_at >= $2 and user_agent like $3",
-          [who.id, startedAt.toISOString(), "%InvoiceLeadApp LeadAppAuth/1%"],
+          [who.id, startedAt.toISOString(), "%InvoiceLeadApp LeadAppAuth/2%"],
         ) >= 1,
     );
     const acc = await wv.page.goto(`${t.erp}/account`);
@@ -1576,37 +2066,32 @@ async function gateG3() {
           el.textContent = (el.textContent ?? "").replace(/\b\d{1,3}(\.\d{1,3}){3}\b/g, "…");
       }
     });
-    await shot(wv.page, "g3-5-connectee-mon-compte");
-    // --- 5b. Un lien de l'app sans connexion en cours (page piégée, courriel) sur une page d'InvoiceLead :
-    // rien ne se passe (ni navigateur fermé, ni page quittée, ni rachat).
+    await shot(wv.page, "g3l-5-connectee-mon-compte");
+    // 3f. Un lien de retour sans connexion en cours (page piégée, courriel) sur une page d'InvoiceLead : rien ne se passe.
     await wv.page.goto(`${t.il}/it/legal/terms`);
     await waitFor(() =>
       wv.page.evaluate(() => window.__fakeListeners?.("App.appUrlOpen") > 0).catch(() => false),
     );
     const trapFrom = production.length;
-    const closes = named(wv.calls, "Browser.close").length;
     for (const u of [
-      `${SCHEME}://lead-auth?code=${randomBytes(32).toString("base64url")}`,
-      `${SCHEME}://lead-auth?error=expired`,
+      `${RETOUR}?code=${randomBytes(32).toString("base64url")}&locale=it`,
+      `${RETOUR}?error=expired&locale=it`,
+      `io.invoicelead.app://lead-auth?code=${randomBytes(32).toString("base64url")}`,
     ])
       await wv.page.evaluate((x) => window.__fakeEmit("App.appUrlOpen", { url: x }), u);
     await wv.page.waitForTimeout(1500);
     check(
-      "lien de l'app reçu sans connexion en cours (code inconnu, error=expired) : ignoré sur la page ouverte (aucun rachat, aucune navigation, navigateur non refermé)",
+      "lien vérifié reçu sans connexion en cours (code inconnu, error=expired) et ancien schéma propre : ignorés sur la page ouverte (aucun rachat, aucune navigation)",
       new URL(wv.page.url()).pathname === "/it/legal/terms" &&
-        !production.slice(trapFrom).some((u) => u.includes("/auth/google/app/redeem")) &&
-        named(wv.calls, "Browser.close").length === closes,
-      {
-        url: new URL(wv.page.url()).pathname,
-        close: named(wv.calls, "Browser.close").length - closes,
-      },
+        !production.slice(trapFrom).some((u) => u.includes("/auth/google/app/redeem")),
+      new URL(wv.page.url()).pathname,
     );
-    // --- 6. Le même lien, relu par la page suivante de la MÊME vue web (iOS le redonne à getLaunchUrl) : ignoré.
+    // 3g. Le même lien, relu par la page suivante de la MÊME vue web (getLaunchUrl) : ignoré.
     await wv.ctx.addInitScript((u) => {
-      window.__FAKE_CAPACITOR = { launchUrl: u };
+      window.__FAKE_CAPACITOR = { ...(window.__FAKE_CAPACITOR || {}), launchUrl: u };
     }, link);
     const reads = named(wv.calls, "App.getLaunchUrl").length;
-    const n = production.length;
+    n = production.length;
     await wv.page.goto(`${t.il}/it/legal/privacy`);
     await waitFor(() => named(wv.calls, "App.getLaunchUrl").length > reads, 10_000);
     await wv.page.waitForTimeout(1500);
@@ -1615,11 +2100,10 @@ async function gateG3() {
       named(wv.calls, "App.getLaunchUrl").length > reads &&
         named(wv.calls, "App.getLaunchUrl").at(-1)?.arg === link &&
         !production.slice(n).some((u) => u.includes("/redeem")) &&
-        new URL(wv.page.url()).pathname === "/it/legal/privacy" &&
-        named(wv.calls, "Browser.close").length === 1,
+        new URL(wv.page.url()).pathname === "/it/legal/privacy",
     );
     // Rachat rejoué par la vue web : refusé (usage unique) — contrôle d'ERPlead, vu depuis l'app.
-    const beforeReplay = auditMax();
+    from = auditMax();
     const replay = await wv.ctx.request.get(`${t.erp}/auth/google/app/redeem?code=${code}`, {
       maxRedirects: 0,
     });
@@ -1630,30 +2114,178 @@ async function gateG3() {
     // Sans cookie ni vue, ERPlead ne sait plus de quelle app il s'agit : {app: null, outcome: expired}.
     check(
       "journal d'ERPlead : le rachat rejoué écrit une ligne google_app.redeem {app: null, outcome: expired}, relevée",
-      auditSince(beforeReplay, "rachat rejoué", "google_app.redeem", null, "expired") >= 1,
+      auditSince(from, "rachat rejoué", "google_app.redeem", null, "expired") >= 1,
     );
     await wv.ctx.close();
+
+    // --- 4. Android : Custom Tab sur start&m=auto, VRAI retour annulé → App Link → rachat.
+    const wa = await context(NEW_APP_ANDROID, "webview", { platform: "android" });
+    await wa.page.goto(`${t.il}/it/login`);
+    await wa.page.waitForURL(onErpLogin(), { timeout: 40_000 });
+    const sa = await startGoogle(wa, "Browser.open", "Android");
+    const plainA =
+      new URL(
+        production.filter((u) => u.startsWith(`${PROD_IL}/lead-auth/google?`)).at(-1) ??
+          "https://x.invalid",
+      ).searchParams.get("start") ?? "";
+    check(
+      "Android : Browser.open (Custom Tab) sur le départ d'ERPlead + &m=auto, écoute browserFinished posée, aucun module iOS",
+      sa.start === `${plainA}&m=auto` &&
+        named(wa.calls, "Browser.addListener").some((c) => c.arg === "browserFinished") &&
+        named(wa.calls, "LeadAuthSession.start").length === 0,
+      sa.start,
+    );
+    const sysA = await context(CHROME_ANDROID, "system");
+    const gA = await toGoogle(sysA, sa.start);
+    check("Android : Custom Tab → accounts.google.com, sans erreur Google", gA.ok, gA.url);
+    const cA = await cancelled(sysA, gA.gstate, "Android annulé");
+    check(
+      "Android, retour annulé, m=auto : 303 vers le lien vérifié (App Link)",
+      cA.status === 303 && RETURN_RE.test(cA.location),
+      cA,
+    );
+    await sysA.ctx.close();
+    from = auditMax();
+    n = production.length;
+    await wa.page.evaluate((u) => window.__fakeEmit("App.appUrlOpen", { url: u }), cA.location);
+    await wa.page.waitForURL(onErpLogin("google"), { timeout: 40_000 });
+    check(
+      "Android : l'App Link (appUrlOpen) ferme le Custom Tab (Browser.close ×1) et mène au rachat, une fois → écran de connexion, error=google",
+      named(wa.calls, "Browser.close").length === 1 &&
+        production.slice(n).filter((u) => u.startsWith(`${PROD_ERP}/auth/google/app/redeem?`))
+          .length === 1,
+    );
+    check(
+      "journal d'ERPlead : rachat Android {app: invoicelead, outcome: google}, relevé",
+      auditSince(from, "rachat Android", "google_app.redeem", "invoicelead", "google") >= 1,
+    );
+    await wa.ctx.close();
+
+    // --- 5. iOS 15 à 17.3 : Safari sur start&m=tap, page « Torna su InvoiceLead » d'ERPlead et son bouton.
+    const wt = await context(NEW_APP, "webview", { platform: "ios", session: "old" });
+    await wt.page.goto(`${t.il}/it/login`);
+    await wt.page.waitForURL(onErpLogin(), { timeout: 40_000 });
+    const st = await startGoogle(wt, "LeadAuthSession.openExternal", "iOS Safari");
+    const plainT =
+      new URL(
+        production.filter((u) => u.startsWith(`${PROD_IL}/lead-auth/google?`)).at(-1) ??
+          "https://x.invalid",
+      ).searchParams.get("start") ?? "";
+    await wt.page
+      .locator("[data-lead-auth-mode=safari]")
+      .waitFor({ timeout: 10_000 })
+      .catch(() => {});
+    check(
+      "iOS 15 à 17.3 : LeadAuthSession.openExternal (Safari) sur le départ + &m=tap, aucune session ; la page relais dit « Completa l'accesso in Safari, poi tocca «Apri InvoiceLead». »",
+      st.start === `${plainT}&m=tap` &&
+        named(wt.calls, "LeadAuthSession.start").length === 0 &&
+        (await wt.page.locator("[data-lead-auth-mode=safari]").textContent()) ===
+          "Completa l'accesso in Safari, poi tocca «Apri InvoiceLead».",
+      st.start,
+    );
+    await shot(wt.page, "g3l-6-page-relais-safari");
+    const sysT = await context(SAFARI, "system");
+    const gT = await toGoogle(sysT, st.start);
+    check("Safari : start&m=tap → accounts.google.com, sans erreur Google", gT.ok, gT.url);
+    check(
+      "état Google : mode tap noté",
+      sqlRead(t.ro, "select data->>'open' from sso_states where state = $1", [
+        sha256(gT.gstate),
+      ]) === "tap",
+    );
+    const cT = await cancelled(sysT, gT.gstate, "Safari annulé");
+    check(
+      "Safari, retour annulé, m=tap : 303 vers la page « Revenez dans » d'erplead.io (/auth/google/app/return, app invoicelead), pas vers le lien",
+      cT.status === 303 &&
+        cT.location.startsWith("/auth/google/app/return?") &&
+        new URLSearchParams(cT.location.split("?")[1]).get("app") === "invoicelead",
+      cT.status,
+    );
+    const tapRes = await sysT.page.goto(`${t.erp}${cT.location}`);
+    const button = sysT.page.locator("a[data-app-return]");
+    const href = (await button.getAttribute("href").catch(() => null)) ?? "";
+    const tapHtml = await sysT.page.content();
+    check(
+      "page d'ERPlead (Safari) : bouton « Apri InvoiceLead » vers le lien vérifié https://invoicelead.io/lead-auth/return?code=…&locale=it, sans redirection ni script, Referrer-Policy: no-referrer",
+      tapRes?.status() === 200 &&
+        (await button.count()) === 1 &&
+        (await button.textContent())?.trim() === "Apri InvoiceLead" &&
+        RETURN_RE.test(href) &&
+        !/http-equiv="refresh"/i.test(tapHtml) &&
+        (tapRes?.headers()["referrer-policy"] ?? "") === "no-referrer",
+      href,
+    );
+    await shot(sysT.page, "g3l-7-safari-apri-invoicelead");
+    // Le bouton touché quand l'app ne s'ouvre pas (Universal Link pas encore chargé) : la page de repli du site.
+    await button.click();
+    await sysT.page.waitForURL(`${t.il}/lead-auth/return`, { timeout: 30_000 }).catch(() => {});
+    check(
+      "bouton touché sans que l'app s'ouvre : la page de repli de l'aperçu, code effacé de l'adresse, « Torna su InvoiceLead », aucun rachat",
+      sysT.page.url() === `${t.il}/lead-auth/return` &&
+        (await sysT.page.getByRole("heading", { name: "Torna su InvoiceLead" }).count()) === 1 &&
+        !production.some((u) =>
+          u.startsWith(
+            `${PROD_ERP}/auth/google/app/redeem?code=${new URL(href || "https://x.invalid").searchParams.get("code")}`,
+          ),
+        ),
+      sysT.page.url(),
+    );
+    await shot(sysT.page, "g3l-8-repli-apres-le-bouton");
+    await sysT.ctx.close();
+    // Le même bouton, avec l'app : Universal Link → appUrlOpen sur la page relais → rachat.
+    from = auditMax();
+    n = production.length;
+    await wt.page.evaluate((u) => window.__fakeEmit("App.appUrlOpen", { url: u }), href);
+    await wt.page.waitForURL(onErpLogin("google"), { timeout: 40_000 });
+    check(
+      "iOS Safari : le lien touché (appUrlOpen) mène au rachat, une fois, sans Browser.close → écran de connexion, error=google",
+      named(wt.calls, "Browser.close").length === 0 &&
+        production.slice(n).filter((u) => u.startsWith(`${PROD_ERP}/auth/google/app/redeem?`))
+          .length === 1,
+    );
+    check(
+      "journal d'ERPlead : rachat Safari {app: invoicelead, outcome: google}, relevé",
+      auditSince(from, "rachat Safari", "google_app.redeem", "invoicelead", "google") >= 1,
+    );
+    await wt.ctx.close();
     check(
       "Google ne s'ouvre jamais dans la vue web",
       googleInWebview.length === 0,
       googleInWebview,
     );
-    // --- 7. Ancienne version et navigateur : comme avant.
-    const old = await context(OLD_APP, "webview");
-    const r = await old.ctx.request.get(`${t.il}/it/login`, { maxRedirects: 0 });
-    check(
-      "ancienne version de l'app (sans LeadAppAuth/1) : /it/login part tout droit vers /auth/lead/start (redirection serveur, comme avant)",
-      [303, 307].includes(r.status()) &&
-        (r.headers().location ?? "").includes("/auth/lead/start?locale=it"),
-      r.status(),
-    );
-    await old.ctx.close();
+
+    // --- 6. Anciennes versions et navigateur : comme avant.
+    for (const [ua, what] of [
+      [OLD_APP, "version publiée (sans jeton)"],
+      [FIRST_APP, "LeadAppAuth/1 (schéma propre, jamais publiée)"],
+    ]) {
+      const old = await context(ua, "webview", { platform: "ios", session: "none" });
+      const r = await old.ctx.request.get(`${t.il}/it/login`, { maxRedirects: 0 });
+      check(
+        `${what} : /it/login part tout droit vers /auth/lead/start (redirection serveur, comme avant)`,
+        [303, 307].includes(r.status()) &&
+          (r.headers().location ?? "").includes("/auth/lead/start?locale=it"),
+        r.status(),
+      );
+      if (ua === FIRST_APP) {
+        await old.page.goto(`${t.il}/it/login`);
+        await old.page.waitForURL(onErpLogin(), { timeout: 40_000 });
+        check(
+          "LeadAppAuth/1 sur l'écran du Compte Lead : la phrase « Password dimenticata? », aucun bouton Google",
+          (await old.page.locator("[data-google-app-hint]").count()) === 1 &&
+            (await old.page.locator('a[href*="/auth/google"]').count()) === 0,
+        );
+      }
+      await old.ctx.close();
+    }
     const web = await context(
       "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36",
       "desktop",
     );
-    await web.page.goto(`${t.il}/lead-auth/google?${new URLSearchParams({ start, back })}`);
-    await web.page.waitForURL(`${t.erp}/login?**`, { timeout: 30_000 });
+    await web.page.goto(
+      `${t.il}/lead-auth/google?${new URLSearchParams({ start: plainStart, back })}`,
+    );
+    await web.page.waitForURL(onErpLogin(), { timeout: 30_000 });
     check(
       "hors de l'app (navigateur d'ordinateur, aucun pont) : la page relais ne fait que revenir à l'écran de connexion d'ERPlead",
       new URL(web.page.url()).searchParams.get("locale") === "it",
@@ -1675,7 +2307,7 @@ async function gateG3() {
     await previewWrite(t, who.id, async (db) => {
       const s = await db.query(
         "delete from sessions where user_id = $1 and created_at >= $2 and user_agent like $3",
-        [who.id, startedAt, "%InvoiceLeadApp LeadAppAuth/1%"],
+        [who.id, startedAt, "%InvoiceLeadApp LeadAppAuth/2%"],
       );
       const c = await db.query(
         "delete from codes where user_id = $1 and client_id = 'invoicelead' and expires_at >= $2",
@@ -1688,7 +2320,7 @@ async function gateG3() {
       const au = await db.query("delete from audit where id = any($1::bigint[])", [
         audits.flatMap((a) => a.ids),
       ]);
-      // Frein des départs : le passage de la porte (un départ, donc +1) retiré du compteur de son IP.
+      // Frein des départs : les `departs` passages de la porte retirés du compteur de son IP.
       const limitsNow = (
         await db.query(
           "select key, count, reset_at from rate_limits where key like 'gapp|%' order by key",
@@ -1697,27 +2329,36 @@ async function gateG3() {
       let undone = 0;
       for (const row of limitsNow) {
         const was = limitsBefore[row.key];
-        // Fenêtre déjà échue avant la porte : le départ de la porte a remis le compteur à 1.
+        // Fenêtre déjà échue avant la porte : les départs de la porte ont remis le compteur à zéro.
         const lapsed = was && new Date(was.reset_at).getTime() <= startedAt.getTime();
-        const exact = was && (lapsed ? row.count === 1 : row.count === was.count + 1);
         if (was && !lapsed && row.count <= was.count) continue;
-        if (exact) {
+        if (was && !lapsed && row.count === was.count + departs) {
           undone += (
             await db.query(
               "update rate_limits set count = $2, reset_at = $3 where key = $1 and count = $4",
               [row.key, was.count, was.reset_at, row.count],
             )
           ).rowCount;
-        } else if (!was && row.count <= 1) {
-          undone += (
-            await db.query("delete from rate_limits where key = $1 and count <= 1", [row.key])
-          ).rowCount;
-        } else if (row.count > 1) {
-          // D'autres départs sont passés en même temps (autre porte) : seul celui de la porte est retiré.
+        } else if (was && lapsed && row.count === departs) {
           undone += (
             await db.query(
-              "update rate_limits set count = count - 1 where key = $1 and count > 1",
-              [row.key],
+              "update rate_limits set count = $2, reset_at = $3 where key = $1 and count = $4",
+              [row.key, was.count, was.reset_at, row.count],
+            )
+          ).rowCount;
+        } else if (!was && row.count <= departs) {
+          undone += (
+            await db.query("delete from rate_limits where key = $1 and count <= $2", [
+              row.key,
+              departs,
+            ])
+          ).rowCount;
+        } else if (row.count > departs) {
+          // D'autres départs sont passés en même temps (autre porte) : seuls ceux de la porte sont retirés.
+          undone += (
+            await db.query(
+              "update rate_limits set count = count - $2 where key = $1 and count > $2",
+              [row.key, departs],
             )
           ).rowCount;
         }
@@ -1729,13 +2370,13 @@ async function gateG3() {
         who.locale,
       ]);
       note(
-        `remise en état : ${s.rowCount} session(s), ${c.rowCount} code(s) OpenID, ${st.rowCount} état(s), ${au.rowCount} ligne(s) de journal sur ${audits.flatMap((a) => a.ids).length} écrite(s) effacées, ${undone} compteur(s) du frein des départs rendus ; dernière connexion et langue reprises`,
+        `remise en état : ${s.rowCount} session(s), ${c.rowCount} code(s) OpenID, ${st.rowCount} état(s), ${au.rowCount} ligne(s) de journal sur ${audits.flatMap((a) => a.ids).length} écrite(s) effacées, ${undone} compteur(s) du frein des départs rendus (${departs} départs) ; dernière connexion et langue reprises`,
       );
     });
   }
   const after = sqlRead(
     t.ro,
-    `select json_build_object('sessions', (select count(*) from sessions where user_id = $1 and created_at >= $2 and user_agent like '%InvoiceLeadApp LeadAppAuth/1%'),
+    `select json_build_object('sessions', (select count(*) from sessions where user_id = $1 and created_at >= $2 and user_agent like '%InvoiceLeadApp LeadAppAuth/2%'),
       'states', (select count(*) from sso_states where data->>'vh' = any(string_to_array($3, ',')) or state = any(string_to_array($4, ','))),
       'last_login_at', (select last_login_at from users where id = $1), 'locale', (select locale from users where id = $1))`,
     [who.id, startedAt.toISOString(), madeVh.join(","), madeStates.join(",")],
@@ -1749,9 +2390,11 @@ async function gateG3() {
     after,
   );
   const written = audits.flatMap((a) => a.ids);
+  // 4 départs, 4 codes (3 annulés + 0 : le code réussi est préparé par la porte), 5 rachats (3 échecs, 1 réussi, 1 rejoué).
   check(
-    `journal d'ERPlead remis comme avant : les ${written.length} ligne(s) écrites par la porte (départ, rachat, rachat rejoué) effacées`,
-    written.length === 3 &&
+    `journal d'ERPlead remis comme avant : les ${written.length} ligne(s) écrites par la porte (départs, codes, rachats, rachat rejoué) effacées`,
+    departs === 4 &&
+      written.length === 4 + 3 + 5 &&
       audits.every((a) => a.ids.length === 1) &&
       sqlRead(
         t.ro,
