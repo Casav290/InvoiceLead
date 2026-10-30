@@ -56,10 +56,13 @@ const MOBILE = `${HOME}/projets/invoicelead-mobile`;
 const MOBILE_BASE = "store-invoicelead";
 const PUBLICATIONS = `${HOME}/projets/publications/invoicelead/android`;
 const BRANCH = "google-app";
-/** La production d'InvoiceLead d'où part la branche (dpl_HUALHm8mQiqNpYpKzGRRJL1Yitw3, API Vercel, 30.10.2026). */
+/**
+ * La production d'InvoiceLead que la branche contient (API Vercel, 30.10.2026) : d'abord dpl_HUALHm8mQiqNpYpKzGRRJL1Yitw3
+ * (682bd09), puis dpl_AQR6hy6RXu9CYwvJvSSZd7GCferA (d63f01d, ia-limites), fusionnée dans google-app.
+ */
 const PROD = {
-  id: "dpl_HUALHm8mQiqNpYpKzGRRJL1Yitw3",
-  sha: "682bd09a8136e6dc069171641996e01901da3b11",
+  id: "dpl_AQR6hy6RXu9CYwvJvSSZd7GCferA",
+  sha: "d63f01df8e3f72e994f84e64ff46f1b7aaf9e852",
 };
 const TEAM = "team_mRhlABdvm1jvEPoDzuDDgpon";
 const PROJECT = "prj_BGHqP1Lyg3MWz3KoDYQ9qms5Epll";
