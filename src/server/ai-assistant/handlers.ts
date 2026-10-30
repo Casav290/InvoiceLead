@@ -118,10 +118,14 @@ function rebuildBlock(role: "user" | "assistant", b: Record<string, unknown>): R
       ...(b.is_error === true ? { is_error: true } : {}),
     };
   }
-  if (b.type === "tool_use")
-    return str(b.id) && str(b.name) && isPlainObject(b.input) && plainData(b.input)
-      ? { type: "tool_use", id: b.id, name: b.name, input: b.input }
+  if (b.type === "tool_use") {
+    // Champs déstructurés : aucune lecture du nom d'un objet dans ce fichier (B1, erreurs jamais
+    // classées par le nom de leur classe ; la porte le vérifie sur le texte).
+    const { id, name: tool, input } = b;
+    return str(id) && str(tool) && isPlainObject(input) && plainData(input)
+      ? { type: "tool_use", id, name: tool, input }
       : null;
+  }
   if (b.type === "thinking")
     return str(b.thinking) && str(b.signature)
       ? { type: "thinking", thinking: b.thinking, signature: b.signature }
