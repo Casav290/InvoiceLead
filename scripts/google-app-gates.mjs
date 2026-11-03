@@ -76,12 +76,13 @@ const PLAY_TOOLS = `${HOME}/projets/publications/scanlead/tools`;
 const BUNDLETOOL = `${HOME}/outils/bundletool-all-1.18.1.jar`;
 const BRANCH = "google-app";
 /**
- * La production d'InvoiceLead que la branche contient (API Vercel, 30.10.2026) : d'abord dpl_HUALHm8mQiqNpYpKzGRRJL1Yitw3
- * (682bd09), puis dpl_AQR6hy6RXu9CYwvJvSSZd7GCferA (d63f01d, ia-limites), fusionnée dans google-app.
+ * La production d'InvoiceLead que la branche contient (API Vercel) : d'abord dpl_HUALHm8mQiqNpYpKzGRRJL1Yitw3 (682bd09),
+ * puis dpl_AQR6hy6RXu9CYwvJvSSZd7GCferA (d63f01d, ia-limites), puis le 03.11.2026 dpl_8nkx1TXBNNRz2u7L2dik8gt1Wwmy
+ * (f4d777d, nouvelles icônes), sur laquelle google-app est rebasée.
  */
 const PROD = {
-  id: "dpl_AQR6hy6RXu9CYwvJvSSZd7GCferA",
-  sha: "d63f01df8e3f72e994f84e64ff46f1b7aaf9e852",
+  id: "dpl_8nkx1TXBNNRz2u7L2dik8gt1Wwmy",
+  sha: "f4d777d140ebed8a91a705329afb8d1a361880e7",
 };
 const TEAM = "team_mRhlABdvm1jvEPoDzuDDgpon";
 const PROJECT = "prj_BGHqP1Lyg3MWz3KoDYQ9qms5Epll";
@@ -2786,7 +2787,7 @@ async function gateG3() {
 // ------------------------------------------------------------------ PUBLIER (lecture seule)
 
 /** Le premier commit de la branche qui sert les fichiers d'association et la page de repli (liens vérifiés). */
-const SITE_LINKS = "61181f0";
+const SITE_LINKS = "591cb52"; // 61181f0 avant le rebase du 03.11.2026 sur f4d777d
 /** GET en lecture seule, sans suivre de redirection (les fichiers d'association n'en ont pas le droit). */
 async function readOnly(url, headers = {}) {
   try {
