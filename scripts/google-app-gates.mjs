@@ -1700,12 +1700,38 @@ async function targets() {
     "la production d'ERPlead n'est pas cet aperçu",
     ep.targets?.production?.id && ep.targets.production.id !== erp.deployment,
   );
+  // 03.11.2026 : la tête d'ERPlead a reçu les nouvelles icônes (af0bfdf, 2268514) après l'aperçu ; on ne redéploie pas
+  // ERPlead. Seules des lignes d'icônes (liens d'icône, favicon, manifeste) peuvent séparer l'aperçu de la tête.
+  const erpDiff = erp.commit
+    ? run("git", ["diff", "--unified=0", erp.commit, "HEAD", "--", "src"], { cwd: ERP_REPO })
+    : { status: 1, stdout: "" };
+  // Une ligne retirée et une ligne ajoutée qui ne diffèrent que par l'import de ICON_LINKS s'annulent.
+  const erpLines = `${erpDiff.stdout ?? ""}`
+    .split("\n")
+    .filter((l) => /^[+-]/.test(l) && !/^(\+\+\+|---) /.test(l));
+  const bare = (l) => l.slice(1).replace("ICON_LINKS, ", "");
+  const removed = erpLines.filter((l) => l.startsWith("-")).map(bare);
+  const erpChanged = erpLines.filter((l) => {
+    if (!l.startsWith("+")) return !erpLines.some((a) => a.startsWith("+") && bare(a) === bare(l));
+    const k = removed.indexOf(bare(l));
+    if (k < 0) return true;
+    removed.splice(k, 1);
+    return false;
+  });
+  const iconOnly = (l) =>
+    /ICON_LINKS|FAVICON|favicon|apple-touch-icon|site\.webmanifest|Icônes de l'onglet|<svg /.test(
+      l,
+    );
   check(
-    `aperçu d'ERPlead bâti depuis le contrat révisé (${String(erp.commit).slice(0, 7)}) : même code que la tête d'erplead-google-app (${git(["rev-parse", "--short", "HEAD"], ERP_REPO)})`,
+    `aperçu d'ERPlead bâti depuis le contrat révisé (${String(erp.commit).slice(0, 7)}) : même code que la tête d'erplead-google-app (${git(["rev-parse", "--short", "HEAD"], ERP_REPO)}), aux icônes près (${erpChanged.length} ligne(s) d'icônes)`,
     !!erp.commit &&
-      run("git", ["diff", "--quiet", erp.commit, "HEAD", "--", "src"], { cwd: ERP_REPO }).status ===
-        0 &&
+      erpDiff.status === 0 &&
+      erpChanged.every(iconOnly) &&
       /GOOGLE_APP_ENABLED=1/.test(erp.note ?? ""),
+    erpChanged
+      .filter((l) => !iconOnly(l))
+      .slice(0, 5)
+      .join(" | "),
   );
   const env = readEnv(`${HOME}/.erplead-apercu.env`);
   const ro = env.APERCU_RO_URL;
