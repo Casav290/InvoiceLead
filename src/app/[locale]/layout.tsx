@@ -28,8 +28,8 @@ export async function generateMetadata({
     metadataBase: new URL(process.env.APP_URL ?? "http://localhost:3000"),
     manifest: "/manifest.webmanifest",
     icons: {
-      icon: [{ url: "/icons/favicon-32.png?v=3", sizes: "32x32", type: "image/png" }],
-      apple: [{ url: "/icons/apple-touch-icon.png?v=3", sizes: "180x180" }],
+      icon: [{ url: "/icons/favicon-32.png?v=4", sizes: "32x32", type: "image/png" }],
+      apple: [{ url: "/icons/apple-touch-icon.png?v=4", sizes: "180x180" }],
     },
     appleWebApp: { capable: true, title: "InvoiceLead", statusBarStyle: "default" },
   };
