@@ -2882,7 +2882,8 @@
       },
       "contacts": {
         "title": "Contacts and items",
-        "body": "Your customers and suppliers, brought over from CRMlead if you use it, and your services and products ready to invoice."
+        "body": "Your customers and suppliers, brought over from CRMlead if you use it, and your services and products ready to invoice.",
+        "bodyIntl": "Your customers and suppliers, brought over from CRMlead if you use it, and your services and products ready to invoice."
       },
       "accounting": {
         "title": "Accounting",

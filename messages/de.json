@@ -2882,7 +2882,8 @@
       },
       "contacts": {
         "title": "Kontakte und Artikel",
-        "body": "Ihre Kunden und Lieferanten, aus CRMlead übernommen, wenn Sie es nutzen, und Ihre Leistungen und Produkte, bereit zur Verrechnung."
+        "body": "Ihre Kunden und Lieferanten, aus CRMlead übernommen, wenn Sie es nutzen, und Ihre Leistungen und Produkte, bereit zur Verrechnung.",
+        "bodyIntl": "Ihre Kunden und Lieferanten, aus CRMlead übernommen, wenn Sie es nutzen, und Ihre Leistungen und Produkte, bereit zur Abrechnung."
       },
       "accounting": {
         "title": "Buchhaltung",

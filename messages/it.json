@@ -2882,7 +2882,8 @@
       },
       "contacts": {
         "title": "Contatti e articoli",
-        "body": "Clienti e fornitori, ripresi da CRMlead se lo usate, e le vostre prestazioni e prodotti pronti da fatturare."
+        "body": "Clienti e fornitori, ripresi da CRMlead se lo usate, e le vostre prestazioni e prodotti pronti da fatturare.",
+        "bodyIntl": "Clienti e fornitori, ripresi da CRMlead se lo usate, e le vostre prestazioni e prodotti pronti da fatturare."
       },
       "accounting": {
         "title": "Contabilità",
