@@ -2933,7 +2933,7 @@
     "dpa": "Sous-traitance (DPA)",
     "suite": {
       "title": "La suite Lead",
-      "erplead": "Le Compte Lead : un seul compte pour toutes les apps",
+      "erplead": "Le Compte Lead : un seul compte pour toutes les apps",
       "visitlead": "Montre quelles entreprises visitent votre site"
     }
   },
@@ -3080,29 +3080,29 @@
       "description": "Devis, factures conformes à votre pays, relances, tickets lus en photo et comptabilité pour indépendants et PME en Europe et aux USA. Gratuit, sans carte."
     },
     "pricing": {
-      "title": "Tarifs : Gratuit, Pro et Pro+",
-      "description": "Tarifs d'InvoiceLead : formule gratuite sans limite de durée, Pro à 19 € et Pro+ à 39 € par mois hors TVA. Sans carte pour démarrer, résiliable à tout moment."
+      "title": "Tarifs : Gratuit, Pro et Pro+",
+      "description": "Tarifs d'InvoiceLead : formule gratuite sans limite de durée, Pro à 19 € et Pro+ à 39 € par mois hors TVA. Sans carte pour démarrer, résiliable à tout moment."
     },
     "faq": {
       "title": "Questions fréquentes sur InvoiceLead",
-      "description": "Pays pris en charge, comptabilité, déclarations de TVA, Compte Lead, hébergement et export des données : les réponses aux questions fréquentes sur InvoiceLead."
+      "description": "Pays pris en charge, comptabilité, déclarations de TVA, Compte Lead, hébergement et export des données : les réponses aux questions fréquentes sur InvoiceLead."
     },
     "legal": {
       "imprint": {
         "title": "Mentions légales",
-        "description": "Mentions légales d'InvoiceLead : éditeur Quantum Liquid LLC à Sheridan (Wyoming, USA), hébergement, responsabilité du contenu et propriété intellectuelle."
+        "description": "Mentions légales d'InvoiceLead : éditeur Quantum Liquid LLC à Sheridan (Wyoming, USA), hébergement, responsabilité du contenu et propriété intellectuelle."
       },
       "privacy": {
         "title": "Politique de confidentialité",
-        "description": "Comment InvoiceLead traite vos données : données traitées, finalités, durées de conservation, sous-traitants, transferts, sécurité, IA et droits des personnes."
+        "description": "Comment InvoiceLead traite vos données : données traitées, finalités, durées de conservation, sous-traitants, transferts, sécurité, IA et droits des personnes."
       },
       "terms": {
         "title": "Conditions générales d'utilisation",
-        "description": "Conditions générales d'InvoiceLead : le service, le compte, les formules et prix, vos données, l'utilisation acceptable, la durée et la fin du contrat."
+        "description": "Conditions générales d'InvoiceLead : le service, le compte, les formules et prix, vos données, l'utilisation acceptable, la durée et la fin du contrat."
       },
       "dpa": {
         "title": "Accord de sous-traitance des données",
-        "description": "Accord de sous-traitance (DPA) d'InvoiceLead : parties et objet, traitement, obligations du sous-traitant, sous-traitants ultérieurs et transferts."
+        "description": "Accord de sous-traitance (DPA) d'InvoiceLead : parties et objet, traitement, obligations du sous-traitant, sous-traitants ultérieurs et transferts."
       }
     }
   }
