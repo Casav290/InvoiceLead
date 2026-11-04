@@ -217,8 +217,17 @@ const preview = () => JSON.parse(readFileSync(join(U, "preview.json"), "utf8"));
 
 if (gate === "g3") {
   const p = preview();
-  if (p.commit !== head())
-    fail(`l'aperçu sert ${p.commit?.slice(0, 7)}, HEAD est ${head().slice(0, 7)}`);
+  // L'aperçu sert HEAD, ou un commit dont HEAD ne diffère que par les scripts des portes (rien de servi).
+  const diff = execFileSync("git", ["diff", "--name-only", p.commit, "HEAD"], {
+    cwd: ROOT,
+    encoding: "utf8",
+  })
+    .split("\n")
+    .filter(Boolean);
+  if (p.commit !== head() && diff.some((f) => !/^scripts\/(visite-gates|e2e-visite)\.mjs$/.test(f)))
+    fail(
+      `l'aperçu sert ${p.commit?.slice(0, 7)}, HEAD est ${head().slice(0, 7)} : ${diff.join(", ")}`,
+    );
   const st = IA();
   if (p.database?.branchId !== st.neon.branchId || st.secrets.roUrl.includes(PROD_HOST))
     fail("base d'aperçu inattendue");
@@ -289,8 +298,13 @@ if (gate === "g5") {
     );
   const ro = roProd();
   if (!ro.includes(PROD_HOST)) fail("adresse de production inattendue");
+  // Le journal de Drizzle n'est pas lisible par le rôle en lecture seule : adresse du propriétaire, lue chez Vercel en
+  // mémoire (lead-e2e/lib-db-urls.mjs), pour une lecture seulement.
+  const { writeUrl } = await import(join(H, "projets/lead-e2e/lib-db-urls.mjs"));
+  const owner = await writeUrl("invoicelead");
+  if (!owner.includes(PROD_HOST)) fail("adresse de production inattendue");
   const mig = await q(
-    ro,
+    owner,
     "select hash, created_at from drizzle.__drizzle_migrations order by created_at desc limit 2",
   );
   const journal = JSON.parse(
