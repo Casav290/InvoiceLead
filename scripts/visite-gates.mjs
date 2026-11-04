@@ -85,6 +85,7 @@ async function q(url, text, params) {
  * Le détecteur de tiret long : pages publiques et écrans connectés (cookie de session), HTML (donc le flux RSC
  * inclus) et tous les scripts chargés, y compris ceux qu'un script charge à son tour.
  */
+const hasDash = (t) => t.includes("—") || /\\u2014/i.test(t);
 async function dashScan(base, headers, cookie) {
   const pub = ["/fr", "/de", "/en", "/fr/pricing", "/fr/faq", "/fr/login"];
   const app = [
@@ -103,6 +104,7 @@ async function dashScan(base, headers, cookie) {
   const hits = [];
   const queue = [];
   let connected = 0;
+  let tour = 0;
   for (const p of pages) {
     const isApp = p.includes("/app");
     const r = await fetch(base + p, {
@@ -111,7 +113,7 @@ async function dashScan(base, headers, cookie) {
     });
     const html = await r.text();
     if (isApp && r.status === 200 && html.includes('data-tour="profile"')) connected++;
-    if (html.includes("—") || /\\u2014/i.test(html)) hits.push(`${p} (HTML)`);
+    if (hasDash(html)) hits.push(`${p} (HTML)`);
     for (const m of html.matchAll(/\/_next\/static\/[\w./~-]+?\.js/g)) queue.push(m[0]);
   }
   while (queue.length) {
@@ -119,10 +121,11 @@ async function dashScan(base, headers, cookie) {
     if (seen.has(a)) continue;
     seen.add(a);
     const js = await (await fetch(base + a, { headers })).text();
-    if (js.includes("—") || /\\u2014/i.test(js)) hits.push(a);
-    for (const m of js.matchAll(/static\/chunks\/[\w./~-]+?\.js/g)) queue.push(`/_next/${m[0]}`);
+    if (hasDash(js)) hits.push(a);
+    if (js.includes("data-tour-step")) tour++;
+    for (const m of js.matchAll(/static\/(?:immutable\/)?chunks\/[\w.~-]+?\.js/g)) queue.push(`/_next/${m[0]}`);
   }
-  return { hits, scripts: seen.size, connected, appPages: app.length * 2 };
+  return { hits, scripts: seen.size, connected, appPages: app.length * 2, tour };
 }
 
 if (gate === "g1") {
@@ -204,7 +207,7 @@ function e2e(where, base, db, extra = []) {
       .filter((l) => /✗|verts|ROUGE|E2E_VISITE_OK/.test(l))
       .join("\n"),
   );
-  if (r.code !== 0 || !r.out.trim().endsWith("E2E_VISITE_OK")) fail("e2e-visite rouge");
+  if (r.code !== 0 || !/^E2E_VISITE_OK$/m.test(r.out)) fail("e2e-visite rouge");
 }
 const preview = () => JSON.parse(readFileSync(join(U, "preview.json"), "utf8"));
 
@@ -226,8 +229,8 @@ if (gate === "g3") {
 
 if (gate === "g4" || gate === "g7") {
   // Contre-épreuve : le même test de texte trouve un tiret long planté.
-  const plant = "texte témoin — planté";
-  if (!(plant.includes("—") && /—/.test(plant))) fail("contre-épreuve");
+  if (!hasDash("texte témoin — planté") || !hasDash('x = "\\u2014"') || hasDash("texte – sans"))
+    fail("contre-épreuve");
   const bad = [];
   for (const l of ["fr", "de", "en", "it", "es"]) {
     const t = JSON.stringify(
@@ -241,7 +244,9 @@ if (gate === "g4" || gate === "g7") {
   const c = comptes()[g4 ? "apercu" : "prod"];
   const cookie = c?.fresh?.at(-1)?.cookie ?? c?.old?.cookie;
   if (!cookie) fail("aucune session pour les écrans connectés");
-  const { hits, scripts, connected, appPages } = await dashScan(base, headers, cookie);
+  const { hits, scripts, connected, appPages, tour } = await dashScan(base, headers, cookie);
+  if (!tour)
+    fail("le script de la visite (chargé à la demande) n'a pas été lu : détecteur aveugle");
   if (scripts < 20) fail(`trop peu de scripts lus (${scripts}) : détecteur aveugle`);
   if (connected < appPages) fail(`écrans connectés lus : ${connected}/${appPages}`);
   if (bad.length || hits.length) fail(`tiret long : ${[...bad, ...hits].join(", ")}`);
