@@ -123,7 +123,8 @@ async function dashScan(base, headers, cookie) {
     const js = await (await fetch(base + a, { headers })).text();
     if (hasDash(js)) hits.push(a);
     if (js.includes("data-tour-step")) tour++;
-    for (const m of js.matchAll(/static\/(?:immutable\/)?chunks\/[\w.~-]+?\.js/g)) queue.push(`/_next/${m[0]}`);
+    for (const m of js.matchAll(/static\/(?:immutable\/)?chunks\/[\w.~-]+?\.js/g))
+      queue.push(`/_next/${m[0]}`);
   }
   return { hits, scripts: seen.size, connected, appPages: app.length * 2, tour };
 }
@@ -169,10 +170,13 @@ if (gate === "g2") {
   if (r0.code !== 0) fail(`base neuve : ${r0.out}`);
   const m = run("node", ["scripts/migrate.mjs"], { env: { ...process.env, DATABASE_URL: url } });
   if (m.code !== 0) fail(`migration : ${m.out.slice(-300)}`);
-  const t = run("npm", ["test"], { env: { ...process.env, TEST_DATABASE_URL: url } });
+  const t = run("npm", ["test", "--", "--reporter=verbose"], {
+    env: { ...process.env, TEST_DATABASE_URL: url },
+  });
   const files = t.out.match(/Test Files\s+(.*)/)?.[1] ?? "";
   const tests = t.out.match(/Tests\s+(.*)/)?.[1] ?? "";
-  const vis = t.out.match(/visite\.test\.ts \((\d+) tests?/);
+  const n = t.out.split("\n").filter((l) => /✓ .*visite\.test\.ts > Visite guidée/.test(l)).length;
+  const vis = n ? [null, String(n)] : null;
   if (t.code !== 0 || / failed/.test(files + tests) || !vis || Number(vis[1]) < 5)
     fail(`npm test : ${files} / ${tests} ; visite ${vis?.[1] ?? 0}/5 ${t.out.slice(-500)}`);
   console.log(
