@@ -27,8 +27,8 @@ const SCOPE = "scanleads-projects";
 const VERCEL_CLI = "vercel@65.2.0";
 /** Production relue par l'API Vercel le 04.11.2026 : elle ne doit pas bouger. */
 const PROD = {
-  id: "dpl_9pMhriGvx61jgPK9dJsaGAKU5YR6",
-  sha: "4ed9285001314fb1551b359eb0782ecf0f08d27e",
+  id: "dpl_BmLbyfNB6C2te6AUbNj7zLbfPNzx",
+  sha: "ff1baf5ea5fe7aa6378c62c710ef37c95108229e",
 };
 const PREVIEW_ALIAS = "invoicelead-visite-test.vercel.app";
 const STATE_FILE = join(HOME, ".invoicelead-actions-ia.json");
