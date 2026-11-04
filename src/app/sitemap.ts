@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { routing } from "@/i18n/routing";
+import { GUIDES, guideLanguages } from "@/lib/guides";
 import { LEGAL_DOCS } from "@/lib/legal";
 
 /** Adresse publique du site, sans barre finale. */
@@ -7,11 +8,24 @@ export function siteUrl(): string {
   return (process.env.APP_URL ?? "https://invoicelead.io").replace(/\/+$/, "");
 }
 
-/** Pages publiques, chacune avec ses cinq langues (hreflang). */
+/**
+ * Pages publiques, chacune avec ses cinq langues (hreflang), puis les pages mots-clés (guides), chacune
+ * dans sa langue avec ses équivalents des autres langues.
+ */
 export default function sitemap(): MetadataRoute.Sitemap {
   const base = siteUrl();
   const pages = ["", "/pricing", "/faq", ...LEGAL_DOCS.map((doc) => `/legal/${doc}`)];
-  return pages.flatMap((page) =>
+  const guides = GUIDES.map((guide) => ({
+    url: `${base}/${guide.lang}/${guide.slug}`,
+    changeFrequency: "monthly" as const,
+    priority: 0.8,
+    alternates: {
+      languages: Object.fromEntries(
+        Object.entries(guideLanguages(guide)).map(([l, path]) => [l, `${base}${path}`]),
+      ),
+    },
+  }));
+  const shared = pages.flatMap((page) =>
     routing.locales.map((locale) => ({
       url: `${base}/${locale}${page}`,
       changeFrequency: page === "" ? ("weekly" as const) : ("monthly" as const),
@@ -21,4 +35,5 @@ export default function sitemap(): MetadataRoute.Sitemap {
       },
     })),
   );
+  return [...shared, ...guides];
 }

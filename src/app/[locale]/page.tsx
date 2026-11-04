@@ -9,56 +9,25 @@ import { Frame, Phone, Shot } from "@/components/landing/Shot";
 import { PublicFooter } from "@/components/public/PublicFooter";
 import { PublicHeader } from "@/components/public/PublicHeader";
 import { Button } from "@/components/ui/button";
-import { routing } from "@/i18n/routing";
+import { guideLabels, guidesFor } from "@/lib/guides";
 import { leadLoginHref } from "@/lib/lead-login";
+import { allLocales, ldJson, PUBLISHER, publicMetadata } from "@/lib/seo";
 import { ASSISTANT_TOKENS, PLANS } from "@/server/plans";
 
 type Params = { params: Promise<{ locale: string }> };
 
-const OG_LOCALE: Record<string, string> = {
-  de: "de_DE",
-  fr: "fr_FR",
-  en: "en_US",
-  it: "it_IT",
-  es: "es_ES",
-};
-/** Images de partage dessinées (public/landing/og-<langue>.jpg) ; l'italien et l'espagnol prennent l'anglaise. */
-const OG_IMAGES = new Set(["de", "fr", "en"]);
-
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { locale } = await params;
-  const t = await getTranslations({ locale, namespace: "meta" });
-  const image = {
-    url: `/landing/og-${OG_IMAGES.has(locale) ? locale : "en"}.jpg`,
-    width: 1200,
-    height: 630,
-    alt: t("title"),
-  };
-  return {
-    alternates: {
-      canonical: `/${locale}`,
-      languages: {
-        ...Object.fromEntries(routing.locales.map((l) => [l, `/${l}`])),
-        "x-default": "/",
-      },
-    },
-    openGraph: {
-      type: "website",
-      url: `/${locale}`,
-      siteName: "InvoiceLead",
-      title: t("title"),
-      description: t("description"),
-      locale: OG_LOCALE[locale],
-      alternateLocale: routing.locales.filter((l) => l !== locale).map((l) => OG_LOCALE[l] ?? l),
-      images: [image],
-    },
-    twitter: {
-      card: "summary_large_image",
-      title: t("title"),
-      description: t("description"),
-      images: [image.url],
-    },
-  };
+  const t = await getTranslations({ locale, namespace: "seo.home" });
+  return publicMetadata({
+    locale,
+    path: `/${locale}`,
+    title: t("title"),
+    description: t("description"),
+    languages: allLocales(""),
+    absoluteTitle: true,
+    xDefault: "/",
+  });
 }
 
 /** Onglets des fonctions : clé des textes, capture, adresse montrée dans le cadre, formule. */
@@ -219,6 +188,9 @@ export default async function HomePage({ params }: Params) {
     FAQ_ITEMS.includes(i),
   );
 
+  const guides = guidesFor(locale);
+  const labels = guideLabels(locale);
+
   const pricingRows: { key: string; label: string; free: string; pro: string }[] = [
     {
       key: "invoices",
@@ -286,9 +258,11 @@ export default async function HomePage({ params }: Params) {
       offers: [
         { "@type": "Offer", name: t("pricing.free"), price: "0", priceCurrency: "EUR" },
         { "@type": "Offer", name: t("pricing.pro"), price: "19", priceCurrency: "EUR" },
+        { "@type": "Offer", name: "Pro+", price: "39", priceCurrency: "EUR" },
       ],
-      publisher: { "@type": "Organization", name: "Quantum Liquid LLC" },
+      publisher: { "@id": PUBLISHER["@id"] },
     },
+    { "@context": "https://schema.org", ...PUBLISHER },
     {
       "@context": "https://schema.org",
       "@type": "FAQPage",
@@ -735,6 +709,43 @@ export default async function HomePage({ params }: Params) {
           </div>
         </section>
 
+        {/* Guides : les pages mots-clés de la langue (fr, en, de), reliées depuis l'accueil. */}
+        {guides.length ? (
+          <section id="guides" className="border-b border-line-strong bg-strip">
+            <div className="mx-auto max-w-6xl px-4 py-16 sm:px-8 md:py-20">
+              <div className="grid grid-cols-1 gap-5 md:grid-cols-2 md:items-end md:gap-12">
+                <h2 className="text-[30px] leading-[1.05] font-extrabold text-ink sm:text-[40px]">
+                  {labels.homeTitle}
+                </h2>
+                <p className="max-w-[56ch] text-[16px] leading-relaxed text-ink-2">
+                  {labels.homeBody}
+                </p>
+              </div>
+              <ul
+                data-cells
+                className="mt-10 grid grid-cols-1 border-t border-l border-line-strong sm:grid-cols-2 lg:grid-cols-3"
+              >
+                {guides.map((guide) => (
+                  <li key={guide.slug} className="border-r border-b border-line-strong bg-paper">
+                    <a
+                      href={`/${locale}/${guide.slug}`}
+                      className="flex h-full flex-col gap-2 p-5 hover:bg-muted sm:p-6"
+                    >
+                      <span className="text-[10.5px] font-extrabold tracking-[0.08em] text-accent-dark uppercase">
+                        {guide.eyebrow}
+                      </span>
+                      <span className="text-[16px] leading-snug font-extrabold text-ink">
+                        {guide.linkLabel}
+                      </span>
+                      <span className="text-[14px] leading-relaxed text-ink-3">{guide.lede}</span>
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </section>
+        ) : null}
+
         {/* Dernier appel : un bloc prune plein, la seule surface de couleur de la page. */}
         <section className="mx-auto w-full max-w-6xl px-4 py-16 sm:px-8 md:py-20">
           <div
@@ -783,7 +794,7 @@ export default async function HomePage({ params }: Params) {
       <script
         type="application/ld+json"
         // biome-ignore lint/security/noDangerouslySetInnerHtml: données structurées écrites ici, « < » échappé
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }}
+        dangerouslySetInnerHTML={{ __html: ldJson(jsonLd) }}
       />
     </div>
   );

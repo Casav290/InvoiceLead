@@ -2930,7 +2930,12 @@
     "imprint": "Colophon",
     "privacy": "Privacy",
     "terms": "Condizioni",
-    "dpa": "Trattamento dei dati (DPA)"
+    "dpa": "Trattamento dei dati (DPA)",
+    "suite": {
+      "title": "La suite Lead",
+      "erplead": "L'account Lead: un solo accesso per tutte le app",
+      "visitlead": "Mostra quali aziende visitano il tuo sito"
+    }
   },
   "notFound": {
     "title": "Pagina non trovata",
@@ -2944,7 +2949,8 @@
       "privacy": "Privacy",
       "terms": "Condizioni generali",
       "dpa": "Accordo sul trattamento dei dati"
-    }
+    },
+    "others": "Altri documenti legali"
   },
   "pricing": {
     "title": "Prezzi semplici",
@@ -3067,5 +3073,37 @@
     "android": "Puoi anche consentire a InvoiceLead di aprire i suoi link: Impostazioni > App > InvoiceLead > Apri per impostazione predefinita.",
     "ios": "Su iPhone o iPad: torna alla pagina precedente, tieni premuto «Apri InvoiceLead», poi scegli «Apri in InvoiceLead». Se il tuo browser non è Safari, scegli Safari come browser predefinito nelle Impostazioni, poi tocca di nuovo «Continua con Google».",
     "notAsked": "Non hai chiesto nulla nell'app InvoiceLead? Chiudi semplicemente questa pagina."
+  },
+  "seo": {
+    "home": {
+      "title": "InvoiceLead, fatturazione e contabilità per Europa e USA",
+      "description": "Preventivi, fatture conformi al tuo Paese, solleciti, scontrini letti da una foto e contabilità per professionisti e PMI. Gratis per iniziare, senza carta."
+    },
+    "pricing": {
+      "title": "Prezzi: Gratuito, Pro e Pro+",
+      "description": "Prezzi di InvoiceLead: piano gratuito senza limiti di tempo, Pro a 19 € e Pro+ a 39 € al mese IVA esclusa. Nessuna carta per iniziare, disdetta in ogni momento."
+    },
+    "faq": {
+      "title": "Domande frequenti su InvoiceLead",
+      "description": "Paesi supportati, contabilità, dichiarazioni IVA, account Lead, hosting ed esportazione dei dati: le risposte alle domande più frequenti su InvoiceLead."
+    },
+    "legal": {
+      "imprint": {
+        "title": "Colophon e note legali",
+        "description": "Note legali di InvoiceLead: editore Quantum Liquid LLC a Sheridan (Wyoming, USA), hosting, responsabilità dei contenuti e proprietà intellettuale."
+      },
+      "privacy": {
+        "title": "Informativa sulla privacy",
+        "description": "Come InvoiceLead tratta i tuoi dati: dati trattati, finalità, conservazione, responsabili del trattamento, trasferimenti, sicurezza, IA e diritti."
+      },
+      "terms": {
+        "title": "Condizioni generali di utilizzo",
+        "description": "Condizioni generali di InvoiceLead: il servizio, l'account, piani e prezzi, i tuoi dati, uso accettabile, disponibilità, durata e recesso."
+      },
+      "dpa": {
+        "title": "Accordo sul trattamento dei dati",
+        "description": "Accordo sul trattamento dei dati di InvoiceLead (DPA): parti e oggetto, trattamento, obblighi, sub-responsabili e trasferimenti di dati."
+      }
+    }
   }
 }

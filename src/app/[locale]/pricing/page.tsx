@@ -5,6 +5,7 @@ import { PublicHeader } from "@/components/public/PublicHeader";
 import { Button } from "@/components/ui/button";
 import { leadLoginHref } from "@/lib/lead-login";
 import { AVAILABLE, euros, PRICE_CARDS } from "@/lib/pricing";
+import { allLocales, ldJson, PUBLISHER, publicMetadata, SITE, webPageLd } from "@/lib/seo";
 import { cn } from "@/lib/utils";
 
 type Params = { params: Promise<{ locale: string }> };
@@ -18,13 +19,45 @@ const PLANS = PRICE_CARDS;
 
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { locale } = await params;
-  const t = await getTranslations({ locale, namespace: "nav" });
-  return { title: t("pricing") };
+  const t = await getTranslations({ locale, namespace: "seo.pricing" });
+  return publicMetadata({
+    locale,
+    path: `/${locale}/pricing`,
+    title: t("title"),
+    description: t("description"),
+    languages: allLocales("/pricing"),
+  });
 }
 
 export default async function PricingPage({ params }: Params) {
   const { locale } = await params;
   const t = await getTranslations({ locale, namespace: "pricing" });
+  const seo = await getTranslations({ locale, namespace: "seo.pricing" });
+  const home = await getTranslations({ locale, namespace: "legal" });
+  const jsonLd = [
+    ...webPageLd({
+      locale,
+      path: `/${locale}/pricing`,
+      name: seo("title"),
+      description: seo("description"),
+      homeLabel: home("home"),
+    }),
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      name: "InvoiceLead",
+      url: `${SITE}/${locale}`,
+      applicationCategory: "BusinessApplication",
+      operatingSystem: "Web",
+      offers: PLANS.map((plan) => ({
+        "@type": "Offer",
+        name: t(`plans.${plan.key}.name`),
+        price: String(plan.monthly),
+        priceCurrency: "EUR",
+      })),
+      publisher: PUBLISHER,
+    },
+  ];
   return (
     <div className="flex min-h-screen flex-col">
       <PublicHeader />
@@ -109,6 +142,11 @@ export default async function PricingPage({ params }: Params) {
         <p className="mt-8 text-center text-[13px] text-ink-muted">{t("footer")}</p>
       </main>
       <PublicFooter />
+      <script
+        type="application/ld+json"
+        // biome-ignore lint/security/noDangerouslySetInnerHtml: données structurées écrites ici, « < » échappé
+        dangerouslySetInnerHTML={{ __html: ldJson(jsonLd) }}
+      />
     </div>
   );
 }

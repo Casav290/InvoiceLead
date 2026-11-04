@@ -6,6 +6,7 @@ import { PublicHeader } from "@/components/public/PublicHeader";
 import { Link } from "@/i18n/navigation";
 import { routing } from "@/i18n/routing";
 import { isLegalDoc, LEGAL_DOCS, legalHtml } from "@/lib/legal";
+import { allLocales, ldJson, publicMetadata, webPageLd } from "@/lib/seo";
 
 type Params = { params: Promise<{ locale: string; doc: string }> };
 
@@ -18,14 +19,29 @@ export function generateStaticParams() {
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { locale, doc } = await params;
   if (!isLegalDoc(doc)) return {};
-  const t = await getTranslations({ locale, namespace: "legal.titles" });
-  return { title: t(doc) };
+  const t = await getTranslations({ locale, namespace: `seo.legal.${doc}` });
+  return publicMetadata({
+    locale,
+    path: `/${locale}/legal/${doc}`,
+    title: t("title"),
+    description: t("description"),
+    languages: allLocales(`/legal/${doc}`),
+  });
 }
 
 export default async function LegalPage({ params }: Params) {
   const { locale, doc } = await params;
   if (!isLegalDoc(doc)) notFound();
   const t = await getTranslations({ locale, namespace: "legal" });
+  const seoAll = await getTranslations({ locale, namespace: "seo.legal" });
+  const seo = (key: "title" | "description") => seoAll(`${doc}.${key}`);
+  const jsonLd = webPageLd({
+    locale,
+    path: `/${locale}/legal/${doc}`,
+    name: seo("title"),
+    description: seo("description"),
+    homeLabel: t("home"),
+  });
   return (
     <div className="flex min-h-screen flex-col">
       <PublicHeader />
@@ -42,8 +58,31 @@ export default async function LegalPage({ params }: Params) {
           // biome-ignore lint/security/noDangerouslySetInnerHtml: texte interne du dépôt (content/legal), rendu au build
           dangerouslySetInnerHTML={{ __html: legalHtml(doc, locale) }}
         />
+        <nav className="mt-8 border border-line-strong bg-panel px-5 py-6 sm:px-9">
+          <h2 className="text-[16px] font-extrabold text-ink">{t("others")}</h2>
+          <ul className="mt-4 space-y-4">
+            {LEGAL_DOCS.filter((other) => other !== doc).map((other) => (
+              <li key={other}>
+                <Link
+                  href={`/legal/${other}`}
+                  className="text-[14px] font-bold text-accent-dark hover:underline"
+                >
+                  {t(`titles.${other}`)}
+                </Link>
+                <p className="mt-1 text-[13px] leading-relaxed text-ink-muted">
+                  {seoAll(`${other}.description`)}
+                </p>
+              </li>
+            ))}
+          </ul>
+        </nav>
       </main>
       <PublicFooter />
+      <script
+        type="application/ld+json"
+        // biome-ignore lint/security/noDangerouslySetInnerHtml: données structurées écrites ici, « < » échappé
+        dangerouslySetInnerHTML={{ __html: ldJson(jsonLd) }}
+      />
     </div>
   );
 }

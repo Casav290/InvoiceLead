@@ -2930,7 +2930,12 @@
     "imprint": "Impressum",
     "privacy": "Datenschutz",
     "terms": "AGB",
-    "dpa": "Auftragsbearbeitung (AVV)"
+    "dpa": "Auftragsbearbeitung (AVV)",
+    "suite": {
+      "title": "Die Lead-Suite",
+      "erplead": "Das Lead-Konto: eine Anmeldung für alle Apps",
+      "visitlead": "Zeigt, welche Firmen Ihre Website besuchen"
+    }
   },
   "notFound": {
     "title": "Seite nicht gefunden",
@@ -2944,7 +2949,8 @@
       "privacy": "Datenschutz",
       "terms": "Allgemeine Geschäftsbedingungen",
       "dpa": "Auftragsbearbeitungsvertrag"
-    }
+    },
+    "others": "Weitere rechtliche Dokumente"
   },
   "pricing": {
     "title": "Einfache Preise",
@@ -3067,5 +3073,37 @@
     "android": "Sie können InvoiceLead auch erlauben, seine Links zu öffnen: Einstellungen > Apps > InvoiceLead > Standardmässig öffnen.",
     "ios": "Auf dem iPhone oder iPad: Gehen Sie zur vorherigen Seite zurück, halten Sie „InvoiceLead öffnen“ gedrückt und wählen Sie dann „In InvoiceLead öffnen“. Wenn Ihr Browser nicht Safari ist, wählen Sie in den Einstellungen Safari als Standardbrowser und tippen Sie dann erneut auf „Weiter mit Google“.",
     "notAsked": "Sie haben in der App InvoiceLead nichts angefordert? Schliessen Sie diese Seite einfach."
+  },
+  "seo": {
+    "home": {
+      "title": "InvoiceLead, Rechnungen und Buchhaltung für Europa und USA",
+      "description": "Angebote, Rechnungen nach den Regeln Ihres Landes, Mahnungen, Belege per Foto und Buchhaltung für Selbstständige und KMU. Kostenlos, ohne Kreditkarte."
+    },
+    "pricing": {
+      "title": "Preise: Kostenlos, Pro und Pro+",
+      "description": "Preise von InvoiceLead: kostenloser Tarif ohne Laufzeitgrenze, Pro für 19 € und Pro+ für 39 € pro Monat zzgl. MwSt. Ohne Kreditkarte starten, jederzeit kündbar."
+    },
+    "faq": {
+      "title": "Häufige Fragen zu InvoiceLead",
+      "description": "Unterstützte Länder, Buchhaltung, Umsatzsteuer-Voranmeldung, Lead-Konto, Hosting und Export Ihrer Daten: Antworten auf die häufigsten Fragen zu InvoiceLead."
+    },
+    "legal": {
+      "imprint": {
+        "title": "Impressum",
+        "description": "Impressum von InvoiceLead: Anbieter Quantum Liquid LLC in Sheridan (Wyoming, USA), Hosting, Haftung für Inhalte und geistiges Eigentum."
+      },
+      "privacy": {
+        "title": "Datenschutzerklärung",
+        "description": "Wie InvoiceLead Ihre Daten verarbeitet: Datenarten, Zwecke, Speicherdauer, Auftragsverarbeiter, Übermittlungen, Sicherheit, KI und Ihre Rechte."
+      },
+      "terms": {
+        "title": "Allgemeine Geschäftsbedingungen",
+        "description": "AGB von InvoiceLead: der Dienst, Ihr Konto, Tarife und Preise, Ihre Daten, zulässige Nutzung, Verfügbarkeit, Laufzeit und Kündigung."
+      },
+      "dpa": {
+        "title": "Auftragsverarbeitungsvertrag (AVV)",
+        "description": "Auftragsverarbeitungsvertrag von InvoiceLead: Parteien und Gegenstand, Verarbeitung, Pflichten, weitere Auftragsverarbeiter und Übermittlungen."
+      }
+    }
   }
 }

@@ -2930,7 +2930,12 @@
     "imprint": "Aviso legal",
     "privacy": "Privacidad",
     "terms": "Condiciones",
-    "dpa": "Encargo de tratamiento (DPA)"
+    "dpa": "Encargo de tratamiento (DPA)",
+    "suite": {
+      "title": "La suite Lead",
+      "erplead": "La cuenta Lead: un solo acceso para todas las apps",
+      "visitlead": "Muestra qué empresas visitan tu web"
+    }
   },
   "notFound": {
     "title": "Página no encontrada",
@@ -2944,7 +2949,8 @@
       "privacy": "Privacidad",
       "terms": "Condiciones generales",
       "dpa": "Contrato de encargo de tratamiento"
-    }
+    },
+    "others": "Otros documentos legales"
   },
   "pricing": {
     "title": "Precios sencillos",
@@ -3067,5 +3073,37 @@
     "android": "También puedes permitir que InvoiceLead abra sus enlaces: Ajustes > Aplicaciones > InvoiceLead > Abrir de forma predeterminada.",
     "ios": "En iPhone o iPad: vuelve a la página anterior, mantén pulsado «Abrir InvoiceLead» y luego elige «Abrir en InvoiceLead». Si tu navegador no es Safari, elige Safari como navegador predeterminado en Ajustes y luego toca de nuevo «Continuar con Google».",
     "notAsked": "¿No has pedido nada en la app InvoiceLead? Simplemente cierra esta página."
+  },
+  "seo": {
+    "home": {
+      "title": "InvoiceLead, facturación y contabilidad para Europa y EE. UU.",
+      "description": "Presupuestos, facturas conformes a tu país, recordatorios, tiques leídos con una foto y contabilidad para autónomos y pymes. Gratis para empezar, sin tarjeta."
+    },
+    "pricing": {
+      "title": "Precios: Gratis, Pro y Pro+",
+      "description": "Precios de InvoiceLead: plan gratuito sin límite de tiempo, Pro a 19 € y Pro+ a 39 € al mes sin IVA. Sin tarjeta para empezar, cancelable en cualquier momento."
+    },
+    "faq": {
+      "title": "Preguntas frecuentes sobre InvoiceLead",
+      "description": "Países admitidos, contabilidad, declaraciones de IVA, cuenta Lead, alojamiento y exportación de datos: respuestas a las preguntas frecuentes sobre InvoiceLead."
+    },
+    "legal": {
+      "imprint": {
+        "title": "Aviso legal",
+        "description": "Aviso legal de InvoiceLead: editor Quantum Liquid LLC en Sheridan (Wyoming, EE. UU.), alojamiento, responsabilidad del contenido y propiedad intelectual."
+      },
+      "privacy": {
+        "title": "Política de privacidad",
+        "description": "Cómo trata InvoiceLead tus datos: datos tratados, finalidades, conservación, encargados del tratamiento, transferencias, seguridad, IA y derechos."
+      },
+      "terms": {
+        "title": "Condiciones generales de uso",
+        "description": "Condiciones generales de InvoiceLead: el servicio, la cuenta, planes y precios, tus datos, uso aceptable, disponibilidad, duración y terminación."
+      },
+      "dpa": {
+        "title": "Contrato de encargo de tratamiento",
+        "description": "Contrato de encargo de tratamiento de InvoiceLead (DPA): partes y objeto, tratamiento, obligaciones, subencargados y transferencias de datos."
+      }
+    }
   }
 }

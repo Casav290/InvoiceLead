@@ -1,12 +1,79 @@
 import { useLocale, useTranslations } from "next-intl";
 import { AppMark } from "@/components/brand/AppMark";
 import { Link } from "@/i18n/navigation";
+import { guideLabels, guidesFor } from "@/lib/guides";
 import { leadLoginHref } from "@/lib/lead-login";
 
 /** Pied de page public. `back` : comme dans l'en-tête, la page ou l'invitation de l'écran d'erreur. */
 export function PublicFooter({ back = {} }: { back?: Record<string, string> } = {}) {
   const t = useTranslations("footer");
+  const apps = useTranslations("home.family.apps");
   const locale = useLocale();
+  const guides = guidesFor(locale);
+  /** La suite Lead : les sept sites, chacun avec sa ligne (liens simples, lus sans JavaScript). */
+  const suite = [
+    {
+      name: "ERPlead",
+      href: "https://erplead.io",
+      mark: "EL",
+      color: "bg-ink",
+      line: t("suite.erplead"),
+    },
+    {
+      name: "ScanLead",
+      href: `https://scanlead.io/?lang=${locale}`,
+      mark: "SL",
+      color: "bg-scanlead",
+      line: apps("scanlead"),
+    },
+    {
+      name: "CRMlead",
+      href: `https://crmlead.io/?lang=${locale}`,
+      mark: "CL",
+      color: "bg-crmlead",
+      line: apps("crmlead"),
+    },
+    {
+      name: "ProjectLead",
+      href: "https://projectlead.io",
+      mark: "PL",
+      color: "bg-projectlead",
+      line: apps("projectlead"),
+    },
+    {
+      name: "InvoiceLead",
+      href: `/${locale}`,
+      mark: "IL",
+      color: "bg-accent",
+      line: apps("invoicelead"),
+    },
+    {
+      name: "Greetlead",
+      href: "https://greetlead.io",
+      mark: "GL",
+      color: "bg-[#c2185b]",
+      line: apps("greetlead"),
+    },
+    {
+      name: "VisitLead",
+      href: "https://visitlead.io",
+      mark: "VL",
+      color: "bg-ink-2",
+      line: t("suite.visitlead"),
+    },
+  ];
+  const guideColumn = guides.length
+    ? [
+        {
+          heading: guideLabels(locale).heading,
+          links: guides.map((g) => ({
+            href: `/${locale}/${g.slug}`,
+            label: g.linkLabel,
+            internal: false,
+          })),
+        },
+      ]
+    : [];
   const columns = [
     {
       heading: t("product"),
@@ -17,6 +84,7 @@ export function PublicFooter({ back = {} }: { back?: Record<string, string> } = 
         { href: "/faq", label: t("faq"), internal: true },
       ],
     },
+    ...guideColumn,
     {
       heading: t("family"),
       links: [
@@ -51,7 +119,9 @@ export function PublicFooter({ back = {} }: { back?: Record<string, string> } = 
               InvoiceLead
             </span>
           </Link>
-          <div className="grid grid-cols-2 gap-8 text-[13px] sm:gap-10 lg:grid-cols-4">
+          <div
+            className={`grid grid-cols-2 gap-8 text-[13px] sm:gap-10 ${guides.length ? "lg:grid-cols-5" : "lg:grid-cols-4"}`}
+          >
             {columns.map((column) => (
               <div key={column.heading}>
                 <p className="mb-3 text-[10px] font-extrabold tracking-[.08em] text-ink-muted uppercase">
@@ -76,7 +146,29 @@ export function PublicFooter({ back = {} }: { back?: Record<string, string> } = 
             ))}
           </div>
         </div>
-        <div className="mt-10 border-t border-line pt-5 text-[11px] text-ink-muted">
+        <div className="mt-10 border-t border-line pt-6">
+          <p className="mb-4 text-[10px] font-extrabold tracking-[.08em] text-ink-muted uppercase">
+            {t("suite.title")}
+          </p>
+          <ul className="grid grid-cols-1 gap-x-6 gap-y-3 text-[13px] sm:grid-cols-2 lg:grid-cols-4">
+            {suite.map((app) => (
+              <li key={app.name}>
+                <a href={app.href} className="group flex items-start gap-2.5">
+                  <AppMark label={app.mark} className={`mt-0.5 h-6 w-6 text-[9px] ${app.color}`} />
+                  <span>
+                    <span className="block font-bold text-ink group-hover:text-accent">
+                      {app.name}
+                    </span>
+                    <span className="block text-[12px] leading-snug text-ink-muted">
+                      {app.line}
+                    </span>
+                  </span>
+                </a>
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div className="mt-8 border-t border-line pt-5 text-[11px] text-ink-muted">
           © {new Date().getFullYear()} InvoiceLead, Quantum Liquid LLC
         </div>
       </div>

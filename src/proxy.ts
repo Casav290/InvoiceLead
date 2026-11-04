@@ -25,6 +25,24 @@ const PROTECTED = new RegExp(`^/(${routing.locales.join("|")})/app(?:/|$)`, "i")
  */
 const HOME = new RegExp(`^/(?:(?:${routing.locales.join("|")})/?)?$`, "i");
 
+/**
+ * Premières parties d'adresse qui existent aussi sans langue (« /pricing », « /app/… », « /d/… ») :
+ * next-intl les redirige vers la langue du visiteur. Toute autre adresse sans langue répond 404 tout
+ * de suite, sans redirection (une page inexistante ne doit pas devenir une redirection).
+ */
+const UNPREFIXED_ROUTES = new Set([
+  "pricing",
+  "faq",
+  "legal",
+  "login",
+  "signup",
+  "app",
+  "d",
+  "invite",
+  "no-access",
+  "lead-auth",
+]);
+
 function decodedPath(pathname: string): string {
   try {
     return decodeURIComponent(pathname);
@@ -165,6 +183,17 @@ export default function proxy(request: NextRequest) {
     headers.delete(REQUESTED_PATH_HEADER);
     if (match && (navigable || action)) headers.set(REQUESTED_PATH_HEADER, wanted);
     return intl(new NextRequest(request, { headers }));
+  }
+  const first = decodedPath(request.nextUrl.pathname).split("/")[1]?.toLowerCase() ?? "";
+  if (
+    first &&
+    !(routing.locales as readonly string[]).includes(first) &&
+    !UNPREFIXED_ROUTES.has(first)
+  ) {
+    const url = request.nextUrl.clone();
+    url.pathname = `/${routing.defaultLocale}/page-introuvable`;
+    url.search = "";
+    return NextResponse.rewrite(url);
   }
   return intl(request);
 }

@@ -2930,7 +2930,12 @@
     "imprint": "Mentions légales",
     "privacy": "Confidentialité",
     "terms": "Conditions",
-    "dpa": "Sous-traitance (DPA)"
+    "dpa": "Sous-traitance (DPA)",
+    "suite": {
+      "title": "La suite Lead",
+      "erplead": "Le Compte Lead : un seul compte pour toutes les apps",
+      "visitlead": "Montre quelles entreprises visitent votre site"
+    }
   },
   "notFound": {
     "title": "Page introuvable",
@@ -2944,7 +2949,8 @@
       "privacy": "Confidentialité",
       "terms": "Conditions générales",
       "dpa": "Accord de sous-traitance"
-    }
+    },
+    "others": "Autres documents légaux"
   },
   "pricing": {
     "title": "Des tarifs simples",
@@ -3067,5 +3073,37 @@
     "android": "Vous pouvez aussi autoriser InvoiceLead à ouvrir ses liens : Réglages > Applications > InvoiceLead > Ouvrir par défaut.",
     "ios": "Sur iPhone ou iPad : revenez à la page précédente, appuyez longuement sur « Ouvrir InvoiceLead », puis choisissez « Ouvrir dans InvoiceLead ». Si votre navigateur n'est pas Safari, choisissez Safari comme navigateur par défaut dans les Réglages, puis touchez à nouveau « Continuer avec Google ».",
     "notAsked": "Vous n'avez rien demandé dans l'app InvoiceLead ? Fermez simplement cette page."
+  },
+  "seo": {
+    "home": {
+      "title": "InvoiceLead, facturation et comptabilité Europe et USA",
+      "description": "Devis, factures conformes à votre pays, relances, tickets lus en photo et comptabilité pour indépendants et PME en Europe et aux USA. Gratuit, sans carte."
+    },
+    "pricing": {
+      "title": "Tarifs : Gratuit, Pro et Pro+",
+      "description": "Tarifs d'InvoiceLead : formule gratuite sans limite de durée, Pro à 19 € et Pro+ à 39 € par mois hors TVA. Sans carte pour démarrer, résiliable à tout moment."
+    },
+    "faq": {
+      "title": "Questions fréquentes sur InvoiceLead",
+      "description": "Pays pris en charge, comptabilité, déclarations de TVA, Compte Lead, hébergement et export des données : les réponses aux questions fréquentes sur InvoiceLead."
+    },
+    "legal": {
+      "imprint": {
+        "title": "Mentions légales",
+        "description": "Mentions légales d'InvoiceLead : éditeur Quantum Liquid LLC à Sheridan (Wyoming, USA), hébergement, responsabilité du contenu et propriété intellectuelle."
+      },
+      "privacy": {
+        "title": "Politique de confidentialité",
+        "description": "Comment InvoiceLead traite vos données : données traitées, finalités, durées de conservation, sous-traitants, transferts, sécurité, IA et droits des personnes."
+      },
+      "terms": {
+        "title": "Conditions générales d'utilisation",
+        "description": "Conditions générales d'InvoiceLead : le service, le compte, les formules et prix, vos données, l'utilisation acceptable, la durée et la fin du contrat."
+      },
+      "dpa": {
+        "title": "Accord de sous-traitance des données",
+        "description": "Accord de sous-traitance (DPA) d'InvoiceLead : parties et objet, traitement, obligations du sous-traitant, sous-traitants ultérieurs et transferts."
+      }
+    }
   }
 }

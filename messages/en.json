@@ -2930,7 +2930,12 @@
     "imprint": "Legal notice",
     "privacy": "Privacy",
     "terms": "Terms",
-    "dpa": "Data processing (DPA)"
+    "dpa": "Data processing (DPA)",
+    "suite": {
+      "title": "The Lead suite",
+      "erplead": "The Lead account: one sign-in for every app",
+      "visitlead": "Shows which companies visit your website"
+    }
   },
   "notFound": {
     "title": "Page not found",
@@ -2944,7 +2949,8 @@
       "privacy": "Privacy",
       "terms": "Terms and conditions",
       "dpa": "Data processing agreement"
-    }
+    },
+    "others": "Other legal documents"
   },
   "pricing": {
     "title": "Simple pricing",
@@ -3067,5 +3073,37 @@
     "android": "You can also allow InvoiceLead to open its links: Settings > Apps > InvoiceLead > Open by default.",
     "ios": "On iPhone or iPad: go back to the previous page, press and hold “Open InvoiceLead”, then choose “Open in InvoiceLead”. If your browser is not Safari, choose Safari as the default browser in Settings, then tap “Continue with Google” again.",
     "notAsked": "Didn't ask for anything in the InvoiceLead app? Just close this page."
+  },
+  "seo": {
+    "home": {
+      "title": "InvoiceLead, invoicing and accounting for Europe and the US",
+      "description": "Quotes, invoices that follow your country's rules, reminders, receipts read from a photo and accounting for freelancers and small businesses. Free, no card."
+    },
+    "pricing": {
+      "title": "Pricing: Free, Pro and Pro+",
+      "description": "InvoiceLead pricing: a free plan with no time limit, Pro at €19 and Pro+ at €39 per month excluding VAT. No credit card to start, cancel at any time."
+    },
+    "faq": {
+      "title": "InvoiceLead questions and answers",
+      "description": "Supported countries, accounting, VAT and sales tax returns, the Lead account, data hosting and export: answers to the most common questions about InvoiceLead."
+    },
+    "legal": {
+      "imprint": {
+        "title": "Legal notice",
+        "description": "InvoiceLead legal notice: publisher Quantum Liquid LLC in Sheridan, Wyoming, USA, hosting, liability for content and intellectual property."
+      },
+      "privacy": {
+        "title": "Privacy policy",
+        "description": "How InvoiceLead handles your data: what is processed and why, retention periods, processors and hosting, transfers, security, AI and your rights."
+      },
+      "terms": {
+        "title": "Terms and conditions of use",
+        "description": "InvoiceLead terms and conditions: the service, your account, plans and prices, your data, acceptable use, availability, term and termination."
+      },
+      "dpa": {
+        "title": "Data processing agreement (DPA)",
+        "description": "InvoiceLead data processing agreement: parties and purpose, processing, processor obligations, sub-processors and international transfers."
+      }
+    }
   }
 }

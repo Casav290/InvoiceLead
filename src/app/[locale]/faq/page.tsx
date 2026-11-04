@@ -2,19 +2,38 @@ import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { PublicFooter } from "@/components/public/PublicFooter";
 import { PublicHeader } from "@/components/public/PublicHeader";
+import { allLocales, faqLd, ldJson, publicMetadata, webPageLd } from "@/lib/seo";
 
 type Params = { params: Promise<{ locale: string }> };
 
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { locale } = await params;
-  const t = await getTranslations({ locale, namespace: "faq" });
-  return { title: t("title") };
+  const t = await getTranslations({ locale, namespace: "seo.faq" });
+  return publicMetadata({
+    locale,
+    path: `/${locale}/faq`,
+    title: t("title"),
+    description: t("description"),
+    languages: allLocales("/faq"),
+  });
 }
 
 export default async function FaqPage({ params }: Params) {
   const { locale } = await params;
   const t = await getTranslations({ locale, namespace: "faq" });
   const items = t.raw("items") as { q: string; a: string }[];
+  const seo = await getTranslations({ locale, namespace: "seo.faq" });
+  const home = await getTranslations({ locale, namespace: "legal" });
+  const jsonLd = [
+    ...webPageLd({
+      locale,
+      path: `/${locale}/faq`,
+      name: seo("title"),
+      description: seo("description"),
+      homeLabel: home("home"),
+    }),
+    faqLd(items),
+  ];
   return (
     <div className="flex min-h-screen flex-col">
       <PublicHeader />
@@ -35,6 +54,11 @@ export default async function FaqPage({ params }: Params) {
         </div>
       </main>
       <PublicFooter />
+      <script
+        type="application/ld+json"
+        // biome-ignore lint/security/noDangerouslySetInnerHtml: données structurées écrites ici, « < » échappé
+        dangerouslySetInnerHTML={{ __html: ldJson(jsonLd) }}
+      />
     </div>
   );
 }
