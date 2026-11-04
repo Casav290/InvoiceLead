@@ -20,9 +20,10 @@ Pas besoin de clé pour relier ProjectLead ou CRMlead. Depuis le 26.10.2026 (« 
 
 | Méthode | Chemin | |
 |---|---|---|
-| GET | `/.well-known/lead-app.json` | Carte : `inbox`, `accepts: ["invoice"]`, `sends: ["document"]`, `read`, `reads: ["contact"]` |
+| GET | `/.well-known/lead-app.json` | Carte : `inbox`, `accepts: ["invoice"]`, `sends: ["document"]`, `read`, `reads: ["contact", "known_contacts"]` |
 | POST | `/api/lead-exchange/v1/inbox` | Enveloppe `invoice` de ProjectLead : brouillon de facture du temps passé (`201 created`, `200 updated`, `409 already_issued`, `409 contact_limit`, `403 person_not_allowed`), jeton `exchange` avec `org` exigé |
 | GET | `/api/lead-exchange/v1/read?type=contact&q=` | Clients (20 au plus) pour ProjectLead, avec les droits de la personne (jeton `exchange_read`, `403 person_not_member`) |
+| GET | `/api/lead-exchange/v1/read?type=known_contacts[&count=1][&cursor=][&limit=]` | Contacts connus pour VisitLead : clients avec e-mail (archivés exclus), au niveau de l'entreprise (jeton `exchange_read` de VisitLead, organisation obligatoire, personne facultative), 500 par page, curseur (updated_at, id), 120/min |
 
 Les anciennes clés de portée `projectlead` déjà créées restent acceptées (contacts et brouillons de factures seulement) jusqu'à leur révocation ; aucune nouvelle ne se crée. Les clés d'API ci-dessus restent réservées aux outils extérieurs (Zapier, Make, Claude, scripts), en Pro+.
 

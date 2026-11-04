@@ -18,7 +18,7 @@ export function GET() {
         accepts: ["invoice"],
         sends: ["document"],
         read: `${base}/api/lead-exchange/v1/read`,
-        reads: ["contact"],
+        reads: ["contact", "known_contacts"],
       },
     },
     { headers: { "cache-control": "public, max-age=300" } },

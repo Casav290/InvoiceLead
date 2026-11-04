@@ -9,6 +9,7 @@ import { GET as readRoute } from "@/app/api/lead-exchange/v1/read/route";
 import { attachLeadIdentity } from "@/server/auth/attach";
 import { auditLog, contacts, invoices, memberships, organizations } from "@/server/db/schema";
 import { issueInvoice } from "@/server/invoices";
+import { forgetKnownBudget } from "@/server/known-contacts";
 import { checkEnvelope, forgetExchangeToken, send } from "@/server/lead-id/leadId";
 import { claims } from "../support/claims";
 import { testDb } from "../support/db";
@@ -179,7 +180,7 @@ describe("carte de visite", () => {
         accepts: ["invoice"],
         sends: ["document"],
         read: "https://invoicelead.io/api/lead-exchange/v1/read",
-        reads: ["contact"],
+        reads: ["contact", "known_contacts"],
       },
     });
   });
@@ -524,6 +525,115 @@ describe("lecture des clients pour ProjectLead", () => {
       ).body,
     ).toEqual({ error: "sender_not_allowed" });
     expect((await read("type=invoice", readToken("sub-ada"))).status).toBe(422);
+  });
+});
+
+describe("contacts connus pour VisitLead (known_contacts)", () => {
+  const vl = (o: { org?: string | null; person?: string; app?: string } = {}) =>
+    token({ app: o.app ?? "visitlead", scope: "exchange_read", org: o.org, person: o.person });
+  beforeEach(() => forgetKnownBudget());
+
+  async function seed() {
+    const { orgId } = await company();
+    const t0 = new Date("2026-11-01T10:00:00.000Z");
+    await db.insert(contacts).values([
+      {
+        organizationId: orgId,
+        name: "Rochat SA",
+        contactPerson: "Anne Rochat",
+        email: " Anne@Rochat.test ",
+        updatedAt: t0,
+      },
+      {
+        organizationId: orgId,
+        kind: "person",
+        name: "Luc Favre",
+        email: "luc@favre.test",
+        updatedAt: new Date(t0.getTime() + 1000),
+      },
+      { organizationId: orgId, name: "Sans adresse SA", updatedAt: t0 },
+      { organizationId: orgId, name: "Adresse fausse", email: "pas-une-adresse", updatedAt: t0 },
+      {
+        organizationId: orgId,
+        name: "Archivé SA",
+        email: "x@archive.test",
+        archivedAt: t0,
+        updatedAt: t0,
+      },
+      {
+        organizationId: orgId,
+        name: "Fournisseur",
+        email: "f@four.test",
+        isCustomer: false,
+        isSupplier: true,
+        updatedAt: t0,
+      },
+    ]);
+    return orgId;
+  }
+
+  it("sans personne, au niveau de l'entreprise : clients avec e-mail seulement, champs minimaux", async () => {
+    await seed();
+    const r = await read("type=known_contacts", vl());
+    expect(r.status).toBe(200);
+    expect(r.body.next).toBeNull();
+    const data = r.body.data as Record<string, unknown>[];
+    expect(data.map((c) => [c.email, c.name, c.company, c.kind])).toEqual([
+      ["anne@rochat.test", "Anne Rochat", "Rochat SA", "client"],
+      ["luc@favre.test", "Luc Favre", null, "client"],
+    ]);
+    expect(Object.keys(data[0] ?? {}).sort()).toEqual(
+      ["company", "email", "id", "kind", "name", "title", "updated_at"].sort(),
+    );
+  });
+
+  it("count=1 : le nombre seul", async () => {
+    await seed();
+    expect(await read("type=known_contacts&count=1", vl())).toEqual({
+      status: 200,
+      body: { count: 2 },
+    });
+  });
+
+  it("curseur : page de 1 puis la suivante, puis rien de neuf", async () => {
+    await seed();
+    const a = await read("type=known_contacts&limit=1", vl());
+    expect((a.body.data as unknown[]).length).toBe(1);
+    expect(typeof a.body.next).toBe("string");
+    const b = await read(`type=known_contacts&limit=1&cursor=${a.body.next}`, vl());
+    expect((b.body.data as { email: string }[]).map((c) => c.email)).toEqual(["luc@favre.test"]);
+    expect(b.body.next).toBeNull();
+    const last = b.body.data as { id: string; updated_at: string }[];
+    const cur = Buffer.from(JSON.stringify({ u: last[0]?.updated_at, i: last[0]?.id })).toString(
+      "base64url",
+    );
+    expect((await read(`type=known_contacts&cursor=${cur}`, vl())).body.data).toEqual([]);
+    expect((await read("type=known_contacts&cursor=%%%", vl())).status).toBe(400);
+  });
+
+  it("refus : autre application, sans organisation, organisation inconnue, jeton d'envoi", async () => {
+    await seed();
+    expect((await read("type=known_contacts", vl({ app: "projectlead" }))).body).toEqual({
+      error: "sender_not_allowed",
+    });
+    expect((await read("type=known_contacts", vl({ org: null }))).status).toBe(401);
+    expect(await read("type=known_contacts", vl({ org: OTHER_ORG }))).toEqual({
+      status: 404,
+      body: { error: "unknown_org" },
+    });
+    expect(
+      (await read("type=known_contacts", token({ app: "visitlead", scope: "exchange" }))).status,
+    ).toBe(401);
+    // VisitLead ne lit pas les clients avec les droits d'une personne (type contact réservé à ProjectLead).
+    expect((await read("type=contact", vl({ person: "sub-ada" }))).body).toEqual({
+      error: "sender_not_allowed",
+    });
+  });
+
+  it("budget : 120 lectures par minute et par organisation", async () => {
+    await seed();
+    for (let i = 0; i < 120; i++) await read("type=known_contacts&count=1", vl());
+    expect((await read("type=known_contacts&count=1", vl())).status).toBe(429);
   });
 });
 

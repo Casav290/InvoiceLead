@@ -31,6 +31,7 @@ import {
   parseInvoiceForm,
   updateInvoice,
 } from "./invoices";
+import { knownContacts } from "./known-contacts";
 import { checkEnvelope, type IncomingExchange, orgSendersFrom } from "./lead-id/leadId";
 import { organizationPlan, planCode, quotaAccess, tierOf } from "./plans";
 import { can, hasAppAccess, isRemoved, type Member } from "./roles";
@@ -48,7 +49,11 @@ import { hasSeat } from "./team";
 /** Qui peut envoyer quoi ici. Aucune autre paire n'existe. */
 export const ACCEPTS: Record<string, string[]> = { invoice: ["projectlead"] };
 /** Qui peut lire quoi ici. */
-export const READERS: Record<string, string[]> = { contact: ["projectlead"] };
+export const READERS: Record<string, string[]> = {
+  contact: ["projectlead"],
+  // Contacts connus pour VisitLead (04.11.2026) : au niveau de l'entreprise, personne facultative.
+  known_contacts: ["visitlead"],
+};
 
 /** Expéditeurs dont le jeton doit porter l'organisation (EXCHANGE_ORG_SENDERS, défaut « projectlead »). */
 export const orgSenders = () => orgSendersFrom(process.env.EXCHANGE_ORG_SENDERS, "projectlead");
@@ -433,6 +438,11 @@ export async function readForExchange(
   if (!Object.hasOwn(READERS, type)) return reply(422, { error: "unsupported_type" });
   if (!(READERS[type] ?? []).includes(tok.app)) return reply(403, { error: "sender_not_allowed" });
   if (!tok.org) return reply(401, { error: "org_required" });
+  if (type === "known_contacts") {
+    const known = await organizationOfLeadOrg(database, tok.org);
+    if (!known) return reply(404, { error: "unknown_org" });
+    return knownContacts(database, known.id, query);
+  }
   if (!tok.person) return reply(400, { error: "person_required" });
   const org = await organizationOfLeadOrg(database, tok.org);
   if (!org) return reply(404, { error: "unknown_org" });
