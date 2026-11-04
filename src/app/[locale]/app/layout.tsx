@@ -1,4 +1,5 @@
 import { AppHeader } from "@/components/app/AppHeader";
+import { AppTour } from "@/components/app/AppTour";
 import { CountryProvider } from "@/components/app/CountryContext";
 import { AssistantBubble } from "@/components/assistant/AssistantBubble";
 import { leadAppItems } from "@/lib/lead-apps";
@@ -39,40 +40,47 @@ export default async function AppLayout({
     // data-lead-org : l'organisation du Compte Lead de l'espace ouvert (contrôle du passage entre
     // applications de la famille, ~/projets/lead-e2e/check-passage.mjs).
     // CountryProvider : les libellés des composants client suivent le pays de l'entreprise.
+    // AppTour : la visite guidée, seule au premier passage (users.tour_pending), puis par « Revoir la
+    // visite » dans le menu de la personne.
     <CountryProvider country={organization.country}>
-      <div className="flex min-h-screen flex-col" data-lead-org={organization.leadOrg ?? undefined}>
-        <AppHeader
-          locale={locale}
-          orgId={organization.id}
-          orgName={organization.name}
-          orgs={orgs}
-          user={{ name: user.name, email: user.email }}
-          // La formule DANS InvoiceLead (tierOf : Compte Lead et abonnement payé ici).
-          planCode={tier === "proplus" ? "pro_plus" : tier}
-          planName={tp(tier)}
-          // La liste commune de la famille, jamais filtrée par les droits ni par la formule.
-          apps={leadAppItems(APP_CODE, locale)}
-          upgrade={upgrade}
-        />
-        {/* Bulle « Assistant IA » : place gardée sous la page pour qu'elle ne cache jamais sa fin
-            (B9 : 96 px = bulle 56 + bord 24 + 16, plus la zone sûre du téléphone ; rien à l'impression). */}
-        <main
-          className={
-            bubble ? "flex-1 pb-[calc(6rem+env(safe-area-inset-bottom))] print:pb-0" : "flex-1"
-          }
+      <AppTour userId={user.id} due={user.tourPending} assistant={bubble} locale={locale}>
+        <div
+          className="flex min-h-screen flex-col"
+          data-lead-org={organization.leadOrg ?? undefined}
         >
-          {children}
-        </main>
-        {/* B10 : le fil de l'onglet est propre à l'entreprise ET à la personne. */}
-        {bubble && (
-          <AssistantBubble
-            storageKey={`il-assistant:${organization.id}:${user.id}`}
-            budget={budget}
-            // Lien vers les formules quand le budget gratuit est atteint (jamais dans l'app mobile).
-            plansHref={upgrade?.href ?? null}
+          <AppHeader
+            locale={locale}
+            orgId={organization.id}
+            orgName={organization.name}
+            orgs={orgs}
+            user={{ name: user.name, email: user.email }}
+            // La formule DANS InvoiceLead (tierOf : Compte Lead et abonnement payé ici).
+            planCode={tier === "proplus" ? "pro_plus" : tier}
+            planName={tp(tier)}
+            // La liste commune de la famille, jamais filtrée par les droits ni par la formule.
+            apps={leadAppItems(APP_CODE, locale)}
+            upgrade={upgrade}
           />
-        )}
-      </div>
+          {/* Bulle « Assistant IA » : place gardée sous la page pour qu'elle ne cache jamais sa fin
+            (B9 : 96 px = bulle 56 + bord 24 + 16, plus la zone sûre du téléphone ; rien à l'impression). */}
+          <main
+            className={
+              bubble ? "flex-1 pb-[calc(6rem+env(safe-area-inset-bottom))] print:pb-0" : "flex-1"
+            }
+          >
+            {children}
+          </main>
+          {/* B10 : le fil de l'onglet est propre à l'entreprise ET à la personne. */}
+          {bubble && (
+            <AssistantBubble
+              storageKey={`il-assistant:${organization.id}:${user.id}`}
+              budget={budget}
+              // Lien vers les formules quand le budget gratuit est atteint (jamais dans l'app mobile).
+              plansHref={upgrade?.href ?? null}
+            />
+          )}
+        </div>
+      </AppTour>
     </CountryProvider>
   );
 }

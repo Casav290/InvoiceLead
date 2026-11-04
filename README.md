@@ -113,6 +113,11 @@ pages publiques) ouvre un fil où l'on demande ce qu'on veut. Code : `src/server
   limite gratuite : `node scripts/ia-limites-gates.mjs G1` à `G4` (aperçu de G3 et G4 :
   `node scripts/ia-limites-preview.mjs deploy`).
 
+## Visite guidée
+
+Au premier passage d'une personne, une visite animée de l'espace s'ouvre une seule fois (`users.tour_pending`),
+relançable par « Revoir la visite » dans le menu de la personne : [docs/VISITE.md](docs/VISITE.md).
+
 ## Langues et devise par pays
 
 - Cinq langues partout (interface, e-mails, PDF, pages juridiques) : `messages/<langue>.json`,

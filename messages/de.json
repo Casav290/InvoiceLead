@@ -352,7 +352,8 @@
         "pro_plus": "Pro+"
       },
       "feedback": "Feedback geben",
-      "language": "Sprache"
+      "language": "Sprache",
+      "replayTour": "Tour erneut ansehen"
     },
     "dashboard": {
       "title": "Guten Tag {name}",
@@ -2853,6 +2854,63 @@
         "pro": "Mit dem Pro-Abo gibt es diese Limite nicht.",
         "plans": "Abos ansehen"
       }
+    },
+    "tour": {
+      "welcome": {
+        "title": "Willkommen bei InvoiceLead",
+        "body": "Eine Minute, um zu sehen, wo alles ist. Sie können jederzeit überspringen."
+      },
+      "dashboard": {
+        "title": "Übersicht",
+        "body": "Umsatz des Monats, offene Beträge und die ersten Schritte für einen guten Start, auf einen Blick."
+      },
+      "quotes": {
+        "title": "Offerten",
+        "titleIntl": "Angebote",
+        "body": "Eine angenommene Offerte wird mit einem Klick zur Rechnung, ohne eine Zeile neu zu erfassen.",
+        "bodyIntl": "Ein angenommenes Angebot wird mit einem Klick zur Rechnung, ohne eine Zeile neu zu erfassen."
+      },
+      "invoices": {
+        "title": "Rechnungen",
+        "body": "Rechnungen nach den Regeln Ihres Landes, per E-Mail versandt, mit Mahnungen und wiederkehrenden Rechnungen."
+      },
+      "time": {
+        "title": "Zeit und Spesen",
+        "titleIntl": "Zeit und Ausgaben",
+        "body": "Stoppuhr oder schnelle Erfassung pro Projekt: Verrechenbare Stunden werden mit einem Klick zur Rechnung. Daneben die Spesen.",
+        "bodyIntl": "Stoppuhr oder schnelle Erfassung pro Projekt: Abrechenbare Stunden werden mit einem Klick zur Rechnung. Daneben die Ausgaben."
+      },
+      "contacts": {
+        "title": "Kontakte und Artikel",
+        "body": "Ihre Kunden und Lieferanten, aus CRMlead übernommen, wenn Sie es nutzen, und Ihre Leistungen und Produkte, bereit zur Verrechnung."
+      },
+      "accounting": {
+        "title": "Buchhaltung",
+        "body": "Rechnungen und Zahlungen landen von selbst im Journal. Bank, fotografierte Belege, Steuerabrechnungen und Berichte finden Sie hier."
+      },
+      "settings": {
+        "title": "Einstellungen",
+        "body": "Ihr Unternehmen, Logo und Zahlungsangaben, das Team, die Online-Zahlung und Ihr Abo."
+      },
+      "apps": {
+        "title": "Lead-Apps",
+        "body": "CRMlead, ProjectLead, ScanLead und die anderen, mit demselben Konto: ein Klick, um zwischen ihnen zu wechseln."
+      },
+      "assistant": {
+        "title": "KI-Assistent",
+        "body": "Fragen Sie in einfachen Worten: «Welche Rechnungen sind überfällig?» Er antwortet und bereitet vor; nichts wird ohne Ihr «Bestätigen» gespeichert."
+      },
+      "replay": {
+        "title": "Tour erneut ansehen",
+        "body": "Sie bleibt hier im Menü Ihres Profils, wenn Sie sie wiederholen möchten."
+      },
+      "skip": "Überspringen",
+      "back": "Zurück",
+      "next": "Weiter",
+      "start": "Tour starten",
+      "done": "Fertig",
+      "try": "Ausprobieren",
+      "progress": "Schritt {n} von {total}"
     }
   },
   "footer": {

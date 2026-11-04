@@ -352,7 +352,8 @@
         "pro_plus": "Pro+"
       },
       "feedback": "Lascia un feedback",
-      "language": "Lingua"
+      "language": "Lingua",
+      "replayTour": "Rivedi il tour"
     },
     "dashboard": {
       "title": "Ciao {name}",
@@ -2853,6 +2854,63 @@
         "pro": "Con il piano Pro non ha questo limite.",
         "plans": "Vedi i piani"
       }
+    },
+    "tour": {
+      "welcome": {
+        "title": "Benvenuti in InvoiceLead",
+        "body": "Un minuto per vedere dove si trova tutto. Potete saltare in qualsiasi momento."
+      },
+      "dashboard": {
+        "title": "Panoramica",
+        "body": "Il fatturato del mese, quanto resta da incassare e i primi passi per iniziare bene, a colpo d’occhio."
+      },
+      "quotes": {
+        "title": "Offerte",
+        "titleIntl": "Preventivi",
+        "body": "Un’offerta accettata diventa una fattura con un clic, senza ridigitare una riga.",
+        "bodyIntl": "Un preventivo accettato diventa una fattura con un clic, senza ridigitare una riga."
+      },
+      "invoices": {
+        "title": "Fatture",
+        "body": "Fatture conformi alle regole del vostro paese, inviate per e-mail, con solleciti e fatture ricorrenti."
+      },
+      "time": {
+        "title": "Tempo e spese",
+        "titleIntl": "Tempo e spese",
+        "body": "Il cronometro o un’immissione rapida per progetto: le ore fatturabili diventano una fattura con un clic. Accanto, le note spese.",
+        "bodyIntl": "Il cronometro o un’immissione rapida per progetto: le ore fatturabili diventano una fattura con un clic. Accanto, le note spese."
+      },
+      "contacts": {
+        "title": "Contatti e articoli",
+        "body": "Clienti e fornitori, ripresi da CRMlead se lo usate, e le vostre prestazioni e prodotti pronti da fatturare."
+      },
+      "accounting": {
+        "title": "Contabilità",
+        "body": "Fatture e pagamenti entrano da soli nel giornale. Banca, giustificativi letti da una foto, dichiarazioni fiscali e rapporti sono qui."
+      },
+      "settings": {
+        "title": "Impostazioni",
+        "body": "La vostra azienda, il logo e i dati di pagamento, il team, il pagamento online e il vostro piano."
+      },
+      "apps": {
+        "title": "App Lead",
+        "body": "CRMlead, ProjectLead, ScanLead e le altre, con lo stesso account: un clic per passare dall’una all’altra."
+      },
+      "assistant": {
+        "title": "Assistente IA",
+        "body": "Chiedete con parole semplici: «Quali fatture sono in ritardo?» Risponde e prepara; nulla viene salvato senza il vostro «Conferma»."
+      },
+      "replay": {
+        "title": "Rivedi il tour",
+        "body": "Resta qui, nel menu del vostro profilo, se volete rifarlo."
+      },
+      "skip": "Salta",
+      "back": "Indietro",
+      "next": "Avanti",
+      "start": "Inizia il tour",
+      "done": "Fine",
+      "try": "Provalo",
+      "progress": "Passo {n} di {total}"
     }
   },
   "footer": {

@@ -352,7 +352,8 @@
         "pro_plus": "Pro+"
       },
       "feedback": "Donner mon avis",
-      "language": "Langue"
+      "language": "Langue",
+      "replayTour": "Revoir la visite"
     },
     "dashboard": {
       "title": "Bonjour {name}",
@@ -2853,6 +2854,63 @@
         "pro": "Avec la formule Pro, il n'a pas cette limite.",
         "plans": "Voir les formules"
       }
+    },
+    "tour": {
+      "welcome": {
+        "title": "Bienvenue dans InvoiceLead",
+        "body": "Une minute pour voir où tout se trouve. Vous pouvez passer à tout moment."
+      },
+      "dashboard": {
+        "title": "Tableau de bord",
+        "body": "Le chiffre d'affaires du mois, ce qui reste à encaisser et les premiers pas pour bien démarrer, d'un coup d'œil."
+      },
+      "quotes": {
+        "title": "Devis",
+        "titleIntl": "Devis",
+        "body": "Un devis accepté devient une facture en un clic, sans ressaisir une ligne.",
+        "bodyIntl": "Un devis accepté devient une facture en un clic, sans ressaisir une ligne."
+      },
+      "invoices": {
+        "title": "Factures",
+        "body": "Des factures conformes aux règles de votre pays, envoyées par e-mail, avec les relances et les factures récurrentes."
+      },
+      "time": {
+        "title": "Temps et frais",
+        "titleIntl": "Temps et frais",
+        "body": "Le chrono ou une saisie rapide par projet : les heures facturables deviennent une facture en un clic. À côté, les notes de frais.",
+        "bodyIntl": "Le chrono ou une saisie rapide par projet : les heures facturables deviennent une facture en un clic. À côté, les notes de frais."
+      },
+      "contacts": {
+        "title": "Contacts et articles",
+        "body": "Vos clients et fournisseurs, repris de CRMlead si vous l'utilisez, et vos prestations et produits prêts à facturer."
+      },
+      "accounting": {
+        "title": "Comptabilité",
+        "body": "Factures et paiements passent au journal tout seuls. Banque, justificatifs lus en photo, déclarations fiscales et rapports sont ici."
+      },
+      "settings": {
+        "title": "Réglages",
+        "body": "Votre entreprise, votre logo et vos coordonnées de paiement, l'équipe, le paiement en ligne et votre formule."
+      },
+      "apps": {
+        "title": "Applications Lead",
+        "body": "CRMlead, ProjectLead, ScanLead et les autres, avec le même compte : un clic pour passer de l'une à l'autre."
+      },
+      "assistant": {
+        "title": "Assistant IA",
+        "body": "Demandez en mots simples : « Quelles factures sont en retard ? » Il répond et prépare ; rien n'est enregistré sans votre « Confirmer »."
+      },
+      "replay": {
+        "title": "Revoir la visite",
+        "body": "Elle reste ici, dans le menu de votre profil, si vous voulez la refaire."
+      },
+      "skip": "Passer",
+      "back": "Retour",
+      "next": "Suivant",
+      "start": "Commencer la visite",
+      "done": "Terminer",
+      "try": "L'essayer",
+      "progress": "Étape {n} sur {total}"
     }
   },
   "footer": {

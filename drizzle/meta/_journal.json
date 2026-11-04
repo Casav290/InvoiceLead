@@ -351,6 +351,13 @@
       "when": 1793084795714,
       "tag": "0049_cinq_langues",
       "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1793766521611,
+      "tag": "0050_visite_guidee",
+      "breakpoints": true
     }
   ]
 }

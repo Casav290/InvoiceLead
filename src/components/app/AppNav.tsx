@@ -28,6 +28,8 @@ export function AppNav() {
             key={item.href}
             href={item.href}
             aria-current={active ? "page" : undefined}
+            // Zone montrée par la visite guidée (src/tour/steps.invoicelead.ts).
+            data-tour={`nav:${item.href}`}
             className={cn(
               "flex min-h-10 flex-1 shrink-0 items-center whitespace-nowrap justify-center border-r border-line-strong px-1 text-center text-[11px] font-semibold last:border-r-0 sm:px-4 sm:text-[13px] xl:flex-none xl:last:border-r",
               active

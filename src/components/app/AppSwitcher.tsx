@@ -68,6 +68,7 @@ export function AppSwitcher({
         type="button"
         data-lead-launcher=""
         data-testid="application-switcher"
+        data-tour="apps"
         aria-label={texts.title}
         title={texts.title}
         aria-expanded={open}

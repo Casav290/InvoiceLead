@@ -43,6 +43,14 @@ export const users = pgTable(
     lastOrganizationId: uuid("last_organization_id").references(() => organizations.id, {
       onDelete: "set null",
     }),
+    /**
+     * Visite guidée due (drizzle/0050_visite_guidee.sql) : vrai pour toute personne créée après la
+     * migration, tant que la visite ne s'est jamais ouverte pour elle ; faux pour les personnes déjà
+     * là avant. Remis à faux par markTourSeen (server/tour.ts) dès la première ouverture.
+     */
+    tourPending: boolean("tour_pending").notNull().default(true),
+    /** Première ouverture de la visite (ou « Passer »). */
+    tourSeenAt: timestamp("tour_seen_at", { withTimezone: true }),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },

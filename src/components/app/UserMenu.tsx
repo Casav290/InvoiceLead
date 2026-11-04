@@ -5,6 +5,7 @@ import { DropdownMenu } from "radix-ui";
 import { useRef } from "react";
 import { useCountryTranslations } from "@/components/app/CountryContext";
 import { Link } from "@/i18n/navigation";
+import { useTour } from "@/tour/TourProvider";
 
 export function UserMenu({
   name,
@@ -23,6 +24,8 @@ export function UserMenu({
   // Le formulaire reste hors du menu : le contenu du menu disparaît à sa fermeture.
   const logoutForm = useRef<HTMLFormElement>(null);
   const pathname = usePathname();
+  // « Revoir la visite » : la visite guidée relancée à la demande, sans rien écrire (AppTour).
+  const tour = useTour();
   const initials =
     (name || email)
       .split(/[\s@.]+/)
@@ -40,6 +43,7 @@ export function UserMenu({
           <button
             type="button"
             data-testid="user-menu"
+            data-tour="profile"
             aria-label={name || email}
             className="flex h-8 min-w-8 items-center justify-center border border-line-strong bg-panel px-2 text-[11px] font-extrabold text-ink hover:bg-muted"
           >
@@ -84,6 +88,14 @@ export function UserMenu({
               >
                 {t("feedback")}
               </Link>
+            </DropdownMenu.Item>
+            <DropdownMenu.Item
+              data-testid="tour-replay"
+              data-tour-replay=""
+              onSelect={() => tour.start()}
+              className="cursor-pointer px-2 py-2 font-semibold outline-hidden data-[highlighted]:bg-accent-veil data-[highlighted]:outline-2 data-[highlighted]:outline-accent data-[highlighted]:-outline-offset-2"
+            >
+              {t("replayTour")}
             </DropdownMenu.Item>
             <DropdownMenu.Item
               data-testid="logout"

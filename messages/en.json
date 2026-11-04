@@ -352,7 +352,8 @@
         "pro_plus": "Pro+"
       },
       "feedback": "Give feedback",
-      "language": "Language"
+      "language": "Language",
+      "replayTour": "Replay the tour"
     },
     "dashboard": {
       "title": "Hello {name}",
@@ -2853,6 +2854,63 @@
         "pro": "With the Pro plan, it has no such limit.",
         "plans": "See plans"
       }
+    },
+    "tour": {
+      "welcome": {
+        "title": "Welcome to InvoiceLead",
+        "body": "One minute to see where everything is. You can skip at any time."
+      },
+      "dashboard": {
+        "title": "Dashboard",
+        "body": "This month's revenue, what is still to be collected and the first steps to get started, at a glance."
+      },
+      "quotes": {
+        "title": "Quotes",
+        "titleIntl": "Quotes",
+        "body": "An accepted quote becomes an invoice in one click, without retyping a single line.",
+        "bodyIntl": "An accepted quote becomes an invoice in one click, without retyping a single line."
+      },
+      "invoices": {
+        "title": "Invoices",
+        "body": "Invoices that follow your country's rules, sent by email, with reminders and recurring invoices."
+      },
+      "time": {
+        "title": "Time and expenses",
+        "titleIntl": "Time and expenses",
+        "body": "The timer or a quick entry per project: billable hours become an invoice in one click. Next to it, expense claims.",
+        "bodyIntl": "The timer or a quick entry per project: billable hours become an invoice in one click. Next to it, expense claims."
+      },
+      "contacts": {
+        "title": "Contacts and items",
+        "body": "Your customers and suppliers, brought over from CRMlead if you use it, and your services and products ready to invoice."
+      },
+      "accounting": {
+        "title": "Accounting",
+        "body": "Invoices and payments go to the journal on their own. Bank, receipts read from a photo, tax returns and reports are here."
+      },
+      "settings": {
+        "title": "Settings",
+        "body": "Your company, logo and payment details, the team, online payment and your plan."
+      },
+      "apps": {
+        "title": "Lead apps",
+        "body": "CRMlead, ProjectLead, ScanLead and the others, with the same account: one click to switch from one to another."
+      },
+      "assistant": {
+        "title": "AI assistant",
+        "body": "Ask in plain words: “Which invoices are overdue?” It answers and prepares; nothing is saved until you click “Confirm”."
+      },
+      "replay": {
+        "title": "Replay the tour",
+        "body": "It stays here, in your profile menu, whenever you want to take it again."
+      },
+      "skip": "Skip",
+      "back": "Back",
+      "next": "Next",
+      "start": "Start the tour",
+      "done": "Finish",
+      "try": "Try it",
+      "progress": "Step {n} of {total}"
     }
   },
   "footer": {
