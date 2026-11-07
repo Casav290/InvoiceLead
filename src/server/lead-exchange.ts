@@ -35,6 +35,8 @@ import { knownContacts } from "./known-contacts";
 import { checkEnvelope, type IncomingExchange, orgSendersFrom } from "./lead-id/leadId";
 import { organizationPlan, planCode, quotaAccess, tierOf } from "./plans";
 import { can, hasAppAccess, isRemoved, type Member } from "./roles";
+import { dashboardFigures } from "./dashboard";
+import { env } from "./env";
 import { hasSeat } from "./team";
 
 /**
@@ -53,6 +55,8 @@ export const READERS: Record<string, string[]> = {
   contact: ["projectlead"],
   // Contacts connus pour VisitLead (04.11.2026) : au niveau de l'entreprise, personne facultative.
   known_contacts: ["visitlead"],
+  // ERPtoday (tableau de bord d'erplead.io, 07.11.2026) : le point de facturation, personne obligatoire.
+  today: ["erplead"],
 };
 
 /** Expéditeurs dont le jeton doit porter l'organisation (EXCHANGE_ORG_SENDERS, défaut « projectlead »). */
@@ -452,6 +456,11 @@ export async function readForExchange(
     return reply(403, { error: "person_not_member", reason: "disabled" });
   if (!(await hasSeat(database, org, person.userId)))
     return reply(403, { error: "person_not_member", reason: "no_seat" });
+  if (type === "today") {
+    // Les montants ne se montrent qu'à qui gère la facturation dans InvoiceLead.
+    if (!can(person.member, "billing")) return reply(403, { error: "person_not_member", reason: "no_billing" });
+    return reply(200, await todayFigures(database, org.id, query.get("locale")));
+  }
   const q = (query.get("q") ?? "").slice(0, 100);
   const rows = await listContacts(database, org.id, q);
   return reply(200, {
@@ -460,6 +469,32 @@ export async function readForExchange(
       .slice(0, 20)
       .map(contactOut),
   });
+}
+
+/** Le point de facturation d'ERPtoday : les chiffres du tableau de bord, sans rien de plus. */
+async function todayFigures(database: Db, organizationId: string, locale: string | null) {
+  const today = new Date().toISOString().slice(0, 10);
+  const f = await dashboardFigures(database, organizationId, today);
+  const base = env().APP_URL.replace(/\/$/, "");
+  const l = locale && ["fr", "de", "en", "it", "es"].includes(locale) ? locale : "fr";
+  return {
+    currency: f.currency,
+    open: f.open,
+    overdue: f.overdue,
+    drafts: f.drafts,
+    quotesOpen: f.quotesOpen,
+    billsToPay: f.billsToPay,
+    url: `${base}/${l}/app/invoices`,
+    overdueList: f.overdueList.slice(0, 5).map((x) => ({
+      number: x.number,
+      contact: x.contactName,
+      dueDate: x.dueDate,
+      daysLate: x.daysLate,
+      openCents: x.openCents,
+      currency: x.currency,
+      url: `${base}/${l}/app/invoices/${x.id}`,
+    })),
+  };
 }
 
 /** Dernier brouillon reçu de ProjectLead (créé ou remplacé), pour l'écran « Applications Lead ». */
